@@ -14,7 +14,6 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import javax.ws.rs.core.Response;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsString;
@@ -61,7 +60,6 @@ import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -603,7 +601,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPUTInvalidEventTypeThen422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
-        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
+        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
 
         jsonObject.remove("category");
 
@@ -668,7 +666,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
-                asJsonString(expectedEventType)));
+                TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
 
     }
 

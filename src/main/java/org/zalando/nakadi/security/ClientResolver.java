@@ -1,5 +1,9 @@
 package org.zalando.nakadi.security;
 
+import java.security.Principal;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
@@ -12,12 +16,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.SecuritySettings;
-
-import java.security.Principal;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
-
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 
 @Component

@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 import javax.ws.rs.core.Response;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.junit.Test;
@@ -297,14 +296,6 @@ public class SubscriptionControllerTest {
         checkForProblem(
                 mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
                 Problem.valueOf(NOT_FOUND, "dummy message"));
-    }
-
-    @Test
-    public void whenDeleteSubscriptionAndOwningAppDoesNotMatchThenForbidden() throws Exception {
-        mockGetFromRepoSubscriptionWithOwningApp("sid", "wrongApp");
-        checkForProblem(
-                mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
-                Problem.valueOf(FORBIDDEN, "You don't have access to this subscription"));
     }
 
     private void mockGetFromRepoSubscriptionWithOwningApp(final String subscriptionId, final String owningApplication)

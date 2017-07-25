@@ -49,6 +49,7 @@ public class TimelinesControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(securitySettings))
+                .setControllerAdvice(new ExceptionHandling())
                 .build();
     }
 

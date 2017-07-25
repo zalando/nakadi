@@ -23,7 +23,6 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;

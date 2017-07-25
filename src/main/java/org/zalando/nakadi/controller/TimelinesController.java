@@ -1,5 +1,8 @@
 package org.zalando.nakadi.controller;
 
+import java.util.stream.Collectors;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +30,6 @@ import org.zalando.nakadi.view.TimelineView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/event-types/{name}/timelines", produces = MediaType.APPLICATION_JSON)

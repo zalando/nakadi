@@ -1,9 +1,8 @@
 package org.zalando.nakadi.security;
 
 import org.junit.Test;
-import org.zalando.nakadi.config.SecuritySettings;
-
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.zalando.nakadi.config.SecuritySettings;
 
 public class RealmModeAuthenticationTest extends AuthenticationTest {
 
