@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.E
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
 import java.text.MessageFormat;
 
@@ -32,6 +33,9 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     @Value("${nakadi.oauth2.scopes.uid}")
     private String uidScope;
+
+    @Value("${nakadi.oauth2.realms}")
+    private String realms;
 
     @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
     private String nakadiAdminScope;
@@ -79,6 +83,11 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
+        else if (settings.getAuthMode() == SecuritySettings.AuthMode.REALM) {
+            http.authorizeRequests()
+                    .antMatchers(GET, "/health/**").permitAll()
+                    .anyRequest().access(hasUidScopeAndAnyRealm(realms));
+        }
         else {
             http.authorizeRequests()
                     .anyRequest().permitAll();
@@ -89,9 +98,14 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
     }
 
+    public static String hasUidScopeAndAnyRealm(final String realms) {
+        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm(''{0}'')", realms);
+    }
+
     @Override
     public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
         resources.tokenServices(tokenServices);
+        resources.expressionHandler(new ExtendedOAuth2WebSecurityExpressionHandler());
     }
 
 }

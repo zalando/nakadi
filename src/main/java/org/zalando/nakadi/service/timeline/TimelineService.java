@@ -145,13 +145,8 @@ public class TimelineService {
         if (timelines.isEmpty()) {
             return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
         } else {
-            final Date currentDate = new Date();
             return timelines.stream()
-                    .filter(t -> {
-                        final boolean timelineExpired = t.getCleanedUpAt() != null
-                                && currentDate.after(t.getCleanedUpAt());
-                        return t.getSwitchedAt() != null && !timelineExpired;
-                    })
+                    .filter(t -> t.getSwitchedAt() != null && !t.isDeleted())
                     .collect(Collectors.toList());
         }
     }
@@ -171,10 +166,16 @@ public class TimelineService {
         }
     }
 
-    public Timeline getFakeTimeline(final EventType eventType) {
-        return Timeline.createFakeTimeline(eventType, defaultStorage);
+    public Timeline getFakeTimeline(final EventType eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final Timeline fakeTimeline = Timeline.createFakeTimeline(eventType, defaultStorage);
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType.getName());
+        if (timelines.size() > 1) {
+            fakeTimeline.setDeleted(timelines.get(0).isDeleted());
+        }
+        return fakeTimeline;
     }
-
+    
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
