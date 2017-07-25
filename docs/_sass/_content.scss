@@ -1,6 +1,21 @@
 .doc {
   display: flex;
 
+  em {
+    font-style: italic;
+    padding: .2rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 3px;
+    color: #757d3e;
+  }
+
+  strong {
+    font-weight: bold;
+    padding: .2rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 3px;
+  }
+
   ol li {
     list-style: decimal;
     margin-left: 2rem;
