@@ -1,0 +1,25 @@
+.sidebar {
+  width: $sidebar-width;
+  height: $sidebar-height;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background: $color-lightgray;
+  border-right: 1px solid darken($color-lightgray, 5%);
+  overflow-y: auto;
+
+  @include respond-to('small') {
+    /* Todo: show navigation in off-site-menu with hamburger icon */
+    display: none;
+  }
+
+  .site-name {
+    margin-right: -1px;
+    text-align: center;
+    padding: 20px;
+    background: $color-primary;
+    background: linear-gradient($color-primary, darken($color-primary, 8%));
+    color: $title-color;
+    font-size: 20px;
+  }
+}

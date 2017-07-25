@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- The Nakadi manual merged to the project docs.
+- The template added to generate Nakadi website using github pages.  
 - Addition of a new authentication mode, 'REALM'
 
 ### Changed
 - The metrics endpoint documentation key "summary" changed to "description" in Open API file.
+
+### Fixed
+- Fixed formatting of CursorDistanceResult in Open API file.
 
 ## [1.0.1] - 2017-07-14
 
