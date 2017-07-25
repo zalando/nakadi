@@ -22,18 +22,34 @@
 
   @include respond-to('medium') {
 
-      td {
+    td {
 
-        display: block;
-      }
+      display: block;
+    }
 
-      th {
-        display: none;
-      }
+    th {
+      display: none;
+    }
 
-      .param-name {
-        width: 100%;
-        background: #f3e8db;
-      }
+    tr:nth-child(even) td {
+      background: white;
+    }
+
+    .param-name {
+      width: 100%;
+      background: #f3e8db;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .param-name:before {
+      content: "Parameter: ";
+      font-weight: normal;
+    }
+
+    tr:nth-child(even) td.param-name {
+      background: #f3e8db;
+    }
+
   }
 }
