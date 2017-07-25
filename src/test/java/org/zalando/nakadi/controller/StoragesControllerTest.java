@@ -34,8 +34,6 @@ public class StoragesControllerTest {
 
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-
     private MockMvc mockMvc;
 
     @Before
@@ -45,7 +43,7 @@ public class StoragesControllerTest {
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(securitySettings))
                 .build();
     }
 

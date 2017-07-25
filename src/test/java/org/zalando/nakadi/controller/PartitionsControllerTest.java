@@ -87,8 +87,6 @@ public class PartitionsControllerTest {
 
     private SecuritySettings settings;
 
-    private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-
     private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     @Before
@@ -111,7 +109,7 @@ public class PartitionsControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings))
                 .setControllerAdvice(new ExceptionHandling())
                 .build();
     }

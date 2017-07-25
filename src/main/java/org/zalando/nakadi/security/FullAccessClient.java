@@ -11,11 +11,6 @@ public class FullAccessClient extends Client {
     }
 
     @Override
-    public boolean idMatches(final String clientId) {
-        return true;
-    }
-
-    @Override
     public void checkScopes(final Set<String> allowedScopes) throws IllegalScopeException {
 
     }

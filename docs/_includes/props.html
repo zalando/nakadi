@@ -1,0 +1,30 @@
+{% assign parameters = include.data %}
+{% assign req = include.req| join: ' ' %}
+{% if parameters %}
+<table class="parameters">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Description</th>
+    <tr>
+    </thead>
+    <tbody>
+    {% for parameter in parameters %}
+    <tr>
+
+        <td class="param-name">
+            {{ parameter[0] }}
+            {% if req contains parameter[0]  %}
+            <span class="required"></span>
+            {% endif %}
+        </td>
+        <td>
+            {% assign type = parameter[1] %}
+            {% include type.html type=type %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+

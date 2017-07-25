@@ -46,6 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.SecuritySettings;
+import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -162,10 +163,12 @@ public class EventStreamControllerTest {
                 eventTypeChangeListener);
 
         settings = mock(SecuritySettings.class);
+        when(settings.getAuthMode()).thenReturn(OFF);
+        when(settings.getAdminClientId()).thenReturn("nakadi");
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings))
                 .build();
     }
 

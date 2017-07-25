@@ -121,10 +121,6 @@ public class TestUtils {
         return randomUInt() * randomUInt();
     }
 
-    public static String randomULongAsString() {
-        return Long.toString(randomULong());
-    }
-
     public static String resourceAsString(final String resourceName, final Class clazz) throws IOException {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }
@@ -137,7 +133,7 @@ public class TestUtils {
         final Resource resource = mock(Resource.class);
         when(resource.getName()).thenReturn("some-name");
         when(resource.getType()).thenReturn("some-type");
-        return new AccessDeniedException(null, AuthorizationService.Operation.READ, resource);
+        return new AccessDeniedException(AuthorizationService.Operation.READ, resource);
     }
 
     public static String readFile(final String filename) throws IOException {

@@ -50,7 +50,6 @@ import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.AuthorizationUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
@@ -287,7 +286,7 @@ public class EventStreamController {
                 // TODO: deprecate and remove previous authorization strategy
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.getMessage());
             } catch (final AccessDeniedException e) {
-                writeProblemResponse(response, outputStream, FORBIDDEN, AuthorizationUtils.errorMessage(e));
+                writeProblemResponse(response, outputStream, FORBIDDEN, e.explain());
             } catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());

@@ -157,7 +157,7 @@ public class EventStreamTest {
             try {
                 eventStream.streamEvents(new AtomicBoolean(true), () -> {
                     if (triggerAuthChange.getAndSet(false)) {
-                        throw new AccessDeniedException(null, null, null);
+                        throw new AccessDeniedException(null, null);
                     }
                 });
             } catch (final AccessDeniedException ex) {

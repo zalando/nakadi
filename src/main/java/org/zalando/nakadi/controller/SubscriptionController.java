@@ -1,9 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import java.util.Set;
-import javax.annotation.Nullable;
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +18,18 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.annotation.Nullable;
+import java.util.Set;
+
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 
 @RestController
@@ -70,10 +71,10 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request, final Client client) {
+                                                final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request,
+        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
                 HttpStatus.NO_CONTENT);
     }
 

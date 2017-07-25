@@ -1,0 +1,2665 @@
+swagger: '2.0'
+info:
+  title: Nakadi Event Bus API Definition
+  description: |
+
+    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient
+    API.  In doing this, Nakadi abstracts away, as much as possible, details of the backing
+    messaging infrastructure. The single currently supported messaging infrastructure is Kafka
+    (Kinesis is planned for the future).
+
+    In Nakadi every Event has an EventType, and a **stream** of Events is exposed for each
+    registered EventType.
+
+    An EventType defines properties relevant for the operation of its associated stream, namely:
+
+    * The **schema** of the Event of this EventType. The schema defines the accepted format of
+    Events of an EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will
+    respect the schema for the EventTypes in accordance to how an owning Application defines them.
+
+    * The expected **validation** and **enrichment** procedures upon reception of an Event.
+    Validation define conditions for the acceptance of the incoming Event and are strictly enforced
+    by Nakadi. Usually the validation will enforce compliance of the payload (or part of it) with
+    the defined schema of its EventType. Enrichment specify properties that are added to the payload
+    (body) of the Event before persisting it. Usually enrichment affects the metadata of an Event
+    but is not limited to.
+
+    * The **ordering** expectations of Events in this stream. Each EventType will have its Events
+    stored in an underlying logical stream (the Topic) that is physically organized in disjoint
+    collections of strictly ordered Events (the Partition). The EventType defines the field that
+    acts as evaluator of the ordering (that is, its partition key); this ordering is guaranteed by
+    making Events whose partition key resolves to the same Partition (usually a hash function on its
+    value) be persisted strictly ordered in a Partition.  In practice this means that all Events
+    within a Partition have their relative order guaranteed: Events (of a same EventType) that are
+    *about* a same data entity (that is, have the same value on its Partition key) reach always the
+    same Partition, the relative ordering of them is secured. This mechanism implies that no
+    statements can be made about the relative ordering of Events that are in different partitions.
+
+    * The **authorization** rules for the event type. The rules define who can produce events for
+    the event type (write), who can consume events from the event type (read), and who can update
+    the event type properties (admin). If the authorization rules are absent, then the event type
+    is open to all authenticated users.
+
+    Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
+
+    Clients of Nakadi can be grouped in 2 categories: **EventType owners** and **Clients** (clients
+    in turn are both **Producers** and **Consumers** of Events). Event Type owners interact with
+    Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the
+    streaming API for submission and reception of Events.
+
+    A low level **Unmanaged API** is available, providing full control and responsibility of
+    position tracking and partition resolution (and therefore ordering) to the Clients.
+
+    In the **High Level API** the consumption of Events proceeds via the establishment
+    of a named **Subscription** to an EventType. Subscriptions are persistent relationships from an
+    Application (which might have several instances) and the stream of one or more EventType's,
+    whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in
+    tracking of the current position on a Stream.
+
+
+    Scope and status of the API
+    ---------------------------------
+
+    In this document, you'll find:
+
+    * The Schema Registry API, including configuration possibilities for the Schema, Validation,
+    Enrichment and Partitioning of Events, and their effects on reception of Events.
+
+    * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
+    (Note: in the future this is planned to be configurable and not an inherent part of this API).
+
+    * High Level API.
+
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
+    in this version of this specification.
+
+  version: '0.8.0'
+  contact:
+    name: Team Aruha @ Zalando
+    email: team-aruha+nakadi-maintainers@zalando.de
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: implicit
+    authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
+    scopes:
+      nakadi.config.write: |
+        Grants access for changing Nakadi configuration.
+      nakadi.event_type.write: |
+        Grants access for applications to define and update EventTypes.
+      nakadi.event_stream.write: |
+        Grants access for applications to submit Events.
+      nakadi.event_stream.read: |
+        Grants access for consuming Event streams.
+
+paths:
+  /metrics:
+    get:
+      tags:
+        - monitoring
+      description: Get monitoring metrics
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Metrics'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+  /event-types:
+    get:
+      tags:
+        - schema-registry-api
+      description: Returns a list of all registered `EventType`s
+      parameters:
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventType'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_type.write']
+      description: |
+        Creates a new `EventType`.
+
+        The fields enrichment-strategies and partition-resolution-strategy
+        have all an effect on the incoming Event of this EventType. For its impacts on the reception
+        of events please consult the Event submission API methods.
+
+        * Validation strategies define an array of validation stategies to be evaluated on reception
+        of an `Event` of this `EventType`. Details of usage can be found in this external document
+
+          - http://zalando.github.io/nakadi-manual/
+
+        * Enrichment strategy. (todo: define this part of the API).
+
+        * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only
+        the value `json-schema` is supported, representing JSON Schema draft 04.
+
+        Following conditions are enforced. Not meeting them will fail the request with the indicated
+        status (details are provided in the Problem object):
+
+        * EventType name on creation must be unique (or attempting to update an `EventType` with
+          this method), otherwise the request is rejected with status 409 Conflict.
+
+        * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
+        that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
+
+        * Referring any Enrichment or Partition strategies that do not exist or
+        whose parametrization is deemed invalid. Rejects with 422 Unprocessable entity.
+
+        Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that
+        MUST be followed by all EventTypes (examples include: validation rules to match the schema;
+        enriching every Event with the reception date-type; adhering to a set of schema fields that
+        are mandatory for all EventTypes). **The mechanism to set and inspect such rules is not
+        defined at this time and might not be exposed in the API.**
+
+      parameters:
+        - name: event-type
+          in: body
+          description: EventType to be created
+          schema:
+            $ref: '#/definitions/EventType'
+          required: true
+      responses:
+        '201':
+          description: Created
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Conflict, for example on creation of EventType with already existing name.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}:
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Returns the `EventType` identified by its name.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to load.
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/EventType'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+
+    put:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_type.write']
+      description: |
+        Updates the `EventType` identified by its name. Behaviour is the same as creation of
+        `EventType` (See POST /event-type) except where noted below.
+
+        The name field cannot be changed. Attempting to do so will result in a 422 failure.
+
+        Modifications to the schema are constrained by the specified `compatibility_mode`.
+
+        Updating the `EventType` is only allowed for clients that satisfy the authorization `admin` requirements,
+        if it exists.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to update.
+          type: string
+          required: true
+        - name: event-type
+          in: body
+          description: EventType to be updated.
+          schema:
+            $ref: '#/definitions/EventType'
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+    delete:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['nakadi.config.write']
+      description: |
+        Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
+        also be removed. **Note**: deletion happens asynchronously, which has the following
+        consequences:
+
+         * Creation of an equally named `EventType` before the underlying topic deletion is complete
+         might not succeed (failure is a 409 Conflict).
+
+         * Events in the stream may be visible for a short period of time before being removed.
+
+         Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
+         'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
+
+         Updating the `EventType` is only allowed for clients that satisfy the authorization `admin` requirements,
+         if it exists.
+
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to delete.
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: EventType is successfuly removed
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/events:
+    post:
+      tags:
+        - stream-api
+      security:
+        - oauth2: ['nakadi.event_stream.write']
+      description: |
+        Publishes a batch of `Event`s of this `EventType`. All items must be of the EventType
+        identified by `name`.
+
+        Reception of Events will always respect the configuration of its `EventType` with respect to
+        validation, enrichment and partition. The steps performed on reception of incoming message
+        are:
+
+        1. Every validation rule specified for the `EventType` will be checked in order against the
+        incoming Events. Validation rules are evaluated in the order they are defined and the Event
+        is **rejected** in the first case of failure. If the offending validation rule provides
+        information about the violation it will be included in the `BatchItemResponse`.  If the
+        `EventType` defines schema validation it will be performed at this moment. The size of each
+        Event will also be validated. The maximum size per Event is 999,000 bytes. We use the batch
+        input to measure the size of events, so unnecessary spaces, tabs, and carriage returns will
+        count towards the event size.
+
+        1. Once the validation succeeded, the content of the Event is updated according to the
+        enrichment rules in the order the rules are defined in the `EventType`.  No preexisting
+        value might be changed (even if added by an enrichment rule). Violations on this will force
+        the immediate **rejection** of the Event. The invalid overwrite attempt will be included in
+        the item's `BatchItemResponse` object.
+
+        1. The incoming Event's relative ordering is evaluated according to the rule on the
+        `EventType`. Failure to evaluate the rule will **reject** the Event.
+
+        Given the batched nature of this operation, any violation on validation or failures on
+        enrichment or partitioning will cause the whole batch to be rejected, i.e. none of its
+        elements are pushed to the underlying broker.
+
+        Failures on writing of specific partitions to the broker might influence other
+        partitions. Failures at this stage will fail only the affected partitions.
+
+      parameters:
+        - name: name
+          in: path
+          type: string
+          description: Name of the EventType
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: event
+          in: body
+          description: The Event being published
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Event'
+          required: true
+      responses:
+        '200':
+          description: All events in the batch have been successfully published.
+        '207':
+          description: |
+            At least one event has failed to be submitted. The batch might be partially submitted.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/BatchItemResponse'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: |
+            At least one event failed to be validated, enriched or partitioned. None were submitted.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/BatchItemResponse'
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+
+    get:
+      tags:
+        - stream-api
+        - unmanaged-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Starts a stream delivery for the specified partitions of the given EventType.
+
+        The event stream is formatted as a sequence of `EventStreamBatch`es separated by `\n`. Each
+        `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
+        chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic
+        value `BEGIN`, which will open the stream starting from the oldest available offset in the
+        partition.
+
+        Currently the `application/x-json-stream` format is the only one supported by the system,
+        but in the future other media types may be supported.
+
+        If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
+
+        The initialization of a stream can be parameterized in terms of size of each chunk, timeout
+        for flushing each chunk, total amount of delivered Events and total time for the duration of
+        the stream.
+
+        Nakadi will keep a streaming connection open even if there are no events to be delivered. In
+        this case the timeout for the flushing of each chunk will still apply and the
+        `EventStreamBatch` will contain only the Cursor pointing to the same offset. This can be
+        treated as a keep-alive control for some load balancers.
+
+        The tracking of the current offset in the partitions and of which partitions is being read
+        is in the responsibility of the client. No commits are needed.
+      produces:
+        - application/x-json-stream
+      parameters:
+        - $ref: '#/parameters/EventTypeName'
+        - name: X-nakadi-cursors
+          in: header
+          description: |
+            Cursors indicating the partitions to read from and respective starting offsets.
+
+            Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
+            **first one after** the one pointed to in the cursor).
+
+            If the header is not present, the stream for all partitions defined for the EventType
+            will start from the newest event available in the system at the moment of making this
+            call.
+
+            **Note:** we are not using query parameters for passing the cursors only because of the
+            length limitations on the HTTP query. Another way to initiate this call would be the
+            POST method with cursors passed in the method body. This approach can implemented in the
+            future versions of this API.
+
+          required: false
+          type: array
+          items:
+            type: string
+            format: '#/definitions/Cursor'
+        - $ref: '#/parameters/BatchLimit'
+        - $ref: '#/parameters/StreamLimit'
+        - $ref: '#/parameters/BatchFlushTimeout'
+        - $ref: '#/parameters/StreamTimeout'
+        - $ref: '#/parameters/StreamKeepAliveLimit'
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+
+      responses:
+        '200':
+          description: |
+            Starts streaming to the client.
+            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
+          schema:
+            $ref: '#/definitions/EventStreamBatch'
+        '401':
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '429':
+          description: |
+            Too Many Requests. The client reached the maximum amount of simultaneous connections to a single partition
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/schemas':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        List of schemas ordered from most recent to oldest.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: limit
+          in: query
+          description: maximum number of schemas retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 1
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
+              items:
+                description: list of schemas.
+                type: array
+                items:
+                  $ref: '#/definitions/EventTypeSchema'
+            required:
+              - items
+              - _links
+
+  '/event-types/{name}/schemas/{version}':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Retrieves a given schema version. A special `{version}` key named 'latest' is provided for
+        convenience.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: version
+          in: path
+          description: EventType schema version
+          type: string
+          required: true
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/EventTypeSchema'
+          description: |
+            Schema object.
+
+  '/event-types/{name}/cursor-distances':
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        GET with payload.
+
+        Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
+        a client has read some batches and wants to be sure that all delivered events have been correctly processed.
+
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType
+          type: string
+          required: true
+        - name: cursors-distances-query
+          in: body
+          description: |
+            List of pairs of cursors: `initial_cursor` and `final_cursor`. Used as input by Nakadi to
+            calculate how many events there are between two cursors. The distance doesn't include the `initial_cursor`
+            but includes the `final_cursor`. So if they are equal the result is zero.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/CursorDistanceQuery"
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: An array of `CursorDistanceResult`s with the distance between two offsets.
+            items:
+              $ref: '#/definitions/CursorDistanceResult'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/cursors-lag':
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        GET with payload.
+
+        This endpoint is mostly interesting for monitoring purposes. Used when a consumer wants to know how far behind
+        in the stream its application is lagging.
+
+        It provides the number of unconsumed events for each cursor's partition.
+
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: cursors
+          in: body
+          description: |
+            Each cursor indicates the partition and offset consumed by the client. When a cursor is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
+
+            It's not mandatory to specify cursors for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            All provided cursors must be valid, i.e. a non expired cursor of an event in the stream.
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: |
+              List of partitions with the number of unconsummed events.
+            items:
+              $ref: '#/definitions/Partition'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/partitions':
+    get:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Lists the `Partition`s for the given event-type.
+
+        This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants
+        to start consuming older messages.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
+
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: cursors
+          in: query
+          description: |
+            Each cursor indicates the partition and offset consumed by the client. When this parameter is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
+
+            It's not mandatory to specify cursors for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            The value of this parameter must be a json array URL encoded.
+          required: false
+          type: array
+          items:
+            type: string
+            format: '#/definitions/Cursor'
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: An array of `Partition`s
+            items:
+              $ref: '#/definitions/Partition'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/partitions/{partition}:
+    get:
+      tags:
+        - unmanaged-api
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+
+      description: |
+        Returns the given `Partition` of this EventType. If per-EventType authorization is enabled, the caller must
+        be authorized to read from the EventType.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: partition
+          in: path
+          description: Partition id
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: consumed_offset
+          in: query
+          description: |
+            Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
+            `unconsumed_events` to the response partition object.
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Partition'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/shifted-cursors':
+      post:
+        tags:
+          - unmanaged-api
+          - monitoring
+          - management-api
+        security:
+          - oauth2: ['nakadi.event_stream.read']
+        description: |
+          Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
+          for randomly access events in the stream.
+          If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
+
+        parameters:
+          - name: name
+            in: path
+            description: EventType name
+            type: string
+            required: true
+          - name: X-Flow-Id
+            in: header
+            description: |
+              The flow id of the request, which is written into the logs and passed to called services. Helpful
+              for operational troubleshooting and log analysis.
+            type: string
+          - name: cursors
+            in: body
+            description: |
+              GET with payload.
+
+              Cursors indicating the positions to be calculated. Given a initial cursor, with partition and offset, it's
+              possible to obtain another cursor that is relatively forward or backward to it. When `shift` is positive,
+              Nakadi will respond with a cursor that in forward `shif` positions based on the initial `partition` and
+              `offset`. In case `shift` is negative, Nakadi will move the cursor backward.
+
+              Note: It's not currently possible to shift cursors based on time. It's only possible to shift cursors
+              based on the number of events to forward of backward given by `shift`.
+            required: true
+            schema:
+              type: array
+              items:
+                $ref: '#/definitions/ShiftedCursor'
+        responses:
+          '200':
+            description: OK
+            schema:
+              type: array
+              description: |
+                An array of `Cursor`s with shift applied to the offset. The response should contain cursors in the same
+                order as the request.
+              items:
+                $ref: '#/definitions/Cursor'
+          '422':
+            description: |
+              It's only possible to navigate from a valid cursor to another valid cursor, i.e. `partition`s and
+              `offset`s must exist and not be expired. Any combination of parameters that might break this rule will
+              result in 422. For example:
+
+              - if the initial `partition` and `offset` are expired.
+              - if the `shift` provided leads to a already expired cursor.
+              - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
+              some cursor yet to be generated in the future.
+            schema:
+              $ref: '#/definitions/Problem'
+          '403':
+            description: Access forbidden because of missing scope or EventType authorization failure.
+            schema:
+              $ref: '#/definitions/Problem'
+
+  /subscriptions:
+    post:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint creates a subscription for EventTypes. The subscription is needed to be able to
+        consume events from EventTypes in a high level way when Nakadi stores the offsets and manages the
+        rebalancing of consuming clients.
+        The subscription is identified by its key parameters (owning_application, event_types, consumer_group). If
+        this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
+        not important) - the subscription will be created only once and for all other calls it will just return
+        the subscription that was already created.
+        If per-EventType authorization is enabled, the caller must be authorized to read from all the EventTypes in the
+        subscription.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription to create
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+      responses:
+        '200':
+          description: |
+            Subscription for such parameters already exists. Returns subscription object that already
+            existed.
+          schema:
+            $ref: '#/definitions/Subscription'
+          headers:
+            Location:
+              description: |
+                The relative URI for this subscription resource.
+              type: string
+        '201':
+          description: Subscription was successfuly created. Returns subscription object that was created.
+          schema:
+            $ref: '#/definitions/Subscription'
+          headers:
+            Location:
+              description: |
+                The relative URI for the created resource.
+              type: string
+            Content-Location:
+              description: |
+                If the Content-Location header is present and the same as the Location header the
+                client can assume it has an up to date representation of the Subscription and a
+                corresponding GET request is not needed.
+              type: string
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Lists all subscriptions that exist in a system. List is ordered by creation date/time descending (newest
+        subscriptions come first).
+      parameters:
+        - name: owning_application
+          in: query
+          description: |
+            Parameter to filter subscriptions list by owning application. If not specified - the result list will
+            contain subscriptions of all owning applications.
+          type: string
+          required: false
+        - name: event_type
+          in: query
+          description: |
+            Parameter to filter subscriptions list by event types. If not specified - the result list will contain
+            subscriptions for all event types. It's possible to provide multiple values like
+            `event_type=et1&event_type=et2`, in this case it will show subscriptions having both `et1` and `et2`
+          collectionFormat: multi
+          type: array
+          items:
+            type: string
+          required: false
+        - name: limit
+          in: query
+          description: maximum number of subscriptions retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 1
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
+              items:
+                description: list of subscriptions
+                type: array
+                items:
+                  $ref: '#/definitions/Subscription'
+            required:
+              - items
+              - _links
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Returns a subscription identified by id.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscription'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Deletes a subscription.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '204':
+          description: Subscription was deleted
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}/cursors:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Exposes the currently committed offsets of a subscription.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of cursors for subscription
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursor'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for committing offsets of the subscription. If there is uncommited data, and no commits happen
+        for 60 seconds, then Nakadi will consider the client to be gone, and will close the connection. As long
+        as no events are sent, the client does not need to commit.
+
+        If the connection is closed, the client has 60 seconds to commit the events it received, from the moment
+        they were sent. After that, the connection will be considered closed, and it will not be possible to do
+        commit with that `X-Nakadi-StreamId` anymore.
+
+        When a batch is committed that also automatically commits all previous batches that were
+        sent in a stream for this partition.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: X-Nakadi-StreamId
+          in: header
+          type: string
+          description: |
+            Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
+            none-existing stream. Also the client can't commit something which was not sent to his stream.
+          required: true
+        - name: cursors
+          in: body
+          schema:
+            type: object
+            properties:
+              items:
+                description: |
+                  List of cursors that the consumer acknowledges to have successfully processed.
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursor'
+            required:
+              - items
+      responses:
+        '204':
+          description: Offsets were committed
+        '200':
+          description: |
+            At least one cursor which was tried to be committed is older or equal to already committed one. Array
+            of commit results is returned for this status code.
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of items which describe commit result for each cursor
+                type: array
+                items:
+                  $ref: '#/definitions/CursorCommitResult'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+    patch:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for resetting subscription offsets.
+        The subscription consumers will be disconnected during offset reset. The request can hang up until
+        subscription commit timeout. During that time requests to subscription streaming endpoint
+        will be rejected with 409. The clients should reconnect once the request is finished with 204.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: cursors
+          in: body
+          schema:
+            type: object
+            properties:
+              items:
+                description: |
+                  List of cursors to reset subscription to.
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursorWithoutToken'
+            required:
+              - items
+      responses:
+        '204':
+          description: Offsets were reset
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Cursors reset is already in progress for provided subscription
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}/events:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Starts a new stream for reading events from this subscription. The data will be automatically rebalanced
+        between streams of one subscription. The minimal consumption unit is a partition, so it is possible to start as
+        many streams as the total number of partitions in event-types of this subscription. The rebalance currently
+        only operates with the number of partitions so the amount of data in event-types/partitions is not considered
+        during autorebalance.
+        The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+        a stream.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+        - name: max_uncommitted_events
+          in: query
+          description: |
+            The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
+            state and commit comes - the stream will resume. Minimal value is 1.
+          type: integer
+          format: int32
+          required: false
+          default: 10
+        - $ref: '#/parameters/BatchLimit'
+        - $ref: '#/parameters/StreamLimit'
+        - $ref: '#/parameters/BatchFlushTimeout'
+        - $ref: '#/parameters/StreamTimeout'
+        - $ref: '#/parameters/StreamKeepAliveLimit'
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: |
+            Ok. Stream started.
+            Stream format is a continuous series of `SubscriptionEventStreamBatch`s separated by `\n`
+          schema:
+            $ref: '#/definitions/SubscriptionEventStreamBatch'
+          headers:
+            X-Nakadi-StreamId:
+              description: |
+                the id of this stream generated by Nakadi. Must be used for committing events that were read by client
+                from this stream.
+              type: string
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: |
+            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximal value - the total amount of this subscription partitions.
+
+            This status code is also returned in the case of resetting subscription cursors request still in the
+            progress.
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}/stats:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: exposes statistics of specified subscription
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: object
+            properties:
+              items:
+                description: statistics list for specified subscription
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionEventTypeStats'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/registry/enrichment-strategies':
+    get:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Lists all of the enrichment strategies supported by this Nakadi installation. Special or
+        custom strategies besides the defaults will be listed here.
+      responses:
+        '200':
+          description: Returns a list of all enrichment strategies known to Nakadi
+          schema:
+            type: array
+            items:
+              type: string
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/registry/partition-strategies':
+    get:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Lists all of the partition resolution strategies supported by this installation of Nakadi.
+        Special or custom strategies besides the defaults will be listed here.
+
+        Nakadi currently offers these inbuilt strategies:
+
+        - `random`: Resolution of the target partition happens randomly (events are evenly
+          distributed on the topic's partitions).
+
+        - `user_defined`: Target partition is defined by the client. As long as the indicated
+          partition exists, Event assignment will respect this value. Correctness of the relative
+          ordering of events is under the responsibility of the Producer.  Requires that the client
+          provides the target partition on `metadata.partition` (See `EventMetadata`). Failure to do
+          so will reject the publishing of the Event.
+
+        - `hash`: Resolution of the partition follows the computation of a hash from the value of
+          the fields indicated in the EventType's `partition_key_fields`, guaranteeing that Events
+          with same values on those fields end in the same partition. Given the event type's category
+          is DataChangeEvent, field path is considered relative to "data".
+      responses:
+        '200':
+          description: Returns a list of all partitioning strategies known to Nakadi
+          schema:
+            type: array
+            items:
+              type: string
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /settings/blacklist:
+    get:
+      tags:
+        - settings-api
+      description: |
+        Lists all blocked producers/consumers divided by app and event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: Lists all blocked producers/consumers.
+          schema:
+            type: object
+            properties:
+              producers:
+                description: a list of all blocked producers.
+                type: object
+                properties:
+                  event_types:
+                    description: a list of all blocked event types for publishing events.
+                    type: array
+                    items:
+                      type: string
+                  apps:
+                    description: a list of all blocked apps for publishing events.
+                    type: array
+                    items:
+                      type: string
+              consumers:
+                description: a list of all blocked consumers.
+                type: object
+                properties:
+                  event_types:
+                    description: a list of all blocked event types for consuming events.
+                    type: array
+                    items:
+                      type: string
+                  apps:
+                    description: a list of all blocked apps for consuming events.
+                    type: array
+                    items:
+                      type: string
+
+  /settings/blacklist/{blacklist_type}/{name}:
+    put:
+      tags:
+        - settings-api
+      description: |
+        Blocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to block.
+          type: string
+          required: true
+      responses:
+        '204':
+          description: Client or event type was successfully blocked.
+    delete:
+      tags:
+        - settings-api
+      description: |
+        Unblocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to unblock.
+          type: string
+          required: true
+      responses:
+        '204':
+          description: Client was successfully unblocked.
+
+  /settings/features:
+    get:
+      tags:
+        - settings-api
+      description: |
+        Lists all available features.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available features.
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of features.
+                type: array
+                items:
+                  $ref: '#/definitions/Feature'
+            required:
+              - items
+    post:
+      tags:
+        - settings-api
+      description: |
+        Enables or disables feature depends on the payload
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: feature
+          in: body
+          schema:
+            $ref: '#/definitions/Feature'
+          required: true
+      responses:
+        '204':
+          description: Feature was successfully accepted.
+
+  /storages:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Lists all available storage backends.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available storage backends.
+          schema:
+            type: array
+            description: list of storage backends.
+            items:
+              $ref: '#/definitions/Storage'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates a new storage backend.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: storage
+          in: body
+          description: Storage description
+          schema:
+            $ref: '#/definitions/Storage'
+      responses:
+        '201':
+          description: Storage backend was successfully registered. Returns storage object that was created.
+          schema:
+            $ref: '#/definitions/Storage'
+        '409':
+          description: A storage with the same ID already exists
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /storages/{id}:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Retrieves a storage backend by its ID.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a storage backend from its ID, if it is not in use.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '204':
+          description: Storage backend was deleted
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '400':
+          description: Storage backend could not be deleted
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/timelines:
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates a new timeline for an event type and makes it active.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType
+          type: string
+          required: true
+        - name: timeline_request
+          in: body
+          schema:
+            description: Storage id to be used for timeline creation
+            type: object
+            properties:
+              storage_id:
+                type: string
+            required:
+              - storage_id
+          required: true
+      responses:
+        '201':
+          description: New timeline is created and in use
+        '404':
+          description: No such event type
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable entity due to non existing storage
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - timelines-api
+      description: |
+        List timelines for a given event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to list timelines for.
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: list of timelines.
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                event_type:
+                  type: string
+                order:
+                  type: integer
+                storage_id:
+                  type: string
+                topic:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+                switched_at:
+                  type: string
+                  format: date-time
+                cleaned_up_at:
+                  type: string
+                  format: date-time
+                latest_position:
+                  type: object
+        '404':
+          description: No such event type
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/timelines/{id}:
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a timeline if there is only one timeline.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType.
+          type: string
+          required: true
+        - name: id
+          in: path
+          description: timeline id
+          type: string
+          format: uuid
+          required: true
+      responses:
+        '200':
+          description: Timeline was deleted
+        '404':
+          description: No such event type or timeline id
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: could not delete timeline, because there is more than one timeline
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+# ################################### #
+#                                     #
+#             Definitions             #
+#                                     #
+# ################################### #
+
+definitions:
+  Storage:
+    type: object
+    description: |
+      A storage backend.
+    properties:
+      id:
+        description: The ID of the storage backend.
+        type: string
+        maxLength: 36
+      storage_type:
+        description: |
+          the type of storage. Possible values: ['kafka']
+        type: string
+      kafka_configuration:
+        description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
+        type: object
+        properties:
+          exhibitor_address:
+            description: the Zookeeper address
+            type: string
+          exhibitor_port:
+            description: the Zookeeper path
+            type: string
+          zk_address:
+            description: the Zookeeper address
+            type: string
+          zk_path:
+            description: the Zookeeper path
+            type: string
+    required:
+      - id
+      - storage_type
+      - kafka_configuration
+
+  Event:
+    type: object
+    description: |
+      **Note** The Event definition will be externalized in future versions of this document.
+
+      A basic payload of an Event. The actual schema is dependent on the information configured for
+      the EventType, as is its enforcement (see POST /event-types). Setting of metadata properties
+      are dependent on the configured enrichment as well.
+
+      For explanation on default configurations of validation and enrichment, see documentation of
+      `EventType.category`.
+
+      For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
+      DataChangeEvent below.
+
+  EventMetadata:
+    type: object
+    description: |
+      Metadata for this Event.
+
+      Contains commons fields for both Business and DataChange Events. Most are enriched by Nakadi
+      upon reception, but they in general MIGHT be set by the client.
+    properties:
+      eid:
+        description: |
+          Identifier of this Event.
+
+          Clients MUST generate this value and it SHOULD be guaranteed to be unique from the
+          perspective of the producer. Consumers MIGHT use this value to assert uniqueness of
+          reception of the Event.
+        type: string
+        format: uuid
+        example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      event_type:
+        description: |
+          The EventType of this Event. This is enriched by Nakadi on reception of the Event
+          based on the endpoint where the Producer sent the Event to.
+
+          If provided MUST match the endpoint. Failure to do so will cause rejection of the
+          Event.
+        type: string
+        example: 'pennybags.payment-business-event'
+      occurred_at:
+        description: |
+          Timestamp of creation of the Event generated by the producer.
+        type: string
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      received_at:
+        type: string
+        readOnly: true
+        description: |
+          Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
+          the Event.
+          If set by the producer Event will be rejected.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      version:
+        type: string
+        readOnly: true
+        description: |
+          Version of the schema used for validating this event. This is enriched upon reception.
+          This string uses semantic versioning, which is better defined in the `EventTypeSchema` object.
+      parent_eids:
+        type: array
+        items:
+          type: string
+          format: uuid
+          description: |
+            Event identifier of the Event that caused the generation of this Event.
+            Set by the producer.
+          example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      flow_id:
+        description: |
+          The flow-id of the producer of this Event. As this is usually a HTTP header, this is
+          enriched from the header into the metadata by Nakadi to avoid clients having to
+          explicitly copy this.
+        type: string
+        example: 'JAh6xH4OQhCJ9PutIV_RYw'
+      partition:
+        description: |
+          Indicates the partition assigned to this Event.
+
+          Required to be set by the client if partition strategy of the EventType is
+          'user_defined'.
+        type: string
+        example: '0'
+    required:
+      - eid
+      - occurred_at
+
+  BusinessEvent:
+    description: |
+      A Business Event.
+
+      Usually represents a status transition in a Business process.
+    allOf:
+      - $ref: '#/definitions/Event'
+      - type: object
+        properties:
+          metadata:
+              $ref: '#/definitions/EventMetadata'
+        required:
+            - metadata
+
+  DataChangeEvent:
+    description: |
+      A Data change Event.
+
+      Represents a change on a resource. Also contains indicators for the data
+      type and the type of operation performed.
+    allOf:
+      - $ref: '#/definitions/Event'
+      - type: object
+        properties:
+          data_type:
+            type: string
+            example: 'pennybags:order'
+          data_op:
+            type: string
+            enum: ['C', 'U', 'D', 'S']
+            description: |
+              The type of operation executed on the entity.
+              * C: Creation
+              * U: Update
+              * D: Deletion
+              * S: Snapshot
+          metadata:
+            $ref: '#/definitions/EventMetadata'
+          data:
+            type: object
+            description: |
+                The payload of the type
+        required:
+            - data
+            - metadata
+            - data_type
+            - data_op
+
+  Problem:
+    type: object
+    properties:
+      type:
+        type: string
+        format: uri
+        description: |
+          An absolute URI that identifies the problem type.  When dereferenced, it SHOULD provide
+          human-readable API documentation for the problem type (e.g., using HTML).  This Problem
+          object is the same as provided by https://github.com/zalando/problem
+        example: http://httpstatus.es/503
+      title:
+        type: string
+        description: |
+          A short, summary of the problem type. Written in English and readable for engineers
+          (usually not suited for non technical stakeholders and not localized)
+        example: Service Unavailable
+      status:
+        type: integer
+        format: int32
+        description: |
+          The HTTP status code generated by the origin server for this occurrence of the problem.
+        example: 503
+      detail:
+        type: string
+        description: |
+          A human readable explanation specific to this occurrence of the problem.
+        example: Connection to database timed out
+      instance:
+        type: string
+        format: uri
+        description: |
+          An absolute URI that identifies the specific occurrence of the problem.
+          It may or may not yield further information if dereferenced.
+    required:
+      - type
+      - title
+      - status
+
+  Metrics:
+    type: object
+    description: |
+      Object containing application metrics.
+
+  Partition:
+    description: |
+      Partition information. Can be helpful when trying to start a stream using an unmanaged API.
+
+      This information is not related to the state of the consumer clients.
+    required:
+      - partition
+      - oldest_available_offset
+      - newest_available_offset
+    properties:
+      partition:
+        type: string
+      oldest_available_offset:
+        description: |
+          An offset of the oldest available Event in that partition. This value will be changing
+          upon removal of Events from the partition by the background archiving/cleanup mechanism.
+        type: string
+      newest_available_offset:
+        description: |
+          An offset of the newest available Event in that partition. This value will be changing
+          upon reception of new events for this partition by Nakadi.
+
+          This value can be used to construct a cursor when opening streams (see
+          `GET /event-type/{name}/events` for details).
+
+          Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
+          available event in the partition.
+        type: string
+      unconsumed_events:
+        description: |
+          Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
+          monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
+        type: number
+        format: int64
+
+  StreamInfo:
+    type: object
+    description: |
+      This object contains general information about the stream. Used only for debugging
+      purposes. We recommend logging this object in order to solve connection issues. Clients
+      should not parse this structure.
+
+  CursorDistanceQuery:
+    required:
+      - initial_cursor
+      - final_cursor
+    properties:
+      initial_cursor:
+        $ref: "#/definitions/Cursor"
+      final_cursor:
+        $ref: "#/definitions/Cursor"
+
+  CursorDistanceResult:
+    allOf:
+      - $ref: '#/definitions/CursorDistanceQuery'
+      - type: object        
+        properties:
+          distance:
+            type: number
+            format: int64
+            description: |
+              Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
+              are equal.
+        required:
+          - distance
+  Cursor:
+    required:
+      - partition
+      - offset
+    properties:
+      partition:
+        type: string
+        description: |
+          Id of the partition pointed to by this cursor.
+      offset:
+        type: string
+        description: |
+          Offset of the event being pointed to.
+
+  ShiftedCursor:
+    allOf:
+      - $ref: "#/definitions/Cursor"
+      - type: object
+        properties:
+          shift:
+            type: number
+            format: int64
+            description: |
+              This number is a modifier for the offset. It moves the cursor forward or backwards by the number of events
+              provided.
+              For example, suppose a user wants to read events starting 100 positions before offset
+              "001-000D-0000000000000009A8", it's possible to specify `shift` with -100 and Nakadi will make the
+              necessary calculations to move the cursor backwards relatively to the given `offset`.
+
+              Users should use this feature only for debugging purposes. Users should favor using cursors provided in
+              batches when streaming from Nakadi. Navigating in the stream using shifts is provided only for
+              debugging purposes.
+        required:
+          - shift
+  SubscriptionCursor:
+    allOf:
+      - $ref: '#/definitions/Cursor'
+      - type: object
+        properties:
+          event_type:
+            type: string
+            description: |
+              The name of the event type this partition's events belong to.
+          cursor_token:
+            type: string
+            description: |
+              An opaque value defined by the server.
+        required:
+          - event_type
+          - cursor_token
+
+  SubscriptionCursorWithoutToken:
+    allOf:
+      - $ref: '#/definitions/Cursor'
+      - type: object
+        properties:
+          event_type:
+            type: string
+            description: |
+              The name of the event type this partition's events belong to.
+        required:
+          - event_type
+
+  CursorCommitResult:
+    description: |
+      The result of single cursor commit. Holds a cursor itself and a result value.
+    required:
+      - cursor
+      - result
+    properties:
+      cursor:
+        $ref: '#/definitions/SubscriptionCursor'
+      result:
+        type: string
+        description: |
+          The result of cursor commit.
+          - `committed`: cursor was successfully committed
+          - `outdated`: there already was more recent (or the same) cursor committed, so the current one was not
+            committed as it is outdated
+
+  EventStreamBatch:
+    description: |
+      One chunk of events in a stream. A batch consists of an array of `Event`s plus a `Cursor`
+      pointing to the offset of the last Event in the stream.
+
+      The size of the array of Event is limited by the parameters used to initialize a Stream.
+
+      If acting as a keep alive message (see `GET /event-type/{name}/events`) the events array will
+      be omitted.
+
+      Sequential batches might present repeated cursors if no new events have arrived.
+    required:
+      - cursor
+    properties:
+      cursor:
+        $ref: '#/definitions/Cursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+
+  SubscriptionEventStreamBatch:
+    description: |
+      Analogue to EventStreamBatch but used for high level streamming. It includes specific cursors
+      for committing in the high level API.
+    required:
+      - cursor
+    properties:
+      cursor:
+        $ref: '#/definitions/SubscriptionCursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+
+  Subscription:
+    description: |
+      Subscription is a high level consumption unit. Subscriptions allow applications to easily scale the
+      number of clients by managing consumed event offsets and distributing load between instances.
+      The key properties that identify subscription are 'owning_application', 'event_types' and 'consumer_group'.
+      It's not possible to have two different subscriptions with these properties being the same.
+    properties:
+      id:
+        type: string
+        readOnly: true
+        description: |
+          Id of subscription that was created. Is generated by Nakadi, should not be specified when creating
+          subscription.
+      owning_application:
+        type: string
+        example: 'gizig'
+        description: |
+          The id of application owning the subscription.
+        minLength: 1
+      event_types:
+        type: array
+        items:
+          type: string
+        description: |
+          EventTypes to subscribe to.
+          The order is not important. Subscriptions that differ only by the order of EventTypes will be
+          considered the same and will have the same id. The size of event_types list is limited by total number
+          of partitions within these event types. Default limit for partition count is 100.
+      consumer_group:
+        type: string
+        example: 'read-product-updates'
+        description: |
+          The value describing the use case of this subscription.
+          In general that is an additional identifier used to differ subscriptions having the same
+          owning_application and event_types.
+        minLength: 1
+        default: 'default'
+      created_at:
+        type: string
+        readOnly: true
+        description: |
+          Timestamp of creation of the subscription. This is generated by Nakadi. It should not be
+          specified when creating subscription and sending it may result in a client error.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      read_from:
+        type: string
+        description: |
+          Position to start reading events from. Currently supported values:
+          - `begin` - read from the oldest available event.
+          - `end` - read from the most recent offset.
+          - `cursors` - read from cursors provided in `initial_cursors` property.
+          Applied when the client starts reading from a subscription.
+        default: 'end'
+      initial_cursors:
+        type: array
+        items:
+          $ref: '#/definitions/SubscriptionCursorWithoutToken'
+        description: |
+          List of cursors to start reading from. This property is required when `read_from` = `cursors`.
+          The initial cursors should cover all partitions of subscription.
+
+    required:
+      - owning_application
+      - event_types
+
+  EventType:
+    description: An event type defines the schema and its runtime properties.
+    properties:
+      name:
+        type: string
+        description: |
+          Name of this EventType. The name is constrained by a regular expression.
+
+          Note: the name can encode the owner/responsible for this EventType and ideally should
+          follow a common pattern that makes it easy to read and understand, but this level of
+          structure is not enforced. For example a team name and data type can be used such as
+          'acme-team.price-change'.
+        pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[a-zA-Z][-0-9a-zA-Z_]*)*'
+        example: order.order_cancelled, acme-platform.users
+      owning_application:
+        type: string
+        description: |
+          Indicator of the (Stups) Application owning this `EventType`.
+        example: price-service
+      category:
+        type: string
+        enum:
+          - undefined
+          - data
+          - business
+        description: |
+          Defines the category of this EventType.
+
+          The value set will influence, if not set otherwise, the default set of
+          validations, enrichment-strategies, and the effective schema for validation in
+          the following way:
+
+          - `undefined`: No predefined changes apply. The effective schema for the validation is
+            exactly the same as the `EventTypeSchema`.
+
+          - `data`: Events of this category will be DataChangeEvents. The effective schema during
+            the validation contains `metadata`, and adds fields `data_op` and `data_type`. The
+            passed EventTypeSchema defines the schema of `data`.
+
+          - `business`: Events of this category will be BusinessEvents. The effective schema for
+            validation contains `metadata` and any additionally defined properties passed in the
+            `EventTypeSchema` directly on top level of the Event. If name conflicts arise, creation
+            of this EventType will be rejected.
+
+      enrichment_strategies:
+        description: |
+          Determines the enrichment to be performed on an Event upon reception. Enrichment is
+          performed once upon reception (and after validation) of an Event and is only possible on
+          fields that are not defined on the incoming Event.
+
+          For event types in categories 'business' or 'data' it's mandatory to use
+          metadata_enrichment strategy. For 'undefined' event types it's not possible to use this
+          strategy, since metadata field is not required.
+
+          See documentation for the write operation for details on behaviour in case of unsuccessful
+          enrichment.
+        type: array
+        items:
+          type: string
+          enum:
+            - metadata_enrichment
+
+      partition_strategy:
+        description: |
+          Determines how the assignment of the event to a partition should be handled.
+
+          For details of possible values, see GET /registry/partition-strategies.
+        type: string
+        default: 'random'
+
+      compatibility_mode:
+        description: |
+          Compatibility mode provides a mean for event owners to evolve their schema, given changes respect the
+          semantics defined by this field.
+
+          It's designed to be flexible enough so that producers can evolve their schemas while not
+          inadvertently breaking existent consumers.
+
+          Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
+          declared by the producer.
+
+          List of compatibility modes:
+
+          - 'compatible': Consumers can reliably parse events produced under different versions. Every event published
+            since the first version is still valid based on the newest schema. When in compatible mode, it's allowed to
+            add new optional properties and definitions to an existing schema, but no other changes are allowed.
+            Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
+            `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
+
+          - 'forward': Compatible schema changes are allowed. It's possible to use the full json schema specification
+            for defining schemas. Consumers of forward compatible event types can safely read events tagged with the
+            latest schema version as long as they follow the robustness principle.
+
+          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
+            validating events, no additional properties are accepted unless explicitly stated in the schema.
+        type: string
+        default: forward
+
+      schema:
+        $ref: '#/definitions/EventTypeSchema'
+
+      partition_key_fields:
+        type: array
+        items:
+          type: string
+        description: |
+          Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
+          Indicates the fields used for evaluation the partition of Events of this type.
+
+          If this is set it MUST be a valid required field as defined in the schema.
+
+      default_statistic:
+        $ref: '#/definitions/EventTypeStatistics'
+
+      options:
+        $ref: '#/definitions/EventTypeOptions'
+
+      authorization:
+        $ref: '#/definitions/EventTypeAuthorization'
+
+      write_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          This field is used for event publishing access control. Nakadi only authorises publishers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can publish to this event type.
+
+          Usage of write_scopes is deprecated.
+
+      read_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          This field is used for event consuming access control. Nakadi only authorises consumers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can consume from this event type.
+
+          Usage of read_scopes is deprecated.
+
+      created_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was created.
+
+      updated_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was last updated.
+
+    required:
+      - name
+      - category
+      - owning_application
+      - schema
+
+  EventTypeSchema:
+    type: object
+    description: |
+      The most recent schema for this EventType. Submitted events will be validated against it.
+    properties:
+      version:
+        type: string
+        readOnly: true
+        description: |
+          This field is automatically generated by Nakadi. Values are based on semantic versioning. Changes to `title`
+          or `description` are considered PATCH level changes. Adding new optional fields is considered a MINOR level
+          change. All other changes are considered MAJOR level.
+        default: '1.0.0'
+      created_at:
+        type: string
+        readOnly: true
+        description: |
+          Creation timestamp of the schema. This is generated by Nakadi. It should not be
+          specified when updating a schema and sending it may result in a client error.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      type:
+        type: string
+        enum:
+          - json_schema
+        description: |
+          The type of schema definition. Currently only json_schema (JSON Schema v04) is supported, but in the
+          future there could be others.
+      schema:
+        type: string
+        description: |
+          The schema as string in the syntax defined in the field type. Failure to respect the
+          syntax will fail any operation on an EventType.
+    required:
+      - type
+      - schema
+
+  EventTypeStatistics:
+    type: object
+    description: |
+      Operational statistics for an EventType. This data may be provided by users on Event Type
+      creation. Nakadi uses this object in order to provide an optimal number of partitions from a throughput perspective.
+
+    properties:
+      messages_per_minute:
+        type: integer
+        description: |
+          Write rate for events of this EventType. This rate encompasses all producers of this
+          EventType for a Nakadi cluster.
+
+          Measured in event count per minute.
+
+      message_size:
+        type: integer
+        description: |
+          Average message size for each Event of this EventType. Includes in the count the whole serialized
+          form of the event, including metadata.
+          Measured in bytes.
+
+      read_parallelism:
+        type: integer
+        description: |
+          Amount of parallel readers (consumers) to this EventType.
+
+      write_parallelism:
+        type: integer
+        description: |
+          Amount of parallel writers (producers) to this EventType.
+    required:
+      - messages_per_minute
+      - message_size
+      - read_parallelism
+      - write_parallelism
+
+  EventTypeOptions:
+    type: object
+    description: |
+      Additional parameters for tuning internal behavior of Nakadi.
+    properties:
+      retention_time:
+        type: integer
+        format: int64
+        default: 345600000 # 4 days
+        description: |
+          Number of milliseconds that Nakadi stores events published to this event type.
+
+  EventTypeAuthorization:
+    type: object
+    description: |
+      Authorization section for an event type. This section defines three access control lists: one for producing
+      events ('writers'), one for consuming events ('readers'), and one for administering an event type ('admins').
+      Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+    properties:
+      admins:
+        type: array
+        description: |
+          An array of subject attributes that are required for updating the event type. Any one of the attributes
+          defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+          i.e. if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      readers:
+        type: array
+        description: |
+          An array of subject attributes that are required for reading events from the event type. Any one of the
+          attributes defined in this array is sufficient to be authorized. The wildcard item takes precedence over
+          all others, i.e., if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      writers:
+        type: array
+        description: |
+          An array of subject attributes that are required for writing events to the event type. Any one of the
+          attributes defined in this array is sufficient to be authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+    required:
+      - admins
+      - readers
+      - writers
+
+  AuthorizationAttribute:
+    type: object
+    description: |
+      An attribute for authorization. This object includes a data type, which represents the type of the attribute
+      attribute (which data types are allowed depends on which authorization plugin is deployed, and how it is
+      configured), and a value. A wildcard can be represented with data type '*', and value '*'. It means that all
+      authenticated users are allowed to perform an operation.
+    properties:
+      data_type:
+        type: string
+        description: the type of attribute (e.g., 'team', or 'permission', depending on the Nakadi configuration)
+      value:
+        type: string
+        description: the value of the attribute
+    required:
+      - data_type
+      - value
+
+  SubscriptionEventTypeStats:
+    type: object
+    description: statistics of one event-type within a context of subscription
+    properties:
+      event_type:
+        type: string
+        description: event-type name
+      partitions:
+        type: array
+        description: statistics of partitions of this event-type
+        items:
+          type: object
+          description: statistics of partition within a subscription context
+          properties:
+            partition:
+              type: string
+            state:
+              type: string
+              description: |
+                The state of this partition in current subscription. Currently following values are possible:
+                - `unassigned`: the partition is currently not assigned to any client;
+                - `reassigning`: the partition is currently reasssigning from one client to another;
+                - `assigned`: the partition is assigned to a client.
+            unconsumed_events:
+              type: number
+              description: |
+                The amount of events in this partition that are not yet consumed within this subscription.
+                The property may be absent at the moment when no events were yet consumed from the partition in this
+                subscription (In case of `read_from` is `BEGIN` or `END`)
+            stream_id:
+              type: string
+              description: the id of the stream that consumes data from this partition
+          required:
+            - partition
+            - state
+    required:
+      - event_type
+      - partitions
+
+  BatchItemResponse:
+    description: |
+      A status corresponding to one individual Event's publishing attempt.
+    properties:
+      eid:
+        type: string
+        format: uuid
+        description: |
+          eid of the corresponding item. Will be absent if missing on the incoming Event.
+      publishing_status:
+        type: string
+        enum:
+          - submitted
+          - failed
+          - aborted
+        description: |
+          Indicator of the submission of the Event within a Batch.
+
+          - "submitted" indicates successful submission, including commit on he underlying broker.
+
+          - "failed" indicates the message submission was not possible and can be resubmitted if so
+            desired.
+
+          - "aborted" indicates that the submission of this item was not attempted any further due
+            to a failure on another item in the batch.
+
+      step:
+        type: string
+        enum:
+          - none
+          - validating
+          - partitioning
+          - enriching
+          - publishing
+        description: |
+          Indicator of the step in the publishing process this Event reached.
+
+          In Items that "failed" means the step of the failure.
+
+          - "none" indicates that nothing was yet attempted for the publishing of this Event. Should
+            be present only in the case of aborting the publishing during the validation of another
+            (previous) Event.
+
+          - "validating", "partitioning", "enriching" and "publishing" indicate all the
+            corresponding steps of the publishing process.
+      detail:
+        type: string
+        description: |
+          Human readable information about the failure on this item. Items that are not "submitted"
+          should have a description.
+    required:
+      - publishing_status
+
+  PaginationLinks:
+    description: contains links to previous and next pages of items
+    type: object
+    properties:
+      prev:
+        $ref: '#/definitions/PaginationLink'
+      next:
+        $ref: '#/definitions/PaginationLink'
+
+  PaginationLink:
+    description: URI identifying another page of items
+    type: object
+    properties:
+      href:
+        type: string
+        format: uri
+        example: '/subscriptions?offset=20&limit=10'
+
+  Feature:
+    description: Feature of Nakadi to be enabled or disabled
+    type: object
+    properties:
+      feature:
+        type: string
+      enabled:
+        type: boolean
+    required:
+      - feature
+      - enabled
+
+parameters:
+  EventTypeName:
+    name: name
+    in: path
+    description: EventType name to get events about
+    type: string
+    required: true
+
+  BatchLimit:
+    name: batch_limit
+    in: query
+    description: |
+      Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+    type: integer
+    format: int32
+    required: false
+    default: 1
+
+  StreamLimit:
+    name: stream_limit
+    in: query
+    description: |
+      Maximum number of `Event`s in this stream (over all partitions being streamed in this
+      connection).
+
+      * If 0 or undefined, will stream batches indefinitely.
+
+      * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+    type: integer
+    format: int32
+    required: false
+    default: 0
+
+  BatchFlushTimeout:
+    name: batch_flush_timeout
+    in: query
+    description: |
+      Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+      * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+      is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+      * If 0 or undefined, will assume 30 seconds.
+    type: number
+    format: int32
+    required: false
+    default: 30
+
+  StreamTimeout:
+    name: stream_timeout
+    in: query
+    description: |
+      Maximum time in seconds a stream will live before connection is closed by the server.
+      If 0 or unspecified will stream indefinitely.
+
+      If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+      to the client.
+
+      Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+    type: number
+    format: int32
+    required: false
+    default: 0
+
+  SubscriptionId:
+    name: subscription_id
+    in: path
+    description: Id of subscription.
+    type: string
+    format: uuid
+    required: true
+
+  StreamKeepAliveLimit:
+    name: stream_keep_alive_limit
+    in: query
+    description: |
+      Maximum number of empty keep alive batches to get in a row before closing the connection.
+
+      If 0 or undefined will send keep alive messages indefinitely.
+    type: integer
+    format: int32
+    required: false
+    default: 0
+
+  BlacklistType:
+    name: blacklist_type
+    in: path
+    description: |
+      Type of the blacklist to put client into.
+
+      List of available types:
+      - 'CONSUMER_APP': consumer application.
+      - 'CONSUMER_ET': consumer event type.
+      - 'PRODUCER_APP': producer application.
+      - 'PRODUCER_ET': producer event type.
+    type: string
+    required: true

@@ -352,29 +352,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPUTNotOwner403() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
-
-        putEventType(eventType, eventType.getName(), "alice")
-                .andExpect(status().isForbidden())
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenPUTAdmin200() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
         putEventType(eventType, eventType.getName(), "nakadi")
                 .andExpect(status().isOk());
@@ -437,24 +420,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenDeleteEventTypeThen403() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to event type "
-                + eventType.getName());
-
-        deleteEventType(eventType.getName(), "alice")
-                .andExpect(status().isForbidden())
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeNotAdminAndDeletionDeactivatedThenForbidden() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
@@ -473,24 +438,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(eventType);
         disableETDeletionFeature();
-
-        deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
-    }
-
-    @Test
-    public void whenDeleteEventTypeAdminThen200() throws Exception {
-
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        topicsToDelete.put(topicRepository, eventType.getTopic());
-        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
@@ -656,7 +603,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPUTInvalidEventTypeThen422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
-        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
+        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
 
         jsonObject.remove("category");
 
@@ -690,7 +637,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
-        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eq(eventType.getName()));
+        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))
@@ -721,7 +668,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
-                TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
+                asJsonString(expectedEventType)));
 
     }
 
