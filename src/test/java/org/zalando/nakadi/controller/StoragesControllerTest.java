@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
 import java.util.ArrayList;
@@ -44,12 +45,13 @@ public class StoragesControllerTest {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
 
         final StoragesController controller = new StoragesController(securitySettings, storageService);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings))
+                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
                 .build();
     }
 
