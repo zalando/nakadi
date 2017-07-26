@@ -27,9 +27,9 @@ The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide
 
  
 
-More detailed information can be found on the [manual](http://zalando.github.io/nakadi-manual/).
+More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
 
-![Deploy](https://zalando.github.io/nakadi/img/NakadiDeploy.svg)
+![Deploy](docs/img/NakadiDeploy.svg)
 
 
 Read more to understand *The big picture* 
@@ -79,16 +79,6 @@ The project is in active development. See the [changelog](CHANGELOG.md)
     
 
  Read more about latest development in our [Changelog](CHANGELOG.md)
-
-#### Related projects
-The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
-like
-
-* Client libraries
-* SDK
-* GUI.
-* DevOps tools and more.
-
  
 
 #### Additional features that we plan to cover in the future are:
@@ -100,12 +90,19 @@ like
 * Separate the internal schema register to standalone service.
 * Use additional schema formats and protocols like Avro, protobuf and [others](https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats).
 
+#### Related projects
+The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
+like
+
+* Client libraries
+* SDK
+* GUI
+* DevOps tools and more
+
 
 ## Quickstart
 
 You can run the project locally using [Docker](https://www.docker.com/). 
-
-*Note* that Nakadi requires very recent versions of docker and docker-compose. 
 
 ### Dependencies
 
@@ -192,7 +189,7 @@ curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/j
   }
 }'
 ```
-*Note:* This is not the recommended category and schema. It should be used only for the testing.
+_Note:_ This is not the recommended category and schema. It should be used only for the testing.
 
 Read mode in the [manual](https://zalando.github.io/nakadi/manual.html#using_event-types) 
 
@@ -215,7 +212,7 @@ HTTP/1.1 200 OK
 You will see the events when you publish them from another console for example.
 The records without `events` field are `Keep Alive` messages.
  
-*Note:* This is the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
+_Note:_ This is the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
 used only for debugging. It is not recommended for production systems. 
 For production systems please use [Subscriptions API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila)
 
@@ -237,7 +234,7 @@ curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
 HTTP/1.1 200 OK  
 ```
 
-Read mode in the [manual](https://zalando.github.io/nakadi/manual.html#using_producing-events)
+Read more in the [manual](https://zalando.github.io/nakadi/manual.html#using_producing-events)
 
 ## Contributing
 
