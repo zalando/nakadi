@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2017-07-26
+
 ### Fixed
 - Returned back CHECK_APPLICATION_LEVEL_PERMISSIONS feature toggle.
 
