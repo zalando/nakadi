@@ -29,7 +29,7 @@ The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide
 
 More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
 
-<img src="docs/img/NakadiDeploy.svg" width="100%">
+![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
 
 Read more to understand *The big picture* 
