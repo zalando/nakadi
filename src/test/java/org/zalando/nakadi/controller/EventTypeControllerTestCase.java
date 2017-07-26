@@ -123,7 +123,7 @@ public class EventTypeControllerTestCase {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientResolver(settings))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .setControllerAdvice(new ExceptionHandling())
                 .build();
     }

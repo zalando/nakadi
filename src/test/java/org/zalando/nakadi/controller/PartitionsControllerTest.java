@@ -29,6 +29,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.CursorLag;
@@ -117,10 +118,12 @@ public class PartitionsControllerTest {
 
         settings = mock(SecuritySettings.class);
 
+        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
+
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(settings))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .setControllerAdvice(new ExceptionHandling())
                 .build();
     }

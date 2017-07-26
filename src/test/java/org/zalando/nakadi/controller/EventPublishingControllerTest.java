@@ -26,6 +26,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
 import java.util.ArrayList;
@@ -78,6 +79,8 @@ public class EventPublishingControllerTest {
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
+        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
+
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);
 
@@ -85,7 +88,7 @@ public class EventPublishingControllerTest {
                 = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientResolver(settings))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
 

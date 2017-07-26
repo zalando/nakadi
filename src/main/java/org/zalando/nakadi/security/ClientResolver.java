@@ -12,6 +12,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.Principal;
 import java.util.Collections;
@@ -19,16 +20,19 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public ClientResolver(final SecuritySettings settings) {
+    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
         this.settings = settings;
+        this.featureToggleService = featureToggleService;
     }
 
     @Override
@@ -42,7 +46,9 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
-        if (clientId.filter(settings.getAdminClientId()::equals).isPresent() || settings.getAuthMode() == OFF) {
+        if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
+                || clientId.filter(settings.getAdminClientId()::equals).isPresent()
+                || settings.getAuthMode() == OFF) {
             return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
         }
 
