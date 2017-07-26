@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="description" content="Nakadi Event Bus Broker">
     <meta name="keywords" content="Nakadi, Event, Bus, Broker, Kafka">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="cleartype" content="on">
     <title>Nakadi</title>
     <style>
 
@@ -17,9 +19,10 @@
             background: #eef1f3;
             color: #061a1f;
             font-family: "sans-serif";
-            margin: 0;
-            height: 100%;
-
+            margin: 0 auto;
+            height: 90%;
+            min-width: 300px;
+            display: block;
         }
 
         header {
@@ -41,10 +44,15 @@
             display: inline-block;
         }
 
+        @media (max-width: 700px) {
+            header h1 {
+                display: none;
+            }
+        }
+
         nav ul {
             display: inline-block;
             vertical-align: top;
-
         }
 
         nav ul.right {
@@ -64,6 +72,12 @@
             color: white;
             text-decoration: none;
             line-height: 50px;
+        }
+
+        @media (max-width: 700px) {
+            nav li a {
+                margin-left: 5px;
+            }
         }
 
         .logo {
@@ -117,9 +131,20 @@
             margin: 30px;
         }
 
+        a:hover {
+            transition: .2s;
+            text-shadow: 0 0 10px white;
+        }
+
         .container {
             display: flex;
             min-height: 500px;
+        }
+
+        @media (max-width: 700px) {
+            .container {
+                display: block;
+            }
         }
 
         article {
@@ -179,8 +204,8 @@
     </article>
     <article><h1>Flexibility</h1>
         <p>Nakadi instances are stateless. They can be run on AWS with auto-scaling.</p>
-        <p>Using Timelines it is easy to move the traffic to another cluster without moving the data and any service
-            degradation.</p>
+        <p>Using Timelines, it is easy to move the traffic to another cluster without moving the data,
+            and without service interruption.</p>
     </article>
 </section>
 <footer>

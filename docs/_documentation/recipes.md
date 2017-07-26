@@ -3,8 +3,6 @@ title: Recipes
 position: 12
 ---
 
-# Recipes and Patterns
-
 _This section features patterns on how to use Nakadi and event stream processing in general._
 
 

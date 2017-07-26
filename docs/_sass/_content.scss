@@ -1,6 +1,21 @@
 .doc {
   display: flex;
 
+  em {
+    font-style: italic;
+    padding: .2rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 3px;
+    color: #757d3e;
+  }
+
+  strong {
+    font-weight: bold;
+    padding: .2rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 3px;
+  }
+
   ol li {
     list-style: decimal;
     margin-left: 2rem;
@@ -11,8 +26,13 @@
     margin-left: 2rem;
   }
 
+  a[name]:after {
+    content: "Anchor: #" attr(name);
+  }
+
   @include respond-to('medium') {
-    display: block;;
+    display: block;
+    overflow: auto;
   }
 
   .info {
@@ -30,11 +50,19 @@
 
     .highlighter-rouge {
       font-family: "Courier", sans-serif;
-      padding: .2rem;
-      background-color: rgba(0, 0, 0, 0.04);
+      padding: .1rem .2rem 0 .2rem;
+      background-color: rgba(0, 0, 0, 0.02);
       border-radius: 3px;
       color: $color-primary;
       overflow: auto;
+      border: 1px solid #eeeeee;
+      text-shadow: 1px 1px 3px white;
+    }
+
+    div.highlighter-rouge {
+      border: 1px solid lightgray;
+      padding: 1rem;
+      margin: 1rem 0;
     }
 
     p {
@@ -45,7 +73,7 @@
   .title {
     font-size: 2rem;
     margin-bottom: 1.5rem;
-    border-bottom: 1px solid gray;
+    text-align: center;
     span:after {
       font-size: 1.25rem;
     }
@@ -115,7 +143,6 @@
 
   .value {
     margin-left: 1rem;
-    white-space: nowrap;
   }
 
   .description {
