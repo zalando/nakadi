@@ -54,13 +54,13 @@
                         {% if first_method == '' %}
                         {% assign first_method = method_name %}
                         {% endif %}
-                        <a href="#{{ path[0] }}_{{ method_name }}">
+                        <a href="#{{ path[0] | replace: '{', ''| replace: '}', '' }}_{{ method_name }}">
                             <span class="method-{{ method_name }}" data-after="{{ method_name }}"></span>
                         </a>
                         {% endif %}
                         {% endfor %}
                         {% endcapture %}
-                        <div><a href="#{{ path[0] }}_{{ first_method }}">
+                        <div><a href="#{{ path[0]| replace: '{', ''| replace: '}', '' }}_{{ first_method }}">
                             {{path[0]}}
                         </a></div>
                         {{links}}
