@@ -5,27 +5,102 @@ position: 1
 
 ## Nakadi Event Broker
 
-The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
+The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to provide an event broker infrastructure to:
 
-#### RESTful 
+- Abstract event delivery via a secured [RESTful API](https://zalando.github.io/nakadi/manual.html#nakadi-event-bus-api).
+ 
+    This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology.
+    Access can be managed individually for every Event Type and secured using *OAuth* and custom authorization plugins.
 
-Abstract event delivery via a secured [RESTful API](#nakadi-event-bus-api). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
+- Enable convenient development of event-driven applications and asynchronous microservices. 
 
-#### JSON Schema
+    Event types can be defined with [Event type schemas](https://zalando.github.io/nakadi/manual.html#using_event-types) 
+    and managed via a registry. All events will be validated against the schema before publishing the event type. 
+    It allows to granite the data quality and data consistency for the data consumers.    
+     
+- Efficient low latency event delivery. 
+    
+    Once a publisher sends an event using a simple [HTTP POST](https://zalando.github.io/nakadi/manual.html#using_producing-events), 
+    consumers can be pushed to via a [streaming](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola)
+    HTTP connection, allowing near real-time event processing. 
+    The consumer connection has keepalive controls and support for managing stream offsets using
+    [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
-Enable convenient development of event-driven applications and asynchronous microservices. Event types can be defined with schemas and managed via a registry. Nakadi also has optional support for events describing business processes and data changes using standard primitives for identity, timestamps, event types, and causality. 
+ 
 
-#### Performance
+More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
 
-Efficient low latency event delivery. Once a publisher sends an event using a simple HTTP POST, consumers can be pushed to via a streaming HTTP connection, allowing near real-time event processing. The consumer connection has keepalive controls and support for managing stream offsets. 
+![Nakadi Deployment Diagram](img/NakadiDeploymentDiagram.png)
 
-#### Scalability
+### Links
 
-Nakadi instances are stateless. They can be run on AWS with auto-scaling. 
+Read more to understand *The big picture* 
+[Architecture for data integration](https://pages.github.bus.zalan.do/core-platform/docs/architecture/data_integration.html) 
 
-#### Flexibility
+Watch the talk [Data Integration in the World of Microservices](https://clusterhq.com/2016/05/20/microservices-zalando/) 
 
-Using Timelines it is easy to move the traffic to another cluster without moving the data and any service degradation. 
+### Development status
+
+Nakadi is high-load production ready. 
+Zalando uses Nakadi as its central Event Bus Service. 
+Nakadi reliably handles the traffic from thousands event types with 
+the throughput of more than hundreds gigabytes per second.
+The project is in active development. See the [changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)   
+  
+#### Features
+* Stream:    
+    * REST abstraction over Kafka-like queues.
+    * CRUD for event types.
+    * Event batch publishing.
+    * Low-level interface.
+        * manual client side partition management is needed
+        * no support of commits
+    * High-level interface (Subscription API).
+        * automatic redistribution of partitions between consuming clients
+        * commits should be issued to move server-side cursors
+* Schema:    
+    * Schema registry.
+    * Several event type categories (Undefined, Business, Data Change).
+    * Several partitioning strategies (Random, Hash, User defined).
+    * Event enrichment strategies.
+    * Schema evolution.
+    * Events validation using an event type schema.
+* Security:          
+    * OAuth2 authentication.
+    * Per-event type authorization.
+    * Blacklist of users and applications.    
+* Operations:    
+    * [STUPS](https://stups.io/) platform compatible.    
+    * [ZMON](https://zmon.io/) monitoring compatible.
+    * SLO monitoring.
+    * Timelines. 
+        * This allows transparently switch production and consumption to different cluster (tier, region, AZ) without
+        moving actual data and any service degradation.
+        * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
+        (like AWS Kinesis, Google pub/sub etc.)
+    
+
+ Read more about latest development in our [Changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)
+ 
+
+#### Additional features that we plan to cover in the future are:
+
+* Support for different streaming technologies and engines. Nakadi currently uses [Apache Kafka](http://kafka.apache.org/) 
+    as its broker, but other providers (such as Kinesis) will be possible.     
+* Filtering of events for subscribing consumers.
+* Store old published events forever using transparent fall back backup shortages like AWS S3. 
+* Separate the internal schema register to standalone service.
+* Use additional schema formats and protocols like Avro, protobuf and [others](https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats).
+
+#### Related projects
+The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
+like
+
+* Client libraries
+* SDK
+* GUI
+* DevOps tools and more
+
 
 
 ## Examples

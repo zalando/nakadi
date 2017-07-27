@@ -4,7 +4,7 @@
 
 ## Nakadi Event Broker
 
-The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
+The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to provide an event broker infrastructure to:
 
 - Abstract event delivery via a secured [RESTful API](https://zalando.github.io/nakadi/manual.html#nakadi-event-bus-api).
  
@@ -31,6 +31,7 @@ More detailed information can be found in the [manual](http://zalando.github.io/
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
+### Links
 
 Read more to understand *The big picture* 
 [Architecture for data integration](https://pages.github.bus.zalan.do/core-platform/docs/architecture/data_integration.html) 
@@ -115,8 +116,9 @@ particular, docker-compose >= v1.7.0 is required. See [Install Docker
 Compose](https://docs.docker.com/compose/install/) for information on
 installing the most recent docker-compose version.
 
-The project is built with [Gradle](http://gradle.org). The `./gradlew` 
-[wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap the right Gradle version if it's not already installed. 
+The project is built with [Gradle](http://gradle.org). 
+The `./gradlew` [wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap
+the right Gradle version if it's not already installed. 
 
 [Mac OS specific configuration](https://zalando.github.io/nakadi/manual.html#macos)
 
@@ -189,7 +191,7 @@ curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/j
   }
 }'
 ```
-_Note:_ This is not the recommended category and schema. It should be used only for the testing.
+**Note:** This is not recommended category and schema. It should be used only for the testing.
 
 Read mode in the [manual](https://zalando.github.io/nakadi/manual.html#using_event-types) 
 
@@ -212,7 +214,7 @@ HTTP/1.1 200 OK
 You will see the events when you publish them from another console for example.
 The records without `events` field are `Keep Alive` messages.
  
-_Note:_ This is the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
+**Note:** This is the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
 used only for debugging. It is not recommended for production systems. 
 For production systems please use [Subscriptions API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila)
 

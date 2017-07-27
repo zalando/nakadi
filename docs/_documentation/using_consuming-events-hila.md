@@ -190,14 +190,14 @@ of 60 seconds saves the day again. The first client will have 60 seconds to do t
 It is not necessary to commit each batch. When the cursor is committed, all events that
 are before this cursor in the partition will also be considered committed. For example suppose the offset was at `e0` in the stream below,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
      offset--^
 ```
 
 and the stream sent back three batches to the client, where the client committed batch 3 but not batch 1 or batch 2,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
      offset--^       
                 |--- batch1 ---|--- batch2 ---|--- batch3 ---|
@@ -214,7 +214,7 @@ client: cursor commit --> |--- batch3 ---|
 
 then the offset will be moved all the way up to `e9` implicitly committing all the events that were in the previous batches 1 and 2,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
                                                           ^-- offset
 ```
@@ -230,7 +230,7 @@ curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e
 
 The response will be a list of current cursors that reflect the last committed offsets:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [
@@ -260,7 +260,7 @@ curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e
 
 The output will contain the statistics for all partitions of the stream:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [
@@ -295,7 +295,7 @@ curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1
 
 Successful response:
 
-```
+```text
 HTTP/1.1 204 No Content
 ```
 
@@ -331,7 +331,7 @@ curl -v -XGET "http://localhost:8080/subscriptions"
 
 Example answer:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [
