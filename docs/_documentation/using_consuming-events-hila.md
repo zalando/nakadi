@@ -114,7 +114,6 @@ The Subscription API provides a guarantee of _at-least-once_ delivery. In practi
 
 A useful technique to detect and handle duplicate events on consumer side is to be idempotent and to check `eid` field of event metadata. Note: `eid` checking is not possible using the "undefined" category, as it's only supplied in the "business" and "data" categories.
 
-
 ### Subscription Cursors
 
 The cursors in the Subscription API have the following structure:

@@ -7,22 +7,22 @@ position: 14
 
 ## Table of Contents
 
-- [How long will events be persisted for?](#how-long-will-events-be-persisted-for)
-- [How do I define how long will events be persisted for?](#how-do-i-define-how-long-will-events-be-persisted-for)
-- [How many partitions will an event type be given?](#how-many-partitions-will-an-event-type-be-given)
-- [How do I configure the number of partitions?](#how-do-i-configure-the-number-of-partitions)
-- [Which partitioning strategy should I use?](#which-partitioning-strategy-should-i-use)
-- [How can I keep track of a position in a stream?](#how-can-i-keep-track-of-a-position-in-a-stream)
-- [What's an effective schema?](#whats-an-effective-schema)
-- [Nakadi isn't validating metadata and/or event identifiers, what's going on?](#nakadi-isnt-validating-metadata-andor-event-identifiers-whats-going-on)
-- [What clients are available?](#what-clients-are-available)
-- [How do I disable OAuth for local development?](#how-do-i-disable-oauth-for-local-development)
-- [I want to send arbitrary JSON, how do I avoid defining a JSON Schema?](#i-want-to-send-arbitrary-json-how-do-i-avoid-defining-a-json-schema)
-- [Can I post something other than JSON as an event?](#can-i-post-something-other-than-json-as-an-event)
-- [I get the message "Is the docker daemon running on this host?" - Help!](#i-get-the-message-is-the-docker-daemon-running-on-this-host---help)
-- [What's the reason for newest available offset being bigger than oldest offset?](#whats-the-reason-for-newest-available-offset-being-bigger-than-oldest-offset)
-- [Does Nakadi support compression?](#does-nakadi-support-compression)
-- [How do I contribute to the project?](#how-do-i-contribute-to-the-project)
+- [How long will events be persisted for?](#how-long-will-events-be-persisted-for-)
+- [How do I define how long will events be persisted for?](#how-do-i-define-how-long-will-events-be-persisted-for-)
+- [How many partitions will an event type be given?](#how-many-partitions-will-an-event-type-be-given-)
+- [How do I configure the number of partitions?](#how-do-i-configure-the-number-of-partitions-)
+- [Which partitioning strategy should I use?](#which-partitioning-strategy-should-i-use-)
+- [How can I keep track of a position in a stream?](#how-can-i-keep-track-of-a-position-in-a-stream-)
+- [What's an effective schema?](#whats-an-effective-schema-)
+- [Nakadi isn't validating metadata and/or event identifiers, what's going on?](#nakadi-isnt-validating-metadata-andor-event-identifiers-whats-going-on-)
+- [What clients are available?](#what-clients-are-available-)
+- [How do I disable OAuth for local development?](#how-do-i-disable-oauth-for-local-development-)
+- [I want to send arbitrary JSON, how do I avoid defining a JSON Schema?](#i-want-to-send-arbitrary-json-how-do-i-avoid-defining-a-json-schema-)
+- [Can I post something other than JSON as an event?](#can-i-post-something-other-than-json-as-an-event-)
+- [I get the message "Is the docker daemon running on this host?" - Help!](#i-get-the-message--is-the-docker-daemon-running-on-this-host-----help-)
+- [What's the reason for newest available offset being bigger than oldest offset?](#whats-the-reason-for-newest-available-offset-being-bigger-than-oldest-offset-)
+- [Does Nakadi support compression?](#does-nakadi-support-compression-)
+- [How do I contribute to the project?](#how-do-i-contribute-to-the-project-)
 
 ----
 

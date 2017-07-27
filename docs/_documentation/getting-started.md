@@ -39,7 +39,7 @@ To stop the running Nakadi:
 ### Notes
 
 If you're having trouble getting started, you might find an answer in the
-[Frequently Asked Questions (FAQ)](#faq) section of the documentation.
+[Frequently Asked Questions (FAQ)](#f-a-q) section of the documentation.
 
 #### Ports
 

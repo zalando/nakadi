@@ -26,11 +26,9 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
- 
-
 More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
 
-![Nakadi Deployment Diagram](img/NakadiDeploymentDiagram.png)
+<img src="img/NakadiDeploymentDiagram.png" width="100%">
 
 ### Links
 
@@ -48,6 +46,7 @@ the throughput of more than hundreds gigabytes per second.
 The project is in active development. See the [changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)   
   
 #### Features
+
 * Stream:    
     * REST abstraction over Kafka-like queues.
     * CRUD for event types.
@@ -79,7 +78,6 @@ The project is in active development. See the [changelog](https://github.com/zal
         * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
         (like AWS Kinesis, Google pub/sub etc.)
     
-
  Read more about latest development in our [Changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)
  
 
@@ -93,6 +91,7 @@ The project is in active development. See the [changelog](https://github.com/zal
 * Use additional schema formats and protocols like Avro, protobuf and [others](https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats).
 
 #### Related projects
+
 The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
 like
 

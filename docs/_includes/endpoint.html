@@ -1,12 +1,14 @@
+{% assign id = include.path | replace: '{', '' | replace: '}', '' %}
 
-<div class="doc">
+<div class="doc endpoint" data-href="{{ id }}_{{ include.name }}" >
 
-    <a id="{{ include.path| replace: '{', ''| replace: '}', '' }}_{{ include.name }}"></a>
+
+
     <div class="info">
         <h2 class="title">
-                        <span class="method-{{ include.name }}" data-after="{{ include.name }}">
-                            <a href="#{{ include.path| replace: '{', ''| replace: '}', '' }}_{{ include.name }}"> {{ include.path }} </a>
-                        </span>
+            <span class="method-{{ include.name }}" data-after="{{ include.name }}">
+                {{ include.path }}
+            </span>
         </h2>
         <p class="summary">{{ include.method.summary }}</p>
         <article class="markdown">

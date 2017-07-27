@@ -25,8 +25,6 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
- 
-
 More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
@@ -47,6 +45,7 @@ the throughput of more than hundreds gigabytes per second.
 The project is in active development. See the [changelog](CHANGELOG.md)   
   
 #### Features
+
 * Stream:    
     * REST abstraction over Kafka-like queues.
     * CRUD for event types.
@@ -78,9 +77,7 @@ The project is in active development. See the [changelog](CHANGELOG.md)
         * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
         (like AWS Kinesis, Google pub/sub etc.)
     
-
- Read more about latest development in our [Changelog](CHANGELOG.md)
- 
+Read more about latest development in our [Changelog](CHANGELOG.md) 
 
 #### Additional features that we plan to cover in the future are:
 
@@ -92,6 +89,7 @@ The project is in active development. See the [changelog](CHANGELOG.md)
 * Use additional schema formats and protocols like Avro, protobuf and [others](https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats).
 
 #### Related projects
+
 The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
 like
 
@@ -99,7 +97,6 @@ like
 * SDK
 * GUI
 * DevOps tools and more
-
 
 ## Quickstart
 
@@ -197,7 +194,6 @@ Read mode in the [manual](https://zalando.github.io/nakadi/manual.html#using_eve
 
 ### Consuming Events
 
-
 You can open a stream for an Event Type via the `events` sub-resource:
 
 ```sh
@@ -219,7 +215,6 @@ used only for debugging. It is not recommended for production systems.
 For production systems please use [Subscriptions API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila)
 
 ### Publishing Events
-
 
 Events for an event type can be published by posting to its "events" collection:
 
@@ -252,6 +247,7 @@ Bug reports and feature requests are more likely to be addressed
 if posted as [issues](https://github.com/zalando/nakadi/issues) here on GitHub.
 
 ## License
+
 Please read the full [LICENSE](LICENSE)
 
 The MIT License (MIT) Copyright © 2015 Zalando SE, https://tech.zalando.com
