@@ -24,8 +24,8 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
@@ -37,11 +37,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
@@ -58,7 +60,6 @@ public class EventPublishingControllerTest {
     private MetricRegistry metricRegistry;
     private JsonTestHelper jsonHelper;
     private EventPublisher publisher;
-    private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
 
     private MockMvc mockMvc;
@@ -71,10 +72,14 @@ public class EventPublishingControllerTest {
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
-        featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        when(settings.getAuthMode()).thenReturn(OFF);
+        when(settings.getAdminClientId()).thenReturn("nakadi");
+
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
+
+        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);

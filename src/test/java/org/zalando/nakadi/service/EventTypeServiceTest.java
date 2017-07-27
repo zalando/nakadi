@@ -17,7 +17,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -49,12 +48,13 @@ public class EventTypeServiceTest {
     private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     @Before
     public void setUp() {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
-                timelineSync, transactionTemplate, nakadiSettings);
+                authorizationValidator, timelineSync, transactionTemplate, nakadiSettings);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -74,8 +74,8 @@ public class EventTypeServiceTest {
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
-            eventTypeService.delete(eventType.getName(), new FullAccessClient("client-ID"));
-        } catch (EventTypeDeletionException e) {
+            eventTypeService.delete(eventType.getName());
+        } catch (final EventTypeDeletionException e) {
             // check that topics are not deleted in Kafka
             verifyZeroInteractions(topicsToDelete);
             return;

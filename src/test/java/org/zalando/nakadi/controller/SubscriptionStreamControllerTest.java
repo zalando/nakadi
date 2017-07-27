@@ -3,35 +3,38 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.EventTypeChangeListener;
+import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.problem.Problem;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.nakadi.utils.JsonTestHelper;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import org.zalando.problem.Problem;
 
 public class SubscriptionStreamControllerTest {
 
@@ -42,6 +45,13 @@ public class SubscriptionStreamControllerTest {
 
     private SubscriptionStreamController controller;
     private JsonTestHelper jsonHelper;
+
+    private SubscriptionStreamerFactory subscriptionStreamerFactory;
+
+    private SubscriptionDbRepository subscriptionDbRepository;
+    private EventTypeRepository eventTypeRepository;
+    private AuthorizationValidator authorizationValidator;
+    private EventTypeChangeListener eventTypeChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -66,8 +76,14 @@ public class SubscriptionStreamControllerTest {
 
         final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
 
-        controller = new SubscriptionStreamController(null, featureToggleService, objectMapper,
-                crutch, nakadiSettings, blacklistService, metricRegistry);
+        subscriptionStreamerFactory = mock(SubscriptionStreamerFactory.class);
+        subscriptionDbRepository = mock(SubscriptionDbRepository.class);
+        eventTypeRepository = mock(EventTypeRepository.class);
+        authorizationValidator = mock(AuthorizationValidator.class);
+        eventTypeChangeListener = mock(EventTypeChangeListener.class);
+
+        controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
+                crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository);
     }
 
     @Test

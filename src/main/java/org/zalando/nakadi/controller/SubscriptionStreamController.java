@@ -15,7 +15,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -49,6 +52,7 @@ public class SubscriptionStreamController {
     private final NakadiSettings nakadiSettings;
     private final BlacklistService blacklistService;
     private final MetricRegistry metricRegistry;
+    private final SubscriptionDbRepository subscriptionDbRepository;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -57,7 +61,8 @@ public class SubscriptionStreamController {
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
                                         final BlacklistService blacklistService,
-                                        @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry) {
+                                        @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
+                                        final SubscriptionDbRepository subscriptionDbRepository) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -65,6 +70,7 @@ public class SubscriptionStreamController {
         this.nakadiSettings = nakadiSettings;
         this.blacklistService = blacklistService;
         this.metricRegistry = metricRegistry;
+        this.subscriptionDbRepository = subscriptionDbRepository;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -95,12 +101,17 @@ public class SubscriptionStreamController {
             if (!headersSent) {
                 headersSent = true;
                 try {
+                    if (ex instanceof AccessDeniedException) {
+                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
+                                ((AccessDeniedException) ex).explain()));
+                    }
                     if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
                     } else {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));
                     }
+                    out.flush();
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
                 }
@@ -153,8 +164,11 @@ public class SubscriptionStreamController {
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
-                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
+                final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService);
+
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

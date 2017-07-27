@@ -31,6 +31,7 @@ import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
@@ -49,14 +50,17 @@ public class PostSubscriptionController {
     private final FeatureToggleService featureToggleService;
     private final ApplicationService applicationService;
     private final SubscriptionService subscriptionService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public PostSubscriptionController(final FeatureToggleService featureToggleService,
                                       final ApplicationService applicationService,
-                                      final SubscriptionService subscriptionService) {
+                                      final SubscriptionService subscriptionService,
+                                      final AuthorizationValidator authorizationValidator) {
         this.featureToggleService = featureToggleService;
         this.applicationService = applicationService;
         this.subscriptionService = subscriptionService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(value = "/subscriptions", method = RequestMethod.POST)
@@ -69,6 +73,9 @@ public class PostSubscriptionController {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
+
+        authorizationValidator.authorizeSubscriptionRead(subscriptionBase);
+
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(subscriptionBase.getOwningApplication())) {
             return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,

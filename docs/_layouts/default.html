@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+{% include head.html %}
+<body>
+
+{% include sidebar.html %}
+
+<div class="wrapper">
+    {{ content }}
+</div>
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+        crossorigin="anonymous"></script>
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+<script type="text/javascript">
+  $(document).ready(function() {
+
+    // Configuration for syntax highlighting using highlightjs.org
+    hljs.configure({
+      classPrefix: ''
+    });
+    $('pre code').each(function(i, block) {
+      hljs.highlightBlock(block);
+    });
+
+    // Simple jquery tabs for api response
+    $('.tabs').each(function(i, tabs) {
+      var links = $(tabs).find('li');
+      links.first().toggleClass('tab__link--active');
+
+      links.click(function() {
+        var target = $(this).attr('data-href');
+        links.removeClass('tab__link--active');
+        $(this).addClass('tab__link--active');
+
+        $(tabs).find('.tab__content').hide();
+        $(tabs).find('[data-id="' + target + '"]').show();
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -22,6 +22,8 @@ import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
@@ -49,6 +51,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
+    private final AuthorizationValidator authValidator;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -56,17 +59,20 @@ public class EventPublisher {
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
-                          final TimelineSync timelineSync) {
+                          final TimelineSync timelineSync,
+                          final AuthorizationValidator authValidator) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
+        this.authValidator = authValidator;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
-            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
+            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
+            AccessDeniedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -74,6 +80,7 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            authValidator.authorizeEventTypeWrite(eventType);
             client.checkScopes(eventType.getWriteScopes());
 
             validate(batch, eventType);

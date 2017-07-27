@@ -47,7 +47,7 @@ public class EventStream {
         this.writer = writer;
     }
 
-    public void streamEvents(final AtomicBoolean connectionReady) {
+    public void streamEvents(final AtomicBoolean connectionReady, final Runnable checkAuthorization) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -63,6 +63,9 @@ public class EventStream {
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
             while (connectionReady.get() &&
                     !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
+
+                checkAuthorization.run();
+
                 if (consumedEvents.isEmpty()) {
                     // TODO: There are a lot of optimizations here, one can significantly improve code by processing
                     // all events at the same time, instead of processing one by one.

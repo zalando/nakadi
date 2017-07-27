@@ -38,8 +38,6 @@ public class StoragesControllerTest {
 
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-
     private MockMvc mockMvc;
 
     @Before
@@ -47,6 +45,7 @@ public class StoragesControllerTest {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
 
         final StoragesController controller = new StoragesController(securitySettings, storageService);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)

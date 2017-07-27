@@ -1,13 +1,6 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ImmutableList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -29,6 +22,12 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static java.util.stream.IntStream.range;
 import static org.mockito.Matchers.any;
@@ -107,14 +106,19 @@ public class TimelineServiceTest {
                 .collect(Collectors.toList());
 
         Mockito.when(testTimelines.get(0).getSwitchedAt()).thenReturn(new Date());
+        Mockito.when(testTimelines.get(0).isDeleted()).thenReturn(false);
+
         Mockito.when(testTimelines.get(1).getSwitchedAt()).thenReturn(new Date());
+        Mockito.when(testTimelines.get(1).isDeleted()).thenReturn(false);
+
         Mockito.when(testTimelines.get(2).getSwitchedAt()).thenReturn(null);
+        Mockito.when(testTimelines.get(2).isDeleted()).thenReturn(false);
 
         Mockito.when(testTimelines.get(3).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(3).getCleanedUpAt()).thenReturn(new DateTime().minusMinutes(1).toDate());
+        Mockito.when(testTimelines.get(3).isDeleted()).thenReturn(true);
 
         Mockito.when(testTimelines.get(4).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(4).getCleanedUpAt()).thenReturn(new DateTime().plusMinutes(1).toDate());
+        Mockito.when(testTimelines.get(4).isDeleted()).thenReturn(false);
 
         Mockito.when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName))).thenReturn(testTimelines);
 

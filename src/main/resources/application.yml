@@ -72,15 +72,18 @@ nakadi:
     adminClientId: adminClientId
     tokenInfoUrl: https://example.com/tokeninfo
     clientId: stups_aruha-event-store-poc
+    realms: '/arealm, /anotherone'
     scopes:
       uid: uid
       nakadiAdmin: nakadi.config.write
       eventTypeWrite: nakadi.event_type.write
       eventStreamRead: nakadi.event_stream.read
       eventStreamWrite: nakadi.event_stream.write
-  auth:
-    plugin:
+  plugins:
+    auth:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+    authz:
+      factory: org.zalando.nakadi.plugin.auth.DefaultAuthorizationServiceFactory
   event.max.bytes: 999000
   timeline.wait.timeoutMs: 40000
   subscription:

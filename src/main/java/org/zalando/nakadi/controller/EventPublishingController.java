@@ -16,6 +16,8 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -55,7 +57,7 @@ public class EventPublishingController {
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
                                     final NativeWebRequest request,
-                                    final Client client) {
+                                    final Client client) throws AccessDeniedException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
@@ -79,7 +81,8 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client) {
+                                             final Client client)
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
@@ -90,8 +93,7 @@ public class EventPublishingController {
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result);
 
-            final ResponseEntity response = response(result);
-            return response;
+            return response(result);
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

@@ -1,0 +1,34 @@
+.tabs {
+    .tab__content {
+        display: none;
+
+        &:first-of-type {
+            display: block;
+        }
+    }
+}
+
+.tab__description {
+    margin-bottom: 1.5rem;
+}
+
+.tab__navigation {
+    margin-bottom: 1.5rem;
+
+    .tab__link {
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-block;
+        padding: 5px 15px;
+        margin-right: 10px;
+        border: 1px solid darken($color-lightgray, 75%);
+        border-radius: 20px;
+        transition: $default-transition;
+
+        &--active {
+            background: $color-primary;
+            border: 1px solid darken($color-primary, 20%);
+            box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.25);
+        }
+    }
+}

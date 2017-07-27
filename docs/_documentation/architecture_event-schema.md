@@ -1,3 +1,8 @@
+---
+title: Event schema
+position: 100
+---
+
 Event schema
 ============
 

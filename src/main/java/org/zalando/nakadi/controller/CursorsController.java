@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -157,6 +158,13 @@ public class CursorsController {
             nakadiCursors.add(cursorConverter.convert(cursor));
         }
         return nakadiCursors;
+    }
+
+    @ExceptionHandler(InvalidStreamIdException.class)
+    public ResponseEntity<Problem> handleInvalidStreamId(final InvalidStreamIdException ex,
+                                                         final NativeWebRequest request) {
+        LOG.warn("Stream id {} is not found", ex.getStreamId(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(UnableProcessException.class)
