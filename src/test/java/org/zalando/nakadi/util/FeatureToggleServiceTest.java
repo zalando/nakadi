@@ -1,17 +1,17 @@
 package org.zalando.nakadi.util;
 
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.ExistsBuilder;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 public class FeatureToggleServiceTest {
 

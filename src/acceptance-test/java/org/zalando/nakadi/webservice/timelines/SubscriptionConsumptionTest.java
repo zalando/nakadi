@@ -1,15 +1,5 @@
 package org.zalando.nakadi.webservice.timelines;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -20,12 +10,24 @@ import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 public class SubscriptionConsumptionTest {
 

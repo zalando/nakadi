@@ -1,11 +1,12 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import java.util.Optional;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
+import javax.annotation.Nullable;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public final class ZkSubscriptionNode {
 

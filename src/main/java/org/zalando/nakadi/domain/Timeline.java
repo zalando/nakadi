@@ -1,12 +1,13 @@
 package org.zalando.nakadi.domain;
 
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 public class Timeline {
 

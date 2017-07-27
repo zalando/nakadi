@@ -1,15 +1,17 @@
 package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.stream.Stream;
-import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.stream.Stream;
+
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_PWD;
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_URL;
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_USER;

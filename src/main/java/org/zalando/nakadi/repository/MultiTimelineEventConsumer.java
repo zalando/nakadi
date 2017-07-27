@@ -1,5 +1,21 @@
 package org.zalando.nakadi.repository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.NakadiCollectionUtils;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,21 +33,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
     private final String clientId;

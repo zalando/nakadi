@@ -1,9 +1,9 @@
 package org.zalando.nakadi.partitioning;
 
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.PartitioningException;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.PartitioningException;
 
 import java.util.List;
 

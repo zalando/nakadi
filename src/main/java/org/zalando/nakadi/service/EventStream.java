@@ -2,23 +2,25 @@ package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
-import java.io.IOException;
-import java.io.OutputStream;
-import static java.lang.System.currentTimeMillis;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
-import static java.util.function.Function.identity;
-import java.util.stream.Collectors;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
 public class EventStream {
 

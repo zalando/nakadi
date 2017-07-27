@@ -1,18 +1,20 @@
 package org.zalando.nakadi.service.subscription;
 
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
+
 import java.util.stream.Stream;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyArray;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.service.subscription.model.Partition;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.ASSIGNED;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.REASSIGNING;
-import org.zalando.nakadi.service.subscription.model.Session;
 
 public class ExactWeightRebalancerTest {
 

@@ -1,10 +1,6 @@
 package org.zalando.nakadi.service.converter;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.CursorError;
@@ -19,6 +15,11 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 public class CursorConverterImpl implements CursorConverter {

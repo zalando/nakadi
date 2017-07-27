@@ -1,10 +1,11 @@
 package org.zalando.nakadi.service;
 
-import java.util.List;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+import java.util.List;
 
 @Immutable
 public class EventStreamConfig {

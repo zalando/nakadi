@@ -1,20 +1,7 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.google.common.base.Charsets;
-import static com.google.common.base.Charsets.UTF_8;
 import com.google.common.collect.Lists;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
@@ -22,7 +9,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -36,6 +22,22 @@ import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Charsets.UTF_8;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";

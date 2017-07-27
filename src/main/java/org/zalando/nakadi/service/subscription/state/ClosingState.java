@@ -1,5 +1,12 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,12 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 class ClosingState extends State {
     private final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier;

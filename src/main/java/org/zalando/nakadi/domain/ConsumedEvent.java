@@ -1,7 +1,7 @@
 package org.zalando.nakadi.domain;
 
-import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
+import java.util.Objects;
 
 @Immutable
 public class ConsumedEvent {

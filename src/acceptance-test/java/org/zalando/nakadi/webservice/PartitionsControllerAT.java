@@ -9,8 +9,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
 import java.util.List;
@@ -18,7 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.when;
