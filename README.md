@@ -25,7 +25,7 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
-More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
+More detailed information can be found on our [Website](http://zalando.github.io/nakadi/).
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
@@ -42,7 +42,7 @@ Nakadi is high-load production ready.
 Zalando uses Nakadi as its central Event Bus Service. 
 Nakadi reliably handles the traffic from thousands event types with 
 the throughput of more than hundreds gigabytes per second.
-The project is in active development. See the [changelog](CHANGELOG.md)   
+The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)   
   
 #### Features
 
@@ -77,7 +77,7 @@ The project is in active development. See the [changelog](CHANGELOG.md)
         * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
         (like AWS Kinesis, Google pub/sub etc.)
     
-Read more about latest development in our [Changelog](CHANGELOG.md) 
+Read more about latest development in our [CHANGELOG.md](CHANGELOG.md) 
 
 #### Additional features that we plan to cover in the future are:
 
@@ -237,7 +237,9 @@ Read more in the [manual](https://zalando.github.io/nakadi/manual.html#using_pro
 
 Nakadi accepts contributions from the open-source community.
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md)
+Please read [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Please also note our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Contact
 
