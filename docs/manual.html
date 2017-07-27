@@ -25,20 +25,25 @@ layout: default
 {% for data in allData %}
 
     {% assign singleData = data[1] %}
-    <div class="doc">
+    <div class="doc doc-full">
         <a id="{{ data[0] }}"></a>
         <div class="info">
-            <h1 class="title"><a href="#{{ data[0] }}">
-                {{singleData.info.title}} v{{singleData.info.version}}
-            </a></h1>
+            <h1 class="title"><a href="#{{ data[0] }}"></a>
+                {{singleData.info.title}}
+            </h1>
+            <div class="props">
+                <span class="prop-name">version</span>
+                <span class="value">{{singleData.info.version}}</span>
+            </div>
             {{singleData.info.description|newline_to_br| markdownify}}
             <hr/>
             {% include yaml.html data=singleData.info.contact %}
         </div>
     </div>
 
-
-    <h1 class="title">Methods</h1>
+    <div class="doc doc-full">
+        <h2 class="info title">Methods</h2>
+    </div>
     {% assign paths = singleData.paths | sort %}
     {% for path in paths %}
     {% assign path_name = path[0] %}
@@ -49,9 +54,9 @@ layout: default
             {% endif %}
         {% endfor %}
     {% endfor %}
-
-    <h1 class="title">Definitions</h1>
-
+    <div class="doc doc-full">
+        <h2 class="info title">Definitions</h2>
+    </div>
     {% assign definitions = singleData.definitions | sort %}
     {% for definition in definitions %}
           {% include definition.html definition=definition %}

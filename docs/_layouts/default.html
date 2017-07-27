@@ -18,7 +18,7 @@
 <script type="text/javascript">
 
     function link(id) {
-        return '<a class="anchor" href="#' + link + '" id="' + link + '">link</a>'
+        return '<a class="anchor" href="#' + id + '" id="' + id + '">link</a>'
     }
 
     function textToHref(el) {
@@ -31,6 +31,8 @@
         hljs.configure({
             classPrefix: ''
         });
+
+        // Code highlight
         $('pre code').each(function(i, block) {
             hljs.highlightBlock(block);
         });
