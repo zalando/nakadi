@@ -4,18 +4,26 @@
 
 ## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
 
-The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to provide an event broker infrastructure to:
+Nakadi is a distributed event bus broker that implements a RESTful API abstraction on top of Kafka-like queues.
+
+![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
+
+More detailed information can be found on our [website](http://zalando.github.io/nakadi/).
+
+### Project goal
+
+The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to provide an event broker infrastructure to:
 
 - Abstract event delivery via a secured [RESTful API](https://zalando.github.io/nakadi/manual.html#nakadi-event-bus-api).
  
     This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology.
-    Access can be managed individually for every Event Type and secured using *OAuth* and custom authorization plugins.
+    Access can be managed individually for every queue and secured using *OAuth* and custom authorization plugins.
 
 - Enable convenient development of event-driven applications and asynchronous microservices. 
 
     Event types can be defined with [Event type schemas](https://zalando.github.io/nakadi/manual.html#using_event-types) 
-    and managed via a registry. All events will be validated against the schema before publishing the event type. 
-    It allows to granite the data quality and data consistency for the data consumers.    
+    and managed via a registry. All events will be validated against the schema before publishing. 
+    This guarantees data quality and consistency for consumers.    
      
 - Efficient low latency event delivery. 
     
@@ -24,10 +32,6 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
     HTTP connection, allowing near real-time event processing. 
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
-
-More detailed information can be found on our [Website](http://zalando.github.io/nakadi/).
-
-![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
 ### Links
 
