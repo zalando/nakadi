@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -16,6 +13,10 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 public interface TopicRepository {
 

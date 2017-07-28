@@ -1,6 +1,9 @@
 package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -10,9 +13,6 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import java.io.IOException;
 import java.util.List;

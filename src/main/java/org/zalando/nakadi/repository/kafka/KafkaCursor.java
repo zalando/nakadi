@@ -1,9 +1,11 @@
 package org.zalando.nakadi.repository.kafka;
 
-import java.util.Objects;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+
+import java.util.Objects;
+
 import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 

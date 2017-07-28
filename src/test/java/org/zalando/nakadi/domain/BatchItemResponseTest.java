@@ -2,9 +2,9 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
 
 import java.util.Map;
 import java.util.UUID;

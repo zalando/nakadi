@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.converter;
 
-import java.util.Collections;
-import java.util.Optional;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -12,6 +10,10 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
+
+import java.util.Collections;
+import java.util.Optional;
+
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

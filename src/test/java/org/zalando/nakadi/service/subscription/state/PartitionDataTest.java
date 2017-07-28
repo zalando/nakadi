@@ -1,12 +1,14 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import static java.lang.System.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

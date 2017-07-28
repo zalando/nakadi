@@ -2,9 +2,10 @@ package org.zalando.nakadi.service.subscription.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Collection;
-import javax.annotation.Nullable;
 import org.zalando.nakadi.domain.EventTypePartition;
+
+import javax.annotation.Nullable;
+import java.util.Collection;
 
 public class Partition {
     public enum State {

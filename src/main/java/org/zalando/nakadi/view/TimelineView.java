@@ -1,8 +1,9 @@
 package org.zalando.nakadi.view;
 
+import org.zalando.nakadi.domain.Timeline;
+
 import java.util.Date;
 import java.util.UUID;
-import org.zalando.nakadi.domain.Timeline;
 
 public class TimelineView {
 

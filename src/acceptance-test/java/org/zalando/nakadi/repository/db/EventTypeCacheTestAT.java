@@ -1,14 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
 import com.google.common.collect.ImmutableList;
-import java.io.Closeable;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -28,6 +20,16 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+
+import java.io.Closeable;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.fail;

@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
-import java.util.Optional;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -15,6 +14,9 @@ import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import java.util.Optional;
+
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public abstract class BaseAT {

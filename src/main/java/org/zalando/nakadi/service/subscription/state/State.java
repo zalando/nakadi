@@ -1,12 +1,13 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+
+import java.util.concurrent.TimeUnit;
 
 public abstract class State {
     private StreamingContext context;
