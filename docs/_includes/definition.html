@@ -1,10 +1,9 @@
 {% assign definition = include.definition %}
-<div class="doc">
+<div class="doc definition" data-href="definition_{{ definition[0] }}">
     <a id="definition_{{ definition[0] }}"></a>
     <div class="info">
-        <h2 class="title"><a href="#definition_{{ definition[0] }}">
+        <h2 class="title">
             {{ definition[0] }}
-        </a>
         </h2>
         <p class="summary">{{ definition[1].summary }}</p>
         <p class="summary">{{ definition[1].description | markdownify }}</p>
