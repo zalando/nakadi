@@ -11,6 +11,7 @@ import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
@@ -33,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
@@ -76,15 +79,48 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void eventTypeWithEmptyNameReturns422() throws Exception {
+    public void whenPostEventTypeWithIncorrectNameThen422() throws Exception {
+        final List<String> incorrectNames = ImmutableList.of(
+                "?",
+                "56mycoolET",
+                "abc^%!",
+                "myET.-abc",
+                "abc._def",
+                "_underscore",
+                "-event",
+                "many..dots",
+                ".firstDot"
+        );
+        for (final String etName : incorrectNames) {
+            final EventType invalidEventType = buildDefaultEventType();
+            invalidEventType.setName(etName);
+
+            final Problem expectedProblem = invalidProblem("name", "format not allowed");
+            postETAndExpect422WithProblem(invalidEventType, expectedProblem);
+        }
+    }
+
+    @Test
+    public void whenPostEventTypeWithCorrectNameThen201() throws Exception {
+        final List<String> correctNames = ImmutableList.of(
+                "myET",
+                "my-team.cool_event_type",
+                "event-type.391.16afg",
+                "eventType.59fc6871-b556-65a1-8b90-3dfff9d76f34"
+        );
+        for (final String etName : correctNames) {
+            final EventType eventType = buildDefaultEventType();
+            eventType.setName(etName);
+            postEventType(eventType).andExpect(status().isCreated()).andExpect(content().string(""));
+        }
+    }
+
+    @Test
+    public void whenPostEventTypeWithTooLongNameThen422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
-        invalidEventType.setName("?");
-
-        final Problem expectedProblem = invalidProblem("name", "format not allowed");
-
-        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        invalidEventType.setName(TestUtils.randomValidStringOfLength(256));
+        final Problem expectedProblem = invalidProblem("name", "the length of the name must be >= 1 and <= 255");
+        postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
     @Test
@@ -93,10 +129,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         invalidEventType.setSchema(null);
 
         final Problem expectedProblem = invalidProblem("schema", "may not be null");
-
-        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
     @Test
@@ -105,10 +138,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         invalidEventType.setName(null);
 
         final Problem expectedProblem = invalidProblem("name", "may not be null");
-
-        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
     @Test
@@ -119,10 +149,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         jsonObject.remove("category");
 
         final Problem expectedProblem = invalidProblem("category", "may not be null");
-
-        postEventType(jsonObject.toString()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(jsonObject.toString(), expectedProblem);
     }
 
     @Test
@@ -132,9 +159,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", "
                 + "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
     @Test
@@ -264,7 +289,17 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
     private void postETAndExpect422WithProblem(final EventType eventType, final Problem expectedProblem)
             throws Exception {
-        postEventType(eventType)
+        expect422WithProblem(postEventType(eventType), expectedProblem);
+    }
+
+    private void postETAndExpect422WithProblem(final String eventType, final Problem expectedProblem)
+            throws Exception {
+        expect422WithProblem(postEventType(eventType), expectedProblem);
+    }
+
+    private void expect422WithProblem(final ResultActions resultActions, final Problem expectedProblem)
+            throws Exception {
+        resultActions
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
