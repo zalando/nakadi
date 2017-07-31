@@ -1,37 +1,11 @@
 package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import static com.jayway.restassured.RestAssured.get;
-import static com.jayway.restassured.RestAssured.when;
 import com.jayway.restassured.response.Response;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
-import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.PartitionInfo;
-
-import static com.jayway.restassured.RestAssured.get;
-import static com.jayway.restassured.RestAssured.when;
-import static org.hamcrest.MatcherAssert.assertThat;
-import org.hamcrest.Matchers;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -41,9 +15,22 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+
+import static com.jayway.restassured.RestAssured.get;
+import static com.jayway.restassured.RestAssured.when;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMap;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMapsList;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 public class PartitionsControllerAT extends BaseAT {
 
