@@ -8,7 +8,6 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -70,8 +69,7 @@ public class CursorsService {
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
                                        final List<NakadiCursor> cursors, final Client client)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
-            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
-            IllegalScopeException {
+            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         if (cursors.isEmpty()) {
             throw new UnableProcessException("Cursors are absent");
         }
@@ -140,7 +138,7 @@ public class CursorsService {
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
             throws ServiceUnavailableException, NoSuchSubscriptionException,
-            UnableProcessException, IllegalScopeException, OperationTimeoutException, ZookeeperException,
+            UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException {
         if (cursors.isEmpty()) {
             throw new UnableProcessException("Cursors are absent");
