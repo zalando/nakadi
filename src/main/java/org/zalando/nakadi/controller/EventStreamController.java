@@ -216,9 +216,6 @@ public class EventStreamController {
                     Collections.singletonList(eventTypeName))) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-                // TODO: deprecate and remove previous authorization strategy
-                client.checkScopes(eventType.getReadScopes());
-
                 authorizeStreamRead(eventTypeName);
 
                 // validate parameters

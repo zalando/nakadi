@@ -17,7 +17,6 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -82,9 +81,6 @@ public class CursorsService {
         TimeLogger.addMeasure("validateSubscriptionCursors");
         validateSubscriptionCursors(subscription, cursors);
 
-        TimeLogger.addMeasure("validateSubscriptionReadScopes");
-        validateSubscriptionReadScopes(subscription, client);
-
         TimeLogger.addMeasure("createSubscriptionClient");
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + "." + streamId + ".offsets");
@@ -126,7 +122,6 @@ public class CursorsService {
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId, final Client client)
             throws NakadiException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        validateSubscriptionReadScopes(subscription, client);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".get_cursors");
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -152,7 +147,6 @@ public class CursorsService {
         }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         validateSubscriptionCursors(subscription, cursors);
-        validateSubscriptionReadScopes(subscription, client);
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".reset_cursors");
@@ -181,13 +175,6 @@ public class CursorsService {
                 throw new UnableProcessException(e.getMessage(), e);
             }
         });
-    }
-
-    private void validateSubscriptionReadScopes(final Subscription subscription, final Client client)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, IllegalScopeException {
-        subscription.getEventTypes().stream().map(Try.wrap(eventTypeRepository::findByName))
-                .map(Try::getOrThrow)
-                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
     }
 
     private class SubscriptionCursorComparator implements Comparator<SubscriptionCursorWithoutToken> {

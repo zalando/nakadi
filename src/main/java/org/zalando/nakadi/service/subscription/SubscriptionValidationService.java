@@ -62,9 +62,6 @@ public class SubscriptionValidationService {
                 .map(Optional::get)
                 .collect(Collectors.toList());
 
-        // check if application is allowed to read from the event-types
-        eventTypes.forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
-
         // check that maximum number of partitions is not exceeded
         final List<EventTypePartition> allPartitions = getAllPartitions(eventTypes);
         if (allPartitions.size() > maxSubscriptionPartitions) {

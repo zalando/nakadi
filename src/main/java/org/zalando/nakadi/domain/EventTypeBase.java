@@ -68,8 +68,6 @@ public class EventTypeBase {
         this.enrichmentStrategies = Collections.emptyList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.options = new EventTypeOptions();
-        this.writeScopes = Collections.emptySet();
-        this.readScopes = Collections.emptySet();
         this.compatibilityMode = CompatibilityMode.FORWARD;
     }
 
@@ -80,8 +78,7 @@ public class EventTypeBase {
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
                      final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options, final Set<String> writeScopes,
-                     final Set<String> readScopes,
+                     final EventTypeOptions options,
                      final CompatibilityMode compatibilityMode) {
         this.name = name;
         this.topic = topic;
@@ -94,8 +91,6 @@ public class EventTypeBase {
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
-        this.writeScopes = writeScopes;
-        this.readScopes = readScopes;
         this.compatibilityMode = compatibilityMode;
     }
 
@@ -111,8 +106,6 @@ public class EventTypeBase {
         this.setSchema(eventType.getSchema());
         this.setDefaultStatistic(eventType.getDefaultStatistic());
         this.setOptions(eventType.getOptions());
-        this.setWriteScopes(eventType.getWriteScopes());
-        this.setReadScopes(eventType.getReadScopes());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
     }
@@ -199,22 +192,6 @@ public class EventTypeBase {
 
     public void setOptions(final EventTypeOptions options) {
         this.options = options;
-    }
-
-    public Set<String> getWriteScopes() {
-        return Collections.unmodifiableSet(writeScopes);
-    }
-
-    public void setWriteScopes(final Set<String> writeScopes) {
-        this.writeScopes = writeScopes == null ? Collections.emptySet() : writeScopes;
-    }
-
-    public Set<String> getReadScopes() {
-        return Collections.unmodifiableSet(readScopes);
-    }
-
-    public void setReadScopes(final Set<String> readScopes) {
-        this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
     }
 
     public CompatibilityMode getCompatibilityMode() {
