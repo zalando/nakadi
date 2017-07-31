@@ -11,7 +11,6 @@ import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -56,10 +55,6 @@ public class EventTypeBase {
 
     @Valid
     private EventTypeAuthorization authorization;
-
-    private Set<String> writeScopes;
-
-    private Set<String> readScopes;
 
     private CompatibilityMode compatibilityMode;
 

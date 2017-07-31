@@ -24,7 +24,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -279,9 +278,6 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, e.asProblem());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
-            } catch (final IllegalScopeException e) {
-                // TODO: deprecate and remove previous authorization strategy
-                writeProblemResponse(response, outputStream, FORBIDDEN, e.getMessage());
             } catch (final AccessDeniedException e) {
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.explain());
             } catch (final Exception e) {
