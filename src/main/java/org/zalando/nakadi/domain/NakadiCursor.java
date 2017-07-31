@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.base.Preconditions;
+
 import java.util.Objects;
 
 public class NakadiCursor implements Comparable<NakadiCursor> {

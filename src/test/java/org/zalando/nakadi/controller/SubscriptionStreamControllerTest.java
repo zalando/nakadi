@@ -3,19 +3,9 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -31,10 +21,22 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import org.zalando.problem.Problem;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class SubscriptionStreamControllerTest {
 

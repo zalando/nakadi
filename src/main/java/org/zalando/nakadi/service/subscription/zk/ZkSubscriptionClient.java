@@ -1,8 +1,5 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -11,6 +8,10 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 
 public interface ZkSubscriptionClient {
 

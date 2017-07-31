@@ -1,10 +1,11 @@
 package org.zalando.nakadi.util;
 
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 
 @Service
 public interface FeatureToggleService {
@@ -32,6 +33,7 @@ public interface FeatureToggleService {
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
         HIGH_LEVEL_API("high_level_api"),
+        CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions"),
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application"),
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),

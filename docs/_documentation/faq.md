@@ -110,7 +110,7 @@ eval "$(docker-machine env default)"
 
 When there are no events available for an event-type because they've expired, then `newest_available_offset` will be smaller than `oldest_available_offset`. Because Nakadi has exclusive offset handling, it shows the offset of the last message in `newest_available_offset`.
 
-#### Is there a way to make publishing batches of events atomic?
+#### Is there a way to make publishing batches of events atomic?
 
 Not at the moment. If the events are for different event types, or the events will be distributed across different partitions for a single event type, then there's no way to achieve atomicity in the sense of "all events or no events will be published" in the general case. If the events belong to the same partition, the server does not have compensating behavior to ensure they will all be written.
 

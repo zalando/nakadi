@@ -1,9 +1,9 @@
 package org.zalando.nakadi.validation;
 
 import com.google.common.collect.Lists;
+import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
-import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Optional;

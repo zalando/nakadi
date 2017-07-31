@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
-import java.util.concurrent.TimeUnit;
 import org.apache.http.params.CoreConnectionPNames;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,6 +13,8 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+
+import java.util.concurrent.TimeUnit;
 
 public abstract class BaseAT {
 

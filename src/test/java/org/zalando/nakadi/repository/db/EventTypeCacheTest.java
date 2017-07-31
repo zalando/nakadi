@@ -1,7 +1,5 @@
 package org.zalando.nakadi.repository.db;
 
-import java.util.Collections;
-import java.util.List;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -17,6 +15,9 @@ import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
+
+import java.util.Collections;
+import java.util.List;
 
 public class EventTypeCacheTest {
     @BeforeClass

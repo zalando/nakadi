@@ -1,8 +1,8 @@
 package org.zalando.nakadi.domain;
 
-import java.util.Objects;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
+import java.util.Objects;
 
 public class EventTypeStatistics {
     @NotNull

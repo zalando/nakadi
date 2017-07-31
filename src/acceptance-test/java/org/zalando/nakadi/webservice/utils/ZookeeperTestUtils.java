@@ -1,9 +1,10 @@
 package org.zalando.nakadi.webservice.utils;
 
-import java.util.concurrent.TimeUnit;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryNTimes;
+
+import java.util.concurrent.TimeUnit;
 
 public class ZookeeperTestUtils {
 

@@ -3,17 +3,6 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import static java.util.Collections.emptySet;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import static java.util.stream.Collectors.toList;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.core.IsEqual.equalTo;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -26,6 +15,19 @@ import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toList;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 
 public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {

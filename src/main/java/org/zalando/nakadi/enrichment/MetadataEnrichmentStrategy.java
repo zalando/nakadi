@@ -1,13 +1,13 @@
 package org.zalando.nakadi.enrichment;
 
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.util.FlowIdUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.EnrichmentException;
+import org.zalando.nakadi.util.FlowIdUtils;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     @Override

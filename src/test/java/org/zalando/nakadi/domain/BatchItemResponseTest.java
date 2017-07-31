@@ -1,11 +1,13 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.util.Map;
-import java.util.UUID;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.zalando.nakadi.utils.TestUtils;
+
+import java.util.Map;
+import java.util.UUID;
+
+import static org.junit.Assert.assertEquals;
 
 
 public class BatchItemResponseTest {

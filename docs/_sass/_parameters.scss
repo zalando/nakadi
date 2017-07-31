@@ -19,4 +19,36 @@
     white-space: nowrap;
     width: 120px;
   }
+
+  @include respond-to('medium') {
+
+    td {
+      display: block;
+    }
+
+    th {
+      display: none;
+    }
+
+    tr:nth-child(even) td {
+      background: white;
+    }
+
+    .param-name {
+      width: 100%;
+      background: #f3e8db;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .param-name:before {
+      content: "Parameter: ";
+      font-weight: normal;
+    }
+
+    tr:nth-child(even) td.param-name {
+      background: #f3e8db;
+    }
+
+  }
 }

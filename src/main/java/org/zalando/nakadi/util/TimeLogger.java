@@ -1,8 +1,8 @@
 package org.zalando.nakadi.util;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nullable;
 
 public class TimeLogger {
 

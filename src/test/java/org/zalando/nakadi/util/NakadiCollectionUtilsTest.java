@@ -1,9 +1,10 @@
 package org.zalando.nakadi.util;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Set;
 
 public class NakadiCollectionUtilsTest {
     @Test

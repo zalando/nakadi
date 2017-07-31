@@ -1,32 +1,35 @@
 package org.zalando.nakadi.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import org.zalando.problem.Problem;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
 public class StoragesControllerTest {
@@ -38,11 +41,12 @@ public class StoragesControllerTest {
     @Before
     public void before() {
         final StoragesController controller = new StoragesController(securitySettings, storageService);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings))
+                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
                 .build();
     }
 

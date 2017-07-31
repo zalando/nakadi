@@ -1,12 +1,14 @@
 package org.zalando.nakadi.repository.db;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_PWD;
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_URL;
 import static org.zalando.nakadi.webservice.BaseAT.POSTGRES_USER;

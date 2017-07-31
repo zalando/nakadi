@@ -1,16 +1,9 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.MetricRegistry;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -30,6 +23,15 @@ import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.Optional;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class StreamingStateTest {
 

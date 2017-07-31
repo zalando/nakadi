@@ -1,10 +1,21 @@
 package org.zalando.nakadi.webservice.hila;
 
-import static com.google.common.collect.Sets.intersection;
+import org.junit.Before;
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.google.common.collect.Sets.intersection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
@@ -12,21 +23,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import org.junit.Before;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.webservice.BaseAT;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 public class HilaRebalanceAT extends BaseAT {
 

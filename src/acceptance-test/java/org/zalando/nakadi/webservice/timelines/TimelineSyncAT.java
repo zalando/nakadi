@@ -1,15 +1,5 @@
 package org.zalando.nakadi.webservice.timelines;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -23,6 +13,17 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class TimelineSyncAT extends BaseAT {
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);

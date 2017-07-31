@@ -3,6 +3,14 @@ package org.zalando.nakadi.webservice.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.hila.StreamBatch;
+
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +18,6 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
-import static java.text.MessageFormat.format;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,13 +26,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
-import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.hila.StreamBatch;
+
+import static java.text.MessageFormat.format;
 
 public class TestStreamingClient implements Runnable {
 

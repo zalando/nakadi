@@ -1,15 +1,13 @@
 package org.zalando.nakadi.controller;
 
-import static org.springframework.http.ResponseEntity.ok;
-
-import static org.springframework.web.bind.annotation.RequestMethod.GET;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.ws.rs.core.MediaType;
 
-import org.springframework.http.ResponseEntity;
-
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import static org.springframework.http.ResponseEntity.ok;
+import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
 @RestController
 @RequestMapping(value = "/health", produces = MediaType.TEXT_PLAIN)

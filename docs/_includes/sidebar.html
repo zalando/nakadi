@@ -1,72 +1,76 @@
-<div class="sidebar">
-    <div class="site-name">
-        <h1>{{ site.title }}</h1>
-        <a class="github-button" href="https://github.com/zalando/nakadi"
-           data-size="large" aria-label="GitHub">GitHub</a>
-    </div>
+<div class="sidebar" tabindex="0">
+    <div class="content">
+        <div class="site-name">
+            <span class="menu show">Menu</span>
+            <span class="menu hide" tabindex="0">Menu</span>
+            <a href="index.html"><h1>{{ site.title }}</h1></a>
 
-    {% assign allData = site.data %}
+            <a class="github-button" href="https://github.com/zalando/nakadi"
+               data-size="large" aria-label="GitHub">GitHub</a>
+        </div>
 
-    <ul class="navigation">
-        <!-- Navigation _documentation -->
-        <li class="first-level">
-            <span class="title">General</span>
-            {% assign sorted_collections = site.collections | sort: "position" %}
-            {% for collection in sorted_collections %}
-            <ul>
-                {% assign sorted_docs = collection.docs | sort: "position" %}
-                {% for doc in sorted_docs %}
-                {% if doc.collection == "documentation" %}
-                <li>
-                    <a href="#{{ doc.slug }}">
-                        {{ doc.title }}
-                    </a>
-                </li>
-                {% endif %}
+        {% assign allData = site.data %}
+
+        <ul class="navigation">
+            <!-- Navigation _documentation -->
+            <li class="first-level">
+                <span class="title">General</span>
+                {% assign sorted_collections = site.collections | sort: "position" %}
+                {% for collection in sorted_collections %}
+                <ul>
+                    {% assign sorted_docs = collection.docs | sort: "position" %}
+                    {% for doc in sorted_docs %}
+                    {% if doc.collection == "documentation" %}
+                    <li>
+                        <a href="#{{ doc.slug }}">
+                            {{ doc.title }}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
                 {% endfor %}
-            </ul>
-            {% endfor %}
-        </li>
+            </li>
 
-        <!-- Navigation for swagger yml files in _data -->
-        <li class="first-level">
+            <!-- Navigation for swagger yml files in _data -->
+            <li class="first-level">
 
-            {% for data in allData %}
+                {% for data in allData %}
 
-            <span class="title">
+                <span class="title">
                 <a href="#{{data[0]}}">{{data[1].info.title}} v{{data[1].info.version}}</a>
             </span>
-            <!-- Methods-->
-            {% assign singleData = data[1].paths | sort %}
-            {% for path in singleData %}
-            <ul class="path">
-                <li>
-                    {% assign methods = path[1] %}
+                <!-- Methods-->
+                {% assign singleData = data[1].paths | sort %}
+                {% for path in singleData %}
+                <ul class="path">
+                    <li>
+                        {% assign methods = path[1] %}
 
-                    {%capture links %}
+                        {%capture links %}
                         {% assign first_method = '' %}
-                    {% for method_name in site.defaults.method_order %}
+                        {% for method_name in site.defaults.method_order %}
                         {% if methods[method_name] %}
-                            {% if first_method == '' %}
-                                {% assign first_method = method_name %}
-                            {% endif %}
+                        {% if first_method == '' %}
+                        {% assign first_method = method_name %}
+                        {% endif %}
                         <a href="#{{ path[0] }}_{{ method_name }}">
                             <span class="method-{{ method_name }}" data-after="{{ method_name }}"></span>
                         </a>
                         {% endif %}
-                    {% endfor %}
-                    {% endcapture %}
-                    <div><a href="#{{ path[0] }}_{{ first_method }}">
-                        {{path[0]}}
-                    </a></div>
-                    {{links}}
-                </li>
-            </ul>
-            {% endfor %}
-            {% endfor %}
+                        {% endfor %}
+                        {% endcapture %}
+                        <div><a href="#{{ path[0] }}_{{ first_method }}">
+                            {{path[0]}}
+                        </a></div>
+                        {{links}}
+                    </li>
+                </ul>
+                {% endfor %}
+                {% endfor %}
 
-            <span class="title">Definitions</span>
-            {% for data in allData %}
+                <span class="title">Definitions</span>
+                {% for data in allData %}
                 {% assign singleData = data[1].definitions | sort %}
                 {% for definition in singleData %}
                 <ul class="path">
@@ -79,7 +83,8 @@
                     </li>
                 </ul>
                 {% endfor %}
-            {% endfor %}
-        </li>
-    </ul>
+                {% endfor %}
+            </li>
+        </ul>
+    </div>
 </div>

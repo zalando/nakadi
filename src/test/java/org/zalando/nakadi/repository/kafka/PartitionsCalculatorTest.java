@@ -1,16 +1,18 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.utils.TestUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
-import org.junit.Assert;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.utils.TestUtils;
 
 public class PartitionsCalculatorTest {
 

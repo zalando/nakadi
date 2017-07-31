@@ -3,8 +3,6 @@ title: Getting Started
 position: 2
 ---
 
-# Getting Started
-
 In this section we'll walk through running a Nakadi service on your machine.
 Once you have the service up and running, you can jump to
 [Using Nakadi](#using_producing-events) to see how produce and consume messages.

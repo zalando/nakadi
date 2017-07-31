@@ -15,9 +15,9 @@ import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
-import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.util.ArrayList;
 import java.util.List;
