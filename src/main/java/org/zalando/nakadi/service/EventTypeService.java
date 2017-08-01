@@ -2,6 +2,14 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -23,7 +31,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -34,6 +41,7 @@ import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -49,20 +57,10 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -150,12 +148,8 @@ public class EventTypeService {
         }
     }
 
-    public void delete(final String eventTypeName, final Client client)
-            throws EventTypeDeletionException,
-            ForbiddenAccessException,
-            NoEventTypeException,
-            ConflictException,
-            ServiceTemporarilyUnavailableException {
+    public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
+            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
@@ -166,9 +160,6 @@ public class EventTypeService {
                 throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             final EventType eventType = eventTypeOpt.get();
-            if (!client.idMatches(eventType.getOwningApplication())) {
-                throw new ForbiddenAccessException("You don't have access to event type " + eventTypeName);
-            }
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
@@ -229,9 +220,6 @@ public class EventTypeService {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!client.idMatches(original.getOwningApplication())) {
-                throw new ForbiddenAccessException("You don't have access to this event type");
-            }
 
             authorizationValidator.authorizeEventTypeAdmin(original);
             authorizationValidator.validateAuthorization(original, eventTypeBase);

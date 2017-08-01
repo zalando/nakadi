@@ -1,7 +1,7 @@
 package org.zalando.nakadi.partitioning;
 
-import org.zalando.nakadi.domain.EventType;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.EventType;
 
 import java.util.List;
 import java.util.Random;

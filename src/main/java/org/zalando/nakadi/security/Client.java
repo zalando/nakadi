@@ -1,8 +1,7 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalScopeException;
-
 import java.util.Set;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 public abstract class Client {
 
@@ -11,8 +10,6 @@ public abstract class Client {
     public Client(final String clientId) {
         this.clientId = clientId;
     }
-
-    public abstract boolean idMatches(String clientId);
 
     public abstract void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
 

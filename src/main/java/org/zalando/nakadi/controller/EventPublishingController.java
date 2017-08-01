@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import static org.springframework.http.ResponseEntity.status;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +21,7 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -56,7 +55,7 @@ public class EventPublishingController {
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
                                     final NativeWebRequest request,
-                                    final Client client) throws ResourceAccessNotAuthorizedException {
+                                    final Client client) throws AccessDeniedException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
@@ -76,23 +75,12 @@ public class EventPublishingController {
         }
     }
 
-    @ExceptionHandler(ResourceAccessNotAuthorizedException.class)
-    public ResponseEntity<Problem> processUnauthorizedAccess(final ResourceAccessNotAuthorizedException e,
-                                                             final NativeWebRequest request) {
-        return Responses.create(
-                Problem.valueOf(
-                        Response.Status.FORBIDDEN,
-                        "Operation " + e.getOperation() + " is not allowed for resource " + e.getResource()),
-                request);
-    }
-
-
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client)
-            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);

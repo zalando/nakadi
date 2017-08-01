@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,9 +18,7 @@ import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -29,7 +26,6 @@ import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 @Service
@@ -110,19 +106,18 @@ public class AuthorizationValidator {
     }
 
     public void authorizeEventTypeWrite(final EventType eventType)
-            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
         }
-        final MyEventTypeResource2 resource = new MyEventTypeResource2(
+        final EventTypeResource resource = new EventTypeResource(
                 eventType.getName(), eventType.getAuthorization());
         try {
             final boolean authorized = authorizationService.isAuthorized(
-                    null,
                     AuthorizationService.Operation.WRITE,
                     resource);
             if (!authorized) {
-                throw new ResourceAccessNotAuthorizedException(AuthorizationService.Operation.WRITE, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
             }
         } catch (final PluginException ex) {
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
@@ -130,18 +125,15 @@ public class AuthorizationValidator {
     }
 
     public void authorizeEventTypeAdmin(final EventType eventType)
-            throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
         }
 
-        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
-                Collections.singletonMap(AuthorizationService.Operation.ADMIN,
-                        eventType.getAuthorization().getAdmins()));
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
-            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
-                throw new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
-                        "satisfy the authorization `admin` requirements");
+            if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -149,12 +141,17 @@ public class AuthorizationValidator {
     }
 
     public void authorizeStreamRead(final EventType eventType) throws AccessDeniedException {
-        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
-                Collections.singletonMap(AuthorizationService.Operation.READ,
-                        eventType.getAuthorization() == null ? null : eventType.getAuthorization().getReaders()));
-        final Subject subject = null;
-        if (!authorizationService.isAuthorized(subject, AuthorizationService.Operation.READ, resource)) {
-            throw new AccessDeniedException(subject, AuthorizationService.Operation.READ, resource);
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
+        try {
+            if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)) {
+                throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
+            }
+        } catch (final PluginException e) {
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 

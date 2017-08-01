@@ -2,12 +2,6 @@ package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import static com.google.common.base.Charsets.UTF_8;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Stream;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -15,6 +9,14 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 /**
  * Subscription client that uses topology as an object node and separates changeable data to a separate zk node.

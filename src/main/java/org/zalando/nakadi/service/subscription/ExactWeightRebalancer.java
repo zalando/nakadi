@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

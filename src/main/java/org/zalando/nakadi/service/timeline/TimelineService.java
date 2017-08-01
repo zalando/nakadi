@@ -2,6 +2,13 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,12 +20,12 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ConflictException;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -29,9 +36,12 @@ import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -41,14 +51,6 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
-
-import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -90,14 +92,16 @@ public class TimelineService {
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
-            throws ForbiddenAccessException, TimelineException, TopicRepositoryException, InconsistentStateException,
+            throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
-        if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
-            throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
-        }
-
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+
+            if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+                final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+            }
+
             final Storage storage = storageDbRepository.getStorage(storageId)
                     .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
             final Timeline activeTimeline = getTimeline(eventType);
@@ -256,17 +260,18 @@ public class TimelineService {
     }
 
     public void delete(final String eventTypeName, final String timelineId, final Client client)
-            throws ForbiddenAccessException, UnableProcessException, TimelineException {
-        if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
-            throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
-        }
-
+            throws AccessDeniedException, UnableProcessException, TimelineException {
         final EventType eventType;
         try {
             eventType = eventTypeCache.getEventType(eventTypeName);
-        } catch (NoSuchEventTypeException e) {
+
+            if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+                final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+            }
+        } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
-        } catch (InternalNakadiException e) {
+        } catch (final InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         }
 
@@ -331,9 +336,10 @@ public class TimelineService {
     }
 
     public List<Timeline> getTimelines(final String eventTypeName, final Client client)
-            throws ForbiddenAccessException, UnableProcessException, TimelineException {
+            throws AccessDeniedException, UnableProcessException, TimelineException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
-            throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
+            final Resource resource = new EventTypeResource(eventTypeName, null);
+            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
         }
 
         return getTimelines(eventTypeName);

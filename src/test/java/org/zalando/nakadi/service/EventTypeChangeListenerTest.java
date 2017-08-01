@@ -1,18 +1,20 @@
 package org.zalando.nakadi.service;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.zalando.nakadi.repository.db.EventTypeCache;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 
 public class EventTypeChangeListenerTest {
 

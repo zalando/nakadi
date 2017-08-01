@@ -5,8 +5,8 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
@@ -48,9 +48,11 @@ public class HilaRebalanceAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenRebalanceThenPartitionsAreEquallyDistributedAndCommittedOffsetsAreConsidered() throws Exception {
         // write 5 events to each partition
-        range(0, 40)
-                .forEach(x -> publishBusinessEventWithUserDefinedPartition(
-                        eventType.getName(), "blah" + x, String.valueOf(x % 8)));
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(),
+                40,
+                x -> "blah" + x,
+                x -> String.valueOf(x % 8));
 
         // create a session
         final TestStreamingClient clientA = TestStreamingClient
@@ -82,9 +84,11 @@ public class HilaRebalanceAT extends BaseAT {
         Thread.sleep(1000);
 
         // write 5 more events to each partition
-        range(0, 40)
-                .forEach(x -> publishBusinessEventWithUserDefinedPartition(
-                        eventType.getName(), "blah_" + x, String.valueOf(x % 8)));
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(),
+                40,
+                x -> "blah_" + x,
+                x -> String.valueOf(x % 8));
 
         // wait till all event arrive
         waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
@@ -114,9 +118,8 @@ public class HilaRebalanceAT extends BaseAT {
         Thread.sleep(1000);
 
         // write 5 more events to each partition
-        range(0, 40)
-                .forEach(x -> publishBusinessEventWithUserDefinedPartition(
-                        eventType.getName(), "blah__" + x, String.valueOf(x % 8)));
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 40, x -> "blah__" + x, x -> String.valueOf(x % 8));
 
         // check that after second rebalance all events were consumed by first client
         waitFor(() -> assertThat(clientA.getBatches(), hasSize(100)));
@@ -124,9 +127,8 @@ public class HilaRebalanceAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
-        range(0, 2)
-                .forEach(x -> publishBusinessEventWithUserDefinedPartition(
-                        eventType.getName(), "blah" + x, String.valueOf(x % 8)));
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 2, x -> "blah" + x, x -> String.valueOf(x % 8));
 
         final TestStreamingClient clientA = TestStreamingClient
                 .create(URL, subscription.getId(), "")

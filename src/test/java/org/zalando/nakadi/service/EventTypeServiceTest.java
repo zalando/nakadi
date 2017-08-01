@@ -2,8 +2,17 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import java.util.ArrayList;
+import java.util.Optional;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -17,23 +26,11 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.validation.SchemaEvolutionService;
-
-import java.util.ArrayList;
-import java.util.Optional;
-
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyZeroInteractions;
-import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
 
 public class EventTypeServiceTest {
 
@@ -75,8 +72,8 @@ public class EventTypeServiceTest {
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
-            eventTypeService.delete(eventType.getName(), new FullAccessClient("client-ID"));
-        } catch (EventTypeDeletionException e) {
+            eventTypeService.delete(eventType.getName());
+        } catch (final EventTypeDeletionException e) {
             // check that topics are not deleted in Kafka
             verifyZeroInteractions(topicsToDelete);
             return;

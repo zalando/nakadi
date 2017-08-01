@@ -1,5 +1,8 @@
 package org.zalando.nakadi.service.timeline;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,8 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LocalLocking {
     private static final Logger LOG = LoggerFactory.getLogger(LocalLocking.class);

@@ -3,9 +3,14 @@ package org.zalando.nakadi.webservice.timelines;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import static com.jayway.restassured.RestAssured.given;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
+import org.apache.http.HttpStatus;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventType;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,16 +18,12 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
-import org.apache.http.HttpStatus;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
+
+import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 
 public class TimelineConsumptionTest {
     private static EventType eventType;
@@ -34,14 +35,13 @@ public class TimelineConsumptionTest {
         final CountDownLatch finished = new CountDownLatch(1);
         final AtomicReference<String[]> inTimeCursors = new AtomicReference<>();
         createParallelConsumer(eventType.getName(), 8, finished, inTimeCursors::set);
-
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i ->  "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         finished.await();
         cursorsDuringPublish = inTimeCursors.get();
     }
@@ -55,8 +55,7 @@ public class TimelineConsumptionTest {
         new Thread(() -> {
             started.countDown();
             try {
-                // Suppose that everything will take less then 30 seconds
-                inTimeCursors.accept(readCursors(eventTypeName, "BEGIN", expectedEvents, 30));
+                inTimeCursors.accept(readCursors(eventTypeName, "BEGIN", expectedEvents));
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             } finally {
@@ -72,11 +71,11 @@ public class TimelineConsumptionTest {
         final CountDownLatch finished = new CountDownLatch(1);
         final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
         createParallelConsumer(eventType.getName(), 6, finished, inTimelineCursors::set);
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         deleteTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         finished.await();
         Assert.assertArrayEquals(
                 new String[]{
@@ -96,14 +95,14 @@ public class TimelineConsumptionTest {
         final CountDownLatch finished = new CountDownLatch(1);
         final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
         createParallelConsumer(eventType.getName(), 5, finished, inTimelineCursors::set);
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName()); // Still old topic
         createTimeline(eventType.getName()); // New topic
         createTimeline(eventType.getName()); // Another new topic
-        IntStream.range(0, 1).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 1, i -> "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
         createTimeline(eventType.getName());
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         finished.await();
         Assert.assertArrayEquals(
                 new String[]{
@@ -116,7 +115,7 @@ public class TimelineConsumptionTest {
                 inTimelineCursors.get()
         );
 
-        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 5, 2);
+        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 5);
         Assert.assertArrayEquals(
                 new String[]{
                         "001-0001-000000000000000000",
@@ -138,7 +137,7 @@ public class TimelineConsumptionTest {
         createTimeline(eventType.getName()); // Still old topic
         createTimeline(eventType.getName()); // New topic
         createTimeline(eventType.getName()); // Another new topic
-        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         finished.await();
         Assert.assertArrayEquals(
                 new String[]{
@@ -147,7 +146,7 @@ public class TimelineConsumptionTest {
                 },
                 inTimelineCursors.get()
         );
-        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 2, 1);
+        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 2);
         Assert.assertArrayEquals(
                 new String[]{
                         "001-0003-000000000000000000",
@@ -190,7 +189,7 @@ public class TimelineConsumptionTest {
         // Do not test last case, because it makes no sense...
         for (int idx = -1; idx < expected.length - 1; ++idx) {
             final String[] receivedOffsets = readCursors(eventType.getName(),
-                    idx == -1 ? "BEGIN" : expected[idx], expected.length - 1 - idx, 1);
+                    idx == -1 ? "BEGIN" : expected[idx], expected.length - 1 - idx);
             final String[] testedOffsets = Arrays.copyOfRange(expected, idx + 1, expected.length);
             Assert.assertArrayEquals(testedOffsets, receivedOffsets);
         }
@@ -212,15 +211,14 @@ public class TimelineConsumptionTest {
 
     }
 
-    private static String[] readCursors(
-            final String eventTypeName, final String startOffset, final int streamLimit, final int streamTimeout)
+    private static String[] readCursors(final String eventTypeName, final String startOffset, final int streamLimit)
             throws IOException {
         final Response response = given()
                 .header(new Header("X-nakadi-cursors", "[{\"partition\": \"0\", \"offset\": \"" + startOffset + "\"}]"))
                 .param("batch_limit", "1")
                 .param("batch_flush_timeout", "1")
                 .param("stream_limit", streamLimit)
-                .param("stream_timeout", streamTimeout)
+                .param("stream_timeout", 60)
                 .when()
                 .get("/event-types/" + eventTypeName + "/events");
 

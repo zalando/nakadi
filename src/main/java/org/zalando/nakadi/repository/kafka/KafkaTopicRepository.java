@@ -1,30 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
-import static com.google.common.collect.Lists.newArrayList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import static java.util.Collections.unmodifiableList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import static java.util.stream.Collectors.toList;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.server.ConfigType;
@@ -39,14 +15,12 @@ import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -66,6 +40,36 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
+import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
+import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -134,6 +138,21 @@ public class KafkaTopicRepository implements TopicRepository {
                     " already exists (or wasn't completely removed yet)", e);
         } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
+        }
+        // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
+        // receive information about topic creation, which in turn will block publishing.
+        // This kind of behavior was observed during tests, but may also present on highly loaded event types.
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        return null != consumer.partitionsFor(topic);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                        .withWaitBetweenEachTry(100L)
+                        .withResultsThatForceRetry(Boolean.FALSE));
+        if (!Boolean.TRUE.equals(allowsConsumption)) {
+            throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }
     }
 

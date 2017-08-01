@@ -1,7 +1,10 @@
 package org.zalando.nakadi.repository.db;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
@@ -10,12 +13,11 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -23,20 +25,15 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
-import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     private EventTypeRepository repository;
 
-    public EventTypeDbRepositoryTest() {
-        super("zn_data.event_type_schema", "zn_data.event_type");
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        repository = new EventTypeDbRepository(template, mapper);
+        repository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
     }
 
     @Test
@@ -45,18 +42,14 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
-        assertThat("Number of rows should increase", rows, equalTo(1));
-
         final SqlRowSet rs =
-                template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
+                template.queryForRowSet("SELECT et_topic, et_event_type_object FROM zn_data.event_type WHERE et_name=?",
+                        eventType.getName());
         rs.next();
 
-        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
-        assertThat("Topic is persisted", rs.getString(2), equalTo(eventType.getTopic()));
+        assertThat("Topic is persisted", rs.getString(1), equalTo(eventType.getTopic()));
 
-        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        final EventType persisted = mapper.readValue(rs.getString(3), EventType.class);
+        final EventType persisted = TestUtils.OBJECT_MAPPER.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
@@ -70,17 +63,17 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        final int rows = template.queryForObject(
+                "SELECT count(*) FROM zn_data.event_type_schema where ets_event_type_name=?",
+                Integer.class, eventType.getName());
         assertThat("Number of rows should increase", rows, equalTo(1));
 
-        final SqlRowSet rs =
-                template.queryForRowSet("SELECT ets_event_type_name, ets_schema_object FROM zn_data.event_type_schema");
+        final SqlRowSet rs = template.queryForRowSet(
+                "SELECT ets_schema_object FROM zn_data.event_type_schema where ets_event_type_name=?",
+                eventType.getName());
         rs.next();
 
-        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
-
-        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        final EventTypeSchema persisted = mapper.readValue(rs.getString(2), EventTypeSchema.class);
+        final EventTypeSchema persisted = TestUtils.OBJECT_MAPPER.readValue(rs.getString(1), EventTypeSchema.class);
 
         assertThat(persisted.getVersion(), equalTo(eventType.getSchema().getVersion()));
         assertThat(persisted.getCreatedAt(), notNullValue());
@@ -135,16 +128,16 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.update(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        final int rows = template.queryForObject(
+                "SELECT count(*) FROM zn_data.event_type_schema WHERE ets_event_type_name=?",
+                Integer.class, eventType.getName());
         assertThat("Number of rows should increase", rows, equalTo(1));
 
-        final SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+        final SqlRowSet rs = template.queryForRowSet(
+                "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name=?", eventType.getName());
         rs.next();
 
-        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
-
-        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        final EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
+        final EventType persisted = TestUtils.OBJECT_MAPPER.readValue(rs.getString(1), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getOwningApplication(), equalTo(eventType.getOwningApplication()));
@@ -164,7 +157,9 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.update(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        final int rows = template.queryForObject(
+                "SELECT count(*) FROM zn_data.event_type_schema where ets_event_type_name=?",
+                Integer.class, eventType.getName());
         assertThat("Number of rows should increase", rows, equalTo(2));
     }
 
@@ -176,7 +171,10 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         repository.saveEventType(eventType1);
         repository.saveEventType(eventType2);
 
-        final List<EventType> eventTypes = repository.list();
+        final List<EventType> eventTypes = repository.list().stream()
+                .filter(et -> et.getName() != null)
+                .filter(et -> et.getName().equals(eventType1.getName()) || et.getName().equals(eventType2.getName()))
+                .collect(Collectors.toList());
 
         assertThat(eventTypes, hasSize(2));
     }
@@ -184,27 +182,35 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenRemoveThenDeleteFromDatabase() throws Exception {
         final EventType eventType = buildDefaultEventType();
+
         insertEventType(eventType);
+
+        int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type where et_name=?", Integer.class,
+                eventType.getName());
+        assertThat("After inserting event type it is present in db", rows, equalTo(1));
 
         repository.removeEventType(eventType.getName());
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
-        assertThat("Number of rows should encrease", rows, equalTo(0));
-
-        final int schemaRows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
-        assertThat("Number of rows should decrease", schemaRows, equalTo(0));
+        rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type where et_name=?", Integer.class,
+                eventType.getName());
+        assertThat("After deleting event type it is not present in db", rows, equalTo(0));
     }
 
     @Test
     public void unknownAttributesAreIgnoredWhenDesserializing() throws Exception {
-        final String eventTypeName = randomValidEventTypeName();
+        final EventType eventType = buildDefaultEventType();
+        final ObjectNode node = (ObjectNode) TestUtils.OBJECT_MAPPER.readTree(
+                TestUtils.OBJECT_MAPPER.writeValueAsString(eventType));
+        node.set("unknown_attribute", new TextNode("will just be ignored"));
+
+        final String eventTypeName = eventType.getName();
         final String topic = randomUUID();
         final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
                 "VALUES (?, ?, to_json(?::json))";
         template.update(insertSQL,
                 eventTypeName,
                 topic,
-                "{\"unknow_attribute\": \"will just be ignored\"}");
+                TestUtils.OBJECT_MAPPER.writeValueAsString(node));
 
         final EventType persistedEventType = repository.findByName(eventTypeName);
 
@@ -217,6 +223,6 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         template.update(insertSQL,
                 eventType.getName(),
                 eventType.getTopic(),
-                mapper.writer().writeValueAsString(eventType));
+                TestUtils.OBJECT_MAPPER.writer().writeValueAsString(eventType));
     }
 }

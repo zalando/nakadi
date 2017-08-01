@@ -1,23 +1,11 @@
 package org.zalando.nakadi.webservice;
 
-import static com.google.common.base.Charsets.UTF_8;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import static java.text.MessageFormat.format;
-import java.util.List;
 import org.apache.curator.framework.CuratorFramework;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.After;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
@@ -37,11 +25,25 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.NewZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+
+import java.util.List;
+
+import static com.google.common.base.Charsets.UTF_8;
+import static java.text.MessageFormat.format;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
-import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 public class CursorsServiceAT extends BaseAT {
 

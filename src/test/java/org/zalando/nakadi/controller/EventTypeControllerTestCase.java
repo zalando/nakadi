@@ -1,16 +1,13 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
@@ -32,6 +29,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.Problem;
@@ -50,7 +48,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
@@ -71,7 +68,6 @@ public class EventTypeControllerTestCase {
     protected final Enrichment enrichment = mock(Enrichment.class);
     protected final UUIDGenerator uuid = mock(UUIDGenerator.class);
     protected final UUID randomUUID = new UUIDGenerator().randomUUID();
-    protected final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     protected final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     protected final SecuritySettings settings = mock(SecuritySettings.class);
     protected final ApplicationService applicationService = mock(ApplicationService.class);
@@ -95,7 +91,7 @@ public class EventTypeControllerTestCase {
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
-                "t2.large", objectMapper, nakadiSettings);
+                "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
@@ -114,16 +110,13 @@ public class EventTypeControllerTestCase {
                 featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings, settings);
         doReturn(randomUUID).when(uuid).randomUUID();
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
-
         doReturn(true).when(applicationService).exists(any());
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .setControllerAdvice(new ExceptionHandling())
                 .build();
@@ -138,7 +131,7 @@ public class EventTypeControllerTestCase {
     }
 
     protected ResultActions postEventType(final EventType eventType) throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
+        final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
         return postEventType(content);
     }
@@ -152,13 +145,13 @@ public class EventTypeControllerTestCase {
 
     protected ResultActions putEventType(final EventType eventType, final String name, final String clientId)
             throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
+        final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
         return putEventType(content, name, clientId);
     }
 
     protected ResultActions putEventType(final EventType eventType, final String name) throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
+        final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
         return putEventType(content, name);
     }
@@ -184,16 +177,11 @@ public class EventTypeControllerTestCase {
     }
 
     protected SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
-    }
-
-    protected String asJsonString(final Object object) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(object);
+        return sameJSONAs(TestUtils.OBJECT_MAPPER.writeValueAsString(expectedProblem));
     }
 
     protected void disableETDeletionFeature() {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
         doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
     }
 

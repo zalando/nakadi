@@ -151,12 +151,9 @@ public class SubscriptionService {
         }
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId, final Client client) {
+    public Result<Void> deleteSubscription(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            if (!client.idMatches(subscription.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this subscription");
-            }
 
             subscriptionRepository.deleteSubscription(subscriptionId);
             final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(

@@ -1,7 +1,6 @@
 package org.zalando.nakadi.validation;
 
 import org.json.JSONObject;
-
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 

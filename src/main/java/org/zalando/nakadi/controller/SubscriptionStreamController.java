@@ -34,7 +34,6 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import org.zalando.problem.Problem;
@@ -102,7 +101,7 @@ public class SubscriptionStreamController {
                 try {
                     if (ex instanceof AccessDeniedException) {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
-                                errorMessage((AccessDeniedException) ex)));
+                                ((AccessDeniedException) ex).explain()));
                     }
                     if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());

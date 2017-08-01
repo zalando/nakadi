@@ -1,28 +1,12 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -43,14 +27,28 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
-import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 
 public class PartitionsControllerTest {
 
@@ -87,21 +85,14 @@ public class PartitionsControllerTest {
 
     private CursorOperationsService cursorOperationsService;
 
-    private JsonTestHelper jsonHelper;
-
     private MockMvc mockMvc;
 
     private SecuritySettings settings;
-
-    private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
-        final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-        jsonHelper = new JsonTestHelper(objectMapper);
-
         eventTypeRepositoryMock = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
         eventTypeCache = mock(EventTypeCache.class);
@@ -118,9 +109,10 @@ public class PartitionsControllerTest {
 
         settings = mock(SecuritySettings.class);
 
+        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
+
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .setControllerAdvice(new ExceptionHandling())
                 .build();
@@ -137,7 +129,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(TEST_TOPIC_PARTITIONS)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(TEST_TOPIC_PARTITIONS)));
     }
 
     @Test
@@ -147,7 +139,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", UNKNOWN_EVENT_TYPE)))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -159,7 +151,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -172,7 +164,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(TEST_TOPIC_PARTITION_0)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(TEST_TOPIC_PARTITION_0)));
     }
 
     @Test
@@ -209,7 +201,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s?consumed_offset=1", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new CursorLag(
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(new CursorLag(
                         "0",
                         "001-0000-0",
                         "001-0000-1",
@@ -237,7 +229,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", UNKNOWN_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -252,7 +244,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, UNKNOWN_PARTITION)))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -264,7 +256,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
 }

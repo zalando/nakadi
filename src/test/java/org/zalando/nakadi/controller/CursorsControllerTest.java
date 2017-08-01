@@ -1,32 +1,13 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.springframework.http.HttpStatus;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -44,16 +25,34 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.CursorCommitResult;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.problem.Problem;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import org.zalando.nakadi.view.CursorCommitResult;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-import org.zalando.problem.Problem;
 
 public class CursorsControllerTest {
 
@@ -75,15 +74,12 @@ public class CursorsControllerTest {
             new SubscriptionCursor("1", "10", MY_ET, TOKEN));
 
     private final CursorsService cursorsService = mock(CursorsService.class);
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
-    private final JsonTestHelper jsonHelper;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final CursorConverter cursorConverter;
 
     public CursorsControllerTest() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
 
         featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
@@ -104,15 +100,12 @@ public class CursorsControllerTest {
         final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
                 cursorConverter, tokenService);
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
-
         final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
 
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
@@ -135,7 +128,7 @@ public class CursorsControllerTest {
                         .collect(Collectors.toList()));
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(expectation)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectation)));
     }
 
     @Test
@@ -205,12 +198,12 @@ public class CursorsControllerTest {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     private ResultActions postCursors(final List<SubscriptionCursor> cursors) throws Exception {
         final ItemsWrapper<SubscriptionCursor> cursorsWrapper = new ItemsWrapper<>(cursors);
-        return postCursorsString(objectMapper.writeValueAsString(cursorsWrapper));
+        return postCursorsString(TestUtils.OBJECT_MAPPER.writeValueAsString(cursorsWrapper));
     }
 
     private ResultActions postCursorsString(final String cursors) throws Exception {

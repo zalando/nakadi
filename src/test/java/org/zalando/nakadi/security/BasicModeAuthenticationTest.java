@@ -1,9 +1,10 @@
 package org.zalando.nakadi.security;
 
 
-import org.zalando.nakadi.config.SecuritySettings;
-import java.util.stream.Stream;
 import org.junit.Test;
+import org.zalando.nakadi.config.SecuritySettings;
+
+import java.util.stream.Stream;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 

@@ -1,18 +1,12 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalScopeException;
-
 import java.util.Set;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 public class FullAccessClient extends Client {
 
     public FullAccessClient(final String clientId) {
         super(clientId);
-    }
-
-    @Override
-    public boolean idMatches(final String clientId) {
-        return true;
     }
 
     @Override

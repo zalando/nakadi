@@ -1,21 +1,21 @@
 package org.zalando.nakadi.enrichment;
 
+import org.joda.time.DateTimeUtils;
+import org.json.JSONObject;
+import org.junit.Test;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.util.FlowIdUtils;
-import org.joda.time.DateTimeUtils;
-import org.json.JSONObject;
-import org.junit.Test;
 import org.zalando.nakadi.utils.TestUtils;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.junit.Assert.assertThat;
 
 public class MetadataEnrichmentStrategyTest {
     private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy();

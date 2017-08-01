@@ -1,10 +1,14 @@
 package org.zalando.nakadi.controller;
 
+import java.util.List;
+import javax.validation.Valid;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.status;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,9 +24,9 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.exceptions.ConflictException;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -35,19 +39,13 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.validation.Valid;
-import javax.ws.rs.core.Response;
-import java.util.List;
-
-import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -128,7 +126,7 @@ public class EventTypeController {
                                     final NativeWebRequest request,
                                     final Client client)
             throws EventTypeDeletionException,
-            ForbiddenAccessException,
+            AccessDeniedException,
             NoEventTypeException,
             ConflictException,
             ServiceTemporarilyUnavailableException {
@@ -136,7 +134,7 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
 
-        eventTypeService.delete(eventTypeName, client);
+        eventTypeService.delete(eventTypeName);
 
         return status(HttpStatus.OK).build();
     }
@@ -189,13 +187,6 @@ public class EventTypeController {
     public ResponseEntity<Problem> conflict(final ConflictException exception, final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.CONFLICT, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(ForbiddenAccessException.class)
-    public ResponseEntity<Problem> forbiddenAccess(final ForbiddenAccessException exception,
-                                                   final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 
     @ExceptionHandler(NoEventTypeException.class)

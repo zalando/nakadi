@@ -39,7 +39,7 @@ import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
-import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -106,13 +106,13 @@ public class EventPublisherTest {
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
-    @Test(expected = ResourceAccessNotAuthorizedException.class)
+    @Test(expected = AccessDeniedException.class)
     public void whenPublishAuthorizationIsTakenIntoAccount() throws Exception {
         final EventType et = buildDefaultEventType();
 
         mockSuccessfulValidation(et);
 
-        Mockito.doThrow(new ResourceAccessNotAuthorizedException(null, null))
+        Mockito.doThrow(new AccessDeniedException(null, null))
                 .when(authzValidator)
                 .authorizeEventTypeWrite(Mockito.eq(et));
 

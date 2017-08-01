@@ -6,46 +6,43 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
+import static com.jayway.restassured.http.ContentType.JSON;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+import static java.util.stream.IntStream.rangeClosed;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.hamcrest.Matchers;
-import org.junit.After;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsEqual.equalTo;
 import org.junit.Before;
 import org.junit.Test;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.webservice.hila.StreamBatch;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static com.jayway.restassured.http.ContentType.JSON;
-import static java.util.stream.IntStream.rangeClosed;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.core.IsEqual.equalTo;
-import static org.springframework.http.HttpStatus.CREATED;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.NO_CONTENT;
-import static org.springframework.http.HttpStatus.OK;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.hila.StreamBatch;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
@@ -64,13 +61,12 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
+        createEventType();
     }
 
     @SuppressWarnings("unchecked")
     @Test(timeout = 15000)
     public void userJourneyM1() throws InterruptedException, IOException {
-        // create event-type
-        createEventType();
 
         // get event type
         jsonRequestSpec()
@@ -195,6 +191,13 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("oldest_available_offset[0]", equalTo("000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(1));
 
+    }
+
+    @Test(timeout = 3000)
+    public void testEventTypeDeletion() {
+        // The reason for separating this test is https://issues.apache.org/jira/browse/KAFKA-2948
+        // If producer was used to publish an event, than it is impossible to delete this event type anymore, cause
+        // producer will not clean up metadata cache, trying to log that everything is very bad.
         // delete event type
         jsonRequestSpec()
                 .when()
@@ -225,11 +228,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     @Test(timeout = 15000)
     public void userJourneyHila() throws InterruptedException, IOException {
-        // create event-type and push some events
-        createEventType();
         postEvents(rangeClosed(0, 3)
-                .boxed()
-                .map(x -> "{\"foo\":\"bar" + x + "\"}")
+                .mapToObj(x -> "{\"foo\":\"bar" + x + "\"}")
                 .collect(Collectors.toList())
                 .toArray(new String[4]));
 
@@ -302,11 +302,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .delete("/subscriptions/{sid}", subscription.getId())
                 .then()
                 .statusCode(NO_CONTENT.value());
-    }
-
-    @After
-    public void after() {
-        jsonRequestSpec().delete("/event-types/" + eventTypeName);
     }
 
     private void createEventType() {

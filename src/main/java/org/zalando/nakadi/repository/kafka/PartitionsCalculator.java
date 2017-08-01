@@ -2,6 +2,9 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventTypeStatistics;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -10,8 +13,6 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Stream;
-import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.EventTypeStatistics;
 
 public class PartitionsCalculator {
     // Contains mapping from message size (in bytes) to list of throughput of kafka with (index + 1) as partition count.

@@ -22,7 +22,6 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -70,10 +69,10 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request, final Client client) {
+                                                final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request,
+        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
                 HttpStatus.NO_CONTENT);
     }
 
