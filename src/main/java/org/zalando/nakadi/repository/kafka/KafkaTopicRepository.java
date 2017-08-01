@@ -2,7 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
 import kafka.admin.AdminUtils;
-import kafka.common.TopicExistsException;
+import kafka.admin.RackAwareMode;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -13,6 +13,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
@@ -43,7 +44,6 @@ import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -131,7 +131,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 final Properties topicConfig = new Properties();
                 topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
-                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
+                        RackAwareMode.Enforced$.MODULE$);
             });
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + topic +
@@ -331,9 +332,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     .collect(Collectors.toList());
 
             consumer.assign(partitionsToQuery);
-            consumer.seekToBeginning(partitionsToQuery.toArray(new TopicPartition[0]));
+            consumer.seekToBeginning(partitionsToQuery);
             final List<Long> begins = partitionsToQuery.stream().map(consumer::position).collect(toList());
-            consumer.seekToEnd(partitionsToQuery.toArray(new TopicPartition[0]));
+            consumer.seekToEnd(partitionsToQuery);
             final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
 
             final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
@@ -369,18 +370,18 @@ public class KafkaTopicRepository implements TopicRepository {
                         .map(p -> new TopicPartition(p.topic(), p.partition()))
                         .forEach(tp -> backMap.put(tp, timeline));
             }
-            final TopicPartition[] kafkaTPs = backMap.keySet().toArray(new TopicPartition[backMap.size()]);
-            consumer.assign(Arrays.asList(kafkaTPs));
+            final List<TopicPartition> kafkaTPs = new ArrayList<>(backMap.keySet());
+            consumer.assign(kafkaTPs);
             consumer.seekToBeginning(kafkaTPs);
-            final long[] begins = Stream.of(kafkaTPs).mapToLong(consumer::position).toArray();
+            final long[] begins = kafkaTPs.stream().mapToLong(consumer::position).toArray();
 
             consumer.seekToEnd(kafkaTPs);
-            final long[] ends = Stream.of(kafkaTPs).mapToLong(consumer::position).toArray();
+            final long[] ends = kafkaTPs.stream().mapToLong(consumer::position).toArray();
 
-            return IntStream.range(0, kafkaTPs.length)
+            return IntStream.range(0, kafkaTPs.size())
                     .mapToObj(i -> new KafkaPartitionStatistics(
-                            backMap.get(kafkaTPs[i]),
-                            kafkaTPs[i].partition(),
+                            backMap.get(kafkaTPs.get(i)),
+                            kafkaTPs.get(i).partition(),
                             begins[i],
                             ends[i] - 1))
                     .collect(toList());
@@ -402,7 +403,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final List<TopicPartition> kafkaTPs = newArrayList(backMap.keySet());
             consumer.assign(kafkaTPs);
-            consumer.seekToEnd(kafkaTPs.toArray(new TopicPartition[kafkaTPs.size()]));
+            consumer.seekToEnd(kafkaTPs);
             return backMap.entrySet().stream()
                     .map(e -> {
                         final TopicPartition tp = e.getKey();
