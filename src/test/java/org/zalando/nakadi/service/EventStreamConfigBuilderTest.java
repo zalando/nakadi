@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 

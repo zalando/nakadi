@@ -1,6 +1,7 @@
 package org.zalando.nakadi.util;
 
 import com.google.common.collect.ImmutableSet;
+
 import java.util.Set;
 
 public class NakadiCollectionUtils {

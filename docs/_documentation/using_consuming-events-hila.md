@@ -2,10 +2,9 @@
 title: Subscriptions
 position: 9
 ---
+## Subscriptions
 
-## Consuming events with the High-level API (Subscriptions)
-
-Subscriptions (also knows as the high-level API) allow clients to consume events, where the Nakadi server store offsets and 
+Subscriptions allow clients to consume events, where the Nakadi server store offsets and 
 automatically manages reblancing of partitions across consumer clients. This allows clients 
 to avoid managing stream state locally.
 
@@ -43,7 +42,7 @@ For a more detailed description and advanced configuration options please take a
 A Subscription can be created by posting to the `/subscriptions` collection resource:
 
 ```sh
-curl -v -XPOST "https://localhost:8080/subscriptions" -H "Content-type: application/json" -d '{
+curl -v -XPOST "http://localhost:8080/subscriptions" -H "Content-type: application/json" -d '{
     "owning_application": "order-service",
     "event_types": ["order.ORDER_RECEIVED"]
   }'    
@@ -72,7 +71,7 @@ Content-Type: application/json;charset=UTF-8
 Consuming events is done by sending a GET request to the Subscriptions's event resource (`/subscriptions/{subscription-id}/events`): 
 
 ```sh
-curl -v -XGET "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
+curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
 ```
 
 The response is a stream that groups events into JSON batches separated by an endline (`\n`) character. The output looks like this:
@@ -115,7 +114,6 @@ The Subscription API provides a guarantee of _at-least-once_ delivery. In practi
 
 A useful technique to detect and handle duplicate events on consumer side is to be idempotent and to check `eid` field of event metadata. Note: `eid` checking is not possible using the "undefined" category, as it's only supplied in the "business" and "data" categories.
 
-
 ### Subscription Cursors
 
 The cursors in the Subscription API have the following structure:
@@ -144,7 +142,7 @@ The fields are:
 Cursors can be committed by posting to Subscription's cursor resource (`/subscriptions/{subscriptionId}/cursors`), for example:
 
 ```sh
-curl -v -XPOST "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"\
+curl -v -XPOST "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"\
   -H "X-Nakadi-StreamId: ae1e39c3-219d-49a9-b444-777b4b03e84c" \
   -H "Content-type: application/json" \
   -d '{
@@ -191,14 +189,14 @@ of 60 seconds saves the day again. The first client will have 60 seconds to do t
 It is not necessary to commit each batch. When the cursor is committed, all events that
 are before this cursor in the partition will also be considered committed. For example suppose the offset was at `e0` in the stream below,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
      offset--^
 ```
 
 and the stream sent back three batches to the client, where the client committed batch 3 but not batch 1 or batch 2,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
      offset--^       
                 |--- batch1 ---|--- batch2 ---|--- batch3 ---|
@@ -215,7 +213,7 @@ client: cursor commit --> |--- batch3 ---|
 
 then the offset will be moved all the way up to `e9` implicitly committing all the events that were in the previous batches 1 and 2,
 
-```
+```text
 partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
                                                           ^-- offset
 ```
@@ -226,12 +224,12 @@ partition: [ e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 ]
 You can also check the current position of your subscription:
 
 ```sh
-curl -v -XGET "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
+curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
 ```
 
 The response will be a list of current cursors that reflect the last committed offsets:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [
@@ -256,12 +254,12 @@ HTTP/1.1 200 OK
 The API also provides statistics on your subscription:
 
 ```sh
-curl -v -XGET "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/stats"
+curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/stats"
 ```
 
 The output will contain the statistics for all partitions of the stream:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [
@@ -291,12 +289,12 @@ HTTP/1.1 200 OK
 To delete a Subscription, send a DELETE request to the Subscription resource using its `id` field (`/subscriptions/{id}`):
 
 ```sh
-curl -v -X DELETE "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
+curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
 
 Successful response:
 
-```
+```text
 HTTP/1.1 204 No Content
 ```
 
@@ -305,7 +303,7 @@ HTTP/1.1 204 No Content
 To view a Subscription send a GET request to the Subscription resource resource using its `id` field (`/subscriptions/{id}`): :
 
 ```sh
-curl -v -XGET "https://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
+curl -v -XGET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
 
 Successful response:
@@ -327,12 +325,12 @@ HTTP/1.1 200 OK
 To get a list of subscriptions send a GET request to the Subscription collection resource:
 
 ```sh
-curl -v -XGET "https://localhost:8080/subscriptions"
+curl -v -XGET "http://localhost:8080/subscriptions"
 ```
 
 Example answer:
 
-```
+```json
 HTTP/1.1 200 OK
 {
   "items": [

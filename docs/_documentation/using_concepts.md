@@ -30,3 +30,53 @@ In summary, applications using Nakadi can be grouped as follows:
 <a class="anchor" href="#thelog" id="thelog"></a>
 [1] For more detail on partitions and the design of streams see ["The Log"](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying) by Jay Kreps.
 
+#### Cursors, Offsets and Partitions
+
+By default the `events` resource will consume from all partitions of an event 
+type and from the end (or "tail") of the stream. To select only particular 
+partitions and a position where in the stream to start, you can supply 
+an `X-Nakadi-Cursors` header in the request:
+
+```sh
+curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
+  -H 'X-Nakadi-Cursors: [{"partition": "0", "offset":"12"}]'
+```
+
+The header value is a JSON array of _cursors_. Each cursor in the array 
+describes its partition for the stream and an offset to stream from. Note that 
+events within the same partition maintain their overall order.
+
+The `offset` value of the cursor allows you select where the in the stream you 
+want to consume from. This can be any known offset value, or the dedicated value 
+`BEGIN` which will start the stream from the beginning. For example, to read 
+from partition `0` from the beginning:
+
+```sh
+curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
+  -H 'X-Nakadi-Cursors:[{"partition": "0", "offset":"BEGIN"}]'
+```
+
+The details of the partitions and their offsets for an event type are 
+available via its `partitions` resource.
+
+#### Event Stream Keepalives
+
+If there are no events to be delivered Nakadi will keep a streaming connection open by 
+periodically sending a batch with no events but which contains a `cursor` pointing to 
+the current offset. For example:
+
+```sh
+curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events 
+      
+
+HTTP/1.1 200 OK
+
+{"cursor":{"partition":"0","offset":"6"},"events":[{"order_number": "ORDER_003", "metadata": {"eid": "4cc6d2f0-eb01-11e5-b606-1c6f65464fc6", "occurred_at": "2016-03-15T23:58:15+01:00"}}]}
+{"cursor":{"partition":"0","offset":"6"}}
+{"cursor":{"partition":"0","offset":"6"}}
+{"cursor":{"partition":"0","offset":"6"}}
+{"cursor":{"partition":"0","offset":"6"}}
+```
+
+This can be treated as a keep-alive control for some load balancers.
+

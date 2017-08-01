@@ -3,16 +3,9 @@ package org.zalando.nakadi.service.subscription;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -31,6 +24,15 @@ import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -128,9 +130,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        // bugfix ARUHA-485
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> onNodeShutdown()));
-        streamInternal(new StartingState());
+        try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
+            streamInternal(new StartingState());
+        } catch (final IOException ex) {
+            log.error(
+                    "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
+                    getSubscription(),
+                    ex);
+        }
     }
 
     void onNodeShutdown() {

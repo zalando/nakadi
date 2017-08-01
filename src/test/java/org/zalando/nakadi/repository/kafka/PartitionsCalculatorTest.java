@@ -1,12 +1,13 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.io.InputStream;
 import org.junit.Assert;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.utils.TestUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -15,11 +16,10 @@ import static org.hamcrest.Matchers.notNullValue;
 
 public class PartitionsCalculatorTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
     private static final int MAX_PARTITION_COUNT = 1000;
 
     private static PartitionsCalculator buildTest() throws IOException {
-        return PartitionsCalculator.load(OBJECT_MAPPER, "t2.large", getTestStream(), 0, MAX_PARTITION_COUNT);
+        return PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, "t2.large", getTestStream(), 0, MAX_PARTITION_COUNT);
     }
 
     private static InputStream getTestStream() {
@@ -28,13 +28,13 @@ public class PartitionsCalculatorTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testLoadFailForUnknownName() throws IOException {
-        PartitionsCalculator.load(OBJECT_MAPPER, "null", getTestStream(), 0, 1000);
+        PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, "null", getTestStream(), 0, 1000);
     }
 
     @Test
     public void testLoadCorrectForCorrectName() throws IOException {
         for (final String name : new String[]{"t2.large", "c4.xlarge"}) {
-            final PartitionsCalculator calculatorMap = PartitionsCalculator.load(OBJECT_MAPPER, name,
+            final PartitionsCalculator calculatorMap = PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, name,
                     getTestStream(), 0, MAX_PARTITION_COUNT);
             assertThat(calculatorMap, notNullValue());
         }

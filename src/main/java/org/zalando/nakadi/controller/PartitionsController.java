@@ -1,18 +1,10 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.Lists;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import static org.springframework.http.ResponseEntity.ok;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +36,16 @@ import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController

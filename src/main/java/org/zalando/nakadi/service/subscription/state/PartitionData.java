@@ -1,18 +1,19 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
-import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 class PartitionData {
     private final ZKSubscription subscription;
@@ -26,17 +27,21 @@ class PartitionData {
     private int keepAliveInARow;
 
     @VisibleForTesting
-    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset) {
-        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class));
+    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset, final long currentTime) {
+        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
     }
 
-    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset, final Logger log) {
+    PartitionData(
+            final ZKSubscription subscription,
+            final NakadiCursor commitOffset,
+            final Logger log,
+            final long currentTime) {
         this.subscription = subscription;
         this.log = log;
 
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
-        this.lastSendMillis = System.currentTimeMillis();
+        this.lastSendMillis = currentTime;
     }
 
     @Nullable

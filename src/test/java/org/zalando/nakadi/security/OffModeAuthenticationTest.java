@@ -1,8 +1,8 @@
 package org.zalando.nakadi.security;
 
 
-import org.zalando.nakadi.config.SecuritySettings;
 import org.junit.Test;
+import org.zalando.nakadi.config.SecuritySettings;
 
 import java.util.stream.Stream;
 

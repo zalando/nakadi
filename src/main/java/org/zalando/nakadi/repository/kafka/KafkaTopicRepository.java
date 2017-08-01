@@ -16,6 +16,8 @@ import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -96,6 +98,82 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
+    public List<String> listTopics() throws TopicRepositoryException {
+        try {
+            return zkFactory.get()
+                    .getChildren()
+                    .forPath("/brokers/topics");
+        } catch (final Exception e) {
+            throw new TopicRepositoryException("Failed to list topics", e);
+        }
+    }
+
+    @Override
+    public String createTopic(final int partitionCount, final Long retentionTimeMs)
+            throws TopicCreationException {
+        if (retentionTimeMs == null) {
+            throw new IllegalArgumentException("Retention time can not be null");
+        }
+        final String topicName = uuidGenerator.randomUUID().toString();
+        createTopic(topicName,
+                partitionCount,
+                nakadiSettings.getDefaultTopicReplicaFactor(),
+                retentionTimeMs,
+                nakadiSettings.getDefaultTopicRotationMs());
+        return topicName;
+    }
+
+    private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
+                             final long retentionMs, final long rotationMs)
+            throws TopicCreationException {
+        try {
+            doWithZkUtils(zkUtils -> {
+                final Properties topicConfig = new Properties();
+                topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
+                topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
+                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
+                        RackAwareMode.Enforced$.MODULE$);
+            });
+        } catch (final TopicExistsException e) {
+            throw new TopicCreationException("Topic with name " + topic +
+                    " already exists (or wasn't completely removed yet)", e);
+        } catch (final Exception e) {
+            throw new TopicCreationException("Unable to create topic " + topic, e);
+        }
+        // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
+        // receive information about topic creation, which in turn will block publishing.
+        // This kind of behavior was observed during tests, but may also present on highly loaded event types.
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        return null != consumer.partitionsFor(topic);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                        .withWaitBetweenEachTry(100L)
+                        .withResultsThatForceRetry(Boolean.FALSE));
+        if (!Boolean.TRUE.equals(allowsConsumption)) {
+            throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
+        }
+    }
+
+    @Override
+    public void deleteTopic(final String topic) throws TopicDeletionException {
+        try {
+            // this will only trigger topic deletion, but the actual deletion is asynchronous
+            doWithZkUtils(zkUtils -> AdminUtils.deleteTopic(zkUtils, topic));
+        } catch (final Exception e) {
+            throw new TopicDeletionException("Unable to delete topic " + topic, e);
+        }
+    }
+
+    @Override
+    public boolean topicExists(final String topic) throws TopicRepositoryException {
+        return listTopics()
+                .stream()
+                .anyMatch(t -> t.equals(topic));
+    }
+
     private static CompletableFuture<Exception> publishItem(
             final Producer<String, String> producer,
             final String topicId,
@@ -151,67 +229,6 @@ public class KafkaTopicRepository implements TopicRepository {
         return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
                 exception instanceof NetworkException ||
                 exception instanceof UnknownServerException;
-    }
-
-    public List<String> listTopics() throws TopicRepositoryException {
-        try {
-            return zkFactory.get()
-                    .getChildren()
-                    .forPath("/brokers/topics");
-        } catch (final Exception e) {
-            throw new TopicRepositoryException("Failed to list topics", e);
-        }
-    }
-
-    @Override
-    public String createTopic(final int partitionCount, final Long retentionTimeMs)
-            throws TopicCreationException {
-        if (retentionTimeMs == null) {
-            throw new IllegalArgumentException("Retention time can not be null");
-        }
-        final String topicName = uuidGenerator.randomUUID().toString();
-        createTopic(topicName,
-                partitionCount,
-                nakadiSettings.getDefaultTopicReplicaFactor(),
-                retentionTimeMs,
-                nakadiSettings.getDefaultTopicRotationMs());
-        return topicName;
-    }
-
-    private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
-                             final long retentionMs, final long rotationMs)
-            throws TopicCreationException {
-        try {
-            doWithZkUtils(zkUtils -> {
-                final Properties topicConfig = new Properties();
-                topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
-                topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
-                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
-                        RackAwareMode.Enforced$.MODULE$);
-            });
-        } catch (final TopicExistsException e) {
-            throw new TopicCreationException("Topic with name " + topic +
-                    " already exists (or wasn't completely removed yet)", e);
-        } catch (final Exception e) {
-            throw new TopicCreationException("Unable to create topic " + topic, e);
-        }
-    }
-
-    @Override
-    public void deleteTopic(final String topic) throws TopicDeletionException {
-        try {
-            // this will only trigger topic deletion, but the actual deletion is asynchronous
-            doWithZkUtils(zkUtils -> AdminUtils.deleteTopic(zkUtils, topic));
-        } catch (final Exception e) {
-            throw new TopicDeletionException("Unable to delete topic " + topic, e);
-        }
-    }
-
-    @Override
-    public boolean topicExists(final String topic) throws TopicRepositoryException {
-        return listTopics()
-                .stream()
-                .anyMatch(t -> t.equals(topic));
     }
 
     @Override
@@ -310,7 +327,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets from " +
+                    timeline + " for partition " + partition, e);
         }
     }
 
@@ -511,6 +529,11 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
+    @FunctionalInterface
+    private interface ZkUtilsAction {
+        void execute(ZkUtils zkUtils) throws Exception;
+    }
+
     private void doWithZkUtils(final ZkUtilsAction action) throws Exception {
         ZkUtils zkUtils = null;
         try {
@@ -523,10 +546,5 @@ public class KafkaTopicRepository implements TopicRepository {
                 zkUtils.close();
             }
         }
-    }
-
-    @FunctionalInterface
-    private interface ZkUtilsAction {
-        void execute(ZkUtils zkUtils) throws Exception;
     }
 }

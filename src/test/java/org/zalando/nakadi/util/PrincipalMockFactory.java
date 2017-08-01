@@ -1,9 +1,9 @@
 package org.zalando.nakadi.util;
 
+import java.security.Principal;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.security.Principal;
 
 public class PrincipalMockFactory {
 

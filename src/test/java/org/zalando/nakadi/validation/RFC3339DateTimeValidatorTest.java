@@ -1,7 +1,8 @@
 package org.zalando.nakadi.validation;
 
-import static org.junit.Assert.assertThat;
 import org.junit.Test;
+
+import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.utils.IsOptional.isAbsent;
 import static org.zalando.nakadi.utils.IsOptional.isPresent;
 

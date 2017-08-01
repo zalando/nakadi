@@ -1,7 +1,8 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import javax.annotation.Nullable;
 import org.zalando.nakadi.service.subscription.StreamingContext;
+
+import javax.annotation.Nullable;
 
 public class CleanupState extends State {
     private final Exception exception;

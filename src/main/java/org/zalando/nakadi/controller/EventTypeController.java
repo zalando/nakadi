@@ -1,10 +1,14 @@
 package org.zalando.nakadi.controller;
 
+import java.util.List;
+import javax.validation.Valid;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.status;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,19 +39,13 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.validation.Valid;
-import javax.ws.rs.core.Response;
-import java.util.List;
-
-import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
 @RestController
 @RequestMapping(value = "/event-types")

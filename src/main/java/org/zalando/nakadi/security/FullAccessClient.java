@@ -1,8 +1,7 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalScopeException;
-
 import java.util.Set;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 public class FullAccessClient extends Client {
 

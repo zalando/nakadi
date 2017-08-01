@@ -26,8 +26,15 @@
     margin-left: 2rem;
   }
 
-  a[name]:after {
-    content: "Anchor: #" attr(name);
+  .anchor {
+    font-size: 1rem;
+    margin-left: 5px;
+    opacity: 0;
+    transition: .3s .3s opacity;
+  }
+
+  :hover>.anchor {
+    opacity: 1;
   }
 
   @include respond-to('medium') {
@@ -78,9 +85,6 @@
       font-size: 1.25rem;
     }
 
-    a {
-      color: inherit;
-    }
   }
 
   .summary {

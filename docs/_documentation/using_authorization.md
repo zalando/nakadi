@@ -109,6 +109,7 @@ When updating an event type, users should keep in mind the following caveats:
 
 - If the event type already has an authorization section, then it cannot be removed in an update;
 - If the update changes the list of readers, then all consumers will be disconnected. It is expected that they will 
-try to reconnect, which will only work for those that are still authorized. **WARNING**: this *also* applies to consumers 
-using subscriptions; if a subscription includes multiple event types, and as a result of the update, a consumer loses 
+try to reconnect, which will only work for those that are still authorized.
+ 
+**WARNING**: this *also* applies to consumers using subscriptions; if a subscription includes multiple event types, and as a result of the update, a consumer loses 
 read access to one of them, then the consumer will not be able to consume from the subscription anymore.
