@@ -2,9 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -12,10 +10,8 @@ import org.mockito.Mockito;
 import org.mockito.exceptions.base.MockitoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -48,7 +44,6 @@ import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
@@ -63,6 +58,8 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -72,9 +69,6 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
-import static org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy.retryForSpecifiedTimeOf;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.echocat.jomon.runtime.util.Duration.duration;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
@@ -108,9 +102,7 @@ public class EventStreamControllerTest {
     private EventTypeRepository eventTypeRepository;
     private EventStreamFactory eventStreamFactoryMock;
 
-    private ObjectMapper objectMapper;
     private EventStreamController controller;
-    private JsonTestHelper jsonHelper;
     private MetricRegistry metricRegistry;
     private MetricRegistry streamMetrics;
     private FeatureToggleService featureToggleService;
@@ -127,9 +119,6 @@ public class EventStreamControllerTest {
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         EVENT_TYPE.setTopic(TEST_TOPIC);
-
-        objectMapper = new JsonConfig().jacksonObjectMapper();
-        jsonHelper = new JsonTestHelper(objectMapper);
 
         fakeTimeline = createFakeTimeline(TEST_TOPIC);
 
@@ -169,7 +158,7 @@ public class EventStreamControllerTest {
         eventTypeChangeListener = mock(EventTypeChangeListener.class);
         when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
-                eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
+                eventTypeRepository, timelineService, TestUtils.OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
                 eventTypeChangeListener);
@@ -179,8 +168,7 @@ public class EventStreamControllerTest {
         when(settings.getAdminClientId()).thenReturn("nakadi");
 
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
@@ -190,10 +178,12 @@ public class EventStreamControllerTest {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         assertThat(
                 responseToString(createStreamingResponseBody("[{\"partition\":null,\"offset\":\"0\"}]")),
-                jsonHelper.matchesObject(Problem.valueOf(PRECONDITION_FAILED, "partition must not be null")));
+                TestUtils.JSON_TEST_HELPER.matchesObject(
+                        Problem.valueOf(PRECONDITION_FAILED, "partition must not be null")));
         assertThat(
                 responseToString(createStreamingResponseBody("[{\"partition\":\"0\",\"offset\":null}]")),
-                jsonHelper.matchesObject(Problem.valueOf(PRECONDITION_FAILED, "offset must not be null")));
+                TestUtils.JSON_TEST_HELPER.matchesObject(
+                        Problem.valueOf(PRECONDITION_FAILED, "offset must not be null")));
     }
 
     @Test
@@ -228,10 +218,8 @@ public class EventStreamControllerTest {
                 .withStreamTimeout(0)
                 .build();
         // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
-        executeWithRetry(() -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)),
-                new RetryForSpecifiedTimeStrategy<Void>(2000)
-                        .withExceptionsThatForceRetry(MockitoException.class)
-                        .withWaitBetweenEachTry(50));
+        TestUtils.waitFor(
+                () -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)), 2000, 50, MockitoException.class);
     }
 
     @Test
@@ -241,7 +229,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -252,7 +240,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_limit can't be lower than batch_limit");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -263,7 +251,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_timeout can't be lower than batch_flush_timeout");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -273,7 +261,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "batch_limit can't be lower than 1");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -284,7 +272,7 @@ public class EventStreamControllerTest {
                 "cursors_with_wrong_format");
 
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "incorrect syntax of X-nakadi-cursors header");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -299,7 +287,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED,
                 "offset 000000000000000000 for partition 0 is unavailable");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -382,7 +370,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -392,7 +380,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR);
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -428,11 +416,9 @@ public class EventStreamControllerTest {
             client.start();
             clients.add(client);
 
-            Thread.sleep(500);
-
-            executeWithRetry(
+            TestUtils.waitFor(
                     () -> assertThat(counter.getCount(), equalTo((long) clients.size())),
-                    retryForSpecifiedTimeOf(duration("5s"))
+                    TimeUnit.SECONDS.toMillis(5)
             );
 
         }
@@ -473,7 +459,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+        assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     private void writeStream() throws Exception {

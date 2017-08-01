@@ -64,7 +64,6 @@ Then you can see the result in the browser on  `http://localhost:4000`
 Every changes in the source will automatically rebuild documentation 
 so you only need to refresh the browser page.
 
-
 ## Acknowledgments
 
 The template based on [swaggyll](https://github.com/hauptrolle/swaggyll) but heavily modified.

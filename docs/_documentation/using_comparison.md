@@ -7,15 +7,12 @@ position: 11
 
 In this section, we'll look at how Nakadi fits in with the stream broker/processing ecosystems. Notably we'll compare it to Apache Kafka, as that's a common question, but also look briefly at some of the main cloud offerings in this area.
 
-  - [Apache Kafka](#kafka)
-  - [Google Pub/Sub](#pubsub)
-  - [AWS Kinesis](#kinesis)
-  - [AWS Simple Queue Service (SQS)](#sqs)
-  - [Allegro Hermes](#hermes)
-  - [Azure EventHub](#eventhub)
-  - [Confluent Platform](#confluent)
-
-<a name="kafka"></a>
+  - [Apache Kafka](#apache-kafka--version-0-9-)
+  - [Google Pub/Sub](#google-pub-sub)
+  - [AWS Kinesis](#aws-kinesis)
+  - [AWS Simple Queue Service (SQS)](#aws-simple-queue-service--sqs-)
+  - [Allegro Hermes](#allegro-hermes)
+  
 ### Apache Kafka (version 0.9)
 
 Relative to Apache Kafka, Nakadi provides a number of benefits while still leveraging the raw power of Kafka as its internal broker. 
@@ -34,7 +31,6 @@ Relative to Apache Kafka, Nakadi provides a number of benefits while still lever
 
 In short, Nakadi is best seen as a complement to Kafka. It allows teams to use Kafka within their own boundaries but not be forced into sharing it as a global dependency.
 
-<a name="pubsub"></a>
 ### Google Pub/Sub
 
 Like Nakadi, Pub/Sub has a HTTP API which hides details from producers and consumers and makes it suitable for use as a microservices backplane. There are some differences worth noting:
@@ -47,7 +43,6 @@ Like Nakadi, Pub/Sub has a HTTP API which hides details from producers and consu
 
 - Pub/Sub uses a common envelope structure for producing and consuming messages, and does not define any higher level structures beyond that.
 
-<a name="kinesis"></a>
 ### AWS Kinesis
 
 Like Nakadi and Pub/Sub, AWS Kinesis has a HTTP API to hide its details. Kinesis and Nakadi are more similar to each other than Pub/Sub, but there are some differences.
@@ -63,7 +58,6 @@ Like Nakadi and Pub/Sub, AWS Kinesis has a HTTP API to hide its details. Kinesis
 - Kinesis supports resizing the number of shards in a stream wheres partition counts in Nakadi are fixed once set for an event type.
 
 
-<a name="sqs"></a>
 ### AWS Simple Queue Service (SQS)
 
 The basic abstraction in SQS is a queue, which is quite different from a Nakadi / Kafka stream.
@@ -76,7 +70,6 @@ The basic abstraction in SQS is a queue, which is quite different from a Nakadi 
 
 - In contrast to moving a single cursor in the datastream (like in Nakadi, Kinesis or Kafka), SQS semantics of confirming individual messages, has advantages if a single message is unprocessable (i.e. format is not parseable). In SQS only the problamatic message is delayed. In a cursor semantic the client has to decide: Either stop all further message processing until the problem is fixed or skip the message and move the cursor.
 
-<a name="hermes"></a>
 ### Allegro Hermes
 
 [Hermes](https://github.com/allegro/hermes) like Nakadi, is an API based broker build on Apache Kafka. There are some differences worth noting:
@@ -90,13 +83,3 @@ The basic abstraction in SQS is a queue, which is quite different from a Nakadi 
 - The Hermes project supports a Java client driver for publishing messages. Nakadi does not ship with a client.
 
 - Hermes claims resilience when it comes to issues with its internal Kafka broker, such that it will continue to accept messages when Kafka is down. It does this by buffering messages in memory with an optional means to spill to local disk; this will help with crashing brokers or hermes nodes, but not with loss of an instance (eg an ec2 instance). Nakadi does not accept messages if its Kafka brokers are down or unavailable. 
-
-<a name="eventhub"></a>
-### Azure Event Hub
-
-_@@@ todo_
-
-<a name="confluent"></a>
-### Confluent Platform
-
-_@@@ todo_

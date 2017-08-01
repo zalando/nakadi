@@ -4,6 +4,10 @@ import javax.ws.rs.core.Response;
 
 public class TopicCreationException extends NakadiException {
 
+    public TopicCreationException(final String msg) {
+        super(msg);
+    }
+
     public TopicCreationException(final String msg, final Exception cause) {
         super(msg, cause);
     }
