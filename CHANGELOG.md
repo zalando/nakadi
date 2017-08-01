@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Removed read_scopes and write_scopes from event types
+- Removed CHECK_APPLICATION_LEVEL_PERMISSIONS feature
+
 ## [1.1.1] - 2017-07-26
 
 ### Fixed
