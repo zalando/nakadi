@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.joda.time.DateTime;
@@ -10,7 +9,6 @@ import org.mockito.Mockito;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -32,7 +29,7 @@ import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
 import java.util.HashSet;
@@ -60,8 +57,6 @@ public class PostSubscriptionControllerTest {
 
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
 
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final JsonTestHelper jsonHelper;
     private final StandaloneMockMvcBuilder mockMvcBuilder;
 
     private final ApplicationService applicationService = mock(ApplicationService.class);
@@ -72,7 +67,6 @@ public class PostSubscriptionControllerTest {
 
 
     public PostSubscriptionControllerTest() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
 
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION))
@@ -87,11 +81,9 @@ public class PostSubscriptionControllerTest {
 
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
                 applicationService, subscriptionService, authorizationValidator);
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
 
         mockMvcBuilder = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setControllerAdvice(new ExceptionHandling())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
     }
@@ -118,7 +110,7 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
     }
@@ -134,7 +126,7 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(subscription))))
+                .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(subscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
@@ -232,7 +224,7 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
     }
@@ -264,11 +256,11 @@ public class PostSubscriptionControllerTest {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     private ResultActions postSubscription(final SubscriptionBase subscriptionBase) throws Exception {
-        return postSubscriptionAsJson(objectMapper.writeValueAsString(subscriptionBase));
+        return postSubscriptionAsJson(TestUtils.OBJECT_MAPPER.writeValueAsString(subscriptionBase));
     }
 
     private ResultActions postSubscriptionAsJson(final String subscription) throws Exception {

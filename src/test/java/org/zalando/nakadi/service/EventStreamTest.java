@@ -3,16 +3,43 @@ package org.zalando.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import static java.util.Collections.nCopies;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import static java.util.Optional.empty;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import static junit.framework.TestCase.assertSame;
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.core.Is.is;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -21,57 +48,25 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.utils.TestUtils;
+import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.nCopies;
-import static java.util.Optional.empty;
-import static junit.framework.TestCase.assertSame;
-import static junit.framework.TestCase.fail;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
-import static org.zalando.nakadi.utils.TestUtils.randomString;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-public abstract class EventStreamTest {
+public class EventStreamTest {
 
-    private static final String TOPIC = randomString();
+    private static final String TOPIC = UUID.randomUUID().toString();
     private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
     private static CursorConverter cursorConverter;
     private static EventStreamWriterProvider writerProvider;
-
-    private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @BeforeClass
     public static void setupMocks() {
@@ -86,7 +81,9 @@ public abstract class EventStreamTest {
         when(writerProvider.getWriter()).thenReturn(createWriter());
     }
 
-    protected abstract EventStreamWriter createWriter();
+    protected EventStreamWriter createWriter() {
+        return new EventStreamWriterBinary();
+    }
 
     @Test(timeout = 15000)
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
@@ -105,16 +102,14 @@ public abstract class EventStreamTest {
         }));
         thread.start();
 
-        Thread.sleep(3000);
-        assertThat("As there are no exit conditions in config - the thread should be running",
-                thread.isAlive(), is(true));
+        TestUtils.waitFor(() -> assertThat("Thread should be running", thread.isAlive(), is(true)), 5000);
 
         // simulation of client closing the connection: this will end the eventStream
         doThrow(new IOException()).when(outputStreamMock).flush();
 
-        Thread.sleep(5000);
-        assertThat("The thread should be dead now, as we simulated that client closed connection",
-                thread.isAlive(), is(false));
+        TestUtils.waitFor(
+                () -> assertThat("The thread should be dead now, as we simulated that client closed connection",
+                        thread.isAlive(), is(false)), 10000);
         thread.join();
     }
 
@@ -134,7 +129,6 @@ public abstract class EventStreamTest {
         }));
         thread.start();
 
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         waitFor(() -> Assert.assertTrue(thread.isAlive()));
 
         // simulation of client closing the connection using crutch
@@ -243,7 +237,7 @@ public abstract class EventStreamTest {
                 .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "000000000000000000")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
-                .withStreamTimeout(3)
+                .withStreamTimeout(2)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -456,7 +450,7 @@ public abstract class EventStreamTest {
         try {
             writerProvider.getWriter().writeBatch(baos, cursor, events);
             final Map<String, Object> batch =
-                    mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {
+                    TestUtils.OBJECT_MAPPER.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {
                     });
 
             final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");
@@ -491,7 +485,7 @@ public abstract class EventStreamTest {
             assertEquals("{\"cursor\":{\"partition\":\"11\",\"offset\":\"000000000000000012\"}}\n", json);
 
             final Map<String, Object> batch =
-                    mapper.readValue(json, new TypeReference<Map<String, Object>>() {
+                    TestUtils.OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
                     });
 
             final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");

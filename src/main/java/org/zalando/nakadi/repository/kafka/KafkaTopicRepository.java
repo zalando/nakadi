@@ -15,6 +15,8 @@ import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -135,6 +137,21 @@ public class KafkaTopicRepository implements TopicRepository {
                     " already exists (or wasn't completely removed yet)", e);
         } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
+        }
+        // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
+        // receive information about topic creation, which in turn will block publishing.
+        // This kind of behavior was observed during tests, but may also present on highly loaded event types.
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        return null != consumer.partitionsFor(topic);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                        .withWaitBetweenEachTry(100L)
+                        .withResultsThatForceRetry(Boolean.FALSE));
+        if (!Boolean.TRUE.equals(allowsConsumption)) {
+            throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }
     }
 
@@ -291,7 +308,9 @@ public class KafkaTopicRepository implements TopicRepository {
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
+            final List<PartitionInfo> topicPartitions = consumer.partitionsFor(timeline.getTopic());
+
+            final Optional<PartitionInfo> tp = topicPartitions.stream()
                     .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
                     .findAny();
             if (!tp.isPresent()) {
@@ -307,7 +326,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets from " +
+                    timeline + " for partition " + partition, e);
         }
     }
 
@@ -488,7 +508,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-         try {
+        try {
             doWithZkUtils(zkUtils -> {
                 final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
                 topicProps.setProperty("retention.ms", Long.toString(retentionMs));

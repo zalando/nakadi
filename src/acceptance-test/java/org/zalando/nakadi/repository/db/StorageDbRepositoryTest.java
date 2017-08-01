@@ -1,5 +1,14 @@
 package org.zalando.nakadi.repository.db;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
@@ -8,33 +17,20 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.utils.TestUtils;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
 
 public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     private StorageDbRepository repository;
     private TimelineDbRepository timelineDbRepository;
     private EventTypeDbRepository eventTypeDbRepository;
 
-    public StorageDbRepositoryTest() {
-        super("zn_data.timeline", "zn_data.event_type_schema", "zn_data.event_type", "zn_data.storage");
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        repository = new StorageDbRepository(template, mapper);
-        timelineDbRepository = new TimelineDbRepository(template, mapper);
-        eventTypeDbRepository = new EventTypeDbRepository(template, mapper);
+        repository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
+        timelineDbRepository = new TimelineDbRepository(template, TestUtils.OBJECT_MAPPER);
+        eventTypeDbRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
     }
 
     static Storage createStorage(final String name,
@@ -53,7 +49,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageCreated() throws Exception {
-        final Storage storage = createStorage("default", "exaddress", 8181, "address", "path");
+        final String name = randomUUID();
+        final Storage storage = createStorage(name, "exaddress", 8181, "address", "path");
 
         repository.createStorage(storage);
 
@@ -66,11 +63,20 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageOrdered() throws Exception {
-        final Storage storage2 = repository.createStorage(createStorage("2", "exaddress", 8181, "address1", "path3"));
-        final Storage storage1 = repository.createStorage(createStorage("1", "exaddress", 8181, "address2", "path2"));
-        final Storage storage3 = repository.createStorage(createStorage("3", "exaddress", 8181, "address3", "path1"));
+        final String namePrefix = randomValidStringOfLength(31);
 
-        final List<Storage> storages = repository.listStorages();
+        final Storage storage2 = repository.createStorage(
+                createStorage(namePrefix + "2", "exaddress", 8181, "address1", "path3"));
+        final Storage storage1 = repository.createStorage(
+                createStorage(namePrefix + "1", "exaddress", 8181, "address2", "path2"));
+        final Storage storage3 = repository.createStorage(
+                createStorage(namePrefix + "3", "exaddress", 8181, "address3", "path1"));
+
+        final List<Storage> storages = repository.listStorages().stream()
+                .filter(st -> st.getId() != null)
+                .filter(st -> st.getId().startsWith(namePrefix))
+                .collect(Collectors.toList());
+
         assertEquals(3, storages.size());
         assertEquals(storage1, storages.get(0));
         assertEquals(storage2, storages.get(1));
@@ -79,11 +85,11 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageDeleted() throws Exception {
-        final Storage storage = repository.createStorage(createStorage("1", "exaddress", 8181, "address2", "path2"));
+        final String name = randomUUID();
+        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address2", "path2"));
         assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());
         assertFalse(repository.getStorage(storage.getId()).isPresent());
-        assertEquals(0, repository.listStorages().size());
     }
 
     @Test(expected = NoStorageException.class)
@@ -93,7 +99,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = StorageIsUsedException.class)
     public void testDeleteUsedStorage() throws Exception {
-        final Storage storage = repository.createStorage(createStorage("1", "exaddress", 8181, "address", "path"));
+        final String name = randomUUID();
+        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address", "path"));
 
         final EventType eventType = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
         final Timeline timeline = TimelineDbRepositoryTest.createTimeline(storage, UUID.randomUUID(), 0, "topic",

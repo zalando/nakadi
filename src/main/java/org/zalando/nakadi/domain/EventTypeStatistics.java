@@ -50,6 +50,16 @@ public class EventTypeStatistics {
         this.writeParallelism = writeParallelism;
     }
 
+    public EventTypeStatistics() {
+    }
+
+    public EventTypeStatistics(final int readParallelism, final int writeParallelism) {
+        this.readParallelism = readParallelism;
+        this.writeParallelism = writeParallelism;
+        this.messageSize = 1;
+        this.messagesPerMinute = 1;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {

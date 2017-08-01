@@ -1,17 +1,14 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -27,7 +24,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,9 +53,7 @@ public class EventPublishingControllerTest {
     public static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
-    private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private MetricRegistry metricRegistry;
-    private JsonTestHelper jsonHelper;
     private EventPublisher publisher;
     private SecuritySettings settings;
 
@@ -68,7 +63,6 @@ public class EventPublishingControllerTest {
 
     @Before
     public void setUp() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
@@ -77,17 +71,15 @@ public class EventPublishingControllerTest {
         when(settings.getAdminClientId()).thenReturn("nakadi");
 
         blacklistService = Mockito.mock(BlacklistService.class);
-        Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
+        when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
-                = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
@@ -118,7 +110,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        Mockito.when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -136,7 +128,7 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().string(jsonHelper.matchesObject(responses())));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
 
     @Test
@@ -150,7 +142,7 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
-                .andExpect(content().string(jsonHelper.matchesObject(responses())));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
 
     @Test
