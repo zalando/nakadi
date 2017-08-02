@@ -3,7 +3,6 @@ package org.zalando.nakadi.service.converter;
 import com.google.common.annotations.VisibleForTesting;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -52,13 +51,6 @@ public class CursorConverterImpl implements CursorConverter {
     public List<NakadiCursor> convert(final List<SubscriptionCursorWithoutToken> cursors)
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
             InvalidCursorException {
-        for (final SubscriptionCursorWithoutToken cursor: cursors) {
-            if (null == cursor.getPartition()) {
-                throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
-            } else if (null == cursor.getOffset()) {
-                throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
-            }
-        }
         final LinkedHashMap<SubscriptionCursorWithoutToken, AtomicReference<NakadiCursor>> orderingMap =
                 new LinkedHashMap<>();
         cursors.forEach(item -> orderingMap.put(item, new AtomicReference<>(null)));
@@ -77,12 +69,6 @@ public class CursorConverterImpl implements CursorConverter {
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
             ServiceUnavailableException {
-        if (null == cursor.getPartition()) {
-            throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
-        } else if (null == cursor.getOffset()) {
-            throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
-        }
-
         return converters.get(guessVersion(cursor.getOffset())).convert(eventTypeStr, cursor);
     }
 

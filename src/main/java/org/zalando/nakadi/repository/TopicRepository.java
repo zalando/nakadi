@@ -20,11 +20,11 @@ import java.util.Optional;
 
 public interface TopicRepository {
 
-    class TimelineAndPartition {
+    class TimelinePartition {
         private final Timeline timeline;
         private final String partition;
 
-        public TimelineAndPartition(final Timeline timeline, final String partition) {
+        public TimelinePartition(final Timeline timeline, final String partition) {
             this.timeline = timeline;
             this.partition = partition;
         }
@@ -49,7 +49,14 @@ public interface TopicRepository {
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceUnavailableException;
 
-    List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelineAndPartition> partitions)
+    /**
+     * Returns partitions statistics about requested partitions. The order and the amount of response items is exactly
+     * the same as it was requested
+     * @param partitions Partitions to query data for
+     * @return List of statistics.
+     * @throws ServiceUnavailableException In case when there was a problem communicating with storage
+     */
+    List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelinePartition> partitions)
             throws ServiceUnavailableException;
 
     List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;

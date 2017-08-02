@@ -86,7 +86,7 @@ public class VersionZeroConverter implements VersionedConverter {
         for (final Map.Entry<TopicRepository, List<SubscriptionCursorWithoutToken>> entry : repos.entrySet()) {
             final List<Optional<PartitionStatistics>> stats = entry.getKey().loadPartitionStatistics(
                     entry.getValue().stream()
-                            .map(scwt -> new TopicRepository.TimelineAndPartition(
+                            .map(scwt -> new TopicRepository.TimelinePartition(
                                     cursorTimelines.get(scwt),
                                     scwt.getPartition()
                             ))

@@ -309,16 +309,16 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
-        return loadPartitionStatistics(Collections.singletonList(new TimelineAndPartition(timeline, partition))).get(0);
+        return loadPartitionStatistics(Collections.singletonList(new TimelinePartition(timeline, partition))).get(0);
     }
 
     @Override
     public List<Optional<PartitionStatistics>> loadPartitionStatistics(
-            final Collection<TimelineAndPartition> partitions) throws ServiceUnavailableException {
+            final Collection<TimelinePartition> partitions) throws ServiceUnavailableException {
         final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
                 Collectors.groupingBy(
                         tp -> tp.getTimeline().getTopic(),
-                        Collectors.mapping(TimelineAndPartition::getPartition, Collectors.toSet())
+                        Collectors.mapping(TimelinePartition::getPartition, Collectors.toSet())
                 ));
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final List<PartitionInfo> allKafkaPartitions = topicToPartitions.keySet().stream()
@@ -338,7 +338,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
 
             final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
-            for (final TimelineAndPartition tap : partitions) {
+            for (final TimelinePartition tap : partitions) {
                 // Now search for an index.
                 final Optional<PartitionStatistics> itemResult = IntStream.range(0, partitionsToQuery.size())
                         .filter(i -> {
