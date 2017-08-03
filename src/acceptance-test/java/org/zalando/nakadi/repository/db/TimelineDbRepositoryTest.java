@@ -1,6 +1,11 @@
 package org.zalando.nakadi.repository.db;
 
-import com.google.common.collect.ImmutableList;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
@@ -10,13 +15,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.utils.TestUtils;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -24,19 +23,15 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     private EventType testEt;
     private Storage storage;
 
-    public TimelineDbRepositoryTest() {
-        super("zn_data.timeline", "zn_data.storage", "zn_data.event_type_schema", "zn_data.event_type");
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        this.tRepository = new TimelineDbRepository(template, mapper);
-        final StorageDbRepository sRepository = new StorageDbRepository(template, mapper);
-        final EventTypeDbRepository eRepository = new EventTypeDbRepository(template, mapper);
+        this.tRepository = new TimelineDbRepository(template, TestUtils.OBJECT_MAPPER);
+        final StorageDbRepository sRepository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
+        final EventTypeDbRepository eRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
 
         storage = sRepository.createStorage(
-                StorageDbRepositoryTest.createStorage("default", "localhost", 8181, "test", "path"));
+                StorageDbRepositoryTest.createStorage(randomUUID(), "localhost", 8181, "test", "path"));
         testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
     }
 
@@ -102,17 +97,21 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final DateTime yesterday = now.minusDays(1);
         final DateTime twoDaysAgo = now.minusDays(2);
 
-        insertTimeline(tomorrow.toDate(), true, 0);
-        insertTimeline(tomorrow.toDate(), false, 1);
-        insertTimeline(yesterday.toDate(), true, 2);
+        final Timeline t1 = insertTimeline(tomorrow.toDate(), true, 0);
+        final Timeline t2 = insertTimeline(tomorrow.toDate(), false, 1);
+        final Timeline t3 = insertTimeline(yesterday.toDate(), true, 2);
         final Timeline t4 = insertTimeline(yesterday.toDate(), false, 3);
         final Timeline t5 = insertTimeline(twoDaysAgo.toDate(), false, 4);
-        insertTimeline(null, false, 5);
+        final Timeline t6 = insertTimeline(null, false, 5);
 
         final List<Timeline> expiredTimelines = tRepository.getExpiredTimelines();
 
-        Assert.assertEquals(2, expiredTimelines.size());
-        Assert.assertEquals(ImmutableList.of(t4, t5), expiredTimelines);
+        Assert.assertFalse(expiredTimelines.contains(t1));
+        Assert.assertFalse(expiredTimelines.contains(t2));
+        Assert.assertFalse(expiredTimelines.contains(t3));
+        Assert.assertTrue(expiredTimelines.contains(t4));
+        Assert.assertTrue(expiredTimelines.contains(t5));
+        Assert.assertFalse(expiredTimelines.contains(t6));
     }
 
     private Timeline insertTimeline(final int order) {

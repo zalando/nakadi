@@ -38,7 +38,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka:0.9.0.0
+    image: wurstmeister/kafka:0.10.1.0
     network_mode: "host"
     ports:
       - "9092:9092"
@@ -50,8 +50,6 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: localhost:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
-      KAFKA_CREATE_TOPICS: "test-topic:8:1"
-      KAFKA_NUM_PARTITIONS: 8
       KAFKA_BROKER_ID: 0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

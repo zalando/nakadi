@@ -5,40 +5,16 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.http.HttpStatus;
-import org.hamcrest.core.StringContains;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.SettingsControllerAT;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
+import static com.jayway.restassured.http.ContentType.JSON;
 import java.io.IOException;
+import static java.text.MessageFormat.format;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.RestAssured.when;
-import static com.jayway.restassured.http.ContentType.JSON;
-import static java.text.MessageFormat.format;
-import static java.util.stream.IntStream.range;
-import static java.util.stream.IntStream.rangeClosed;
+import org.apache.http.HttpStatus;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
@@ -48,15 +24,35 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import org.hamcrest.core.StringContains;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.SettingsControllerAT;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class HilaAT extends BaseAT {
@@ -99,8 +95,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
-        rangeClosed(0, 3)
-                .forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar" + x + "\"}"));
+        publishEvents(eventType.getName(), 4, x -> "{\"foo\":\"bar" + x + "\"}");
 
         // create session, read from subscription and wait for events to be sent
         final TestStreamingClient client = TestStreamingClient
@@ -175,7 +170,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenWindowSizeIsSetItIsConsidered() throws Exception {
 
-        range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 15, i -> "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=5")
@@ -231,7 +226,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() throws Exception {
 
-        range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 12, i -> "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_events=20")
@@ -282,9 +277,9 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(anotherClient.getBatches(), hasSize(1)));
     }
 
-    @Test
+    @Test(timeout = 10000)
     public void testGetSubscriptionStat() throws Exception {
-        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 15, i -> "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=20")
@@ -319,8 +314,8 @@ public class HilaAT extends BaseAT {
     @Test
     public void testSubscriptionStatsMultiET() throws IOException {
         final List<EventType> eventTypes = Lists.newArrayList(createEventType(), createEventType());
-        IntStream.range(0, 10).forEach(x -> publishEvent(eventTypes.get(0).getName(), "{\"foo\":\"bar\"}"));
-        IntStream.range(0, 20).forEach(x -> publishEvent(eventTypes.get(1).getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventTypes.get(0).getName(), 10, i -> "{\"foo\":\"bar\"}");
+        publishEvents(eventTypes.get(1).getName(), 20, i -> "{\"foo\":\"bar\"}");
 
         final Subscription subscription = NakadiTestUtils.createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventTypes(eventTypes.stream().map(EventType::getName).collect(Collectors.toSet()))
@@ -333,8 +328,8 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getBatches().isEmpty(), is(false)));
 
-        IntStream.range(0, 1).forEach(x -> publishEvent(eventTypes.get(0).getName(), "{\"foo\":\"bar\"}"));
-        IntStream.range(0, 2).forEach(x -> publishEvent(eventTypes.get(1).getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventTypes.get(0).getName(), 1, i -> "{\"foo\":\"bar\"}");
+        publishEvents(eventTypes.get(1).getName(), 2, i -> "{\"foo\":\"bar\"}");
 
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
@@ -376,7 +371,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenConsumerIsBlockedDuringConsumption() throws Exception {
-        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 5, i -> "{\"foo\":\"bar\"}");
         final TestStreamingClient client = TestStreamingClient
                 .create(subscription.getId())
                 .start();
@@ -392,7 +387,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenStreamTimeout0ThenInfiniteStreaming() throws Exception {
-        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 5, i -> "{\"foo\":\"bar\"}");
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_timeout=0")
                 .start();
@@ -405,7 +400,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenResetCursorsThenStreamFromResetCursorOffset() throws Exception {
-        IntStream.range(0, 20).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        publishEvents(eventType.getName(), 20, i -> "{\"foo\":\"bar\"}");
         final TestStreamingClient client1 = TestStreamingClient
                 .create(subscription.getId())
                 .start();

@@ -47,11 +47,15 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-
+import javax.ws.rs.core.Response;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsString;
+import org.hamcrest.core.StringContains;
+import org.json.JSONObject;
 import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -65,13 +69,39 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 
 public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
@@ -144,7 +174,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithNoCategoryThenReturn422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
-        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
+        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
 
         jsonObject.remove("category");
 
@@ -637,7 +667,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPUTInvalidEventTypeThen422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
-        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
+        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
 
         jsonObject.remove("category");
 
@@ -702,7 +732,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
-                asJsonString(expectedEventType)));
+                TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
 
     }
 

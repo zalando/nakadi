@@ -1,19 +1,17 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
 import java.util.ArrayList;
@@ -42,15 +40,12 @@ public class StoragesControllerTest {
 
     @Before
     public void before() {
-        final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-
         final StoragesController controller = new StoragesController(securitySettings, storageService);
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
                 .build();
     }

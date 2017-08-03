@@ -3,18 +3,15 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
-import org.junit.After;
+import static org.hamcrest.core.IsEqual.equalTo;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-
-import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
-import static org.zalando.nakadi.webservice.BaseAT.TIMELINE_REPOSITORY;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.postEvents;
 
 public class CursorOperationsAT {
@@ -25,13 +22,6 @@ public class CursorOperationsAT {
     public void setUp() throws JsonProcessingException {
         eventType = EventTypeTestBuilder.builder().build();
         NakadiTestUtils.createEventTypeInNakadi(eventType);
-    }
-
-    @After
-    public void tearDown() {
-        TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
-                .forEach(timeline -> TIMELINE_REPOSITORY.deleteTimeline(timeline.getId()));
-        RestAssured.given().delete("/event-types/{name}", eventType.getName());
     }
 
     @Test
