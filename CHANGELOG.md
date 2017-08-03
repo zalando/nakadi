@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.3] - 2017-08-03
+
 ### Fixed
 - Fixed bug with incorrect lag calculation for subscirption.
 - Optimized subscription stats endpoint for subscriptions with many event types inside.
