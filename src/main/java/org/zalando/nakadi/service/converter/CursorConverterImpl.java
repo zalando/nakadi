@@ -3,7 +3,6 @@ package org.zalando.nakadi.service.converter;
 import com.google.common.annotations.VisibleForTesting;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -17,8 +16,13 @@ import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Service
@@ -44,15 +48,27 @@ public class CursorConverterImpl implements CursorConverter {
     }
 
     @Override
+    public List<NakadiCursor> convert(final List<SubscriptionCursorWithoutToken> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            InvalidCursorException {
+        final LinkedHashMap<SubscriptionCursorWithoutToken, AtomicReference<NakadiCursor>> orderingMap =
+                new LinkedHashMap<>();
+        cursors.forEach(item -> orderingMap.put(item, new AtomicReference<>(null)));
+
+        final Map<Version, List<SubscriptionCursorWithoutToken>> mappedByVersions = cursors.stream()
+                .collect(Collectors.groupingBy(c -> guessVersion(c.getOffset())));
+        for (final Map.Entry<Version, List<SubscriptionCursorWithoutToken>> entry: mappedByVersions.entrySet()) {
+            final List<NakadiCursor> result = converters.get(entry.getKey()).convertBatched(entry.getValue());
+            IntStream.range(0, entry.getValue().size())
+                    .forEach(idx -> orderingMap.get(entry.getValue().get(idx)).set(result.get(idx)));
+        }
+        return orderingMap.values().stream().map(AtomicReference::get).collect(Collectors.toList());
+    }
+
+    @Override
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
             ServiceUnavailableException {
-        if (null == cursor.getPartition()) {
-            throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
-        } else if (null == cursor.getOffset()) {
-            throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
-        }
-
         return converters.get(guessVersion(cursor.getOffset())).convert(eventTypeStr, cursor);
     }
 

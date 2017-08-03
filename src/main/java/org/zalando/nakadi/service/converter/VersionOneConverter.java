@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service.converter;
 
 import com.google.common.base.Preconditions;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -9,14 +11,13 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.view.Cursor;
-
-import java.util.List;
-
 import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 class VersionOneConverter implements VersionedConverter {
     private static final int TIMELINE_ORDER_LENGTH = 4;
@@ -33,6 +34,17 @@ class VersionOneConverter implements VersionedConverter {
     @Override
     public CursorConverter.Version getVersion() {
         return CursorConverter.Version.ONE;
+    }
+
+    @Override
+    public List<NakadiCursor> convertBatched(final List<SubscriptionCursorWithoutToken> cursors) throws
+            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+        // For version one it doesn't matter - batched or not
+        final List<NakadiCursor> result = new ArrayList<>(cursors.size());
+        for (final SubscriptionCursorWithoutToken cursor: cursors) {
+            result.add(convert(cursor.getEventType(), cursor));
+        }
+        return result;
     }
 
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)

@@ -237,14 +237,16 @@ public class SubscriptionControllerTest {
                 new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
         when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
         final NakadiCursor currentCursor = mock(NakadiCursor.class);
-        when(cursorConverter.convert(eq(currentOffset))).thenReturn(currentCursor);
+        when(currentCursor.getEventTypePartition()).thenReturn(new EventTypePartition(TIMELINE.getEventType(), "0"));
+        when(cursorConverter.convert((List<SubscriptionCursorWithoutToken>) any()))
+                .thenReturn(Collections.singletonList(currentCursor));
         when(cursorOperationsService.calculateDistance(eq(currentCursor), eq(statistics.get(0).getLast())))
                 .thenReturn(10L);
 
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         TIMELINE.getEventType(),
-                        Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
                 );
 
         getSubscriptionStats(subscription.getId())

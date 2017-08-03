@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed bug with incorrect lag calculation for subscirption.
+- Optimized subscription stats endpoint for subscriptions with many event types inside.
+
 ### Changed
 - Now it's possible to have a digit after the dot in event-type name.
 

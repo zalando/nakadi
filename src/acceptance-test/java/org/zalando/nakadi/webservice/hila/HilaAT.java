@@ -4,26 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.RestAssured.when;
-import static com.jayway.restassured.http.ContentType.JSON;
-import java.io.IOException;
-import static java.text.MessageFormat.format;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.apache.http.HttpStatus;
-import static org.apache.http.HttpStatus.SC_CONFLICT;
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
-import static org.apache.http.HttpStatus.SC_OK;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.not;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
@@ -33,26 +14,46 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
+import static com.jayway.restassured.http.ContentType.JSON;
+import static java.text.MessageFormat.format;
+import static org.apache.http.HttpStatus.SC_CONFLICT;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.apache.http.HttpStatus.SC_OK;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class HilaAT extends BaseAT {
@@ -289,7 +290,7 @@ public class HilaAT extends BaseAT {
         List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
-                        Collections.singleton(
+                        Collections.singletonList(
                                 new SubscriptionEventTypeStats.Partition("0", "assigned", 15L, client.getSessionId())))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
@@ -303,7 +304,7 @@ public class HilaAT extends BaseAT {
         subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
-                        Collections.singleton(
+                        Collections.singletonList(
                                 new SubscriptionEventTypeStats.Partition("0", "assigned", 5L, client.getSessionId())))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
@@ -335,7 +336,7 @@ public class HilaAT extends BaseAT {
                 .then()
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventTypes.get(0).getName(),
-                        Sets.newHashSet(new SubscriptionEventTypeStats.Partition(
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition(
                                 "0",
                                 "assigned",
                                 1L,
@@ -343,7 +344,7 @@ public class HilaAT extends BaseAT {
                         ))))))
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventTypes.get(1).getName(),
-                        Sets.newHashSet(new SubscriptionEventTypeStats.Partition(
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition(
                                 "0",
                                 "assigned",
                                 2L,

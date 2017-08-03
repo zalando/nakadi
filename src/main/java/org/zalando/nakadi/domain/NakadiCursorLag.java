@@ -3,11 +3,12 @@ package org.zalando.nakadi.domain;
 public class NakadiCursorLag {
     private final NakadiCursor firstCursor;
     private final NakadiCursor lastCursor;
-    private long lag;
+    private final long lag;
 
-    public NakadiCursorLag(final NakadiCursor first, final NakadiCursor last) {
+    public NakadiCursorLag(final NakadiCursor first, final NakadiCursor last, final long lag) {
         this.firstCursor = first;
         this.lastCursor = last;
+        this.lag = lag;
     }
 
     public String getTopic() {
@@ -30,7 +31,4 @@ public class NakadiCursorLag {
         return lag;
     }
 
-    public void setLag(final long lag) {
-        this.lag = lag;
-    }
 }
