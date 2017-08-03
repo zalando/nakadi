@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed bug with incorrect lag calculation for subscirption.
 - Optimized subscription stats endpoint for subscriptions with many event types inside.
 
+### Changed
+- Now it's possible to have a digit after the dot in event-type name.
+
+## [1.1.2] - 2017-08-01
+
+### Changed
+- Updated kafka client library to 0.10.1.0
+
 ## [1.1.1] - 2017-07-26
 
 ### Fixed
