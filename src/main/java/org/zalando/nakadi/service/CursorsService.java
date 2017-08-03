@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -80,7 +81,7 @@ public class CursorsService {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
         TimeLogger.addMeasure("validateSubscriptionCursors");
-        validateSubscriptionCursors(subscription, cursors);
+        validateSubscriptionCommitCursors(subscription, cursors);
 
         TimeLogger.addMeasure("validateSubscriptionReadScopes");
         validateSubscriptionReadScopes(subscription, client);
@@ -151,7 +152,7 @@ public class CursorsService {
             throw new UnableProcessException("Cursors are absent");
         }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        validateSubscriptionCursors(subscription, cursors);
+        validateSubscriptionResetCursors(subscription, cursors);
         validateSubscriptionReadScopes(subscription, client);
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
@@ -164,15 +165,9 @@ public class CursorsService {
                 timeout);
     }
 
-    private void validateSubscriptionCursors(final Subscription subscription, final List<NakadiCursor> cursors)
+    private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, NoSuchSubscriptionException, UnableProcessException {
-        final List<String> wrongEventTypes = cursors.stream()
-                .map(NakadiCursor::getEventType)
-                .filter(et -> !subscription.getEventTypes().contains(et))
-                .collect(Collectors.toList());
-        if (!wrongEventTypes.isEmpty()) {
-            throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
-        }
+        validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
             try {
@@ -181,6 +176,35 @@ public class CursorsService {
                 throw new UnableProcessException(e.getMessage(), e);
             }
         });
+    }
+
+    private void validateSubscriptionResetCursors(final Subscription subscription, final List<NakadiCursor> cursors)
+            throws ServiceUnavailableException, NoSuchSubscriptionException, UnableProcessException {
+        validateCursorsBelongToSubscription(subscription, cursors);
+
+        final Map<TopicRepository, List<NakadiCursor>> cursorsByRepo = cursors.stream()
+                .collect(Collectors.groupingBy(c -> timelineService.getTopicRepository(c.getTimeline())));
+
+        for (final Map.Entry<TopicRepository, List<NakadiCursor>> repoEntry : cursorsByRepo.entrySet()) {
+            final TopicRepository topicRepository = repoEntry.getKey();
+            final List<NakadiCursor> cursorsForRepo = repoEntry.getValue();
+            try {
+                topicRepository.validateReadCursors(cursorsForRepo);
+            } catch (final InvalidCursorException e) {
+                throw new UnableProcessException(e.getMessage(), e);
+            }
+        }
+    }
+
+    private void validateCursorsBelongToSubscription(final Subscription subscription, final List<NakadiCursor> cursors)
+            throws UnableProcessException {
+        final List<String> wrongEventTypes = cursors.stream()
+                .map(NakadiCursor::getEventType)
+                .filter(et -> !subscription.getEventTypes().contains(et))
+                .collect(Collectors.toList());
+        if (!wrongEventTypes.isEmpty()) {
+            throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
+        }
     }
 
     private void validateSubscriptionReadScopes(final Subscription subscription, final Client client)
