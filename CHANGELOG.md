@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Removed authorization for subscription creation
 - Changed imports format to have the same structure
 
 ## [1.1.3] - 2017-08-03
