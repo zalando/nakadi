@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.base.Preconditions;
-import java.util.List;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -10,6 +9,8 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.List;
 
 /**
  * The only place to create NakadiCursor from Cursor or SubscriptionCursor and back.

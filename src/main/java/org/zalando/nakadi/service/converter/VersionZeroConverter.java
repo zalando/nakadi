@@ -1,17 +1,7 @@
 package org.zalando.nakadi.service.converter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -24,9 +14,21 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
 
 public class VersionZeroConverter implements VersionedConverter {
     public static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;

@@ -1,7 +1,8 @@
 package org.zalando.nakadi.security;
 
-import java.util.Set;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
+
+import java.util.Set;
 
 public abstract class Client {
 

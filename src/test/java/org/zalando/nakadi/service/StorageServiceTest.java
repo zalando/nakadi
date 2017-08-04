@@ -1,20 +1,21 @@
 package org.zalando.nakadi.service;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import org.json.JSONObject;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.utils.TestUtils;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class StorageServiceTest {
 

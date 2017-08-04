@@ -1,20 +1,15 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import static org.springframework.http.ResponseEntity.status;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -31,6 +26,13 @@ import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.ws.rs.core.Response;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static org.springframework.http.ResponseEntity.status;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController

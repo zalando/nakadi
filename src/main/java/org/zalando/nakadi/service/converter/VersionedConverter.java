@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.converter;
 
-import java.util.List;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -9,6 +8,8 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.List;
 
 interface VersionedConverter {
 

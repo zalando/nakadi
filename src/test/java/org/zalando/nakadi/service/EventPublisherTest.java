@@ -1,29 +1,10 @@
 package org.zalando.nakadi.service;
 
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeoutException;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.Matchers.startsWith;
-import static org.hamcrest.core.IsEqual.equalTo;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -49,14 +30,35 @@ import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.ValidationError;
+
+import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.randomStringOfLength;
 import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
-import org.zalando.nakadi.validation.EventTypeValidator;
-import org.zalando.nakadi.validation.ValidationError;
 
 public class EventPublisherTest {
 

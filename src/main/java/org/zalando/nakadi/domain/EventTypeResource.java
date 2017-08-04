@@ -1,10 +1,11 @@
 package org.zalando.nakadi.domain;
 
-import java.util.List;
-import java.util.Optional;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
+
+import java.util.List;
+import java.util.Optional;
 
 public class EventTypeResource implements Resource {
 
