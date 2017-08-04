@@ -7,25 +7,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +35,6 @@ import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
-import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -71,9 +51,31 @@ import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
 public class EventStreamController {
@@ -135,6 +137,14 @@ public class EventStreamController {
             } catch (final IOException ex) {
                 throw new UnparseableCursorException("incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
             }
+            // Unfortunately, In order to have consistent exception checking, one can not just call validator
+            for (final Cursor cursor: cursors) {
+                if (null == cursor.getPartition()) {
+                    throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
+                } else if (null == cursor.getOffset()) {
+                    throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
+                }
+            }
         }
         final Timeline latestTimeline = timelineService.getTimeline(eventType);
         final TopicRepository latestTopicRepository = timelineService.getTopicRepository(latestTimeline);
@@ -148,20 +158,17 @@ public class EventStreamController {
                 throw new InvalidCursorException(CursorError.INVALID_FORMAT);
             }
 
-            final Map<TopicRepository, List<NakadiCursor>> timelineToCursors = new HashMap<>();
+            final Map<TopicRepository, List<NakadiCursor>> topicRepoToCursors = new HashMap<>();
             for (final NakadiCursor c: result) {
                 if (c.getTimeline().isDeleted()) {
                     throw new InvalidCursorException(CursorError.UNAVAILABLE, c);
                 }
                 final TopicRepository topicRepository = timelineService.getTopicRepository(c.getTimeline());
-                List<NakadiCursor> cursorList = timelineToCursors.get(topicRepository);
-                if (cursorList == null) {
-                    cursorList = new ArrayList<>();
-                    timelineToCursors.put(topicRepository, cursorList);
-                }
-                cursorList.add(c);
+                topicRepoToCursors
+                        .computeIfAbsent(topicRepository, k -> new ArrayList<>())
+                        .add(c);
             }
-            for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : timelineToCursors.entrySet()) {
+            for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : topicRepoToCursors.entrySet()) {
                 entry.getKey().validateReadCursors(entry.getValue());
             }
             return result;

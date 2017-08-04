@@ -121,7 +121,7 @@ public class CursorOperationsController {
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
-    public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
+    public List<CursorLag> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
                                         @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
         // TODO: remove once new authorization is in place
@@ -137,10 +137,8 @@ public class CursorOperationsController {
         final List<NakadiCursorLag> lagResult = cursorOperationsService
                 .cursorsLag(eventTypeName, domainCursor);
 
-        final List<CursorLag> viewResult = lagResult.stream().map(this::toCursorLag)
+        return lagResult.stream().map(this::toCursorLag)
                 .collect(Collectors.toList());
-
-        return status(OK).body(viewResult);
     }
 
     @ExceptionHandler(InvalidCursorOperation.class)
@@ -156,6 +154,7 @@ public class CursorOperationsController {
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
             case PARTITION_NOT_FOUND: return "Partition not found.";
+            case CURSOR_FORMAT_EXCEPTION: return "Сursor format is not supported.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
             default:

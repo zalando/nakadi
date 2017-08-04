@@ -1,14 +1,6 @@
 package org.zalando.nakadi.controller;
 
-import java.io.IOException;
-import java.util.Optional;
-import javax.ws.rs.core.Response;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -18,6 +10,16 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.Optional;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
 

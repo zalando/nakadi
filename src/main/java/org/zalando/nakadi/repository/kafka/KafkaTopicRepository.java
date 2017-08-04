@@ -34,7 +34,6 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -53,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -309,26 +309,53 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
+        return loadPartitionStatistics(Collections.singletonList(new TimelinePartition(timeline, partition))).get(0);
+    }
+
+    @Override
+    public List<Optional<PartitionStatistics>> loadPartitionStatistics(
+            final Collection<TimelinePartition> partitions) throws ServiceUnavailableException {
+        final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
+                Collectors.groupingBy(
+                        tp -> tp.getTimeline().getTopic(),
+                        Collectors.mapping(TimelinePartition::getPartition, Collectors.toSet())
+                ));
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
-                    .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
-                    .findAny();
-            if (!tp.isPresent()) {
-                return Optional.empty();
+            final List<PartitionInfo> allKafkaPartitions = topicToPartitions.keySet().stream()
+                    .map(consumer::partitionsFor)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+            final List<TopicPartition> partitionsToQuery = allKafkaPartitions.stream()
+                    .filter(pi -> topicToPartitions.get(pi.topic())
+                            .contains(KafkaCursor.toNakadiPartition(pi.partition())))
+                    .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                    .collect(Collectors.toList());
+
+            consumer.assign(partitionsToQuery);
+            consumer.seekToBeginning(partitionsToQuery);
+            final List<Long> begins = partitionsToQuery.stream().map(consumer::position).collect(toList());
+            consumer.seekToEnd(partitionsToQuery);
+            final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
+
+            final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
+            for (final TimelinePartition tap : partitions) {
+                // Now search for an index.
+                final Optional<PartitionStatistics> itemResult = IntStream.range(0, partitionsToQuery.size())
+                        .filter(i -> {
+                            final TopicPartition info = partitionsToQuery.get(i);
+                            return info.topic().equals(tap.getTimeline().getTopic()) &&
+                                    info.partition() == KafkaCursor.toKafkaPartition(tap.getPartition());
+                        }).mapToObj(indexFound -> (PartitionStatistics) new KafkaPartitionStatistics(
+                                tap.getTimeline(),
+                                partitionsToQuery.get(indexFound).partition(),
+                                begins.get(indexFound),
+                                ends.get(indexFound) - 1L))
+                        .findAny();
+                result.add(itemResult);
             }
-            final TopicPartition kafkaTP = tp.map(v -> new TopicPartition(v.topic(), v.partition())).get();
-            final Collection<TopicPartition> topicPartitions = Collections.singletonList(kafkaTP);
-            consumer.assign(Collections.singletonList(kafkaTP));
-            consumer.seekToBeginning(topicPartitions);
-
-            final long begin = consumer.position(kafkaTP);
-            consumer.seekToEnd(topicPartitions);
-            final long end = consumer.position(kafkaTP);
-
-            return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
+            return result;
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets from " +
-                    timeline + " for partition " + partition, e);
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
@@ -429,29 +456,16 @@ public class KafkaTopicRepository implements TopicRepository {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
+    //  Method can work only with finished timeline (e.g. it will break for active timeline)
     public long totalEventsInPartition(final Timeline timeline, final String partitionString)
             throws InvalidCursorOperation {
+        final Timeline.StoragePosition positions = timeline.getLatestPosition();
+
         try {
-            final Timeline.StoragePosition positions = timeline.getLatestPosition();
-            if (positions == null) {
-                final Optional<PartitionStatistics> statsO = loadPartitionStatistics(timeline, partitionString);
-                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast()) + 1).orElseThrow(
-                        MyNakadiRuntimeException1::new
-                );
-            }
-            final int partition = KafkaCursor.toKafkaPartition(partitionString);
-            final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
-            final List<Long> offsets = kafkaPositions.getOffsets();
-            if (offsets.size() - 1 < partition) {
-                throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-            } else {
-                // The number stored in positions is the Kafka offset, which could be -1, for example, when a partition
-                // is empty, or zero when there is only one event. In order to count precisely the amount of events
-                // in a partition, we need to adjust it by adding one.
-                return offsets.get(partition) + 1;
-            }
-        } catch (final ServiceUnavailableException e) {
-            throw new MyNakadiRuntimeException1("Problem calculating partition statistics", e);
+            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
+                    KafkaCursor.toKafkaPartition(partitionString));
+        } catch (final IllegalArgumentException ex) {
+            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
         }
     }
 
@@ -460,8 +474,16 @@ public class KafkaTopicRepository implements TopicRepository {
         return KafkaCursor.toKafkaOffset(cursor.getOffset());
     }
 
-    public String getOffsetForPosition(final long offset) {
-        return KafkaCursor.toNakadiOffset(offset);
+    @Override
+    public NakadiCursor createBeforeBeginCursor(final Timeline timeline, final String partition) {
+        return new KafkaCursor(timeline.getTopic(), KafkaCursor.toKafkaPartition(partition), -1)
+                .toNakadiCursor(timeline);
+    }
+
+    @Override
+    public NakadiCursor shiftWithinTimeline(final NakadiCursor current, final long stillToAdd)
+            throws InvalidCursorException {
+        return KafkaCursor.fromNakadiCursor(current).addOffset(stillToAdd).toNakadiCursor(current.getTimeline());
     }
 
     public void validateReadCursors(final List<NakadiCursor> cursors)

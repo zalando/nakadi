@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
@@ -36,6 +37,7 @@ public class SubscriptionBase {
     @NotNull
     private InitialPosition readFrom = InitialPosition.END;
 
+    @Valid
     private List<SubscriptionCursorWithoutToken> initialCursors = ImmutableList.of();
 
     public SubscriptionBase() {

@@ -1,11 +1,8 @@
 package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import static com.jayway.restassured.RestAssured.given;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
-import java.io.IOException;
-import java.text.MessageFormat;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 import org.junit.Before;
@@ -13,8 +10,13 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
+
+import java.io.IOException;
+import java.text.MessageFormat;
+
+import static com.jayway.restassured.RestAssured.given;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class BlockEventPublishingAT extends BaseAT {
 
