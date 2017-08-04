@@ -173,7 +173,7 @@ public class CursorsController {
     @ExceptionHandler({
             UnableProcessException.class,
             CursorUnavailableException.class})
-    public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException ex,
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
