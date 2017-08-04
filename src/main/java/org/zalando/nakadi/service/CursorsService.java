@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -145,7 +146,7 @@ public class CursorsService {
     }
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
-            throws ServiceUnavailableException, NoSuchSubscriptionException,
+            throws ServiceUnavailableException, NoSuchSubscriptionException, CursorUnavailableException,
             UnableProcessException, IllegalScopeException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException {
         if (cursors.isEmpty()) {
@@ -166,7 +167,7 @@ public class CursorsService {
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, UnableProcessException {
+            throws ServiceUnavailableException, UnableProcessException {
         validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
@@ -179,7 +180,7 @@ public class CursorsService {
     }
 
     private void validateSubscriptionResetCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, UnableProcessException {
+            throws ServiceUnavailableException, CursorUnavailableException {
         validateCursorsBelongToSubscription(subscription, cursors);
 
         final Map<TopicRepository, List<NakadiCursor>> cursorsByRepo = cursors.stream()
@@ -191,7 +192,7 @@ public class CursorsService {
             try {
                 topicRepository.validateReadCursors(cursorsForRepo);
             } catch (final InvalidCursorException e) {
-                throw new UnableProcessException(e.getMessage(), e);
+                throw new CursorUnavailableException(e.getMessage(), e);
             }
         }
     }

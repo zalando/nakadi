@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -169,7 +170,9 @@ public class CursorsController {
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(UnableProcessException.class)
+    @ExceptionHandler({
+            UnableProcessException.class,
+            CursorUnavailableException.class})
     public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
