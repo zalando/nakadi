@@ -1,11 +1,5 @@
 package org.zalando.nakadi.repository.db;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
@@ -15,6 +9,14 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.utils.TestUtils;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
+
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {

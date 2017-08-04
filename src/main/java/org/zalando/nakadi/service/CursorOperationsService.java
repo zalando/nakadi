@@ -1,8 +1,5 @@
 package org.zalando.nakadi.service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +14,18 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.timeline.TimelineService;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSOR_FORMAT_EXCEPTION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.service.timeline.TimelineService;
 
 @Service
 public class CursorOperationsService {

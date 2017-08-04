@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Changed imports format to have the same structure
+
 ## [1.1.3] - 2017-08-03
 
 ### Fixed
