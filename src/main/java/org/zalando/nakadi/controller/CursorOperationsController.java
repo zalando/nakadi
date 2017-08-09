@@ -24,7 +24,6 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -72,8 +71,6 @@ public class CursorOperationsController {
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
                                          final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        // TODO: remove once new authorization is in place
-        checkReadScopes(eventTypeName, client);
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);
@@ -102,8 +99,6 @@ public class CursorOperationsController {
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
                                          final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        // TODO: remove once new authorization is in place
-        checkReadScopes(eventTypeName, client);
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);
@@ -124,8 +119,6 @@ public class CursorOperationsController {
     public List<CursorLag> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
                                         @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        // TODO: remove once new authorization is in place
-        checkReadScopes(eventTypeName, client);
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);
@@ -160,18 +153,6 @@ public class CursorOperationsController {
             default:
                 LOG.error("Unexpected invalid cursor operation reason " + reason);
                 throw new MyNakadiRuntimeException1();
-        }
-    }
-
-    private void checkReadScopes(final String eventTypeName, final Client client) {
-        final EventType eventType;
-        try {
-            eventType = eventTypeRepository.findByName(eventTypeName);
-            client.checkScopes(eventType.getReadScopes());
-        } catch (final InternalNakadiException e) {
-            throw new MyNakadiRuntimeException1("failed to get event type", e);
-        } catch (final NoSuchEventTypeException e) {
-            throw new NoEventTypeException(e.getMessage(), e);
         }
     }
 

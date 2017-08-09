@@ -40,8 +40,6 @@ import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class SubscriptionValidationServiceTest {
@@ -75,7 +73,6 @@ public class SubscriptionValidationServiceTest {
             final EventType eventType = new EventType();
             eventType.setName(etName);
             eventType.setTopic(topicForET(etName));
-            eventType.setReadScopes(scopesForET(etName));
             eventTypes.put(etName, eventType);
         }
         when(etRepo.findByNameO(any()))
@@ -120,15 +117,6 @@ public class SubscriptionValidationServiceTest {
                     String.format("Failed to create subscription, event type(s) not found: '%s', '%s'", ET1, ET3);
             assertThat(e.getMessage(), equalTo(expectedMessage));
         }
-    }
-
-    @Test
-    public void whenValidatingThenScopesAreChecked() throws Exception {
-        subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
-        verify(client, times(1)).checkScopes(scopesForET(ET1));
-        verify(client, times(1)).checkScopes(scopesForET(ET2));
-        verify(client, times(1)).checkScopes(scopesForET(ET3));
     }
 
     @Test(expected = TooManyPartitionsException.class)

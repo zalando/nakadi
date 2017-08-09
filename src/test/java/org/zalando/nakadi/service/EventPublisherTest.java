@@ -18,7 +18,6 @@ import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -442,22 +441,14 @@ public class EventPublisherTest {
     }
 
     @Test
-    public void testScopeWrite() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
+    public void testWrite() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(),
-                new NakadiClient(CLIENT_ID, SCOPE_WRITE));
+                new NakadiClient(CLIENT_ID, null));
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
-    }
-
-    @Test(expected = IllegalScopeException.class)
-    public void testNoScopeWrite() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
-        Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
-        publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(),
-                new NakadiClient(CLIENT_ID, Collections.emptySet()));
     }
 
     private void mockFailedPublishing() throws Exception {

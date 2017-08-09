@@ -73,7 +73,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.8.0'
+  version: '0.9.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -2261,28 +2261,6 @@ definitions:
 
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
-
-      write_scopes:
-        type: array
-        items:
-          type: string
-        description: |
-          This field is used for event publishing access control. Nakadi only authorises publishers whose session
-          contains at least one of the scopes in this list.
-          If no scopes provided then anyone can publish to this event type.
-
-          Usage of write_scopes is deprecated.
-
-      read_scopes:
-        type: array
-        items:
-          type: string
-        description: |
-          This field is used for event consuming access control. Nakadi only authorises consumers whose session
-          contains at least one of the scopes in this list.
-          If no scopes provided then anyone can consume from this event type.
-
-          Usage of read_scopes is deprecated.
 
       created_at:
         type: string

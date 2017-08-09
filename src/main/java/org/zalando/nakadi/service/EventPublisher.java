@@ -81,7 +81,6 @@ public class EventPublisher {
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             authValidator.authorizeEventTypeWrite(eventType);
-            client.checkScopes(eventType.getWriteScopes());
 
             validate(batch, eventType);
             partition(batch, eventType);
