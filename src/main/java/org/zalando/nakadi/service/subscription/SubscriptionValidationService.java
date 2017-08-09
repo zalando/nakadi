@@ -8,7 +8,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -51,7 +50,7 @@ public class SubscriptionValidationService {
 
     public void validateSubscription(final SubscriptionBase subscription, final Client client)
             throws TooManyPartitionsException, RepositoryProblemException, NoEventTypeException,
-            InconsistentStateException, WrongInitialCursorsException, IllegalScopeException {
+            InconsistentStateException, WrongInitialCursorsException {
 
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
@@ -61,9 +60,6 @@ public class SubscriptionValidationService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
-
-        // check if application is allowed to read from the event-types
-        eventTypes.forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
 
         // check that maximum number of partitions is not exceeded
         final List<EventTypePartition> allPartitions = getAllPartitions(eventTypes);

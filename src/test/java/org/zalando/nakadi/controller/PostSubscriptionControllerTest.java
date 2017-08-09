@@ -1,9 +1,11 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
@@ -21,13 +24,16 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -43,6 +49,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -215,16 +222,6 @@ public class PostSubscriptionControllerTest {
                 .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
-    }
-
-    @Test
-    public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any(), any()))
-                .thenThrow(new IllegalScopeException(ImmutableSet.of("dummyScope")));
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Client has to have scopes: [dummyScope]");
-        checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {

@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2017-08-09
+
 ### Changed
 - Removed authorization for subscription creation
 - Changed imports format to have the same structure
+
+### Removed
+- Removed read_scopes and write_scopes from event types
+- Removed CHECK_APPLICATION_LEVEL_PERMISSIONS feature
 
 ## [1.1.3] - 2017-08-03
 

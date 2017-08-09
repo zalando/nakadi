@@ -17,7 +17,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -93,7 +92,7 @@ public class SubscriptionService {
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Client client)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException, IllegalScopeException {
+            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException {
 
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
         return subscriptionRepository.createSubscription(subscriptionBase);
