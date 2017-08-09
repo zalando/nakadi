@@ -1,16 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +8,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -57,6 +46,18 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Component
 public class SubscriptionService {
@@ -191,6 +192,7 @@ public class SubscriptionService {
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
+                .sorted(Comparator.comparing(EventType::getName))
                 .collect(Collectors.toList());
 
         final List<PartitionEndStatistics> topicPartitions;
@@ -208,16 +210,9 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(e);
         }
 
-        final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
+        final ZkSubscriptionNode zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
 
-        return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
-                .collect(Collectors.toList());
-    }
-
-    private ZkSubscriptionNode getZkSubscriptionNode(
-            final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
-        return subscriptionClient.getZkSubscriptionNodeLocked();
+        return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, topicPartitions);
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
@@ -236,47 +231,61 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
-    private SubscriptionEventTypeStats loadStats(
-            final EventType eventType,
+    private List<SubscriptionEventTypeStats> loadStats(
+            final Collection<EventType> eventTypes,
             final ZkSubscriptionNode subscriptionNode,
             final ZkSubscriptionClient client,
             final List<PartitionEndStatistics> stats)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
-
-        final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
-        for (final PartitionEndStatistics stat : stats) {
-            final NakadiCursor lastPosition = stat.getLast();
-            if (!lastPosition.getEventType().equals(eventType.getName())) {
-                continue;
-            }
-            final Long distance;
-            if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
-                final NakadiCursor currentPosition;
-                final SubscriptionCursorWithoutToken offset =
-                        client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
-                try {
-                    currentPosition = converter.convert(offset);
-                } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                        ServiceUnavailableException e) {
-                    throw new ServiceTemporarilyUnavailableException(e);
-                }
-                try {
-                    distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
-                } catch (final InvalidCursorOperation ex) {
-                    throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
-                }
-            } else {
-                distance = null;
-            }
-            resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                    lastPosition.getPartition(),
-                    subscriptionNode.guessState(stat.getPartition()).getDescription(),
-                    distance,
-                    Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
-            ));
+        final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
+        final List<NakadiCursor> committedPositions;
+        try {
+            committedPositions = loadCommittedPositions(subscriptionNode, client);
+        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                ServiceUnavailableException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
         }
 
-        return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
+        for (final EventType eventType : eventTypes) {
+            final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
+            for (final PartitionEndStatistics stat : stats) {
+                final NakadiCursor lastPosition = stat.getLast();
+                if (!lastPosition.getEventType().equals(eventType.getName())) {
+                    continue;
+                }
+                final Long distance = committedPositions.stream()
+                        .filter(pos -> pos.getEventTypePartition().equals(lastPosition.getEventTypePartition()))
+                        .findAny()
+                        .map(committed -> {
+                            try {
+                                return cursorOperationsService.calculateDistance(committed, lastPosition);
+                            } catch (final InvalidCursorOperation ex) {
+                                throw new InconsistentStateException(
+                                        "Unexpected exception while calculating distance", ex);
+                            }
+                        })
+                        .orElse(null);
+                resultPartitions.add(new SubscriptionEventTypeStats.Partition(
+                        lastPosition.getPartition(),
+                        subscriptionNode.guessState(stat.getPartition()).getDescription(),
+                        distance,
+                        Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
+                ));
+            }
+            resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
+            result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
+        }
+        return result;
+    }
+
+    private List<NakadiCursor> loadCommittedPositions(
+            final ZkSubscriptionNode subscriptionNode,
+            final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
+            NoSuchEventTypeException, ServiceUnavailableException {
+        final List<SubscriptionCursorWithoutToken> views = Stream.of(subscriptionNode.getPartitions()).map(
+                partition -> client.getOffset(partition.getKey()))
+                .collect(Collectors.toList());
+        return converter.convert(views);
     }
 
 }

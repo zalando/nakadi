@@ -1,7 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.List;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
@@ -12,6 +11,9 @@ import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+
+import java.util.List;
+
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class SchemaRepositoryTest extends AbstractDbRepositoryTest {

@@ -6,7 +6,8 @@ public class InvalidCursorOperation extends MyNakadiRuntimeException1 {
     public enum Reason {
         TIMELINE_NOT_FOUND,
         PARTITION_NOT_FOUND,
-        CURSORS_WITH_DIFFERENT_PARTITION
+        CURSORS_WITH_DIFFERENT_PARTITION,
+        CURSOR_FORMAT_EXCEPTION
     }
 
     public InvalidCursorOperation(final Reason reason) {

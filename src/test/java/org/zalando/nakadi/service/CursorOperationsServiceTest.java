@@ -16,9 +16,13 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
@@ -55,18 +59,18 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenCursorTimelinesAreInvertedThenNegativeDistance() throws Exception {
-        final Timeline initialTimeline = mockTimeline(2, 7);
-        final Timeline intermediaryTimeline = mockTimeline(1, 9L);
-        final Timeline finalTimeline = mockTimeline(0, 5);
+        final Timeline initialTimeline = mockTimeline(1, 7L);
+        final Timeline intermediaryTimeline = mockTimeline(2, 9L);
+        final Timeline finalTimeline = mockTimeline(3, 5L);
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000003");
 
-        mockActiveTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
+        mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
-        final Long distance = service.calculateDistance(initialCursor, finalCursor);
+        final Long distance = service.calculateDistance(finalCursor, initialCursor);
 
-        assertThat(distance, equalTo(-14L));
+        assertThat(distance, equalTo(-20L)); // Carefully calculated value
     }
 
     @Test
@@ -79,8 +83,10 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenTimelinesAreAdjacent() throws Exception {
-        final Timeline initialTimeline = mockTimeline(0, 10);
-        final Timeline finalTimeline = mockTimeline(1, true);
+        final Timeline initialTimeline = mockTimeline(1, 10L);
+        final Timeline finalTimeline = mockOpenTimeline(2);
+
+        mockTimelines(initialTimeline, finalTimeline);
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
@@ -92,11 +98,11 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenTimelinesAreNotAdjacent() throws Exception {
-        final Timeline initialTimeline = mockTimeline(0, 10L);
-        final Timeline intermediaryTimeline = mockTimeline(1, 9L);
-        final Timeline finalTimeline = mockTimeline(2, 0L);
+        final Timeline initialTimeline = mockTimeline(1, 10L);
+        final Timeline intermediaryTimeline = mockTimeline(2, 9L);
+        final Timeline finalTimeline = mockTimeline(3, 0L);
 
-        mockActiveTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
+        mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
@@ -110,7 +116,7 @@ public class CursorOperationsServiceTest {
         final Timeline initialTimeline = mockTimeline(1, 10L);
         final Timeline finalTimeline = mockTimeline(2, 0L);
 
-        mockActiveTimelines(initialTimeline, finalTimeline);
+        mockTimelines(initialTimeline, finalTimeline);
 
         final NakadiCursor initialCursor = new NakadiCursor(expiredTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(expiredTimeline, "2", "0000000000000002");
@@ -124,7 +130,7 @@ public class CursorOperationsServiceTest {
         final Timeline finalTimeline = mockTimeline(2, 0L);
         final Timeline futureTimeline = mockTimeline(4, 0L);
 
-        mockActiveTimelines(initialTimeline, finalTimeline);
+        mockTimelines(initialTimeline, finalTimeline);
 
         final NakadiCursor initialCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(futureTimeline, "0", "0000000000000002");
@@ -138,7 +144,7 @@ public class CursorOperationsServiceTest {
         final Timeline intermediaryTimeline = mockTimeline(1, 9L);
         final Timeline finalTimeline = mockTimeline(2, 0L);
 
-        mockActiveTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
+        mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "1", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "1", "0000000000000001");
@@ -163,8 +169,7 @@ public class CursorOperationsServiceTest {
         final Timeline intermediaryTimeline = mockTimeline(1, 9L);
         final Timeline finalTimeline = mockTimeline(2, 9L);
 
-        when(timelineService.getActiveTimelinesOrdered(any()))
-                .thenReturn(Lists.newArrayList(initialTimeline, intermediaryTimeline, finalTimeline));
+        mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(finalTimeline, "0", "000000000000000003",
                 -15L);
@@ -177,7 +182,7 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void shiftCursorToExpiredTimeline() throws Exception {
-        final Timeline initialTimeline = mockTimeline(0);
+        final Timeline initialTimeline = mockTimeline(1, 5L);
         final Timeline finalTimeline = mockTimeline(1);
 
         when(timelineService.getActiveTimelinesOrdered(any()))
@@ -198,11 +203,11 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void shiftCursorToTheRightSameClosedTimeline() throws Exception {
-        final Timeline initialTimeline = mockTimeline(0, 10);
+        final Timeline initialTimeline = mockTimeline(0, 10L);
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(initialTimeline, "0", "000000000000000003",
                 2L);
 
-        mockActiveTimelines(initialTimeline);
+        mockTimelines(initialTimeline);
 
         final NakadiCursor cursor = service.unshiftCursor(shiftedCursor);
 
@@ -211,29 +216,71 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void shiftCursorRightToNextTimeline() throws Exception {
-        final Timeline initialTimeline = mockTimeline(0, 10);
-        final Timeline nextTimeline = mockTimeline(1, 3);
+        final Timeline initialTimeline = mockTimeline(1, 10L);
+        final Timeline nextTimeline = mockTimeline(2, 3L);
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(initialTimeline, "0", "000000000000000003",
                 9L);
 
-        mockActiveTimelines(initialTimeline, nextTimeline);
+        mockTimelines(initialTimeline, nextTimeline);
 
 
         final NakadiCursor cursor = service.unshiftCursor(shiftedCursor);
 
-        assertThat(cursor.getTimeline().getOrder(), equalTo(1));
+        assertThat(cursor.getTimeline().getOrder(), equalTo(2));
         assertThat(cursor.getOffset(), equalTo("000000000000000001"));
     }
 
     @Test
     public void shiftCursorForwardInTheSameTimelineOpen() {
-        final Timeline initialTimeline = mockTimeline(0, 10);
+        final Timeline initialTimeline = mockTimeline(0, 10L);
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(initialTimeline, "0", "000000000000000003",
                 3L);
 
         final NakadiCursor cursor = service.unshiftCursor(shiftedCursor);
 
         assertThat(cursor.getOffset(), equalTo("000000000000000006"));
+    }
+
+    @Test
+    public void testDistanceWithEmptyTimelines() throws Exception {
+        final Timeline first = mockTimeline(1, 9L);
+        final Timeline last = mockOpenTimeline(5);
+        mockTimelines(first, mockTimeline(2, -1L), mockTimeline(3, -1L), mockTimeline(4, -1L), last);
+        final NakadiCursor firstCursor = new NakadiCursor(first, "0", "000000000000000001");
+        final NakadiCursor lastCursor = new NakadiCursor(last, "0", "000000000000000010");
+
+        assertEquals(service.calculateDistance(firstCursor, lastCursor), 19L);
+        assertEquals(service.calculateDistance(lastCursor, firstCursor), -19L);
+    }
+
+    @Test
+    public void testShiftWithEmptyTimelines() throws Exception {
+        final Timeline first = mockTimeline(1, 9L);
+        final Timeline last = mockOpenTimeline(5);
+        mockTimelines(first, mockTimeline(2, -1L), mockTimeline(3, -1L), mockTimeline(4, -1L), last);
+
+        final ShiftedNakadiCursor moveForward = new ShiftedNakadiCursor(first, "0", "000000000000000001", 19);
+        assertEquals(service.unshiftCursor(moveForward), new NakadiCursor(last, "0", "000000000000000010"));
+
+        final ShiftedNakadiCursor moveBackward = new ShiftedNakadiCursor(last, "0", "000000000000000010", -19);
+        assertEquals(service.unshiftCursor(moveBackward), new NakadiCursor(first, "0", "000000000000000001"));
+    }
+
+    @Test
+    public void testShiftToInitialBegin() throws Exception {
+        final Timeline first = mockTimeline(1, 1L);
+        final Timeline last = mockOpenTimeline(2);
+        mockTimelines(first, last);
+        final ShiftedNakadiCursor moveBack = new ShiftedNakadiCursor(last, "0", "000000000000000001", -4);
+        assertEquals(new NakadiCursor(first, "0", "-1"), service.unshiftCursor(moveBack));
+    }
+
+    @Test(expected = InvalidCursorOperation.class)
+    public void testShiftBeforeInitialBegin() throws Exception {
+        final Timeline first = mockTimeline(1, 1L);
+        mockTimelines(first);
+        final ShiftedNakadiCursor moveBack = new ShiftedNakadiCursor(first, "0", "-1", -1);
+        service.unshiftCursor(moveBack);
     }
 
     private void expectException(final NakadiCursor initialCursor, final NakadiCursor finalCursor,
@@ -249,17 +296,25 @@ public class CursorOperationsServiceTest {
         }
     }
 
-    private Timeline mockTimeline(final int order, final boolean isActive) {
-        return mockTimeline(order, 0);
+    private Timeline mockOpenTimeline(final int order) {
+        return mockTimeline(order, null);
     }
 
-    private Timeline mockTimeline(final int order, final long latestOffset) {
+    private Timeline mockTimeline(final int order, @Nullable final Long latestOffset) {
         final Timeline timeline = mock(Timeline.class);
         when(timeline.getOrder()).thenReturn(order);
-        final Timeline.KafkaStoragePosition positions = mock(Timeline.KafkaStoragePosition.class);
-        when(positions.getOffsets()).thenReturn(Lists.newArrayList(latestOffset));
-        when(timeline.getLatestPosition()).thenReturn(positions);
-        when(timeline.isActive()).thenReturn(latestOffset == 0);
+
+        if (latestOffset == null) {
+            when(timeline.isActive()).thenReturn(false);
+            when(timeline.getLatestPosition()).thenReturn(null);
+        } else {
+            when(timeline.isActive()).thenReturn(true);
+            when(timeline.getLatestPosition()).thenReturn(new Timeline.KafkaStoragePosition(
+                    Collections.singletonList(latestOffset)));
+        }
+        when(timeline.isActive()).thenReturn(null == latestOffset);
+        when(timeline.isFake()).thenReturn(order == 0);
+        when(timeline.isFirstAfterFake()).thenReturn(order == 1);
 
         final TopicRepository repository = new KafkaTopicRepository(
                 mock(ZooKeeperHolder.class),
@@ -273,15 +328,11 @@ public class CursorOperationsServiceTest {
     }
 
     private Timeline mockTimeline(final int order) {
-        return mockTimeline(order, true);
+        return mockOpenTimeline(order);
     }
 
-    private void mockActiveTimelines(final Timeline ...timelines) throws Exception {
-        final List<Timeline> timelinesList = Lists.newArrayList();
-        for (final Timeline t : timelines) {
-            timelinesList.add(t);
-        }
-
-        when(timelineService.getActiveTimelinesOrdered(any())).thenReturn(timelinesList);
+    private void mockTimelines(final Timeline... timelines) throws Exception {
+        final List<Timeline> timelinesList = Arrays.asList(timelines);
+        when(timelineService.getAllTimelinesOrdered(any())).thenReturn(timelinesList);
     }
 }

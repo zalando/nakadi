@@ -20,6 +20,24 @@ import java.util.Optional;
 
 public interface TopicRepository {
 
+    class TimelinePartition {
+        private final Timeline timeline;
+        private final String partition;
+
+        public TimelinePartition(final Timeline timeline, final String partition) {
+            this.timeline = timeline;
+            this.partition = partition;
+        }
+
+        public Timeline getTimeline() {
+            return timeline;
+        }
+
+        public String getPartition() {
+            return partition;
+        }
+    }
+
     String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
@@ -29,6 +47,16 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
+            throws ServiceUnavailableException;
+
+    /**
+     * Returns partitions statistics about requested partitions. The order and the amount of response items is exactly
+     * the same as it was requested
+     * @param partitions Partitions to query data for
+     * @return List of statistics.
+     * @throws ServiceUnavailableException In case when there was a problem communicating with storage
+     */
+    List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelinePartition> partitions)
             throws ServiceUnavailableException;
 
     List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;
@@ -51,7 +79,9 @@ public interface TopicRepository {
 
     long numberOfEventsBeforeCursor(NakadiCursor cursor);
 
-    String getOffsetForPosition(long shiftedOffset);
-
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
+
+    NakadiCursor createBeforeBeginCursor(Timeline timeline, String partition);
+
+    NakadiCursor shiftWithinTimeline(NakadiCursor current, long stillToAdd) throws InvalidCursorException;
 }

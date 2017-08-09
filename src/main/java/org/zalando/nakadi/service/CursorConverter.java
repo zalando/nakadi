@@ -10,6 +10,8 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.List;
+
 /**
  * The only place to create NakadiCursor from Cursor or SubscriptionCursor and back.
  */
@@ -27,6 +29,9 @@ public interface CursorConverter {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException, ServiceUnavailableException;
 
     NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
+            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
+
+    List<NakadiCursor> convert(List<SubscriptionCursorWithoutToken> cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
 
 
