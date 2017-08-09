@@ -19,7 +19,6 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
@@ -227,16 +226,6 @@ public class PostSubscriptionControllerTest {
                 .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
-    }
-
-    @Test
-    public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any(), any()))
-                .thenThrow(new IllegalScopeException(ImmutableSet.of("dummyScope")));
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Client has to have scopes: [dummyScope]");
-        checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);
     }
 
     @Test

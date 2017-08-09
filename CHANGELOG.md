@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Added validation of offsets availability when resetting subscription cursors.
+
+## [2.0.0] - 2017-08-09
+
 ### Changed
 - Changed imports format to have the same structure
 
-### Fixed
-- Added validation of offsets availability when resetting subscription cursors.
+### Removed
+- Removed read_scopes and write_scopes from event types
+- Removed CHECK_APPLICATION_LEVEL_PERMISSIONS feature
 
 ## [1.1.3] - 2017-08-03
 

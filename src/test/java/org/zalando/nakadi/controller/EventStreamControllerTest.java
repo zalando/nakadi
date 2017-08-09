@@ -58,7 +58,6 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -92,7 +91,6 @@ public class EventStreamControllerTest {
     private static final String TEST_EVENT_TYPE_NAME = "test";
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
-    private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
     private static final String CLIENT_ID = "clientId";
     private static final Client FULL_ACCESS_CLIENT = new FullAccessClient(CLIENT_ID);
     private static final String KAFKA_CLIENT_ID = CLIENT_ID + "-" + TEST_EVENT_TYPE_NAME;
@@ -435,7 +433,7 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void testReadScope() throws Exception {
+    public void testRead() throws Exception {
         prepareScopeRead();
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
@@ -443,30 +441,10 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
                 .thenReturn(mock(EventStream.class));
 
-        writeStream(SCOPE_READ);
+        writeStream();
 
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
-
-        clearScopes();
-    }
-
-    @Test
-    public void testNoReadScope() throws Exception {
-        prepareScopeRead();
-
-        final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
-        final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
-
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
-                .thenReturn(mock(EventStream.class));
-
-        writeStream(Collections.emptySet());
-
-        assertThat(statusCaptor.getValue(), equalTo(HttpStatus.FORBIDDEN.value()));
-        assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
-
-        clearScopes();
     }
 
     @Test
@@ -483,12 +461,8 @@ public class EventStreamControllerTest {
         assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
-    private void clearScopes() {
-        EVENT_TYPE.setReadScopes(Collections.emptySet());
-    }
-
-    private void writeStream(final Set<String> scopes) throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", scopes));
+    private void writeStream() throws Exception {
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", null));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }
@@ -506,7 +480,6 @@ public class EventStreamControllerTest {
     }
 
     private void prepareScopeRead() throws NakadiException, InvalidCursorException {
-        EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
