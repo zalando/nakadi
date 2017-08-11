@@ -28,24 +28,36 @@ public class ExactWeightRebalancerTest {
         ExactWeightRebalancer.splitByWeight(2, new int[]{1, 0});
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void splitByWeightShouldAcceptOnlyCorrectData3() {
+        ExactWeightRebalancer.splitByWeight(10, new int[]{});
+    }
+
     @Test
     public void splitByWeightMustCorrectlyWorkOnDifferentValues() {
         assertArrayEquals(
                 new int[]{1, 1},
                 ExactWeightRebalancer.splitByWeight(2, new int[]{1, 1}));
         assertArrayEquals(
-                new int[]{2, 1},
+                new int[]{1, 2},
                 ExactWeightRebalancer.splitByWeight(3, new int[]{1, 1}));
         assertArrayEquals(
                 new int[]{1, 2},
                 ExactWeightRebalancer.splitByWeight(3, new int[]{1, 2}));
         assertArrayEquals(
-                new int[]{34, 33, 33},
+                new int[]{33, 33, 34},
                 ExactWeightRebalancer.splitByWeight(100, new int[]{1, 1, 1}));
         assertArrayEquals(
-                new int[]{26, 25, 50},
+                new int[]{25, 25, 51},
                 ExactWeightRebalancer.splitByWeight(101, new int[]{1, 1, 2}));
+        assertArrayEquals(
+                new int[]{50, 25, 25},
+                ExactWeightRebalancer.splitByWeight(100, new int[]{2, 1, 1}));
+        assertArrayEquals(
+                new int[]{40, 40, 20},
+                ExactWeightRebalancer.splitByWeight(100, new int[]{2, 2, 1}));
     }
+
 
     @Test
     public void rebalanceShouldHaveEmptyChangesetForBalancedData() {
@@ -105,7 +117,7 @@ public class ExactWeightRebalancerTest {
     }
 
     @Test
-    public void rebalanceShouldMoveToReassigningState() {
+    public void rebalanceShouldMoveAnyPartitionToReassigningState() {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
                 new Partition[]{
@@ -115,16 +127,12 @@ public class ExactWeightRebalancerTest {
                         new Partition("1", "1", "2", null, ASSIGNED)});
         assertEquals(1, changeset.length);
         final Partition changed = changeset[0];
-        assertTrue(
-                changed.getKey().equals(new EventTypePartition("1", "0")) ||
-                        changed.getKey().equals(new EventTypePartition("1", "1")));
-        assertEquals("2", changed.getSession());
         assertEquals("3", changed.getNextSession());
         assertEquals(REASSIGNING, changed.getState());
     }
 
     @Test
-    public void rebalanceShouldTakeRebalancingPartitions() {
+    public void rebalanceShouldTakeReassigningPartition() {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
                 new Partition[]{
