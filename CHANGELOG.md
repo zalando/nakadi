@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Added validation of offsets availability when resetting subscription cursors.
+
 ### Changed
 - Removed authorization for subscription creation
 
