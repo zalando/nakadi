@@ -878,8 +878,6 @@ paths:
         this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
         not important) - the subscription will be created only once and for all other calls it will just return
         the subscription that was already created.
-        If per-EventType authorization is enabled, the caller must be authorized to read from all the EventTypes in the
-        subscription.
       parameters:
         - name: subscription
           in: body
@@ -920,10 +918,6 @@ paths:
             $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
     get:
