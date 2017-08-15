@@ -5,15 +5,11 @@ import org.joda.time.DateTimeZone;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -101,13 +97,8 @@ class EventStreamWriterBinary implements EventStreamWriter {
         byteCount += B_DEBUG_BEGIN.length;
 
         final DateTime now = new DateTime(DateTimeZone.UTC);
-        final InetAddress ip;
-        try {
-            ip = InetAddress.getLocalHost();
-        } catch (final UnknownHostException e) {
-            throw new MyNakadiRuntimeException1("problem getting servers ip", e);
-        }
-        final String debugString = "Batch written at " + now.toString() + " from server " + ip.getHostAddress();
+        final String stackVersion = System.getenv("STACK_VERSION");
+        final String debugString = "Batch written at " + now.toString() + " from server " + stackVersion;
 
         final byte[] debug = debugString.getBytes(UTF_8);
         os.write(debug);

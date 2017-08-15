@@ -10,6 +10,7 @@ services:
      - zookeeper
      - kafka
     environment:
+      - STACK_VERSION=local
       - SPRING_PROFILES_ACTIVE
       - NAKADI_OAUTH2_MODE=OFF
       - NAKADI_FEATURETOGGLE_DEFAULT=true
