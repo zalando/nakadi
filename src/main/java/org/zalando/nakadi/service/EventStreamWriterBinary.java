@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -77,10 +79,33 @@ class EventStreamWriterBinary implements EventStreamWriter {
                 }
             }
         }
+
+        byteCount += writeDebugInfo(os);
+
         os.write(B_CLOSE_CURLY_BRACKET);
         os.write(B_BATCH_SEPARATOR);
 
         os.flush();
+
+        return byteCount;
+    }
+
+    private int writeDebugInfo(final OutputStream os) throws IOException {
+        int byteCount = 0;
+
+        os.write(B_DEBUG_BEGIN);
+        byteCount += B_DEBUG_BEGIN.length;
+
+        final DateTime now = new DateTime(DateTimeZone.UTC);
+        final String stackVersion = System.getenv("STACK_VERSION");
+        final String debugString = "Batch written at " + now.toString() + " from server " + stackVersion;
+
+        final byte[] debug = debugString.getBytes(UTF_8);
+        os.write(debug);
+        byteCount += debug.length;
+
+        os.write(B_DEBUG_END);
+        byteCount += B_DEBUG_END.length;
 
         return byteCount;
     }
@@ -124,17 +149,9 @@ class EventStreamWriterBinary implements EventStreamWriter {
                 }
             }
         }
-        if (metadata.isPresent()) {
-            os.write(B_DEBUG_BEGIN);
-            byteCount += B_DEBUG_BEGIN.length;
 
-            final byte[] debug = metadata.get().getBytes(UTF_8);
-            os.write(debug);
-            byteCount += debug.length;
+        byteCount += writeDebugInfo(os);
 
-            os.write(B_DEBUG_END);
-            byteCount += B_DEBUG_END.length;
-        }
         os.write(B_CLOSE_CURLY_BRACKET);
         os.write(B_BATCH_SEPARATOR);
 
