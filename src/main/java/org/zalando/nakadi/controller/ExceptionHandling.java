@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
@@ -82,12 +81,6 @@ public final class ExceptionHandling implements ProblemHandling {
     public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
                                                          final NativeWebRequest request) {
         return Responses.create(Response.Status.FORBIDDEN, exception.explain(), request);
-    }
-
-    @ExceptionHandler(IllegalScopeException.class)
-    public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception,
-                                                               final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalClientIdException.class)

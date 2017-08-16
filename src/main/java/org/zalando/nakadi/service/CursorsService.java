@@ -8,7 +8,6 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -17,11 +16,12 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -71,8 +71,7 @@ public class CursorsService {
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
                                        final List<NakadiCursor> cursors, final Client client)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
-            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
-            IllegalScopeException {
+            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         if (cursors.isEmpty()) {
             throw new UnableProcessException("Cursors are absent");
         }
@@ -80,10 +79,7 @@ public class CursorsService {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
         TimeLogger.addMeasure("validateSubscriptionCursors");
-        validateSubscriptionCursors(subscription, cursors);
-
-        TimeLogger.addMeasure("validateSubscriptionReadScopes");
-        validateSubscriptionReadScopes(subscription, client);
+        validateSubscriptionCommitCursors(subscription, cursors);
 
         TimeLogger.addMeasure("createSubscriptionClient");
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
@@ -126,7 +122,6 @@ public class CursorsService {
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId, final Client client)
             throws NakadiException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        validateSubscriptionReadScopes(subscription, client);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".get_cursors");
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -144,15 +139,14 @@ public class CursorsService {
     }
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
-            throws ServiceUnavailableException, NoSuchSubscriptionException,
-            UnableProcessException, IllegalScopeException, OperationTimeoutException, ZookeeperException,
+            throws ServiceUnavailableException, NoSuchSubscriptionException, CursorUnavailableException,
+            UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException {
         if (cursors.isEmpty()) {
             throw new UnableProcessException("Cursors are absent");
         }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        validateSubscriptionCursors(subscription, cursors);
-        validateSubscriptionReadScopes(subscription, client);
+        validateSubscriptionResetCursors(subscription, cursors);
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".reset_cursors");
@@ -164,15 +158,9 @@ public class CursorsService {
                 timeout);
     }
 
-    private void validateSubscriptionCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, UnableProcessException {
-        final List<String> wrongEventTypes = cursors.stream()
-                .map(NakadiCursor::getEventType)
-                .filter(et -> !subscription.getEventTypes().contains(et))
-                .collect(Collectors.toList());
-        if (!wrongEventTypes.isEmpty()) {
-            throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
-        }
+    private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)
+            throws ServiceUnavailableException, UnableProcessException {
+        validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
             try {
@@ -183,11 +171,33 @@ public class CursorsService {
         });
     }
 
-    private void validateSubscriptionReadScopes(final Subscription subscription, final Client client)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, IllegalScopeException {
-        subscription.getEventTypes().stream().map(Try.wrap(eventTypeRepository::findByName))
-                .map(Try::getOrThrow)
-                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+    private void validateSubscriptionResetCursors(final Subscription subscription, final List<NakadiCursor> cursors)
+            throws ServiceUnavailableException, CursorUnavailableException {
+        validateCursorsBelongToSubscription(subscription, cursors);
+
+        final Map<TopicRepository, List<NakadiCursor>> cursorsByRepo = cursors.stream()
+                .collect(Collectors.groupingBy(c -> timelineService.getTopicRepository(c.getTimeline())));
+
+        for (final Map.Entry<TopicRepository, List<NakadiCursor>> repoEntry : cursorsByRepo.entrySet()) {
+            final TopicRepository topicRepository = repoEntry.getKey();
+            final List<NakadiCursor> cursorsForRepo = repoEntry.getValue();
+            try {
+                topicRepository.validateReadCursors(cursorsForRepo);
+            } catch (final InvalidCursorException e) {
+                throw new CursorUnavailableException(e.getMessage(), e);
+            }
+        }
+    }
+
+    private void validateCursorsBelongToSubscription(final Subscription subscription, final List<NakadiCursor> cursors)
+            throws UnableProcessException {
+        final List<String> wrongEventTypes = cursors.stream()
+                .map(NakadiCursor::getEventType)
+                .filter(et -> !subscription.getEventTypes().contains(et))
+                .collect(Collectors.toList());
+        if (!wrongEventTypes.isEmpty()) {
+            throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
+        }
     }
 
     private class SubscriptionCursorComparator implements Comparator<SubscriptionCursorWithoutToken> {
