@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -108,6 +109,7 @@ public class KafkaLocationManager {
         producerProps.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
         producerProps.put("batch.size", kafkaSettings.getBatchSize());
         producerProps.put("linger.ms", kafkaSettings.getLingerMs());
+        producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         return producerProps;
     }
 }
