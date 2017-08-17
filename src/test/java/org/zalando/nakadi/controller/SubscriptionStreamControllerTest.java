@@ -17,7 +17,6 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -29,7 +28,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
@@ -66,8 +64,6 @@ public class SubscriptionStreamControllerTest {
         final MetricRegistry metricRegistry = mock(MetricRegistry.class);
         when(metricRegistry.counter(any())).thenReturn(mock(Counter.class));
 
-        final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
-        when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
         final BlacklistService blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(any(String.class), any(String.class)))
@@ -85,7 +81,7 @@ public class SubscriptionStreamControllerTest {
         eventTypeChangeListener = mock(EventTypeChangeListener.class);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
-                crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository);
+                nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository);
     }
 
     @Test

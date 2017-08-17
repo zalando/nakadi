@@ -40,7 +40,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConnectionSlot;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -87,7 +86,6 @@ public class EventStreamController {
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
-    private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
     private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
@@ -103,7 +101,6 @@ public class EventStreamController {
                                  final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
-                                 final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
@@ -116,7 +113,6 @@ public class EventStreamController {
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.streamMetrics = streamMetrics;
-        this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
@@ -210,7 +206,7 @@ public class EventStreamController {
                 return;
             }
 
-            final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
+            final AtomicBoolean connectionReady = new AtomicBoolean(true);
             Counter consumerCounter = null;
             EventStream eventStream = null;
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
