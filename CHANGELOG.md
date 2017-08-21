@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2017-08-21
+
 ### Changed
 - Using Jetty instead of Tomcat as Servlet container.
 
