@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- New database table for authorization
+
 ## [2.0.1] - 2017-08-11
 
 ### Fixed
