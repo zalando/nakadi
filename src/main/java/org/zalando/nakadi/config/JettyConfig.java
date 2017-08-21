@@ -15,7 +15,8 @@ public class JettyConfig {
             @Value("${jetty.threadPool.maxThreads:200}") final String maxThreads,
             @Value("${jetty.threadPool.minThreads:8}") final String minThreads,
             @Value("${jetty.threadPool.idleTimeout:60000}") final String idleTimeout) {
-        final JettyEmbeddedServletContainerFactory factory =  new JettyEmbeddedServletContainerFactory(Integer.valueOf(port));
+        final JettyEmbeddedServletContainerFactory factory =
+                new JettyEmbeddedServletContainerFactory(Integer.valueOf(port));
         factory.addServerCustomizers((JettyServerCustomizer) server -> {
             final QueuedThreadPool threadPool = server.getBean(QueuedThreadPool.class);
             threadPool.setMaxThreads(Integer.valueOf(maxThreads));
