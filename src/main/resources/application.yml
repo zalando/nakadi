@@ -12,6 +12,11 @@ logging:
     org.apache.kafka: WARN
     org.zalando.nakadi: DEBUG
     org.zalando.nakadi.config: INFO
+jetty:
+  threadPool:
+    maxThreads: 200
+    minThreads: 8
+    idleTimeout: 60000
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db

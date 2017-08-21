@@ -108,11 +108,13 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-web:$springBootVersion") {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
+        exclude module: 'spring-boot-starter-tomcat'
     }
     compile "org.springframework:spring-context:$springFrameworkVersion"
     compile "org.springframework:spring-web:$springFrameworkVersion"
     compile "org.springframework:spring-webmvc:$springFrameworkVersion"
     compile "org.springframework.boot:spring-boot-test:$springBootVersion"
+    compile "org.springframework.boot:spring-boot-starter-jetty:$springBootVersion"
 
     // oauth
     compile 'org.springframework.security.oauth:spring-security-oauth2:2.1.0.RELEASE'
