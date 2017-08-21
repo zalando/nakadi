@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Using Jetty instead of Tomcat as Servlet container.
 
 ### Fixed
-- Using Jetty fixes a rare concurrency issue that could deliver messages to the wrong stream.
+- Using Jetty fixes a rare concurrency issue where messages could be delivered to the wrong stream.
 
 ## [2.0.1] - 2017-08-11
 
