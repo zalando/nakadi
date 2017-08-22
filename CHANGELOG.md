@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed DEBUG-level logging
+
 ## [2.1.0] - 2017-08-21
 
 ### Changed
