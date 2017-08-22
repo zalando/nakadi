@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.1] - 2017-08-22
+
 ### Fixed
 - Sync flush batches when using gzip streams.
 
