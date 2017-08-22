@@ -5,9 +5,6 @@ server:
     mime-types: text/plain,application/x-json-stream
 management:
   port: 7979
-logging:
-  level:
-    ROOT: INFO
 jetty:
   threadPool:
     maxThreads: 200
