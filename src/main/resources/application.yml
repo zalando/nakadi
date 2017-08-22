@@ -8,10 +8,6 @@ management:
 logging:
   level:
     ROOT: INFO
-    org.springframework.web: INFO
-    org.apache.kafka: WARN
-    org.zalando.nakadi: DEBUG
-    org.zalando.nakadi.config: INFO
 jetty:
   threadPool:
     maxThreads: 200
