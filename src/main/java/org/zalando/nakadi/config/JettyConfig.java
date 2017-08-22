@@ -1,5 +1,6 @@
 package org.zalando.nakadi.config;
 
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.jetty.JettyEmbeddedServletContainerFactory;
@@ -22,6 +23,11 @@ public class JettyConfig {
             threadPool.setMaxThreads(Integer.valueOf(maxThreads));
             threadPool.setMinThreads(Integer.valueOf(minThreads));
             threadPool.setIdleTimeout(Integer.valueOf(idleTimeout));
+
+            final GzipHandler gzipHandler = new GzipHandler();
+            gzipHandler.setHandler(server.getHandler());
+            gzipHandler.setSyncFlush(true);
+            server.setHandler(gzipHandler);
         });
         return factory;
     }
