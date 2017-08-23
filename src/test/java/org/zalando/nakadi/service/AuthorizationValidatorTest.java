@@ -45,7 +45,8 @@ public class AuthorizationValidatorTest {
         authorizationService = mock(AuthorizationService.class);
         authorizationDbRepository = mock(AuthorizationDbRepository.class);
 
-        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class), authorizationDbRepository);
+        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class),
+                authorizationDbRepository);
     }
 
     @Test
@@ -130,19 +131,23 @@ public class AuthorizationValidatorTest {
 
     @Test(expected = InsufficientAuthorizationException.class)
     public void whenUpdateAdminsRemovesAllAdminsThenFail() throws Exception {
-        AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
-        AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
+        final AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
+        final AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
 
-        List<AuthorizationAttribute> newAttrs = Arrays.asList(user1);
+        final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1);
 
-        Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "user", "user1");
-        Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service1");
+        final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
+                "user", "user1");
+        final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
+                "service", "service1");
 
-        Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ, "user", "user1");
+        final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
+                "user", "user1");
 
-        Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "user", "user1");
+        final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
+                "user", "user1");
 
-        AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, new ArrayList<>(), newAttrs);
+        final AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, new ArrayList<>(), newAttrs);
 
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
                 permReadUser1, permWriteUser1));
@@ -151,24 +156,33 @@ public class AuthorizationValidatorTest {
 
     @Test
     public void whenUpdateAdminsThenOk() {
-        AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
-        AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
-        AuthorizationAttribute service2 = new AdminAuthorizationAttribute("service", "service2");
+        final AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
+        final AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
+        final AuthorizationAttribute service2 = new AdminAuthorizationAttribute("service", "service2");
 
-        List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
+        final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
 
-        Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "user", "user1");
-        Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service1");
-        Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service2");
+        final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
+                "user", "user1");
+        final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
+                "service", "service1");
+        final Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
+                "service", "service2");
 
-        Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ, "user", "user1");
-        Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ, "service", "service1");
-        Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ, "service", "service2");
+        final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
+                "user", "user1");
+        final Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ,
+                "service", "service1");
+        final Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ,
+                "service", "service2");
 
-        Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "user", "user1");
-        Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "service", "service1");
-        Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "service", "service2");
-        AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, newAttrs, newAttrs);
+        final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
+                "user", "user1");
+        final Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
+                "service", "service1");
+        final Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
+                "service", "service2");
+        final AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, newAttrs, newAttrs);
 
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,

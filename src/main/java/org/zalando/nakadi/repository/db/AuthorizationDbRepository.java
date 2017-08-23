@@ -19,14 +19,15 @@ import java.util.UUID;
 public class AuthorizationDbRepository extends AbstractDbRepository {
 
     @Autowired
-    public AuthorizationDbRepository(JdbcTemplate jdbcTemplate, ObjectMapper jsonMapper) {
+    public AuthorizationDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
     }
 
     public List<Permission> listAdmins() throws RepositoryProblemException {
-        List<Permission> admins;
+        final List<Permission> admins;
         try {
-            admins = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource='nakadi'", permissionRowMapper);
+            admins = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource='nakadi'",
+                    permissionRowMapper);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("Errorr occurred when fetching admininstrators", e);
         }
@@ -34,7 +35,7 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
         return admins;
     }
 
-    public void deletePermission(Permission permission) {
+    public void deletePermission(final Permission permission) {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.authorization " +
                             "WHERE az_resource=? AND az_operation=? AND az_data_type=? AND az_value=?",
@@ -46,9 +47,8 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
         }
     }
 
-    public void createPermission(Permission permission) {
+    public void createPermission(final Permission permission) {
         try {
-            String op = "admin";
             jdbcTemplate.update("INSERT INTO zn_data.authorization VALUES (?, ?, ?::az_operation, ?, ?)",
                     UUID.randomUUID(), permission.getResource(), permission.getOperation().toString(),
                     permission.getAuthorizationAttribute().getDataType(),
@@ -58,8 +58,10 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
         }
     }
 
-    static Permission buildPermission(final String resource, final String operation, final String dataType, final String value) {
-        return new Permission(resource, AuthorizationService.Operation.valueOf(operation.toUpperCase()), dataType, value);
+    static Permission buildPermission(final String resource, final String operation, final String dataType,
+                                      final String value) {
+        return new Permission(resource, AuthorizationService.Operation.valueOf(operation.toUpperCase()),
+                dataType, value);
     }
 
     private final RowMapper<Permission> permissionRowMapper = (rs, rowNum)

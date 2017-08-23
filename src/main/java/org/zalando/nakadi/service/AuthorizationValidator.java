@@ -194,36 +194,38 @@ public class AuthorizationValidator {
     }
 
     public AdminAuthorization getAdmins() {
-        List<Permission> allPermissions = authorizationDbRepository.listAdmins();
-        List<AuthorizationAttribute> adminPermissions = allPermissions.stream()
+        final List<Permission> allPermissions = authorizationDbRepository.listAdmins();
+        final List<AuthorizationAttribute> adminPermissions = allPermissions.stream()
                 .filter(p -> p.getOperation() == AuthorizationService.Operation.ADMIN)
                 .map(p -> p.getAuthorizationAttribute())
                 .collect(Collectors.toList());
-        List<AuthorizationAttribute> readPermissions = allPermissions.stream()
+        final List<AuthorizationAttribute> readPermissions = allPermissions.stream()
                 .filter(p -> p.getOperation() == AuthorizationService.Operation.READ)
                 .map(p -> p.getAuthorizationAttribute())
                 .collect(Collectors.toList());
-        List<AuthorizationAttribute> writePermissions = allPermissions.stream()
+        final List<AuthorizationAttribute> writePermissions = allPermissions.stream()
                 .filter(p -> p.getOperation() == AuthorizationService.Operation.WRITE)
                 .map(p -> p.getAuthorizationAttribute())
                 .collect(Collectors.toList());
         return new AdminAuthorization(adminPermissions, readPermissions, writePermissions);
     }
 
-    public void updateAdmins(AdminAuthorization newAdmins) throws InsufficientAuthorizationException {
+    public void updateAdmins(final AdminAuthorization newAdmins) throws InsufficientAuthorizationException {
         if (newAdmins.getAdmins().isEmpty() || newAdmins.getWriters().isEmpty() || newAdmins.getReaders().isEmpty()) {
             throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
         }
-        AdminAuthorization currentAdmins = getAdmins();
-        for (AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
-            List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
+        final AdminAuthorization currentAdmins = getAdmins();
+        for (final AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
+            final List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
                     .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
                     .collect(Collectors.toList());
-            List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
+            final List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
                     .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
                     .collect(Collectors.toList());
-            toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
-            toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+            toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
+                    new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+            toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
+                    new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
         }
     }
 

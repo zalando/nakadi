@@ -25,7 +25,7 @@ public class AdminController {
     private final AuthorizationValidator authorizationValidator;
 
     @Autowired
-    public AdminController(AuthorizationValidator authorizationValidator) {
+    public AdminController(final AuthorizationValidator authorizationValidator) {
         this.authorizationValidator = authorizationValidator;
     }
 

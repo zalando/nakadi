@@ -54,7 +54,7 @@ public class AdminAuthorization {
         return writers;
     }
 
-    public List<AuthorizationAttribute> getList(AuthorizationService.Operation operation) {
+    public List<AuthorizationAttribute> getList(final AuthorizationService.Operation operation) {
         switch (operation) {
             case ADMIN:
                 return admins;
