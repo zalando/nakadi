@@ -14,16 +14,16 @@ public class Permission {
     private final AuthorizationAttribute authorizationAttribute;
 
     public Permission(final UUID uuid, final String resource, final AuthorizationService.Operation operation,
-                      final String dataType, final String value) {
+                      final AuthorizationAttribute authorizationAttribute) {
         this.uuid = uuid;
         this.resource = resource;
         this.operation = operation;
-        this.authorizationAttribute = new AdminAuthorizationAttribute(dataType, value);
+        this.authorizationAttribute = authorizationAttribute;
     }
 
-    public Permission(final String resource, final AuthorizationService.Operation operation, final String dataType,
-                      final String value) {
-        this(UUID.randomUUID(), resource, operation, dataType, value);
+    public Permission(final String resource, final AuthorizationService.Operation operation,
+                      final AuthorizationAttribute authorizationAttribute) {
+        this(UUID.randomUUID(), resource, operation, authorizationAttribute);
     }
 
     public UUID getUUID() {

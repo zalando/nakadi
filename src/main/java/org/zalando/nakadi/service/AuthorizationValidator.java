@@ -42,6 +42,8 @@ public class AuthorizationValidator {
     private final EventTypeRepository eventTypeRepository;
     private final AuthorizationDbRepository authorizationDbRepository;
 
+    public static final String ADMIN_RESOURCE = "nakadi";
+
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
@@ -223,9 +225,9 @@ public class AuthorizationValidator {
                     .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
                     .collect(Collectors.toList());
             toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
-                    new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+                    new Permission(ADMIN_RESOURCE, operation, attr)));
             toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
-                    new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+                    new Permission(ADMIN_RESOURCE, operation, attr)));
         }
     }
 

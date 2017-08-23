@@ -137,15 +137,15 @@ public class AuthorizationValidatorTest {
         final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1);
 
         final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
         final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                "service", "service1");
+                new AdminAuthorizationAttribute("service", "service1"));
 
         final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
 
         final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
 
         final AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, new ArrayList<>(), newAttrs);
 
@@ -163,25 +163,25 @@ public class AuthorizationValidatorTest {
         final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
 
         final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
         final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                "service", "service1");
+                new AdminAuthorizationAttribute("service", "service1"));
         final Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                "service", "service2");
+                new AdminAuthorizationAttribute("service", "service2"));
 
         final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
         final Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                "service", "service1");
+                new AdminAuthorizationAttribute("service", "service1"));
         final Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                "service", "service2");
+                new AdminAuthorizationAttribute("service", "service2"));
 
         final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                "user", "user1");
+                new AdminAuthorizationAttribute("user", "user1"));
         final Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                "service", "service1");
+                new AdminAuthorizationAttribute("service", "service1"));
         final Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                "service", "service2");
+                new AdminAuthorizationAttribute("service", "service2"));
         final AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, newAttrs, newAttrs);
 
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
