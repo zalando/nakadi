@@ -4,10 +4,12 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
+import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -18,6 +20,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -35,13 +39,16 @@ public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
     private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationDbRepository authorizationDbRepository;
 
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
-            final EventTypeRepository eventTypeRepository) {
+            final EventTypeRepository eventTypeRepository,
+            final AuthorizationDbRepository authorizationDbRepository) {
         this.authorizationService = authorizationService;
         this.eventTypeRepository = eventTypeRepository;
+        this.authorizationDbRepository = authorizationDbRepository;
     }
 
     public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
@@ -183,6 +190,54 @@ public class AuthorizationValidator {
         }
 
         validateAuthorization(newAuth);
+    }
+
+    public AdminAuthorization getAdmins() {
+        List<Permission> allPermissions = authorizationDbRepository.listAdmins();
+        List<AuthorizationAttribute> adminPermissions = allPermissions.stream()
+                .filter(p -> p.getOperation() == AuthorizationService.Operation.ADMIN)
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+        List<AuthorizationAttribute> readPermissions = allPermissions.stream()
+                .filter(p -> p.getOperation() == AuthorizationService.Operation.READ)
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+        List<AuthorizationAttribute> writePermissions = allPermissions.stream()
+                .filter(p -> p.getOperation() == AuthorizationService.Operation.WRITE)
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+        return new AdminAuthorization(adminPermissions, readPermissions, writePermissions);
+    }
+
+    public void updateAdmins(AdminAuthorization newAdmins) {
+        AdminAuthorization currentAdmins = getAdmins();
+        List<AuthorizationAttribute> toRemove = currentAdmins.getAdmins().stream()
+                .filter(t -> !newAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        List<AuthorizationAttribute> toAdd = newAdmins.getAdmins().stream()
+                .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.ADMIN, attr.getDataType(), attr.getValue())));
+        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.ADMIN, attr.getDataType(), attr.getValue())));
+
+        toRemove = currentAdmins.getReaders().stream()
+                .filter(t -> !newAdmins.getReaders().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        toAdd = newAdmins.getReaders().stream()
+                .filter(t -> !currentAdmins.getReaders().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.READ, attr.getDataType(), attr.getValue())));
+        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.READ, attr.getDataType(), attr.getValue())));
+
+        toRemove = currentAdmins.getWriters().stream()
+                .filter(t -> !newAdmins.getWriters().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        toAdd = newAdmins.getWriters().stream()
+                .filter(t -> !currentAdmins.getWriters().stream().anyMatch(Predicate.isEqual(t)))
+                .collect(Collectors.toList());
+        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.WRITE, attr.getDataType(), attr.getValue())));
+        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.WRITE, attr.getDataType(), attr.getValue())));
+
     }
 
 }
