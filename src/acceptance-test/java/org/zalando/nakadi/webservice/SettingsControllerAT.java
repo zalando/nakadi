@@ -65,18 +65,18 @@ public class SettingsControllerAT extends BaseAT {
     }
 
     @Test
-    public void testPutAdmins() throws Exception {
+    public void testPostAdmins() throws Exception {
         given().body("{\"admins\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
                 "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
                 "\"readers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
                 "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
                 "\"writers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
                 "{\"data_type\": \"service\", \"value\": \"service1\"}]}")
-                .contentType(ContentType.JSON).put(ADMINS_URL).then().statusCode(HttpStatus.SC_OK);
+                .contentType(ContentType.JSON).post(ADMINS_URL).then().statusCode(HttpStatus.SC_OK);
     }
 
     @Test
-    public void testPutNotAdminsThen422() throws Exception {
+    public void testPostNotAdminsThen422() throws Exception {
         given().body("{\"admins\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
                 "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
                 "\"readers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
