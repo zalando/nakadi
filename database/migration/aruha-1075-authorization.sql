@@ -1,4 +1,4 @@
-CREATE TYPE az_operation AS ENUM('admin', 'readers', 'writers');
+CREATE TYPE az_operation AS ENUM('ADMIN', 'READ', 'WRITE');
 
 CREATE TABLE zn_data.authorization (
   az_id              UUID                     NOT NULL PRIMARY KEY,
