@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - New database table for authorization
 
+## [2.1.1] - 2017-08-22
+
+### Fixed
+- Sync flush batches when using gzip streams.
+
+## [2.1.0] - 2017-08-21
+
+### Changed
+- Using Jetty instead of Tomcat as Servlet container.
+
+### Fixed
+- Using Jetty fixes a rare concurrency issue where messages could be delivered to the wrong stream.
+
 ## [2.0.1] - 2017-08-11
 
 ### Fixed
