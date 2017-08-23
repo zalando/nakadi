@@ -215,33 +215,16 @@ public class AuthorizationValidator {
             throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
         }
         AdminAuthorization currentAdmins = getAdmins();
-        List<AuthorizationAttribute> toRemove = currentAdmins.getAdmins().stream()
-                .filter(t -> !newAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        List<AuthorizationAttribute> toAdd = newAdmins.getAdmins().stream()
-                .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.ADMIN, attr.getDataType(), attr.getValue())));
-        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.ADMIN, attr.getDataType(), attr.getValue())));
-
-        toRemove = currentAdmins.getReaders().stream()
-                .filter(t -> !newAdmins.getReaders().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        toAdd = newAdmins.getReaders().stream()
-                .filter(t -> !currentAdmins.getReaders().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.READ, attr.getDataType(), attr.getValue())));
-        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.READ, attr.getDataType(), attr.getValue())));
-
-        toRemove = currentAdmins.getWriters().stream()
-                .filter(t -> !newAdmins.getWriters().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        toAdd = newAdmins.getWriters().stream()
-                .filter(t -> !currentAdmins.getWriters().stream().anyMatch(Predicate.isEqual(t)))
-                .collect(Collectors.toList());
-        toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", AuthorizationService.Operation.WRITE, attr.getDataType(), attr.getValue())));
-        toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", AuthorizationService.Operation.WRITE, attr.getDataType(), attr.getValue())));
-
+        for (AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
+            List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
+                    .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
+                    .collect(Collectors.toList());
+            List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
+                    .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
+                    .collect(Collectors.toList());
+            toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+            toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(new Permission("nakadi", operation, attr.getDataType(), attr.getValue())));
+        }
     }
 
 }
