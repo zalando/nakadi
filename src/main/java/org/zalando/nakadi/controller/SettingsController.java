@@ -100,7 +100,7 @@ public class SettingsController {
         return ResponseEntity.ok(authorizationValidator.getAdmins());
     }
 
-    @RequestMapping(path = "/admins", method = RequestMethod.PUT)
+    @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@RequestBody final AdminAuthorization authz) {
         authorizationValidator.updateAdmins(authz);
         return ResponseEntity.ok().build();
