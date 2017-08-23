@@ -3,16 +3,25 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+import org.zalando.nakadi.domain.AdminAuthorization;
+import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
+import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
@@ -25,6 +34,7 @@ public class AuthorizationValidatorTest {
 
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
+    private final AuthorizationDbRepository authorizationDbRepository;
 
     private final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
     private final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
@@ -33,8 +43,9 @@ public class AuthorizationValidatorTest {
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
+        authorizationDbRepository = mock(AuthorizationDbRepository.class);
 
-        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class));
+        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class), authorizationDbRepository);
     }
 
     @Test
@@ -115,6 +126,54 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorized(any(), any())).thenThrow(new PluginException("blah"));
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
+    }
+
+    @Test(expected = InsufficientAuthorizationException.class)
+    public void whenUpdateAdminsRemovesAllAdminsThenFail() throws Exception {
+        AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
+        AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
+
+        List<AuthorizationAttribute> newAttrs = Arrays.asList(user1);
+
+        Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "user", "user1");
+        Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service1");
+
+        Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ, "user", "user1");
+
+        Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "user", "user1");
+
+        AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, new ArrayList<>(), newAttrs);
+
+        when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
+                permReadUser1, permWriteUser1));
+        validator.updateAdmins(newAuthz);
+    }
+
+    @Test
+    public void whenUpdateAdminsThenOk() {
+        AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
+        AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
+        AuthorizationAttribute service2 = new AdminAuthorizationAttribute("service", "service2");
+
+        List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
+
+        Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "user", "user1");
+        Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service1");
+        Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN, "service", "service2");
+
+        Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ, "user", "user1");
+        Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ, "service", "service1");
+        Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ, "service", "service2");
+
+        Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "user", "user1");
+        Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "service", "service1");
+        Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE, "service", "service2");
+        AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, newAttrs, newAttrs);
+
+        when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
+                permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
+                permWriteService1, permWriteService2));
+        validator.updateAdmins(newAuthz);
     }
 
 }
