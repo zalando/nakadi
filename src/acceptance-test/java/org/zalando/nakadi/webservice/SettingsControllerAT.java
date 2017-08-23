@@ -75,6 +75,16 @@ public class SettingsControllerAT extends BaseAT {
                 .contentType(ContentType.JSON).put(ADMINS_URL).then().statusCode(HttpStatus.SC_OK);
     }
 
+    @Test
+    public void testPutNotAdminsThen422() throws Exception {
+        given().body("{\"admins\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"readers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"writers\":[]}")
+                .contentType(ContentType.JSON).put(ADMINS_URL).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
     public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {
         given()
                 .contentType(ContentType.JSON)

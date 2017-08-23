@@ -14,6 +14,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -209,7 +210,10 @@ public class AuthorizationValidator {
         return new AdminAuthorization(adminPermissions, readPermissions, writePermissions);
     }
 
-    public void updateAdmins(AdminAuthorization newAdmins) {
+    public void updateAdmins(AdminAuthorization newAdmins) throws InsufficientAuthorizationException {
+        if (newAdmins.getAdmins().isEmpty() || newAdmins.getWriters().isEmpty() || newAdmins.getReaders().isEmpty()) {
+            throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
+        }
         AdminAuthorization currentAdmins = getAdmins();
         List<AuthorizationAttribute> toRemove = currentAdmins.getAdmins().stream()
                 .filter(t -> !newAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
