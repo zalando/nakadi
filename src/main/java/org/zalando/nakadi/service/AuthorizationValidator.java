@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
@@ -41,6 +42,7 @@ public class AuthorizationValidator {
     private final AuthorizationService authorizationService;
     private final EventTypeRepository eventTypeRepository;
     private final AuthorizationDbRepository authorizationDbRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public static final String ADMIN_RESOURCE = "nakadi";
 
@@ -48,10 +50,12 @@ public class AuthorizationValidator {
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
             final EventTypeRepository eventTypeRepository,
-            final AuthorizationDbRepository authorizationDbRepository) {
+            final AuthorizationDbRepository authorizationDbRepository,
+            final TransactionTemplate transactionTemplate) {
         this.authorizationService = authorizationService;
         this.eventTypeRepository = eventTypeRepository;
         this.authorizationDbRepository = authorizationDbRepository;
+        this.transactionTemplate = transactionTemplate;
     }
 
     public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
@@ -217,18 +221,21 @@ public class AuthorizationValidator {
             throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
         }
         final AdminAuthorization currentAdmins = getAdmins();
-        for (final AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
-            final List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
-                    .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
-                    .collect(Collectors.toList());
-            final List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
-                    .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
-                    .collect(Collectors.toList());
-            toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
-                    new Permission(ADMIN_RESOURCE, operation, attr)));
-            toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
-                    new Permission(ADMIN_RESOURCE, operation, attr)));
-        }
+        transactionTemplate.execute(action -> {
+            for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
+                final List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
+                        .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
+                        .collect(Collectors.toList());
+                final List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
+                        .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
+                        .collect(Collectors.toList());
+                toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
+                        new Permission(ADMIN_RESOURCE, operation, attr)));
+                toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
+                        new Permission(ADMIN_RESOURCE, operation, attr)));
+            }
+            return null;
+        });
     }
 
 }

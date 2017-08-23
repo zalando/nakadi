@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
@@ -35,6 +36,7 @@ public class AuthorizationValidatorTest {
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
     private final AuthorizationDbRepository authorizationDbRepository;
+    private final TransactionTemplate transactionTemplate;
 
     private final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
     private final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
@@ -44,9 +46,10 @@ public class AuthorizationValidatorTest {
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
         authorizationDbRepository = mock(AuthorizationDbRepository.class);
+        transactionTemplate = mock(TransactionTemplate.class);
 
         validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class),
-                authorizationDbRepository);
+                authorizationDbRepository, transactionTemplate);
     }
 
     @Test
