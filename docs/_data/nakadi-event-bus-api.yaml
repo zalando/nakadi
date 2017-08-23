@@ -1318,7 +1318,7 @@ paths:
       tags:
         - settings-api
       description: |
-        Lists all administrator permissions. This endpoint is restricted to administrators with the 'admin' permission.
+        Lists all administrator permissions. This endpoint is restricted to administrators with the 'read' permission.
       responses:
         '200':
           description: List all administrator permissions.
