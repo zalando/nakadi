@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.Permission;
-import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -45,10 +44,7 @@ public class AdminService {
         return new AdminAuthorization(adminPermissions, readPermissions, writePermissions);
     }
 
-    public void updateAdmins(final AdminAuthorization newAdmins) throws InsufficientAuthorizationException {
-        if (newAdmins.getAdmins().isEmpty() || newAdmins.getWriters().isEmpty() || newAdmins.getReaders().isEmpty()) {
-            throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
-        }
+    public void updateAdmins(final AdminAuthorization newAdmins) {
         final AdminAuthorization currentAdmins = getAdmins();
         transactionTemplate.execute(action -> {
             for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
