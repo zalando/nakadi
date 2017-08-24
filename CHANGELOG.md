@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.2] - 2017-08-24
+
 ### Fixed
 - Fixed DEBUG-level logging
 
