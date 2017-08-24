@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 
@@ -54,7 +55,8 @@ public class AdminAuthorization {
         return writers;
     }
 
-    public List<AuthorizationAttribute> getList(final AuthorizationService.Operation operation) {
+    public List<AuthorizationAttribute> getList(final AuthorizationService.Operation operation)
+            throws UnknownOperationException {
         switch (operation) {
             case ADMIN:
                 return admins;
@@ -63,7 +65,7 @@ public class AdminAuthorization {
             case WRITE:
                 return writers;
             default:
-                return null;
+                throw new UnknownOperationException("Unknown operation: " + operation.toString());
         }
     }
 

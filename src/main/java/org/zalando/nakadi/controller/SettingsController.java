@@ -16,6 +16,7 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
+import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
@@ -23,6 +24,8 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.ws.rs.core.Response;
 
 @RestController
 @RequestMapping(value = "/settings")
@@ -104,6 +107,14 @@ public class SettingsController {
     public ResponseEntity<?> updateAdmins(@RequestBody final AdminAuthorization authz) {
         adminService.updateAdmins(authz);
         return ResponseEntity.ok().build();
+    }
+
+    @ExceptionHandler(UnknownOperationException.class)
+    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
+                                                                   final NativeWebRequest request) {
+        LOG.error(ex.getMessage(), ex);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
+                "There was a problem processing your request.", request);
     }
 
     @ExceptionHandler(InsufficientAuthorizationException.class)
