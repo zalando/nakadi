@@ -1,8 +1,5 @@
 server:
   port: 8080
-  compression:
-    enabled: true
-    mime-types: text/plain,application/x-json-stream
 management:
   port: 7979
 jetty:
