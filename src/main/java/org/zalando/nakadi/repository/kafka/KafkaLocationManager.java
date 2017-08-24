@@ -80,10 +80,6 @@ public class KafkaLocationManager {
     private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
         props.put("bootstrap.servers", buildBootstrapServers(brokers));
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         return props;
     }
 
@@ -109,7 +105,7 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaProducerProperties() {
-        final Properties producerProps = getKafkaConsumerProperties();
+        final Properties producerProps = (Properties) kafkaProperties.clone();
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
