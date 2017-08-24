@@ -4,25 +4,20 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
-import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -30,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -41,21 +35,13 @@ public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
     private final EventTypeRepository eventTypeRepository;
-    private final AuthorizationDbRepository authorizationDbRepository;
-    private final TransactionTemplate transactionTemplate;
-
-    public static final String ADMIN_RESOURCE = "nakadi";
 
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
-            final EventTypeRepository eventTypeRepository,
-            final AuthorizationDbRepository authorizationDbRepository,
-            final TransactionTemplate transactionTemplate) {
+            final EventTypeRepository eventTypeRepository) {
         this.authorizationService = authorizationService;
         this.eventTypeRepository = eventTypeRepository;
-        this.authorizationDbRepository = authorizationDbRepository;
-        this.transactionTemplate = transactionTemplate;
     }
 
     public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
@@ -198,44 +184,4 @@ public class AuthorizationValidator {
 
         validateAuthorization(newAuth);
     }
-
-    public AdminAuthorization getAdmins() {
-        final List<Permission> allPermissions = authorizationDbRepository.listAdmins();
-        final List<AuthorizationAttribute> adminPermissions = allPermissions.stream()
-                .filter(p -> p.getOperation() == AuthorizationService.Operation.ADMIN)
-                .map(p -> p.getAuthorizationAttribute())
-                .collect(Collectors.toList());
-        final List<AuthorizationAttribute> readPermissions = allPermissions.stream()
-                .filter(p -> p.getOperation() == AuthorizationService.Operation.READ)
-                .map(p -> p.getAuthorizationAttribute())
-                .collect(Collectors.toList());
-        final List<AuthorizationAttribute> writePermissions = allPermissions.stream()
-                .filter(p -> p.getOperation() == AuthorizationService.Operation.WRITE)
-                .map(p -> p.getAuthorizationAttribute())
-                .collect(Collectors.toList());
-        return new AdminAuthorization(adminPermissions, readPermissions, writePermissions);
-    }
-
-    public void updateAdmins(final AdminAuthorization newAdmins) throws InsufficientAuthorizationException {
-        if (newAdmins.getAdmins().isEmpty() || newAdmins.getWriters().isEmpty() || newAdmins.getReaders().isEmpty()) {
-            throw new InsufficientAuthorizationException("There must be at least one administrator in each list");
-        }
-        final AdminAuthorization currentAdmins = getAdmins();
-        transactionTemplate.execute(action -> {
-            for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
-                final List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
-                        .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
-                        .collect(Collectors.toList());
-                final List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
-                        .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
-                        .collect(Collectors.toList());
-                toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
-                        new Permission(ADMIN_RESOURCE, operation, attr)));
-                toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
-                        new Permission(ADMIN_RESOURCE, operation, attr)));
-            }
-            return null;
-        });
-    }
-
 }

@@ -17,7 +17,7 @@ import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.exceptions.runtime.InsufficientAuthorizationException;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.MoreStatus;
@@ -31,7 +31,7 @@ public class SettingsController {
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final SecuritySettings securitySettings;
-    private final AuthorizationValidator authorizationValidator;
+    private final AdminService adminService;
 
     private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
 
@@ -40,11 +40,11 @@ public class SettingsController {
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
                               final SecuritySettings securitySettings,
-                              final AuthorizationValidator authorizationValidator) {
+                              final AdminService adminService) {
         this.blacklistService = blacklistService;
         this.featureToggleService = featureToggleService;
         this.securitySettings = securitySettings;
-        this.authorizationValidator = authorizationValidator;
+        this.adminService = adminService;
     }
 
     @RequestMapping(path = "/blacklist", method = RequestMethod.GET)
@@ -97,12 +97,12 @@ public class SettingsController {
 
     @RequestMapping(path = "/admins", method = RequestMethod.GET)
     public ResponseEntity<?> getAdmins() {
-        return ResponseEntity.ok(authorizationValidator.getAdmins());
+        return ResponseEntity.ok(adminService.getAdmins());
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@RequestBody final AdminAuthorization authz) {
-        authorizationValidator.updateAdmins(authz);
+        adminService.updateAdmins(authz);
         return ResponseEntity.ok().build();
     }
 
