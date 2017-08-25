@@ -46,20 +46,14 @@ public class AdminService {
 
     public void updateAdmins(final AdminAuthorization newAdmins) {
         final AdminAuthorization currentAdmins = getAdmins();
-        transactionTemplate.execute(action -> {
-            for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
-                final List<AuthorizationAttribute> toRemove = currentAdmins.getList(operation).stream()
-                        .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
-                        .collect(Collectors.toList());
-                final List<AuthorizationAttribute> toAdd = newAdmins.getList(operation).stream()
-                        .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
-                        .collect(Collectors.toList());
-                toRemove.stream().forEach(attr -> authorizationDbRepository.deletePermission(
-                        new Permission(ADMIN_RESOURCE, operation, attr)));
-                toAdd.stream().forEach(attr -> authorizationDbRepository.createPermission(
-                        new Permission(ADMIN_RESOURCE, operation, attr)));
-            }
-            return null;
-        });
+        for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
+            final List<Permission> delete = currentAdmins.getList(operation).stream()
+                    .filter(t -> !newAdmins.getList(operation).stream().anyMatch(Predicate.isEqual(t)))
+                    .map(attr -> new Permission(ADMIN_RESOURCE, operation, attr)).collect(Collectors.toList());
+            final List<Permission> add = newAdmins.getList(operation).stream()
+                    .filter(t -> !currentAdmins.getAdmins().stream().anyMatch(Predicate.isEqual(t)))
+                    .map(attr -> new Permission(ADMIN_RESOURCE, operation, attr)).collect(Collectors.toList());
+            authorizationDbRepository.update(add, delete);
+        }
     }
 }

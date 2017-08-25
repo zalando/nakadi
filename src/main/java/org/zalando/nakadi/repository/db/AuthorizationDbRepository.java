@@ -6,6 +6,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.Permission;
@@ -45,6 +46,16 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
                     permission.getAuthorizationAttribute().getValue());
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("Error occurred when deleting permission", e);
+        }
+    }
+
+    @Transactional
+    public void update(final List<Permission> add, final List<Permission> delete) {
+        for (final Permission p: add) {
+            createPermission(p);
+        }
+        for (final Permission p: delete) {
+            deletePermission(p);
         }
     }
 
