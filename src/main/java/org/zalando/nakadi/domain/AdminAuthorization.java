@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+@Immutable
 public class AdminAuthorization {
 
     @NotNull
