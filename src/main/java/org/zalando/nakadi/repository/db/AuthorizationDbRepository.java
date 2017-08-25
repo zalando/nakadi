@@ -20,6 +20,10 @@ import java.util.UUID;
 @Repository
 public class AuthorizationDbRepository extends AbstractDbRepository {
 
+    private final RowMapper<Permission> permissionRowMapper = (rs, rowNum)
+            -> buildPermission(rs.getString("az_resource"), rs.getString("az_operation"),
+            rs.getString("az_data_type"), rs.getString("az_value"));
+
     @Autowired
     public AuthorizationDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
@@ -70,14 +74,10 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
         }
     }
 
-    static Permission buildPermission(final String resource, final String operation, final String dataType,
+    private static Permission buildPermission(final String resource, final String operation, final String dataType,
                                       final String value) {
         return new Permission(resource, AuthorizationService.Operation.valueOf(operation.toUpperCase()),
                 new AdminAuthorizationAttribute(dataType, value));
     }
-
-    private final RowMapper<Permission> permissionRowMapper = (rs, rowNum)
-            -> buildPermission(rs.getString("az_resource"), rs.getString("az_operation"),
-            rs.getString("az_data_type"), rs.getString("az_value"));
 
 }
