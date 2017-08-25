@@ -2,7 +2,6 @@ package org.zalando.nakadi.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -16,15 +15,12 @@ import java.util.stream.Collectors;
 @Service
 public class AdminService {
     private final AuthorizationDbRepository authorizationDbRepository;
-    private final TransactionTemplate transactionTemplate;
 
     public static final String ADMIN_RESOURCE = "nakadi";
 
     @Autowired
-    public AdminService(final AuthorizationDbRepository authorizationDbRepository,
-                        final TransactionTemplate transactionTemplate) {
+    public AdminService(final AuthorizationDbRepository authorizationDbRepository) {
         this.authorizationDbRepository = authorizationDbRepository;
-        this.transactionTemplate = transactionTemplate;
     }
 
     public AdminAuthorization getAdmins() {

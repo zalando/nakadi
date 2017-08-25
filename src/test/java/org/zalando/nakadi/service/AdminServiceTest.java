@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import org.junit.Test;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.Permission;
@@ -19,12 +18,10 @@ public class AdminServiceTest {
 
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AdminService adminService;
-    private final TransactionTemplate transactionTemplate;
 
     public AdminServiceTest() {
         this.authorizationDbRepository = mock(AuthorizationDbRepository.class);
-        this.transactionTemplate = mock(TransactionTemplate.class);
-        this.adminService = new AdminService(authorizationDbRepository, transactionTemplate);
+        this.adminService = new AdminService(authorizationDbRepository);
     }
 
     @Test
