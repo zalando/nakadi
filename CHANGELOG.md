@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - New database table for authorization
 
+### Changed
+- Admin endpoints use list of admins from Postgres
+
 ## [2.1.1] - 2017-08-22
 
 ### Fixed
