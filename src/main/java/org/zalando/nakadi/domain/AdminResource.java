@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public class AdminResource implements Resource {
 
+    public static final String ADMIN_RESOURCE = "nakadi";
+
     private final String name;
     private final AdminAuthorization etAuthorization;
 
@@ -24,7 +26,7 @@ public class AdminResource implements Resource {
 
     @Override
     public String getType() {
-        return "nakadi";
+        return ADMIN_RESOURCE;
     }
 
     @Override
@@ -42,9 +44,13 @@ public class AdminResource implements Resource {
         }
     }
 
+    public List<Permission> getPermissionsList() {
+        return etAuthorization.toPermissionsList(name);
+    }
+
     @Override
     public String toString() {
-        return "AuthorizedResource{nakadi='" + name + "'}";
+        return "AuthorizedResource{" + ADMIN_RESOURCE +"='" + name + "'}";
     }
 
 }

@@ -98,12 +98,12 @@ public class SettingsController {
 
     @RequestMapping(path = "/admins", method = RequestMethod.GET)
     public ResponseEntity<?> getAdmins() {
-        return ResponseEntity.ok(adminService.getAdmins());
+        return ResponseEntity.ok(AdminAuthorization.fromPermissionsList(adminService.getAdmins()));
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@RequestBody final AdminAuthorization authz) {
-        adminService.updateAdmins(authz);
+        adminService.updateAdmins(authz.toPermissionsList("nakadi"));
         return ResponseEntity.ok().build();
     }
 

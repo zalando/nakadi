@@ -13,6 +13,7 @@ import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Immutable
 public class AdminAuthorization {
@@ -69,6 +70,36 @@ public class AdminAuthorization {
             default:
                 throw new UnknownOperationException("Unknown operation: " + operation.toString());
         }
+    }
+
+    public List<Permission> toPermissionsList(final String resource) {
+        final List<Permission> permissions = admins.stream()
+                .map(p -> new Permission(resource, AuthorizationService.Operation.ADMIN, p))
+                .collect(Collectors.toList());
+        permissions.addAll(readers.stream()
+                .map(p -> new Permission(resource, AuthorizationService.Operation.READ, p))
+                .collect(Collectors.toList()));
+        permissions.addAll(writers.stream()
+                .map(p -> new Permission(resource, AuthorizationService.Operation.WRITE, p))
+                .collect(Collectors.toList()));
+        return permissions;
+    }
+
+    public static AdminAuthorization fromPermissionsList(final List<Permission> permissions) {
+        final List<AuthorizationAttribute> admins = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.ADMIN))
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+        final List<AuthorizationAttribute> readers = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.READ))
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+        final List<AuthorizationAttribute> writers = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.WRITE))
+                .map(p -> p.getAuthorizationAttribute())
+                .collect(Collectors.toList());
+
+        return new AdminAuthorization(admins, readers, writers);
     }
 
     @Override

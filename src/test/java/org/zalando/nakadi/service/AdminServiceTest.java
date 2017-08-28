@@ -57,6 +57,6 @@ public class AdminServiceTest {
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
-        adminService.updateAdmins(newAuthz);
+        adminService.updateAdmins(newAuthz.toPermissionsList("nakadi"));
     }
 }
