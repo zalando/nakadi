@@ -65,8 +65,8 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
 
     public void createPermission(final Permission permission) {
         try {
-            jdbcTemplate.update("INSERT INTO zn_data.authorization VALUES (?, ?, ?::az_operation, ?, ?)",
-                    UUID.randomUUID(), permission.getResource(), permission.getOperation().toString(),
+            jdbcTemplate.update("INSERT INTO zn_data.authorization VALUES (?, ?::az_operation, ?, ?)",
+                    permission.getResource(), permission.getOperation().toString(),
                     permission.getAuthorizationAttribute().getDataType(),
                     permission.getAuthorizationAttribute().getValue());
         } catch (final DataAccessException e) {
