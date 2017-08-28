@@ -23,6 +23,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
+import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 
 @RestController
@@ -102,7 +103,7 @@ public class SettingsController {
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
-    public ResponseEntity<?> updateAdmins(@RequestBody final AdminAuthorization authz) {
+    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final AdminAuthorization authz) {
         adminService.updateAdmins(authz.toPermissionsList("nakadi"));
         return ResponseEntity.ok().build();
     }
