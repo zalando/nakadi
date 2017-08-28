@@ -467,7 +467,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenDeleteEventTypeAdminAndDeletionDeactivatedThen200() throws Exception {
 
         final EventType eventType = buildDefaultEventType();
-
+        when(adminService.isAdmin(any())).thenReturn(true);
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
 
         postEventType(eventType);

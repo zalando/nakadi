@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.junit.Test;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.Permission;
@@ -18,10 +19,14 @@ public class AdminServiceTest {
 
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AdminService adminService;
+    private final AuthorizationService authorizationService;
+    private final NakadiSettings nakadiSettings;
 
     public AdminServiceTest() {
         this.authorizationDbRepository = mock(AuthorizationDbRepository.class);
-        this.adminService = new AdminService(authorizationDbRepository);
+        this.authorizationService = mock(AuthorizationService.class);
+        this.nakadiSettings = mock(NakadiSettings.class);
+        this.adminService = new AdminService(authorizationDbRepository, authorizationService, nakadiSettings);
     }
 
     @Test

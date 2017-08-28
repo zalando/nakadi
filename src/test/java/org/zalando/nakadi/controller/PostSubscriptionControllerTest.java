@@ -107,7 +107,7 @@ public class PostSubscriptionControllerTest {
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any(), any())).thenReturn(subscription);
+        when(subscriptionService.createSubscription(any())).thenReturn(subscription);
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
@@ -166,7 +166,7 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenMoreThanAllowedEventTypeThenUnprocessableEntity() throws Exception {
         when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any(), any())).thenThrow(new TooManyPartitionsException("msg"));
+        when(subscriptionService.createSubscription(any())).thenThrow(new TooManyPartitionsException("msg"));
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "msg");
@@ -192,7 +192,7 @@ public class PostSubscriptionControllerTest {
     public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
         when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any(), any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "msg");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
@@ -205,7 +205,7 @@ public class PostSubscriptionControllerTest {
                 subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenReturn(existingSubscription);
-        when(subscriptionService.createSubscription(any(), any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())

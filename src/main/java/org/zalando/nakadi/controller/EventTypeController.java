@@ -30,8 +30,10 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -61,6 +63,7 @@ public class EventTypeController {
     private final ApplicationService applicationService;
     private final NakadiSettings nakadiSettings;
     private final SecuritySettings securitySettings;
+    private final AdminService adminService;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
@@ -68,13 +71,15 @@ public class EventTypeController {
                                final EventTypeOptionsValidator eventTypeOptionsValidator,
                                final ApplicationService applicationService,
                                final NakadiSettings nakadiSettings,
-                               final SecuritySettings securitySettings) {
+                               final SecuritySettings securitySettings,
+                               final AdminService adminService) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.applicationService = applicationService;
         this.nakadiSettings = nakadiSettings;
         this.securitySettings = securitySettings;
+        this.adminService = adminService;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -125,14 +130,14 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
-                                    final NativeWebRequest request,
-                                    final Client client)
+                                    final NativeWebRequest request)
             throws EventTypeDeletionException,
             AccessDeniedException,
             NoEventTypeException,
             ConflictException,
             ServiceTemporarilyUnavailableException {
-        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION) && !isAdmin(client)) {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)
+                && !adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
 
@@ -203,10 +208,6 @@ public class EventTypeController {
                                                         final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    private boolean isAdmin(final Client client) {
-        return client.getClientId().equals(securitySettings.getAdminClientId());
     }
 
 }

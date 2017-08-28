@@ -7,7 +7,9 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -36,11 +38,12 @@ public class StoragesControllerTest {
 
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
+    private final AdminService adminService = mock(AdminService.class);
     private MockMvc mockMvc;
 
     @Before
     public void before() {
-        final StoragesController controller = new StoragesController(securitySettings, storageService);
+        final StoragesController controller = new StoragesController(securitySettings, storageService, adminService);
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
@@ -55,6 +58,7 @@ public class StoragesControllerTest {
         final List<Storage> storages = createStorageList();
         when(storageService.listStorages())
                 .thenReturn(Result.ok(storages));
+        when(adminService.isAdmin(AuthorizationService.Operation.READ)).thenReturn(true);
         mockMvc.perform(get("/storages")
                 .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isOk());
@@ -64,6 +68,7 @@ public class StoragesControllerTest {
     public void testDeleteUnusedStorage() throws Exception {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.ok());
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(delete("/storages/s1")
                 .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isNoContent());
@@ -73,6 +78,7 @@ public class StoragesControllerTest {
     public void testDeleteStorageInUse() throws Exception {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.forbidden("Storage in use"));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(delete("/storages/s1")
                 .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isForbidden());
@@ -82,6 +88,7 @@ public class StoragesControllerTest {
     public void testPostStorage() throws Exception {
         final JSONObject json = createJsonKafkaStorage("test_storage");
         when(storageService.createStorage(any())).thenReturn(Result.ok());
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
@@ -93,6 +100,7 @@ public class StoragesControllerTest {
     public void testPostStorageWithExistingId() throws Exception {
         final JSONObject json = createJsonKafkaStorage("test_storage");
         when(storageService.createStorage(any())).thenReturn(Result.problem(Problem.valueOf(CONFLICT)));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
@@ -104,6 +112,7 @@ public class StoragesControllerTest {
     public void testPostStorageWrongFormat() throws Exception {
         final JSONObject json = createJsonKafkaStorage("test_storage");
         when(storageService.createStorage(any())).thenReturn(Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY)));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())

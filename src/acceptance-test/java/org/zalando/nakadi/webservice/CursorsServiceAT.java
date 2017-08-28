@@ -17,8 +17,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -59,7 +57,6 @@ public class CursorsServiceAT extends BaseAT {
         final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
         return c1.getOffset().compareTo(c2.getOffset());
     };
-    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("nakadi");
 
     private static final String P1 = "p1";
     private static final String P2 = "p2";
@@ -140,7 +137,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(ImmutableList.of(true)));
         checkCurrentOffsetInZk(P1, NEW_OFFSET);
     }
@@ -148,7 +145,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenStreamIdInvalidThenException() throws Exception {
         try {
-            cursorsService.commitCursors("wrong-stream-id", sid, testCursors, FULL_ACCESS_CLIENT);
+            cursorsService.commitCursors("wrong-stream-id", sid, testCursors);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -159,7 +156,7 @@ public class CursorsServiceAT extends BaseAT {
     public void whenPartitionIsStreamedToDifferentClientThenFalse() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, "wrong-stream-id", null, Partition.State.ASSIGNED)});
         try {
-            cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+            cursorsService.commitCursors(streamId, sid, testCursors);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -172,7 +169,7 @@ public class CursorsServiceAT extends BaseAT {
         registerNakadiCursor(cursor);
         testCursors = ImmutableList.of(cursor);
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(ImmutableList.of(false)));
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
     }
@@ -187,7 +184,7 @@ public class CursorsServiceAT extends BaseAT {
         setPartitions(new Partition[]{
                 new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED),
                 new Partition(etName, P2, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors);
 
         assertFalse(result.get(0));
         assertTrue(result.get(1));
@@ -221,7 +218,7 @@ public class CursorsServiceAT extends BaseAT {
         );
         testCursors.forEach(this::registerNakadiCursor);
 
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(
                 ImmutableList.of(
                         true,
@@ -248,7 +245,7 @@ public class CursorsServiceAT extends BaseAT {
                 new Partition(etName, P2, "", "", Partition.State.UNASSIGNED)
         });
         final List<SubscriptionCursorWithoutToken> cursors = cursorsService.getSubscriptionCursors(
-                sid, FULL_ACCESS_CLIENT);
+                sid);
 
         assertThat(ImmutableSet.copyOf(cursors),
                 equalTo(ImmutableSet.of(

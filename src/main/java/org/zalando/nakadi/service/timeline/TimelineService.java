@@ -42,7 +42,7 @@ import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
@@ -68,6 +68,7 @@ public class TimelineService {
     private final TransactionTemplate transactionTemplate;
     private final UUIDGenerator uuidGenerator;
     private final Storage defaultStorage;
+    private final AdminService adminService;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -79,7 +80,8 @@ public class TimelineService {
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
                            final UUIDGenerator uuidGenerator,
-                           @Qualifier("default_storage") final Storage defaultStorage) {
+                           @Qualifier("default_storage") final Storage defaultStorage,
+                           final AdminService adminService) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -90,15 +92,16 @@ public class TimelineService {
         this.transactionTemplate = transactionTemplate;
         this.uuidGenerator = uuidGenerator;
         this.defaultStorage = defaultStorage;
+        this.adminService = adminService;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId, final Client client)
+    public void createTimeline(final String eventTypeName, final String storageId)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
-            if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
@@ -260,13 +263,13 @@ public class TimelineService {
         }
     }
 
-    public void delete(final String eventTypeName, final String timelineId, final Client client)
+    public void delete(final String eventTypeName, final String timelineId)
             throws AccessDeniedException, UnableProcessException, TimelineException {
         final EventType eventType;
         try {
             eventType = eventTypeCache.getEventType(eventTypeName);
 
-            if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
@@ -336,18 +339,13 @@ public class TimelineService {
         }
     }
 
-    public List<Timeline> getTimelines(final String eventTypeName, final Client client)
-            throws AccessDeniedException, UnableProcessException, TimelineException {
-        if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+    public List<Timeline> getTimelines(final String eventTypeName)
+            throws AccessDeniedException, UnableProcessException, TimelineException, NotFoundException {
+        if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             final Resource resource = new EventTypeResource(eventTypeName, null);
             throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
         }
 
-        return getTimelines(eventTypeName);
-    }
-
-    private List<Timeline> getTimelines(final String eventTypeName)
-            throws TimelineException, NotFoundException {
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelinesOrdered(eventType.getName());
