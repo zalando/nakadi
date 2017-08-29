@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Endpoints for getting and updating the lists of administrators
 - Default administrator defined in application.yml
 
+### Changed
+- Admin endpoints use list of admins from Postgres
+
 ## [2.2.0] - 2017-08-29
 
 ### Added
@@ -20,9 +23,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Fixed DEBUG-level logging
-
-### Changed
-- Admin endpoints use list of admins from Postgres
 
 ## [2.1.1] - 2017-08-22
 
