@@ -109,21 +109,24 @@ public class AuthorizationValidatorTest {
     public void whenETAdminNotAuthorizedButAdminThenOk() throws Exception {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
-        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder().authorization(new EventTypeAuthorization(null, null, null)).build());
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
     @Test
     public void whenETWriteNotAuthorizedButAdminThenOk() throws Exception {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
-        validator.authorizeEventTypeWrite(EventTypeTestBuilder.builder().authorization(new EventTypeAuthorization(null, null, null)).build());
+        validator.authorizeEventTypeWrite(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
     @Test
     public void whenStreamReadNotAuthorizedButAdminThenOk() throws Exception {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
-        validator.authorizeStreamRead(EventTypeTestBuilder.builder().authorization(new EventTypeAuthorization(null, null, null)).build());
+        validator.authorizeStreamRead(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
     @Test
