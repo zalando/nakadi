@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - New database table for authorization
+- Endpoints for getting and updating the lists of administrators
+- Default administrator defined in application.yml
+
+## [2.2.0] - 2017-08-29
+
+### Added
+- Enable lz4 compression type for Kafka producer
+
+## [2.1.2] - 2017-08-24
+
+### Fixed
+- Fixed DEBUG-level logging
 
 ### Changed
 - Admin endpoints use list of admins from Postgres
