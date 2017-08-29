@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - New database table for authorization
+- Endpoints for getting and updating the lists of administrators
+- Default administrator defined in application.yml
 
 ## [2.2.0] - 2017-08-29
 
