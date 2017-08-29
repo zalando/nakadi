@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2017-08-29
+
+### Added
 - Enable lz4 compression type for Kafka producer
+
+## [2.1.2] - 2017-08-24
+
+### Fixed
+- Fixed DEBUG-level logging
 
 ## [2.1.1] - 2017-08-22
 
