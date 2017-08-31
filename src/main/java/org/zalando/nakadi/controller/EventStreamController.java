@@ -123,6 +123,7 @@ public class EventStreamController {
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
+        LOG.info("EventStreamController created");
     }
 
     @VisibleForTesting
