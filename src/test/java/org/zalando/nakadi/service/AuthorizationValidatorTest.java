@@ -110,7 +110,7 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
-                .authorization(new EventTypeAuthorization(null, null, null)).build());
+                .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
@@ -118,7 +118,7 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeEventTypeWrite(EventTypeTestBuilder.builder()
-                .authorization(new EventTypeAuthorization(null, null, null)).build());
+                .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
@@ -126,7 +126,7 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeStreamRead(EventTypeTestBuilder.builder()
-                .authorization(new EventTypeAuthorization(null, null, null)).build());
+                .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
