@@ -55,7 +55,7 @@ public class EventTypeBase {
     private EventTypeOptions options;
 
     @Valid
-    private EventTypeAuthorization authorization;
+    private ResourceAuthorization authorization;
 
     private CompatibilityMode compatibilityMode;
 
@@ -203,11 +203,11 @@ public class EventTypeBase {
     }
 
     @Nullable
-    public EventTypeAuthorization getAuthorization() {
+    public ResourceAuthorization getAuthorization() {
         return authorization;
     }
 
-    public void setAuthorization(final EventTypeAuthorization authorization) {
+    public void setAuthorization(final ResourceAuthorization authorization) {
         this.authorization = authorization;
     }
 }

@@ -3,9 +3,9 @@ package org.zalando.nakadi.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.AdminResource;
 import org.zalando.nakadi.domain.Permission;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -46,7 +46,7 @@ public class AdminService {
     public boolean isAdmin(final AuthorizationService.Operation operation) {
         final List<Permission> permissions = getAdmins();
         final Resource resource = new AdminResource(ADMIN_RESOURCE,
-                AdminAuthorization.fromPermissionsList(permissions));
+                ResourceAuthorization.fromPermissionsList(permissions));
         return authorizationService.isAuthorized(operation, resource);
     }
 

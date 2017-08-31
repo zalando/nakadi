@@ -10,9 +10,9 @@ import java.util.Optional;
 public class EventTypeResource implements Resource {
 
     private final String name;
-    private final EventTypeAuthorization etAuthorization;
+    private final ResourceAuthorization etAuthorization;
 
-    public EventTypeResource(final String name, final EventTypeAuthorization etAuthorization) {
+    public EventTypeResource(final String name, final ResourceAuthorization etAuthorization) {
         this.name = name;
         this.etAuthorization = etAuthorization;
     }

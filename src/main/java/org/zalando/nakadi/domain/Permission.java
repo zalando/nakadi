@@ -4,6 +4,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 
 import javax.annotation.concurrent.Immutable;
+import java.util.Objects;
 
 @Immutable
 public class Permission {
@@ -28,5 +29,25 @@ public class Permission {
 
     public AuthorizationAttribute getAuthorizationAttribute() {
         return authorizationAttribute;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final Permission that = (Permission) o;
+        return Objects.equals(resource, that.resource) &&
+                Objects.equals(operation, that.operation) &&
+                Objects.equals(authorizationAttribute, that.authorizationAttribute);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(resource, operation, authorizationAttribute);
     }
 }

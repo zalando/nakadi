@@ -8,8 +8,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
-import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.Permission;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 
@@ -76,7 +76,7 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
     private static Permission buildPermission(final String resource, final String operation, final String dataType,
                                       final String value) {
         return new Permission(resource, AuthorizationService.Operation.valueOf(operation.toUpperCase()),
-                new AdminAuthorizationAttribute(dataType, value));
+                new ResourceAuthorizationAttribute(dataType, value));
     }
 
 }
