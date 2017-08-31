@@ -2,9 +2,9 @@ package org.zalando.nakadi.service;
 
 import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.AdminAuthorization;
-import org.zalando.nakadi.domain.AdminAuthorizationAttribute;
 import org.zalando.nakadi.domain.Permission;
+import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -31,33 +31,33 @@ public class AdminServiceTest {
 
     @Test
     public void whenUpdateAdminsThenOk() {
-        final AuthorizationAttribute user1 = new AdminAuthorizationAttribute("user", "user1");
-        final AuthorizationAttribute user2 = new AdminAuthorizationAttribute("user", "user2");
-        final AuthorizationAttribute service2 = new AdminAuthorizationAttribute("service", "service2");
+        final AuthorizationAttribute user1 = new ResourceAuthorizationAttribute("user", "user1");
+        final AuthorizationAttribute user2 = new ResourceAuthorizationAttribute("user", "user2");
+        final AuthorizationAttribute service2 = new ResourceAuthorizationAttribute("service", "service2");
 
         final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
 
         final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                new AdminAuthorizationAttribute("user", "user1"));
+                new ResourceAuthorizationAttribute("user", "user1"));
         final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                new AdminAuthorizationAttribute("service", "service1"));
+                new ResourceAuthorizationAttribute("service", "service1"));
         final Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
-                new AdminAuthorizationAttribute("service", "service2"));
+                new ResourceAuthorizationAttribute("service", "service2"));
 
         final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                new AdminAuthorizationAttribute("user", "user1"));
+                new ResourceAuthorizationAttribute("user", "user1"));
         final Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                new AdminAuthorizationAttribute("service", "service1"));
+                new ResourceAuthorizationAttribute("service", "service1"));
         final Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ,
-                new AdminAuthorizationAttribute("service", "service2"));
+                new ResourceAuthorizationAttribute("service", "service2"));
 
         final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                new AdminAuthorizationAttribute("user", "user1"));
+                new ResourceAuthorizationAttribute("user", "user1"));
         final Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                new AdminAuthorizationAttribute("service", "service1"));
+                new ResourceAuthorizationAttribute("service", "service1"));
         final Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
-                new AdminAuthorizationAttribute("service", "service2"));
-        final AdminAuthorization newAuthz = new AdminAuthorization(newAttrs, newAttrs, newAttrs);
+                new ResourceAuthorizationAttribute("service", "service2"));
+        final ResourceAuthorization newAuthz = new ResourceAuthorization(newAttrs, newAttrs, newAttrs);
 
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,

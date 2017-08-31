@@ -8,7 +8,7 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
@@ -39,7 +39,7 @@ public class EventTypeTestBuilder {
     private CompatibilityMode compatibilityMode;
     private DateTime createdAt;
     private DateTime updatedAt;
-    private EventTypeAuthorization authorization;
+    private ResourceAuthorization authorization;
 
 
     public EventTypeTestBuilder() {
@@ -142,7 +142,7 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder authorization(final EventTypeAuthorization authorization) {
+    public EventTypeTestBuilder authorization(final ResourceAuthorization authorization) {
         this.authorization = authorization;
         return this;
     }

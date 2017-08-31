@@ -8,8 +8,8 @@ import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
+import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
@@ -245,10 +245,10 @@ public class EventTypeAT extends BaseAT {
     public void whenPOSTEventTypeWithAuthorizationThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
+        eventType.setAuthorization(new ResourceAuthorization(
+                ImmutableList.of(new ResourceAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
         given().body(body)
@@ -271,10 +271,10 @@ public class EventTypeAT extends BaseAT {
 
     @Test
     public void whenUpdateETAuthObjectThen422() throws Exception {
-        final EventTypeAuthorization auth = new EventTypeAuthorization(
-                Collections.singletonList(new EventTypeAuthorizationAttribute("type1", "value1")),
-                Collections.singletonList(new EventTypeAuthorizationAttribute("type2", "value2")),
-                Collections.singletonList(new EventTypeAuthorizationAttribute("type3", "value3")));
+        final ResourceAuthorization auth = new ResourceAuthorization(
+                Collections.singletonList(new ResourceAuthorizationAttribute("type1", "value1")),
+                Collections.singletonList(new ResourceAuthorizationAttribute("type2", "value2")),
+                Collections.singletonList(new ResourceAuthorizationAttribute("type3", "value3")));
         final EventType eventType = EventTypeTestBuilder.builder().authorization(auth).build();
         NakadiTestUtils.createEventTypeInNakadi(eventType);
 

@@ -12,11 +12,11 @@ public class AdminResource implements Resource {
     public static final String ADMIN_RESOURCE = "nakadi";
 
     private final String name;
-    private final AdminAuthorization etAuthorization;
+    private final ResourceAuthorization resourceAuthorization;
 
-    public AdminResource(final String name, final AdminAuthorization etAuthorization) {
+    public AdminResource(final String name, final ResourceAuthorization resourceAuthorization) {
         this.name = name;
-        this.etAuthorization = etAuthorization;
+        this.resourceAuthorization = resourceAuthorization;
     }
 
     @Override
@@ -34,18 +34,18 @@ public class AdminResource implements Resource {
             final AuthorizationService.Operation operation) {
         switch (operation) {
             case READ:
-                return Optional.of(etAuthorization.getReaders());
+                return Optional.of(resourceAuthorization.getReaders());
             case WRITE:
-                return Optional.of(etAuthorization.getWriters());
+                return Optional.of(resourceAuthorization.getWriters());
             case ADMIN:
-                return Optional.of(etAuthorization.getAdmins());
+                return Optional.of(resourceAuthorization.getAdmins());
             default:
                 throw new IllegalArgumentException("Operation " + operation + " is not supported");
         }
     }
 
     public List<Permission> getPermissionsList() {
-        return etAuthorization.toPermissionsList(name);
+        return resourceAuthorization.toPermissionsList(name);
     }
 
     @Override

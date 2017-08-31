@@ -2,11 +2,11 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 
+import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -16,29 +16,29 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Immutable
-public class AdminAuthorization {
+public class ResourceAuthorization {
 
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    @JsonDeserialize(contentAs = AdminAuthorizationAttribute.class)
+    @JsonDeserialize(contentAs = ResourceAuthorizationAttribute.class)
     private final List<AuthorizationAttribute> admins;
 
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    @JsonDeserialize(contentAs = AdminAuthorizationAttribute.class)
+    @JsonDeserialize(contentAs = ResourceAuthorizationAttribute.class)
     private final List<AuthorizationAttribute> readers;
 
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    @JsonDeserialize(contentAs = AdminAuthorizationAttribute.class)
+    @JsonDeserialize(contentAs = ResourceAuthorizationAttribute.class)
     private final List<AuthorizationAttribute> writers;
 
-    public AdminAuthorization(@JsonProperty("admins") final List<AuthorizationAttribute> admins,
-                              @JsonProperty("readers") final List<AuthorizationAttribute> readers,
-                              @JsonProperty("writers") final List<AuthorizationAttribute> writers) {
+    public ResourceAuthorization(@JsonProperty("admins") final List<AuthorizationAttribute> admins,
+                                 @JsonProperty("readers") final List<AuthorizationAttribute> readers,
+                                 @JsonProperty("writers") final List<AuthorizationAttribute> writers) {
         // actually these three properties should never be null but the validation framework first creates an object
         // and then uses getters to check if values are null or not, so we need to do this check to avoid exception
         this.admins = admins == null ? null : Collections.unmodifiableList(admins);
@@ -85,7 +85,7 @@ public class AdminAuthorization {
         return permissions;
     }
 
-    public static AdminAuthorization fromPermissionsList(final List<Permission> permissions) {
+    public static ResourceAuthorization fromPermissionsList(final List<Permission> permissions) {
         final List<AuthorizationAttribute> admins = permissions.stream()
                 .filter(p -> p.getOperation().equals(AuthorizationService.Operation.ADMIN))
                 .map(p -> p.getAuthorizationAttribute())
@@ -99,7 +99,7 @@ public class AdminAuthorization {
                 .map(p -> p.getAuthorizationAttribute())
                 .collect(Collectors.toList());
 
-        return new AdminAuthorization(admins, readers, writers);
+        return new ResourceAuthorization(admins, readers, writers);
     }
 
     @Override
@@ -111,7 +111,7 @@ public class AdminAuthorization {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final AdminAuthorization that = (AdminAuthorization) o;
+        final ResourceAuthorization that = (ResourceAuthorization) o;
         return Objects.equals(admins, that.admins) &&
                 Objects.equals(readers, that.readers) &&
                 Objects.equals(writers, that.writers);
