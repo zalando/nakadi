@@ -16,8 +16,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
+import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Subscription;
@@ -308,7 +308,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithEmptyAuthorizationListThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setAuthorization(new EventTypeAuthorization(
+        eventType.setAuthorization(new ResourceAuthorization(
                 ImmutableList.of(), ImmutableList.of(), ImmutableList.of()));
 
         postEventType(eventType)
@@ -325,7 +325,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithNullAuthorizationListThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setAuthorization(new EventTypeAuthorization(null, null, null));
+        eventType.setAuthorization(new ResourceAuthorization(null, null, null));
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -342,10 +342,10 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostAndAuthorizationInvalidThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
+        eventType.setAuthorization(new ResourceAuthorization(
+                ImmutableList.of(new ResourceAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
 
         doThrow(new UnableProcessException("dummy")).when(authorizationValidator).validateAuthorization(any());
 
@@ -356,10 +356,10 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostWithNullAuthAttributesFieldsThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute(null, "value2")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", null))));
+        eventType.setAuthorization(new ResourceAuthorization(
+                ImmutableList.of(new ResourceAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new ResourceAuthorizationAttribute(null, "value2")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type3", null))));
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -374,10 +374,10 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostWithValidAuthorizationThenCreated() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
+        eventType.setAuthorization(new ResourceAuthorization(
+                ImmutableList.of(new ResourceAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());

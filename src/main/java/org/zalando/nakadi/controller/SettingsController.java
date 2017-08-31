@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.AdminAuthorization;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
@@ -99,11 +99,11 @@ public class SettingsController {
 
     @RequestMapping(path = "/admins", method = RequestMethod.GET)
     public ResponseEntity<?> getAdmins() {
-        return ResponseEntity.ok(AdminAuthorization.fromPermissionsList(adminService.getAdmins()));
+        return ResponseEntity.ok(ResourceAuthorization.fromPermissionsList(adminService.getAdmins()));
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
-    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final AdminAuthorization authz) {
+    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz) {
         adminService.updateAdmins(authz.toPermissionsList("nakadi"));
         return ResponseEntity.ok().build();
     }

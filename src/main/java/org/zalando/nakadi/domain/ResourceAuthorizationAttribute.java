@@ -8,7 +8,7 @@ import javax.validation.constraints.NotNull;
 import java.util.Objects;
 
 @Immutable
-public class EventTypeAuthorizationAttribute implements AuthorizationAttribute {
+public class ResourceAuthorizationAttribute implements AuthorizationAttribute {
 
     @NotNull
     private final String dataType;
@@ -16,8 +16,8 @@ public class EventTypeAuthorizationAttribute implements AuthorizationAttribute {
     @NotNull
     private final String value;
 
-    public EventTypeAuthorizationAttribute(@JsonProperty("data_type") final String dataType,
-                                           @JsonProperty("value") final String value) {
+    public ResourceAuthorizationAttribute(@JsonProperty("data_type") final String dataType,
+                                          @JsonProperty("value") final String value) {
         this.dataType = dataType;
         this.value = value;
     }
@@ -40,7 +40,7 @@ public class EventTypeAuthorizationAttribute implements AuthorizationAttribute {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final EventTypeAuthorizationAttribute that = (EventTypeAuthorizationAttribute) o;
+        final ResourceAuthorizationAttribute that = (ResourceAuthorizationAttribute) o;
         return Objects.equals(dataType, that.dataType) &&
                 Objects.equals(value, that.value);
     }

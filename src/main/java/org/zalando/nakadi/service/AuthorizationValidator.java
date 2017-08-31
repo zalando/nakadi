@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -44,7 +44,7 @@ public class AuthorizationValidator {
         this.eventTypeRepository = eventTypeRepository;
     }
 
-    public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
+    public void validateAuthorization(@Nullable final ResourceAuthorization auth) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
         if (auth != null) {
             final Map<String, List<AuthorizationAttribute>> allAttributes = ImmutableMap.of(
@@ -171,8 +171,8 @@ public class AuthorizationValidator {
 
     public void validateAuthorization(final EventType original, final EventTypeBase newEventType)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        final EventTypeAuthorization originalAuth = original.getAuthorization();
-        final EventTypeAuthorization newAuth = newEventType.getAuthorization();
+        final ResourceAuthorization originalAuth = original.getAuthorization();
+        final ResourceAuthorization newAuth = newEventType.getAuthorization();
         if (originalAuth != null && newAuth == null) {
             throw new UnableProcessException(
                     "Changing authorization object to `null` is not possible due to existing one");
