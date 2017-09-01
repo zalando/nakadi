@@ -35,7 +35,7 @@ public class AdminService {
     }
 
     public void updateAdmins(final List<Permission> newAdmins) {
-        final List<Permission> currentAdmins = getAdmins();
+        final List<Permission> currentAdmins = authorizationDbRepository.listAdmins();
         final List<Permission> add = removeDefaultAdmin(newAdmins.stream()
                 .filter(p -> !currentAdmins.stream().anyMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
         final List<Permission> delete = removeDefaultAdmin(currentAdmins.stream()
@@ -52,9 +52,7 @@ public class AdminService {
 
     private List<Permission> addDefaultAdmin(final List<Permission> permissions) {
         for (final AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
-            if (permissions.stream().noneMatch(p -> p.getOperation().equals(operation))) {
-                permissions.add(new Permission(ADMIN_RESOURCE, operation, nakadiSettings.getDefaultAdmin()));
-            }
+            permissions.add(new Permission(ADMIN_RESOURCE, operation, nakadiSettings.getDefaultAdmin()));
         }
         return permissions;
     }
