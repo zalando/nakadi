@@ -11,6 +11,7 @@ import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +60,7 @@ public class AdminServiceTest {
         when(authorizationDbRepository.listAdmins()).thenReturn(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
+        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
         adminService.updateAdmins(newAuthz.toPermissionsList("nakadi"));
     }
 }
