@@ -15,11 +15,13 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -114,6 +116,13 @@ public class SettingsController {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
                 "There was a problem processing your request.", request);
+    }
+
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
+                                                                final NativeWebRequest request) {
+        LOG.error(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     private boolean isNotAdmin(final Client client) {
