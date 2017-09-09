@@ -18,10 +18,12 @@ public class AdminServiceTest {
 
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AdminService adminService;
+    private final AuthorizationService authorizationService;
 
     public AdminServiceTest() {
         this.authorizationDbRepository = mock(AuthorizationDbRepository.class);
-        this.adminService = new AdminService(authorizationDbRepository);
+        this.authorizationService = mock(AuthorizationService.class);
+        this.adminService = new AdminService(authorizationDbRepository, authorizationService);
     }
 
     @Test

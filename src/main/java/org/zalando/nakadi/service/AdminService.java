@@ -42,7 +42,7 @@ public class AdminService {
                 !authorizationService.isAuthorizationAttributeValid(permission.getAuthorizationAttribute()))
                 .collect(Collectors.toList());
         if (!invalid.isEmpty()) {
-            String message = invalid.stream()
+            final String message = invalid.stream()
                     .map(permission -> String.format("authorization attribute %s:%s is invalid",
                             permission.getAuthorizationAttribute().getDataType(),
                             permission.getAuthorizationAttribute().getValue()))
