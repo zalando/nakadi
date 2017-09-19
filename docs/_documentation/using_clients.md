@@ -15,6 +15,7 @@ Nakadi does not ship with a client, but there are some open source clients avail
 | Fahrschein      | Java               | https://github.com/zalando-nakadi/fahrschein      |
 | Nakadion        | Rust               | https://github.com/chridou/nakadion               |
 | Peek            | Java/CLI tool      | https://github.com/bocytko/peek                   |
+| nakadi-client   | Haskell            | https://hackage.haskell.org/package/nakadi-client |
 
 More Nakadi related projects can be found here [https://github.com/zalando-nakadi](https://github.com/zalando-nakadi)
 
