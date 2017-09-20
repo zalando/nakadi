@@ -99,7 +99,7 @@ Each batch contains the following fields:
 Please also note that when stream is started, the client receives a header `X-Nakadi-StreamId` which must be used when committing cursors.
 
 To see a full list of parameters that can be used to control a stream of events, please see 
-an API specification in [swagger](api/nakadi-event-bus-api.yaml) file.
+an API specification in [swagger](#nakadi-event-bus-api) file.
 
 ### Client Rebalancing
 
