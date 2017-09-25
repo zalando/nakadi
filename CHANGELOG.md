@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Added logging of POST requests with compressed body.
+
 ## [2.2.0] - 2017-08-29
 
 ### Added
