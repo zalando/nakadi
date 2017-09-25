@@ -65,6 +65,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -215,6 +216,8 @@ public class EventStreamController {
             EventStream eventStream = null;
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
+
+            LOG.info("[X-NAKADI-CURSORS] {}", Optional.ofNullable(cursorsStr).orElse("-"));
 
             try (Closeable ignore = eventTypeChangeListener.registerListener(et -> needCheckAuthorization.set(true),
                     Collections.singletonList(eventTypeName))) {
