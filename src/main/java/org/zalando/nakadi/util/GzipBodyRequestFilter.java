@@ -54,6 +54,7 @@ public class GzipBodyRequestFilter implements Filter {
             return;
         }
         else if (isGzipped) {
+            LOG.info("[COMPRESSED_PUBLISH] \"{}\"", request.getRequestURI());
             request = new GzipServletRequestWrapper(request);
         }
         chain.doFilter(request, servletResponse);
