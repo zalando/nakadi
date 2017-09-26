@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Committing with empty X-Nakadi-StreamId causes 503
 
+## [2.2.1] - 2017-09-26
+
+### Changed
+- Added logging of POST requests with compressed body.
+
 ## [2.2.0] - 2017-08-29
 
 ### Added

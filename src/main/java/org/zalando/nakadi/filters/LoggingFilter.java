@@ -1,5 +1,6 @@
 package org.zalando.nakadi.filters;
 
+import com.google.common.net.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -34,15 +35,21 @@ public class LoggingFilter extends OncePerRequestFilter {
             final String method = request.getMethod();
             final String path = request.getRequestURI();
             final String query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
+            final String contentEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING))
+                    .orElse("-");
+            final String acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
+                    .orElse("-");
 
-            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms",
+            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\"",
                     method,
                     path,
                     query,
                     userAgent,
                     user,
                     response.getStatus(),
-                    timing);
+                    timing,
+                    contentEncoding,
+                    acceptEncoding);
         }
     }
 }

@@ -33,7 +33,7 @@
     transition: .3s .3s opacity;
   }
 
-  :hover>.anchor {
+  :hover > .anchor {
     opacity: 1;
   }
 
@@ -74,6 +74,21 @@
 
     p {
       margin-bottom: 1.5rem;
+    }
+  }
+
+  table {
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+
+    th, td {
+      border: 1px solid #f0f3f6;
+      padding: 0.5rem 1rem;
+    }
+
+    th {
+      background: #dff2ff;
+      white-space: nowrap;
     }
   }
 
