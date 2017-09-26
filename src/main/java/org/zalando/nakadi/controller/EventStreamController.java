@@ -217,7 +217,7 @@ public class EventStreamController {
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
 
-            LOG.info("[X-NAKADI-CURSORS] {}", Optional.ofNullable(cursorsStr).orElse("-"));
+            LOG.info("[X-NAKADI-CURSORS] \"{}\" {}", eventTypeName, Optional.ofNullable(cursorsStr).orElse("-"));
 
             try (Closeable ignore = eventTypeChangeListener.registerListener(et -> needCheckAuthorization.set(true),
                     Collections.singletonList(eventTypeName))) {
