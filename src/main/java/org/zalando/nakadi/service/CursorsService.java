@@ -74,7 +74,8 @@ public class CursorsService {
      **/
     public List<Boolean> commitCursors(final String streamId,
                                        final String subscriptionId,
-                                       final List<NakadiCursor> cursors)
+                                       final List<NakadiCursor> cursors,
+                                       final Client client)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         if (cursors.isEmpty()) {
@@ -106,7 +107,7 @@ public class CursorsService {
 
         if (!uuidGenerator.isUUID(streamId)) {
             throw new InvalidStreamIdException(
-                    String.format("Stream id has to be valid UUID, but `%s` was provided", streamId), streamId);
+                    String.format("Stream id has to be valid UUID, but `%s was provided", streamId), streamId);
         }
 
         if (!subscriptionClient.isActiveSession(streamId)) {

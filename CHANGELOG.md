@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Committing with empty X-Nakadi-StreamId causes 503
+
 ## [2.2.0] - 2017-08-29
 
 ### Added

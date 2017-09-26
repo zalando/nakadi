@@ -25,6 +25,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.NewZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
@@ -67,6 +68,7 @@ public class CursorsServiceAT extends BaseAT {
     private CursorConverter cursorConverter;
     private CursorsService cursorsService;
     private EventTypeRepository eventTypeRepository;
+    private UUIDGenerator uuidGenerator;
 
     private String etName;
     private String topic;
@@ -118,8 +120,10 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionDbRepository subscriptionRepo = mock(SubscriptionDbRepository.class);
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
         final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(zkHolder, MAPPER);
+        uuidGenerator = mock(UUIDGenerator.class);
+        when(uuidGenerator.isUUID(any())).thenReturn(true);
         cursorsService = new CursorsService(timelineService, subscriptionRepo, eventTypeRepository,
-                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter);
+                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator);
 
         // Register cursors in converter
         registerNakadiCursor(new NakadiCursor(createFakeTimeline(etName, topic), P1, NEW_OFFSET));
@@ -153,6 +157,13 @@ public class CursorsServiceAT extends BaseAT {
         } catch (final InvalidStreamIdException ignore) {
         }
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
+    }
+
+    @Test(expected = InvalidStreamIdException.class)
+    public void shouldThrowInvalidStreamIdWhenStreamIdIsNotUUID() throws Exception {
+        when(uuidGenerator.isUUID(any())).thenReturn(false);
+        final String streamId = "/";
+        cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
     }
 
     @Test
