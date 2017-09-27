@@ -24,33 +24,23 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 public class AdminServiceTest {
 
-    private final AuthorizationDbRepository authorizationDbRepository;
-    private final AdminService adminService;
-    private final AuthorizationService authorizationService;
-    private final NakadiSettings nakadiSettings;
-    private final List<Permission> adminList;
     final List<Permission> defaultAdminPermissions;
-
     final AuthorizationAttribute user1 = new ResourceAuthorizationAttribute("user", "user1");
     final AuthorizationAttribute user2 = new ResourceAuthorizationAttribute("user", "user2");
     final AuthorizationAttribute service2 = new ResourceAuthorizationAttribute("service", "service2");
-
     final List<AuthorizationAttribute> newAttrs = Arrays.asList(user1, user2, service2);
-
     final Permission permAdminUser1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
             new ResourceAuthorizationAttribute("user", "user1"));
     final Permission permAdminService1 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
             new ResourceAuthorizationAttribute("service", "service1"));
     final Permission permAdminService2 = new Permission("nakadi", AuthorizationService.Operation.ADMIN,
             new ResourceAuthorizationAttribute("service", "service2"));
-
     final Permission permReadUser1 = new Permission("nakadi", AuthorizationService.Operation.READ,
             new ResourceAuthorizationAttribute("user", "user1"));
     final Permission permReadService1 = new Permission("nakadi", AuthorizationService.Operation.READ,
             new ResourceAuthorizationAttribute("service", "service1"));
     final Permission permReadService2 = new Permission("nakadi", AuthorizationService.Operation.READ,
             new ResourceAuthorizationAttribute("service", "service2"));
-
     final Permission permWriteUser1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
             new ResourceAuthorizationAttribute("user", "user1"));
     final Permission permWriteService1 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
@@ -58,8 +48,12 @@ public class AdminServiceTest {
     final Permission permWriteService2 = new Permission("nakadi", AuthorizationService.Operation.WRITE,
             new ResourceAuthorizationAttribute("service", "service2"));
     final ResourceAuthorization newAuthz = new ResourceAuthorization(newAttrs, newAttrs, newAttrs);
-
     final AuthorizationAttribute defaultAdmin = new ResourceAuthorizationAttribute("service", "nakadi");
+    private final AuthorizationDbRepository authorizationDbRepository;
+    private final AdminService adminService;
+    private final AuthorizationService authorizationService;
+    private final NakadiSettings nakadiSettings;
+    private final List<Permission> adminList;
 
 
     public AdminServiceTest() {
@@ -71,9 +65,10 @@ public class AdminServiceTest {
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
         this.defaultAdminPermissions = new ArrayList<>();
-        for (final AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
+        for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
             defaultAdminPermissions.add(new Permission("nakadi", operation, defaultAdmin));
         }
+        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
     }
 
     @Test

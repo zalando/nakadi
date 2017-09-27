@@ -15,12 +15,14 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -33,12 +35,11 @@ import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
 @RequestMapping(value = "/settings")
 public class SettingsController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final SecuritySettings securitySettings;
     private final AdminService adminService;
-
-    private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
 
 
     @Autowired
@@ -62,7 +63,7 @@ public class SettingsController {
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.PUT)
     public ResponseEntity blacklist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                        @PathVariable("name") final String name) {
+                                    @PathVariable("name") final String name) {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -72,7 +73,7 @@ public class SettingsController {
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.DELETE)
     public ResponseEntity whitelist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                         @PathVariable("name") final String name) {
+                                    @PathVariable("name") final String name) {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -121,5 +122,16 @@ public class SettingsController {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
                 "There was a problem processing your request.", request);
+    }
+
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
+                                                                final NativeWebRequest request) {
+        LOG.error(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+    }
+
+    private boolean isNotAdmin(final Client client) {
+        return !client.getClientId().equals(securitySettings.getAdminClientId());
     }
 }

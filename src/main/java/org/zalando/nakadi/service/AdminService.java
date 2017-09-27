@@ -6,6 +6,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.AdminResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -18,13 +19,15 @@ import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
 
 @Service
 public class AdminService {
+
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AuthorizationService authorizationService;
     private final NakadiSettings nakadiSettings;
 
     @Autowired
     public AdminService(final AuthorizationDbRepository authorizationDbRepository,
-                        final AuthorizationService authorizationService, final NakadiSettings nakadiSettings) {
+                        final AuthorizationService authorizationService,
+                        final NakadiSettings nakadiSettings) {
         this.authorizationDbRepository = authorizationDbRepository;
         this.authorizationService = authorizationService;
         this.nakadiSettings = nakadiSettings;
@@ -35,6 +38,7 @@ public class AdminService {
     }
 
     public void updateAdmins(final List<Permission> newAdmins) {
+        validateAllAdmins(newAdmins);
         final List<Permission> currentAdmins = authorizationDbRepository.listAdmins();
         final List<Permission> add = removeDefaultAdmin(newAdmins.stream()
                 .filter(p -> !currentAdmins.stream().anyMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
@@ -51,7 +55,7 @@ public class AdminService {
     }
 
     private List<Permission> addDefaultAdmin(final List<Permission> permissions) {
-        for (final AuthorizationService.Operation operation: AuthorizationService.Operation.values()) {
+        for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
             permissions.add(new Permission(ADMIN_RESOURCE, operation, nakadiSettings.getDefaultAdmin()));
         }
         return permissions;
@@ -61,5 +65,19 @@ public class AdminService {
         return permissions.stream()
                 .filter(p -> !p.getAuthorizationAttribute().equals(nakadiSettings.getDefaultAdmin()))
                 .collect(Collectors.toList());
+    }
+
+    private void validateAllAdmins(final List<Permission> admins) throws UnableProcessException {
+        final List<Permission> invalid = admins.stream().filter(permission ->
+                !authorizationService.isAuthorizationAttributeValid(permission.getAuthorizationAttribute()))
+                .collect(Collectors.toList());
+        if (!invalid.isEmpty()) {
+            final String message = invalid.stream()
+                    .map(permission -> String.format("authorization attribute %s:%s is invalid",
+                            permission.getAuthorizationAttribute().getDataType(),
+                            permission.getAuthorizationAttribute().getValue()))
+                    .collect(Collectors.joining(", "));
+            throw new UnableProcessException(message);
+        }
     }
 }
