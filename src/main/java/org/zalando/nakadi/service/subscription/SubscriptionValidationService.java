@@ -17,7 +17,6 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -48,7 +47,7 @@ public class SubscriptionValidationService {
         this.cursorConverter = cursorConverter;
     }
 
-    public void validateSubscription(final SubscriptionBase subscription, final Client client)
+    public void validateSubscription(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoEventTypeException,
             InconsistentStateException, WrongInitialCursorsException {
 

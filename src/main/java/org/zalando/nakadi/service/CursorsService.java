@@ -23,7 +23,6 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
@@ -69,7 +68,7 @@ public class CursorsService {
      * It is guaranteed, that len(cursors) == len(result)
      **/
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
-                                       final List<NakadiCursor> cursors, final Client client)
+                                       final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         if (cursors.isEmpty()) {
@@ -119,7 +118,7 @@ public class CursorsService {
         }
     }
 
-    public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId, final Client client)
+    public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId)
             throws NakadiException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
@@ -138,7 +137,7 @@ public class CursorsService {
         return cursorsListBuilder.build();
     }
 
-    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
+    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, NoSuchSubscriptionException, CursorUnavailableException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException {

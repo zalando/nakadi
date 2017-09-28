@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- New database table for authorization
+- Endpoints for getting and updating the lists of administrators
+- Default administrator defined in application.yml
+- Allow admins to bypass event type authorization restrictions
+
+### Changed
+- Admin endpoints use list of admins from Postgres
+
 ## [2.2.1] - 2017-09-26
 
 ### Changed

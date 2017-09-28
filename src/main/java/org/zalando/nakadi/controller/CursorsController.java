@@ -26,7 +26,6 @@ import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
@@ -78,11 +77,10 @@ public class CursorsController {
 
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
     public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
-                                        final NativeWebRequest request,
-                                        final Client client) {
+                                        final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
         try {
-            final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId, client)
+            final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId)
                     .stream()
                     .map(cursor -> cursor.withToken(cursorTokenService.generateToken()))
                     .collect(Collectors.toList());
@@ -96,8 +94,7 @@ public class CursorsController {
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursorsIn,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
-                                           final NativeWebRequest request,
-                                           final Client client) {
+                                           final NativeWebRequest request) {
 
         TimeLogger.startMeasure(
                 "COMMIT_CURSORS sid:" + subscriptionId + ", size=" + cursorsIn.getItems().size(),
@@ -110,7 +107,7 @@ public class CursorsController {
                 final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
 
                 TimeLogger.addMeasure("callService");
-                final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, client);
+                final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
                 TimeLogger.addMeasure("prepareResponse");
                 final boolean allCommited = items.stream().allMatch(item -> item);
@@ -137,12 +134,11 @@ public class CursorsController {
     public ResponseEntity<?> resetCursors(
             @PathVariable("subscriptionId") final String subscriptionId,
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
-            final NativeWebRequest request,
-            final Client client) {
+            final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         try {
-            cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors), client);
+            cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
             return noContent().build();
         } catch (final NoSuchEventTypeException e) {
             throw new UnableProcessException(e.getMessage());

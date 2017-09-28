@@ -35,7 +35,6 @@ import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.Result;
@@ -90,11 +89,11 @@ public class SubscriptionService {
         this.cursorOperationsService = cursorOperationsService;
     }
 
-    public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Client client)
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoEventTypeException, InconsistentStateException, WrongInitialCursorsException {
 
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
         return subscriptionRepository.createSubscription(subscriptionBase);
     }
 
