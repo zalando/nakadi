@@ -25,6 +25,7 @@ public class AuthorizationValidatorTest {
 
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
+    private final AdminService adminService;
 
     private final AuthorizationAttribute attr1 = new ResourceAuthorizationAttribute("type1", "value1");
     private final AuthorizationAttribute attr2 = new ResourceAuthorizationAttribute("type2", "value2");
@@ -33,8 +34,10 @@ public class AuthorizationValidatorTest {
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
+        adminService = mock(AdminService.class);
 
-        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class));
+        validator = new AuthorizationValidator(authorizationService,
+                mock(EventTypeRepository.class), adminService);
     }
 
     @Test
@@ -98,6 +101,14 @@ public class AuthorizationValidatorTest {
     @Test(expected = AccessDeniedException.class)
     public void whenNotAuthorizedThenForbiddenAccessException() throws Exception {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
+                .authorization(new ResourceAuthorization(null, null, null)).build());
+    }
+
+    @Test
+    public void whenETAdminNotAuthorizedButAdminThenOk() throws Exception {
+        when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
+        when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
