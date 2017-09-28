@@ -19,7 +19,7 @@ import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
-import org.zalando.nakadi.security.FullAccessClient;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
@@ -32,33 +32,35 @@ import java.util.stream.Collectors;
 import static java.util.stream.IntStream.range;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
 
 public class TimelineServiceTest {
 
-    private final SecuritySettings securitySettings = Mockito.mock(SecuritySettings.class);
-    private final EventTypeCache eventTypeCache = Mockito.mock(EventTypeCache.class);
-    private final StorageDbRepository storageDbRepository = Mockito.mock(StorageDbRepository.class);
+    private final SecuritySettings securitySettings = mock(SecuritySettings.class);
+    private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
+    private final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+    private final AdminService adminService = mock(AdminService.class);
 
     private final TimelineService timelineService = new TimelineService(securitySettings, eventTypeCache,
-            storageDbRepository, Mockito.mock(TimelineSync.class), Mockito.mock(NakadiSettings.class),
-            Mockito.mock(TimelineDbRepository.class), Mockito.mock(TopicRepositoryHolder.class),
-            new TransactionTemplate(Mockito.mock(PlatformTransactionManager.class)), new UUIDGenerator(),
-            new Storage());
+            storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class),
+            mock(TimelineDbRepository.class), mock(TopicRepositoryHolder.class),
+            new TransactionTemplate(mock(PlatformTransactionManager.class)), new UUIDGenerator(),
+            new Storage(), adminService);
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
-        Mockito.when(securitySettings.getAdminClientId()).thenReturn("clientId");
+        Mockito.when(adminService.isAdmin(any())).thenReturn(true);
         Mockito.when(eventTypeCache.getEventType(any())).thenThrow(new NoSuchEventTypeException(""));
 
-        timelineService.getTimelines("event_type", new FullAccessClient("clientId"));
+        timelineService.getTimelines("event_type");
     }
 
     @Test(expected = TimelineException.class)
     public void testGetTimelinesException() throws Exception {
-        Mockito.when(securitySettings.getAdminClientId()).thenReturn("clientId");
+        Mockito.when(adminService.isAdmin(any())).thenReturn(true);
         Mockito.when(eventTypeCache.getEventType(any())).thenThrow(new InternalNakadiException(""));
 
-        timelineService.getTimelines("event_type", new FullAccessClient("clientId"));
+        timelineService.getTimelines("event_type");
     }
 
     @Test
@@ -85,10 +87,10 @@ public class TimelineServiceTest {
     @Test
     public void testGetActiveTimelinesOrderedUseFake() throws Exception {
         final String eventTypeName = "my-et";
-        final EventType evenType = Mockito.mock(EventType.class);
+        final EventType evenType = mock(EventType.class);
         Mockito.when(eventTypeCache.getEventType(eq(eventTypeName))).thenReturn(evenType);
         Mockito.when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName))).thenReturn(Collections.emptyList());
-        final Storage storage = Mockito.mock(Storage.class);
+        final Storage storage = mock(Storage.class);
         Mockito.when(storageDbRepository.getStorage(any())).thenReturn(Optional.of(storage));
 
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
@@ -102,7 +104,7 @@ public class TimelineServiceTest {
         final String eventTypeName = "my-et";
 
         final List<Timeline> testTimelines = range(0, 5)
-                .mapToObj(x -> Mockito.mock(Timeline.class))
+                .mapToObj(x -> mock(Timeline.class))
                 .collect(Collectors.toList());
 
         Mockito.when(testTimelines.get(0).getSwitchedAt()).thenReturn(new Date());

@@ -33,6 +33,9 @@ hystrix.command.default.circuitBreaker.errorThresholdPercentage: 20
 hystrix.command.default.metrics.rollingStats.timeInMilliseconds: 30000
 
 nakadi:
+  admin.default:
+    dataType: service
+    value: stups_nakadi
   topic:
     min:
       retentionMs: 86400000 # 1 days

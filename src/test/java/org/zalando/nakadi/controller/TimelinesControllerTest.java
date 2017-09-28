@@ -59,7 +59,7 @@ public class TimelinesControllerTest {
 
     @Test
     public void whenPostTimelineThenCreated() throws Exception {
-        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.post("/event-types/event_type/timelines")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(new JSONObject().put("storage_id", "default").toString())
@@ -73,7 +73,7 @@ public class TimelinesControllerTest {
         final ImmutableList<Timeline> timelines = ImmutableList.of(
                 Timeline.createTimeline("event_type", 0, kafkaStorage, "topic", new Date()),
                 Timeline.createTimeline("event_type_1", 1, kafkaStorage, "topic_1", new Date()));
-        Mockito.when(timelineService.getTimelines(Mockito.any(), Mockito.any())).thenReturn(timelines);
+        Mockito.when(timelineService.getTimelines(Mockito.any())).thenReturn(timelines);
         final List<TimelineView> timelineViews = timelines.stream().map(TimelineView::new).collect(Collectors.toList());
 
         mockMvc.perform(MockMvcRequestBuilders.get("/event-types/event_type/timelines")
@@ -86,7 +86,7 @@ public class TimelinesControllerTest {
 
     @Test
     public void whenDeleteTimelineThenOk() throws Exception {
-        Mockito.doNothing().when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.doNothing().when(timelineService).delete(Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
@@ -99,7 +99,7 @@ public class TimelinesControllerTest {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
         Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
-                .when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
+                .when(timelineService).delete(Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
@@ -112,7 +112,7 @@ public class TimelinesControllerTest {
     @Test
     public void whenNotFoundExceptionThen404() throws Exception {
         Mockito.doThrow(new NotFoundException("whenNotFoundExceptionThen404"))
-                .when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
+                .when(timelineService).delete(Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
@@ -124,7 +124,7 @@ public class TimelinesControllerTest {
     @Test
     public void whenUnableProcessExceptionThen422() throws Exception {
         Mockito.doThrow(new UnableProcessException("whenUnableProcessExceptionThen422"))
-                .when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
+                .when(timelineService).delete(Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))

@@ -55,6 +55,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
     private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
     private static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
+    private static final String DEFAULT_ADMIN_DATA_TYPE = "service";
+    private static final String DEFAULT_ADMIN_VALUE = "nakadi";
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -75,7 +77,9 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES,
-                NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
+                NAKADI_SUBSCRIPTION_MAX_PARTITIONS,
+                DEFAULT_ADMIN_DATA_TYPE,
+                DEFAULT_ADMIN_VALUE);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);

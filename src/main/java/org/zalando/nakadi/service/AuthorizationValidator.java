@@ -35,13 +35,16 @@ public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
     private final EventTypeRepository eventTypeRepository;
+    private final AdminService adminService;
 
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
-            final EventTypeRepository eventTypeRepository) {
+            final EventTypeRepository eventTypeRepository,
+            final AdminService adminService) {
         this.authorizationService = authorizationService;
         this.eventTypeRepository = eventTypeRepository;
+        this.adminService = adminService;
     }
 
     public void validateAuthorization(@Nullable final ResourceAuthorization auth) throws UnableProcessException,
@@ -135,7 +138,9 @@ public class AuthorizationValidator {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
-                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+                    throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                }
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);

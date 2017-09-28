@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -29,16 +30,19 @@ public class StoragesController {
 
     private final SecuritySettings securitySettings;
     private final StorageService storageService;
+    private final AdminService adminService;
 
     @Autowired
-    public StoragesController(final SecuritySettings securitySettings, final StorageService storageService) {
+    public StoragesController(final SecuritySettings securitySettings, final StorageService storageService,
+                              final AdminService adminService) {
         this.securitySettings = securitySettings;
         this.storageService = storageService;
+        this.adminService = adminService;
     }
 
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
-    public ResponseEntity<?> listStorages(final NativeWebRequest request, final Client client) {
-        if (isNotAdmin(client)) {
+    public ResponseEntity<?> listStorages(final NativeWebRequest request) {
+        if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
         final Result<List<Storage>> result = storageService.listStorages();
@@ -50,9 +54,8 @@ public class StoragesController {
 
     @RequestMapping(value = "/storages", method = RequestMethod.POST)
     public ResponseEntity<?> createStorage(@RequestBody final String storage,
-                                           final NativeWebRequest request,
-                                           final Client client) {
-        if (isNotAdmin(client)) {
+                                           final NativeWebRequest request) {
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
         final Result<Void> result = storageService.createStorage(new JSONObject(storage));
@@ -63,9 +66,8 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.GET)
-    public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request,
-                                        final Client client) {
-        if (isNotAdmin(client)) {
+    public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+        if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
         final Result<Storage> result = storageService.getStorage(id);
@@ -76,9 +78,8 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request,
-                                           final Client client) {
-        if (isNotAdmin(client)) {
+    public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
         final Result<Void> result = storageService.deleteStorage(id);
@@ -86,9 +87,5 @@ public class StoragesController {
             return status(NO_CONTENT).build();
         }
         return Responses.create(result.getProblem(), request);
-    }
-
-    private boolean isNotAdmin(final Client client) {
-        return !client.getClientId().equals(securitySettings.getAdminClientId());
     }
 }

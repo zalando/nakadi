@@ -86,7 +86,7 @@ public class PostSubscriptionController {
                         "Subscription creation is temporarily unavailable", request);
             }
             try {
-                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase, client);
+                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
                 return prepareLocationResponse(subscription);
             } catch (final DuplicatedSubscriptionException ex) {
                 throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
