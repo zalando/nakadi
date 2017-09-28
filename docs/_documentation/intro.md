@@ -26,8 +26,6 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
-More detailed information can be found in the [manual](http://zalando.github.io/nakadi-manual/).
-
 <img src="img/NakadiDeploymentDiagram.png" width="100%">
 
 ### Links
