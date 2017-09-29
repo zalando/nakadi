@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.2] - 2017-09-28
+
 ### Added
 - New database table for authorization
 - Endpoints for getting and updating the lists of administrators
