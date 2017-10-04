@@ -26,7 +26,6 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -70,7 +69,7 @@ public class EventPublisher {
         this.authValidator = authValidator;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
+    public EventPublishResult publish(final String events, final String eventTypeName)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 

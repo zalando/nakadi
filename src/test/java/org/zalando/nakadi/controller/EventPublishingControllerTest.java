@@ -19,7 +19,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
@@ -91,7 +90,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -103,14 +102,14 @@ public class EventPublishingControllerTest {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
     }
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        when(publisher.publish(any(), any())).thenThrow(new EventTypeTimeoutException(""));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -124,7 +123,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -138,7 +137,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -150,7 +149,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -165,7 +164,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any(Client.class));
+                .publish(any(), any());
 
         postBatch(TOPIC, EVENT_BATCH);
         postBatch(TOPIC, EVENT_BATCH);

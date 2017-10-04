@@ -67,8 +67,7 @@ public class EventPublishingController {
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
             }
 
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    request, eventTypeMetrics, client);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, request, eventTypeMetrics);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {
@@ -80,12 +79,11 @@ public class EventPublishingController {
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
-                                             final EventTypeMetrics eventTypeMetrics,
-                                             final Client client)
+                                             final EventTypeMetrics eventTypeMetrics)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
-            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName);
 
             final int eventCount = result.getResponses().size();
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
