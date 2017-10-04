@@ -101,7 +101,7 @@ public class KafkaTestHelper {
         ZkUtils zkUtils = null;
         try {
             zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
-            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Enforced$.MODULE$);
+            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
         }
         finally {
             if (zkUtils != null) {
