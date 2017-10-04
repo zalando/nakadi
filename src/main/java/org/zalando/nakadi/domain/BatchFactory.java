@@ -4,76 +4,161 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class BatchFactory {
 
-    public static List<BatchItem> from(final String events) {
-        final List<BatchItem> batch = new ArrayList<>();
-        StringBuilder sb = new StringBuilder();
-        int brackets = 0;
-        boolean insideQuote = false;
-        boolean escaped = false;
-        int start = 0;
-        final int length = events.length();
-        int end = length - 1;
-
-        while (isEmptyCharacter(events.charAt(start)) && start < end) {
-            start++;
-        }
-        while (isEmptyCharacter(events.charAt(end)) && end > start) {
-            end--;
-        }
-        if (!(events.charAt(start) == '[')) {
-            throw new JSONException(String.format("Unexpected character %s in position %d, expected '['",
-                    events.charAt(start), start));
-        }
-        start++;
-        if (!(events.charAt(end) == ']')) {
-            throw new JSONException(String.format("Unexpected character %s in position %d, expected ']'",
-                    events.charAt(end), end));
-        }
-
-        for (int i = start; i < end; i++) {
-            if (!escaped && events.charAt(i) == '"') {
-                if (insideQuote) {
-                    insideQuote = false;
+    private static int navigateToObjectStart(final boolean isFirst, final int from, final int end, final String data) {
+        int curPos = from;
+        boolean commaPresent = false;
+        char currentChar;
+        while (curPos < end && (currentChar = data.charAt(curPos)) != '{') {
+            if (currentChar == ',') {
+                if (isFirst) {
+                    throw new JSONException("Comma is not allowed at position " + curPos);
                 } else {
-                    insideQuote = true;
+                    commaPresent = true;
+                }
+            } else if (!isEmptyCharacter(currentChar)) {
+                throw new JSONException("Illegal character at position " + curPos);
+            }
+            ++curPos;
+        }
+        final boolean found = curPos != end;
+        if (found && !isFirst && !commaPresent) {
+            throw new JSONException("Comma is not found at position " + curPos);
+        }
+        return found ? curPos : -1;
+    }
+
+    private static int navigateToObjectEnd(
+            final int from, final int end, final String data, final Consumer<BatchItem> batchItemConsumer) {
+        int curPos = from;
+        int nestingLevel = 0;
+        boolean escaped = false;
+        boolean insideQuote = false;
+        boolean hasFields = false;
+        int injectionPointStart = -1;
+
+        final BatchItem.InjectionConfiguration[] injections =
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length];
+        final List<Integer> skipPositions = new ArrayList<>();
+
+        while (curPos < end) {
+            final char curChar = data.charAt(curPos);
+            if (shouldBeSkipped(curChar)) {
+                skipPositions.add(curPos - from);
+            }
+            if (!escaped && curChar == '"') {
+                insideQuote = !insideQuote;
+                if (insideQuote && nestingLevel == 1 && injectionPointStart == -1) {
+                    injectionPointStart = curPos;
+                    hasFields = true;
                 }
             }
             if (escaped) {
-                sb.append(events.charAt(i));
                 escaped = false;
-            } else if (!escaped && events.charAt(i) == '\\') {
-                sb.append(events.charAt(i));
+            } else if (!escaped && curChar == '\\') {
                 escaped = true;
-            } else if (insideQuote) {
-                sb.append(events.charAt(i));
-            } else {
-                if (events.charAt(i) == '{') {
-                    brackets++;
-                }
-                if (events.charAt(i) == '}') {
-                    brackets--;
-                }
-                if (!((brackets == 0) && ((events.charAt(i) == ',')
-                 || isEmptyCharacter(events.charAt(i))))) {
-                    sb.append(events.charAt(i));
-                }
-                if (brackets == 0 && !isEmptyCharacter(events.charAt(i))) {
-                    if (sb.length() > 0) {
-                        batch.add(new BatchItem(sb.toString()));
+            } else if (!insideQuote) {
+                BatchItem.InjectionConfiguration toAdd = null;
+                if (curChar == '{') {
+                    ++nestingLevel;
+                } else if (curChar == '}') {
+                    --nestingLevel;
+                    if (nestingLevel == 1 && injectionPointStart != -1) {
+                        toAdd = extractInjection(from, injectionPointStart, curPos, data);
                     }
-                    sb = new StringBuilder();
+                    if (nestingLevel == 0) {
+                        break;
+                    }
+                } else if (nestingLevel == 1 && curChar == ',' && injectionPointStart != -1) {
+                    toAdd = extractInjection(from, injectionPointStart, curPos, data);
+                }
+                if (null != toAdd) {
+                    injections[toAdd.injection.ordinal()] = toAdd;
                 }
             }
+            ++curPos;
         }
+        if (curPos == data.length()) {
+            return -1;
+        }
+        batchItemConsumer.accept(
+                new BatchItem(
+                        data.substring(from, curPos + 1),
+                        BatchItem.EmptyInjectionConfiguration.build(1, hasFields),
+                        injections,
+                        skipPositions));
+        return curPos;
+    }
 
-        if (sb.length() != 0) {
-            batch.add(new BatchItem(sb.toString()));
+    private static BatchItem.InjectionConfiguration extractInjection(
+            final int messageOffset,
+            final int injectionPointStart,
+            final int end,
+            final String data) {
+        for (final BatchItem.Injection type : BatchItem.Injection.values()) {
+            if ((end - injectionPointStart - 3) < type.name.length()) {
+                continue;
+            }
+            boolean matches = data.charAt(injectionPointStart + 1 + type.name.length()) == '"';
+            if (matches) {
+                for (int i = 0; i < type.name.length(); ++i) {
+                    if (data.charAt(injectionPointStart + i + 1) != type.name.charAt(i)) {
+                        matches = false;
+                        break;
+                    }
+                }
+            }
+            if (matches) {
+                return new BatchItem.InjectionConfiguration(
+                        type, injectionPointStart - messageOffset, end - messageOffset);
+            }
+        }
+        return null;
+    }
+
+    public static List<BatchItem> from(final String events) {
+        final List<BatchItem> batch = new ArrayList<>();
+        int objectStart = locateOpenSquareBracket(events) + 1;
+        final int arrayEnd = locateClosingSquareBracket(objectStart, events);
+
+        while (-1 != (objectStart = navigateToObjectStart(batch.isEmpty(), objectStart, arrayEnd, events))) {
+            final int objectEnd = navigateToObjectEnd(objectStart, arrayEnd, events, batch::add);
+            if (objectEnd == -1) {
+                throw new JSONException("Unclosed object staring at " + objectStart + " found.");
+            }
+            objectStart = objectEnd + 1;
         }
 
         return batch;
+    }
+
+    private static int locateOpenSquareBracket(final String events) {
+        int pos = 0;
+        while (pos < events.length() && isEmptyCharacter(events.charAt(pos))) {
+            ++pos;
+        }
+        if (events.charAt(pos) != '[') {
+            throw new JSONException("Array of events should start with [ at position " + pos);
+        }
+        return pos;
+    }
+
+    private static int locateClosingSquareBracket(final int start, final String events) {
+        int pos = events.length() - 1;
+        while (pos >= start && isEmptyCharacter(events.charAt(pos))) {
+            --pos;
+        }
+        if (events.charAt(pos) != ']') {
+            throw new JSONException("Array of events should end with ] at position " + pos);
+        }
+        return pos;
+    }
+
+    private static boolean shouldBeSkipped(final char c) {
+        return (c == '\r' || c == '\n');
     }
 
     private static boolean isEmptyCharacter(final char c) {
