@@ -26,6 +26,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
+import java.util.Date;
 import java.util.List;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -39,7 +40,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
@@ -60,6 +61,7 @@ public class CursorsServiceAT extends BaseAT {
 
     private static final String P1 = "p1";
     private static final String P2 = "p2";
+    private static final Date CREATED_AT = new Date();
 
     private CursorConverter cursorConverter;
     private CursorsService cursorsService;
@@ -90,10 +92,9 @@ public class CursorsServiceAT extends BaseAT {
         etName = randomValidEventTypeName();
         topic = randomUUID();
         cursorConverter = mock(CursorConverter.class);
-        testCursors = ImmutableList.of(new NakadiCursor(createFakeTimeline(etName, topic), P1, NEW_OFFSET));
+        testCursors = ImmutableList.of(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
 
         final EventType eventType = mock(EventType.class);
-        when(eventType.getTopic()).thenReturn(topic);
         when(eventType.getName()).thenReturn(etName);
 
         eventTypeRepository = mock(EventTypeRepository.class);
@@ -106,8 +107,8 @@ public class CursorsServiceAT extends BaseAT {
         when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
-        timeline = createFakeTimeline(etName, topic);
-        when(timelineService.getTimeline(any())).thenReturn(timeline);
+        timeline = buildTimeline(etName, topic, CREATED_AT);
+        when(timelineService.getActiveTimeline(any())).thenReturn(timeline);
 
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getId()).thenReturn(sid);
@@ -119,10 +120,10 @@ public class CursorsServiceAT extends BaseAT {
                 mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter);
 
         // Register cursors in converter
-        registerNakadiCursor(new NakadiCursor(createFakeTimeline(etName, topic), P1, NEW_OFFSET));
-        registerNakadiCursor(new NakadiCursor(createFakeTimeline(etName, topic), P1, OLD_OFFSET));
-        registerNakadiCursor(new NakadiCursor(createFakeTimeline(etName, topic), P2, NEW_OFFSET));
-        registerNakadiCursor(new NakadiCursor(createFakeTimeline(etName, topic), P2, OLD_OFFSET));
+        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
+        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, OLD_OFFSET));
+        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P2, NEW_OFFSET));
+        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P2, OLD_OFFSET));
         // bootstrap data in ZK
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P1), OLD_OFFSET.getBytes(UTF_8));
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P2), OLD_OFFSET.getBytes(UTF_8));
@@ -165,7 +166,7 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
-        final NakadiCursor cursor = new NakadiCursor(createFakeTimeline(etName, topic), P1, OLDEST_OFFSET);
+        final NakadiCursor cursor = new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, OLDEST_OFFSET);
         registerNakadiCursor(cursor);
         testCursors = ImmutableList.of(cursor);
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});

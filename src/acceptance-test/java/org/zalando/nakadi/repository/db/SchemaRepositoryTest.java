@@ -81,11 +81,10 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
-        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
-                "VALUES (?, ?, to_json(?::json))";
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) " +
+                "VALUES (?, to_json(?::json))";
         template.update(insertSQL,
                 eventType.getName(),
-                eventType.getTopic(),
                 TestUtils.OBJECT_MAPPER.writer().writeValueAsString(eventType));
     }
 

@@ -332,9 +332,6 @@ public class EventTypeAT extends BaseAT {
                 .stream()
                 .map((Timeline t) -> t.getTopic())
                 .collect(Collectors.toList());
-        if (topics.isEmpty()) {
-            topics.add(EVENT_TYPE_REPO.findByName(eventType).getTopic());
-        }
         return topics;
     }
 }

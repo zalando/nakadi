@@ -22,9 +22,9 @@ import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -69,6 +69,19 @@ public class SubscriptionAT extends BaseAT {
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
+
+    static EventType createEventType() {
+        final EventType eventType = buildDefaultEventType();
+        try {
+            given()
+                    .body(MAPPER.writeValueAsString(eventType))
+                    .contentType(JSON)
+                    .post("/event-types");
+            return eventType;
+        } catch (final JsonProcessingException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 
     @Test
     public void testSubscriptionBaseOperations() throws IOException {
@@ -187,7 +200,6 @@ public class SubscriptionAT extends BaseAT {
     public void testOffsetsCommit() throws Exception {
         // create event type in Nakadi
         final String etName = createEventType().getName();
-        final String topic = EVENT_TYPE_REPO.findByName(etName).getTopic();
 
         final Subscription subscription = createSubscriptionForEventType(etName);
 
@@ -204,7 +216,7 @@ public class SubscriptionAT extends BaseAT {
 
         // check that offset is actually committed to Zookeeper
         String committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
-        assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
+        assertThat(committedOffset, equalTo(TestUtils.toTimelineOffset(25)));
 
         // commit lower offsets and expect 200
         cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
@@ -215,7 +227,7 @@ public class SubscriptionAT extends BaseAT {
 
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
-        assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
+        assertThat(committedOffset, equalTo(TestUtils.toTimelineOffset(25)));
     }
 
     @Test
@@ -268,11 +280,11 @@ public class SubscriptionAT extends BaseAT {
 
         // check that first events of each partition have correct offsets
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "0")),
-                equalTo(Optional.of("000000000000000008")));
+                equalTo(Optional.of("001-0001-000000000000000008")));
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "1")),
-                equalTo(Optional.of("000000000000000003")));
+                equalTo(Optional.of("001-0001-000000000000000003")));
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et2.getName(), "0")),
-                equalTo(Optional.of("000000000000000000")));
+                equalTo(Optional.of("001-0001-000000000000000000")));
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et2.getName(), "1")),
                 equalTo(Optional.empty()));
     }
@@ -306,7 +318,7 @@ public class SubscriptionAT extends BaseAT {
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
         assertThat(actualCursor.getPartition(), equalTo("0"));
-        assertThat(actualCursor.getOffset(), equalTo(KafkaCursor.toNakadiOffset(25)));
+        assertThat(actualCursor.getOffset(), equalTo(TestUtils.toTimelineOffset(25)));
         assertThat(actualCursor.getEventType(), equalTo(etName));
     }
 
@@ -390,19 +402,6 @@ public class SubscriptionAT extends BaseAT {
                 eventType, partition);
         final byte[] data = CURATOR.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
-    }
-
-    static EventType createEventType() {
-        final EventType eventType = buildDefaultEventType();
-        try {
-            given()
-                    .body(MAPPER.writeValueAsString(eventType))
-                    .contentType(JSON)
-                    .post("/event-types");
-            return eventType;
-        } catch (final JsonProcessingException ex) {
-            throw new RuntimeException(ex);
-        }
     }
 
 }

@@ -132,7 +132,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
                 AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
-                        RackAwareMode.Enforced$.MODULE$);
+                        RackAwareMode.Safe$.MODULE$);
             });
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + topic +
@@ -155,6 +155,7 @@ public class KafkaTopicRepository implements TopicRepository {
         if (!Boolean.TRUE.equals(allowsConsumption)) {
             throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }
+
     }
 
     @Override

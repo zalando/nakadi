@@ -1,9 +1,6 @@
 package org.zalando.nakadi.service.converter;
 
-import com.google.common.base.Preconditions;
-import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -74,18 +71,6 @@ class VersionOneConverter implements VersionedConverter {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeStr);
-        if (timelines.isEmpty()) {
-            // Timeline probably was there some time ago, but now it is rolled back.
-            // Therefore one should create NakadiCursor with version zero, checking that order is almost default one.
-            Preconditions.checkArgument(
-                    order == (Timeline.STARTING_ORDER + 1), "Fallback supported only for order next after initial");
-            final EventType eventType = eventTypeCache.getEventType(eventTypeStr);
-            return new NakadiCursor(
-                    timelineService.getFakeTimeline(eventType),
-                    cursor.getPartition(),
-                    StringUtils.leftPad(offsetStr, VersionZeroConverter.VERSION_ZERO_MIN_OFFSET_LENGTH, '0')
-            );
-        }
         final Timeline timeline = timelines.stream()
                 .filter(t -> t.getOrder() == order)
                 .findAny()

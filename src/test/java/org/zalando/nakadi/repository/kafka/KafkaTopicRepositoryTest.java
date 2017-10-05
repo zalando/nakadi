@@ -54,7 +54,7 @@ import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 
 public class KafkaTopicRepositoryTest {
 
@@ -130,7 +130,7 @@ public class KafkaTopicRepositoryTest {
 
     private static List<NakadiCursor> asTopicPosition(final String topic, final List<Cursor> cursors) {
         return cursors.stream()
-                .map(c -> new NakadiCursor(createFakeTimeline(topic), c.getPartition(), c.getOffset()))
+                .map(c -> new NakadiCursor(buildTimelineWithTopic(topic), c.getPartition(), c.getOffset()))
                 .collect(toList());
     }
 
@@ -304,7 +304,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(createFakeTimeline(MY_TOPIC), "0", "23"));
+        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(buildTimelineWithTopic(MY_TOPIC), "0", "23"));
     }
 
     @Test
@@ -317,7 +317,7 @@ public class KafkaTopicRepositoryTest {
                     try {
                         kafkaTopicRepository.validateCommitCursor(
                                 new NakadiCursor(
-                                        createFakeTimeline(MY_TOPIC),
+                                        buildTimelineWithTopic(MY_TOPIC),
                                         testCase.getKey().getPartition(),
                                         testCase.getKey().getOffset()));
                     } catch (final InvalidCursorException e) {

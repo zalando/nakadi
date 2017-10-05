@@ -35,8 +35,8 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("BEGIN"))
-                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
+                .body("newest_available_offset[0]", equalTo("001-0001--1"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(0));
 
         postEvents(eventType.getName(), EVENT, EVENT);
@@ -49,8 +49,8 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("000000000000000001"))
-                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
+                .body("newest_available_offset[0]", equalTo("001-0001-000000000000000001"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(2));
 
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
@@ -91,7 +91,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("001-0002-000000000000000001"))
+                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000001"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(4));
 
@@ -105,7 +105,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("001-0002-000000000000000001"))
+                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000001"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(4));
 
@@ -119,7 +119,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000002"))
+                .body("newest_available_offset[0]", equalTo("001-0004-000000000000000002"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(7));
 
@@ -131,7 +131,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000002"))
+                .body("newest_available_offset[0]", equalTo("001-0004-000000000000000002"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(6));
     }
@@ -146,7 +146,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("BEGIN"))
+                .body("offset[0]", equalTo("001-0001--1"))
                 .body("partition[0]", equalTo("0"));
 
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
@@ -180,7 +180,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001-000000000000000000"))
+                .body("offset[0]", equalTo("001-0002-000000000000000000"))
                 .body("partition[0]", equalTo("0"));
 
         RestAssured.given()
@@ -191,7 +191,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001-000000000000000001"))
+                .body("offset[0]", equalTo("001-0002-000000000000000001"))
                 .body("partition[0]", equalTo("0"));
 
         RestAssured.given()
@@ -202,7 +202,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001-000000000000000002"))
+                .body("offset[0]", equalTo("001-0002-000000000000000002"))
                 .body("partition[0]", equalTo("0"));
 
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
@@ -217,7 +217,7 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0002-000000000000000000"))
+                .body("offset[0]", equalTo("001-0003-000000000000000000"))
                 .body("partition[0]", equalTo("0"));
 
         RestAssured.given()
@@ -228,12 +228,34 @@ public class CursorOperationsAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0002-000000000000000001"))
+                .body("offset[0]", equalTo("001-0003-000000000000000001"))
                 .body("partition[0]", equalTo("0"));
 
         RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("[{\"partition\": \"0\", \"offset\":\"001-0002-000000000000000001\", \"shift\":-1}]")
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0003-000000000000000001\", \"shift\":-1}]")
+                .when()
+                .post("/event-types/" + eventType.getName() + "/shifted-cursors")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("offset[0]", equalTo("001-0003-000000000000000000"))
+                .body("partition[0]", equalTo("0"));
+
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0003-000000000000000001\", \"shift\":-2}]")
+                .when()
+                .post("/event-types/" + eventType.getName() + "/shifted-cursors")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("offset[0]", equalTo("001-0003--1"))
+                .body("partition[0]", equalTo("0"));
+
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0003-000000000000000001\", \"shift\":-3}]")
                 .when()
                 .post("/event-types/" + eventType.getName() + "/shifted-cursors")
                 .then()
@@ -244,35 +266,13 @@ public class CursorOperationsAT {
 
         RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("[{\"partition\": \"0\", \"offset\":\"001-0002-000000000000000001\", \"shift\":-2}]")
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0003-000000000000000001\", \"shift\":-4}]")
                 .when()
                 .post("/event-types/" + eventType.getName() + "/shifted-cursors")
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001-000000000000000001"))
-                .body("partition[0]", equalTo("0"));
-
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .body("[{\"partition\": \"0\", \"offset\":\"001-0002-000000000000000001\", \"shift\":-3}]")
-                .when()
-                .post("/event-types/" + eventType.getName() + "/shifted-cursors")
-                .then()
-                .statusCode(OK.value())
-                .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001-000000000000000000"))
-                .body("partition[0]", equalTo("0"));
-
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .body("[{\"partition\": \"0\", \"offset\":\"001-0002-000000000000000001\", \"shift\":-4}]")
-                .when()
-                .post("/event-types/" + eventType.getName() + "/shifted-cursors")
-                .then()
-                .statusCode(OK.value())
-                .body("size()", equalTo(1))
-                .body("offset[0]", equalTo("001-0001--1"))
+                .body("offset[0]", equalTo("001-0002--1"))
                 .body("partition[0]", equalTo("0"));
     }
 }

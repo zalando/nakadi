@@ -27,7 +27,6 @@ public class EventTypeTestBuilder {
     private static final String DEFAULT_SCHEMA = "{ \"properties\": { \"foo\": { \"type\": \"string\" } } }";
     private final List<ValidationStrategyConfiguration> validationStrategies;
     private String name;
-    private String topic;
     private String owningApplication;
     private EventCategory category;
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies;
@@ -44,7 +43,6 @@ public class EventTypeTestBuilder {
 
     public EventTypeTestBuilder() {
         this.name = TestUtils.randomValidEventTypeName();
-        this.topic = TestUtils.randomUUID();
         this.owningApplication = DEFAULT_OWNING_APPLICATION;
         this.category = EventCategory.UNDEFINED;
         this.validationStrategies = Lists.newArrayList();
@@ -67,11 +65,6 @@ public class EventTypeTestBuilder {
 
     public EventTypeTestBuilder name(final String name) {
         this.name = name;
-        return this;
-    }
-
-    public EventTypeTestBuilder topic(final String topic) {
-        this.topic = topic;
         return this;
     }
 
@@ -148,7 +141,7 @@ public class EventTypeTestBuilder {
     }
 
     public EventType build() {
-        final EventTypeBase eventTypeBase = new EventTypeBase(name, topic, owningApplication, category,
+        final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, compatibilityMode);
         eventTypeBase.setAuthorization(authorization);

@@ -67,12 +67,12 @@ public class KafkaTestHelper {
                 .stream()
                 .map(cursor -> {
                     if ("0".equals(cursor.getOffset())) {
-                        return new Cursor(cursor.getPartition(), Cursor.BEFORE_OLDEST_OFFSET);
+                        return new Cursor(cursor.getPartition(), "001-0001--1");
                     }
                     else {
                         final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
-                        return new Cursor(cursor.getPartition(),
-                                StringUtils.leftPad(toNakadiOffset(lastEventOffset), CURSOR_OFFSET_LENGTH, '0'));
+                        String offset = StringUtils.leftPad(toNakadiOffset(lastEventOffset), CURSOR_OFFSET_LENGTH, '0');
+                        return new Cursor(cursor.getPartition(), String.format("001-0001-%s", offset));
                     }
                 })
                 .collect(Collectors.toList());

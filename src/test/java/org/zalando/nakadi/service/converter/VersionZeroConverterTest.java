@@ -6,7 +6,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 
@@ -15,14 +14,12 @@ import static org.mockito.Mockito.mock;
 public class VersionZeroConverterTest {
 
     private TimelineService timelineService;
-    private EventTypeCache eventTypeCache;
     private VersionedConverter converter;
 
     @Before
     public void setupMocks() {
         timelineService = mock(TimelineService.class);
-        eventTypeCache = mock(EventTypeCache.class);
-        converter = new VersionZeroConverter(eventTypeCache, timelineService);
+        converter = new VersionZeroConverter(timelineService);
     }
 
     @Test(expected = InvalidCursorException.class)

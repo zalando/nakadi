@@ -26,7 +26,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
@@ -152,21 +151,6 @@ public class EventTypeCacheTestAT {
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
-    }
-
-    @Test
-    public void testGetActiveTimeline() throws Exception {
-        final EventTypeCache etc = new RepositoriesConfig()
-                .eventTypeCache(client, eventTypeRepository, timelineRepository, timelineSync);
-        final EventType et = buildDefaultEventType();
-
-        Mockito.when(timelineRepository.listTimelinesOrdered(et.getName()))
-                .thenReturn(getMockedTimelines(et.getName()));
-        Mockito.doReturn(et).when(eventTypeRepository).findByName(et.getName());
-
-        etc.created(et.getName());
-        final Optional<Timeline> timeline = etc.getActiveTimeline(et.getName());
-        Assert.assertEquals(1, timeline.get().getOrder());
     }
 
     @Test

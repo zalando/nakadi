@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,7 +34,7 @@ import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.randomUInt;
 import static org.zalando.nakadi.utils.TestUtils.randomULong;
@@ -43,13 +44,14 @@ public class NakadiKafkaConsumerTest {
     private static final String TOPIC = TestUtils.randomValidEventTypeName();
     private static final int PARTITION = randomUInt();
     private static final long POLL_TIMEOUT = randomULong();
+    private static final Date CREATED_AT = new Date();
 
     private static KafkaCursor kafkaCursor(final String topic, final int partition, final long offset) {
         return new KafkaCursor(topic, partition, offset);
     }
 
     private static Map<TopicPartition, Timeline> createTpTimelineMap() {
-        final Timeline timeline = createFakeTimeline(TOPIC);
+        final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
         final Map<TopicPartition, Timeline> mockMap = mock(Map.class);
         when(mockMap.get(any())).thenReturn(timeline);
         return mockMap;
@@ -115,7 +117,7 @@ public class NakadiKafkaConsumerTest {
                 new TopicPartition(TOPIC, PARTITION),
                 ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1".getBytes(), event1),
                         new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2".getBytes(), event2))));
-        final Timeline timeline = createFakeTimeline(TOPIC);
+        final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
         final ConsumerRecords<byte[], byte[]> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
 
         final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);

@@ -23,9 +23,9 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
+import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,22 +180,6 @@ public class EventTypeCache {
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
-    public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
-            NoSuchEventTypeException {
-        final List<Timeline> timelines = getTimelinesOrdered(name);
-        if (timelines == null) {
-            return Optional.empty();
-        }
-        final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
-        while (rIterator.hasPrevious()) {
-            final Timeline toCheck = rIterator.previous();
-            if (toCheck.getSwitchedAt() != null) {
-                return Optional.of(toCheck);
-            }
-        }
-        return Optional.empty();
-    }
-
     public List<Timeline> getTimelinesOrdered(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
         return getCached(name)
@@ -253,6 +237,7 @@ public class EventTypeCache {
     private static class CachedValue {
         private final EventType eventType;
         private final EventTypeValidator eventTypeValidator;
+        @Nonnull
         private final List<Timeline> timelines;
 
         CachedValue(final EventType eventType,

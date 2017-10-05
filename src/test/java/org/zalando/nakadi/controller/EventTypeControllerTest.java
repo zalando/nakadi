@@ -70,6 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
@@ -196,7 +197,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType randomEventType = EventTypeTestBuilder.builder()
                 .name(eventType.getName())
-                .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY)
                 .createdAt(eventType.getCreatedAt())
                 .build();
@@ -215,7 +215,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType randomEventType = EventTypeTestBuilder.builder()
                 .name(eventType.getName())
-                .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
                 .partitionKeyFields(Collections.singletonList("foo"))
                 .createdAt(eventType.getCreatedAt())
@@ -236,7 +235,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType randomEventType = EventTypeTestBuilder.builder()
                 .name(eventType.getName())
-                .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
                 .createdAt(eventType.getCreatedAt())
                 .build();
@@ -255,7 +253,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType randomEventType = EventTypeTestBuilder.builder()
                 .name(eventType.getName())
-                .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
                 .partitionKeyFields(Collections.emptyList())
                 .createdAt(eventType.getCreatedAt())
@@ -275,7 +272,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType randomEventType = EventTypeTestBuilder.builder()
                 .name(eventType.getName())
-                .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
                 .createdAt(eventType.getCreatedAt())
                 .build();
@@ -444,7 +440,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
         final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        topicsToDelete.put(topicRepository, eventType.getTopic());
+        topicsToDelete.put(topicRepository, "topic");
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName()).andExpect(status().isOk()).andExpect(content().string(""));
@@ -603,35 +599,31 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
-
+        final Timeline timeline = buildTimelineWithTopic("topic1");
+        when(timelineService.createDefaultTimeline(anyString(), anyInt(), anyLong())).thenReturn(timeline);
         doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
-        when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(anyInt(), any());
+        verify(timelineService, times(1)).createDefaultTimeline(anyString(), anyInt(), anyLong());
     }
 
     @Test
-    public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
+    public void whenTimelineCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
         final EventType et = buildDefaultEventType();
-        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
-
-        doThrow(TopicCreationException.class).when(topicRepository).createTopic(anyInt(), any());
-
-        doNothing().when(eventTypeRepository).removeEventType(et.getName());
-
+        doThrow(TopicCreationException.class).when(timelineService)
+                .createDefaultTimeline(anyString(), anyInt(), anyLong());
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
 
         postEventType(et).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
                 matchesProblem(expectedProblem)));
 
-        verify(eventTypeRepository, times(0)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(anyInt(), any());
-        verify(eventTypeRepository, times(0)).removeEventType(randomUUID.toString());
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(timelineService, times(1)).createDefaultTimeline(anyString(), anyInt(), anyLong());
+        verify(eventTypeRepository, times(1)).removeEventType(et.getName());
     }
 
     @Test
@@ -666,7 +658,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPUTInexistingEventTypeThen404() throws Exception {
+    public void whenPUTNotExistingEventTypeThen404() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
@@ -889,21 +881,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         deleteEventType(eventType.getName())
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenDuplicatedEventTypeThenTopicIsRemoved() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        doThrow(DuplicatedEventTypeNameException.class)
-                .when(eventTypeRepository).saveEventType(any(EventType.class));
-        when(topicRepository.createTopic(0, 172800000L)).thenReturn("test-topic");
-
-        postEventType(eventType)
-                .andExpect(status().isConflict())
-                .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.CONFLICT))));
-
-        verify(topicRepository).deleteTopic("test-topic");
     }
 
     @Test

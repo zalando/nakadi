@@ -72,7 +72,6 @@ public class SubscriptionValidationServiceTest {
         for (final String etName : new String[]{ET1, ET2, ET3}) {
             final EventType eventType = new EventType();
             eventType.setName(etName);
-            eventType.setTopic(topicForET(etName));
             eventTypes.put(etName, eventType);
         }
         when(etRepo.findByNameO(any()))
@@ -81,9 +80,9 @@ public class SubscriptionValidationServiceTest {
         final TimelineService timelineService = mock(TimelineService.class);
         for (final EventType et : eventTypes.values()) {
             final Timeline timeline = mock(Timeline.class);
-            when(timeline.getTopic()).thenReturn(et.getTopic());
+            when(timeline.getTopic()).thenReturn(topicForET(et.getName()));
             when(timeline.getEventType()).thenReturn(et.getName());
-            when(timelineService.getTimeline(eq(et))).thenReturn(timeline);
+            when(timelineService.getActiveTimeline(eq(et))).thenReturn(timeline);
         }
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);

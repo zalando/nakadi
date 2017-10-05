@@ -33,7 +33,7 @@ public class CursorConverterImpl implements CursorConverter {
     @Autowired
     public CursorConverterImpl(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
         registerConverter(new VersionOneConverter(eventTypeCache, timelineService));
-        registerConverter(new VersionZeroConverter(eventTypeCache, timelineService));
+        registerConverter(new VersionZeroConverter(timelineService));
     }
 
     private void registerConverter(final VersionedConverter converter) {
@@ -93,11 +93,9 @@ public class CursorConverterImpl implements CursorConverter {
     }
 
     public Cursor convert(final NakadiCursor nakadiCursor) {
-        final Version version = nakadiCursor.getTimeline().isFake() ? CursorConverter.Version.ZERO
-                : CursorConverter.Version.ONE;
         return new Cursor(
                 nakadiCursor.getPartition(),
-                converters.get(version).formatOffset(nakadiCursor));
+                converters.get(CursorConverter.Version.ONE).formatOffset(nakadiCursor));
     }
 
     public SubscriptionCursor convert(final NakadiCursor position, final String token) {

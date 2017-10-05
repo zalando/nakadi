@@ -25,7 +25,6 @@ import java.util.stream.Stream;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 
 public class SubscriptionConsumptionTest {
@@ -55,33 +54,6 @@ public class SubscriptionConsumptionTest {
         cursorsDuringPublish = inTimeCursors.get();
     }
 
-    @Test(timeout = 15000)
-    public void testTimelineDelete() throws IOException, InterruptedException {
-        final EventType eventType = createEventType();
-        final Subscription subscription = createSubscription(
-                RandomSubscriptionBuilder.builder().withEventType(eventType.getName()).build());
-
-        final CountDownLatch finished = new CountDownLatch(1);
-        final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
-        createParallelConsumer(subscription, 6, finished, inTimelineCursors::set);
-        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
-        createTimeline(eventType.getName());
-        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
-        deleteTimeline(eventType.getName());
-        publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
-        finished.await();
-        Assert.assertArrayEquals(
-                new String[]{
-                        "000000000000000000",
-                        "000000000000000001",
-                        "001-0001-000000000000000002",
-                        "001-0001-000000000000000003",
-                        "000000000000000004",
-                        "000000000000000005"
-                },
-                inTimelineCursors.get());
-    }
-
     @Test(timeout = 60000)
     public void test2TimelinesInaRow() throws IOException, InterruptedException {
         final EventType eventType = createEventType();
@@ -101,11 +73,11 @@ public class SubscriptionConsumptionTest {
         finished.await();
         Assert.assertArrayEquals(
                 new String[]{
-                        "000000000000000000",
-                        "000000000000000001",
-                        "001-0003-000000000000000000",
-                        "001-0005-000000000000000000",
-                        "001-0005-000000000000000001"
+                        "001-0001-000000000000000000",
+                        "001-0001-000000000000000001",
+                        "001-0004-000000000000000000",
+                        "001-0006-000000000000000000",
+                        "001-0006-000000000000000001"
                 },
                 inTimelineCursors.get()
         );
@@ -121,9 +93,9 @@ public class SubscriptionConsumptionTest {
                 new String[]{
                         "001-0001-000000000000000000",
                         "001-0001-000000000000000001",
-                        "001-0003-000000000000000000",
-                        "001-0005-000000000000000000",
-                        "001-0005-000000000000000001"
+                        "001-0004-000000000000000000",
+                        "001-0006-000000000000000000",
+                        "001-0006-000000000000000001"
                 },
                 inTimelineCursors.get()
         );
@@ -145,8 +117,8 @@ public class SubscriptionConsumptionTest {
         finished.await();
         Assert.assertArrayEquals(
                 new String[]{
-                        "001-0003-000000000000000000",
-                        "001-0003-000000000000000001",
+                        "001-0004-000000000000000000",
+                        "001-0004-000000000000000001",
                 },
                 inTimelineCursors.get()
         );
@@ -160,8 +132,8 @@ public class SubscriptionConsumptionTest {
         finished2.await();
         Assert.assertArrayEquals(
                 new String[]{
-                        "001-0003-000000000000000000",
-                        "001-0003-000000000000000001",
+                        "001-0004-000000000000000000",
+                        "001-0004-000000000000000001",
                 },
                 inTimelineCursors2.get()
         );
@@ -171,14 +143,15 @@ public class SubscriptionConsumptionTest {
     public void testInTimeCursorsCorrect() {
         Assert.assertArrayEquals(
                 new String[]{
-                        "000000000000000000",
-                        "000000000000000001",
-                        "001-0001-000000000000000002",
-                        "001-0001-000000000000000003",
+                        "001-0001-000000000000000000",
+                        "001-0001-000000000000000001",
                         "001-0002-000000000000000000",
                         "001-0002-000000000000000001",
                         "001-0003-000000000000000000",
                         "001-0003-000000000000000001",
+                        "001-0004-000000000000000000",
+                        "001-0004-000000000000000001"
+
                 },
                 cursorsDuringPublish
         );
@@ -189,12 +162,12 @@ public class SubscriptionConsumptionTest {
         final String[] expected = new String[]{
                 "001-0001-000000000000000000",
                 "001-0001-000000000000000001",
-                "001-0001-000000000000000002",
-                "001-0001-000000000000000003",
                 "001-0002-000000000000000000",
                 "001-0002-000000000000000001",
                 "001-0003-000000000000000000",
                 "001-0003-000000000000000001",
+                "001-0004-000000000000000000",
+                "001-0004-000000000000000001"
         };
 
         // Do not test last case, because it makes no sense...
