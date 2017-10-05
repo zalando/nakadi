@@ -3,7 +3,10 @@ package org.zalando.nakadi.domain;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class BatchFactory {
@@ -37,10 +40,24 @@ public class BatchFactory {
         int nestingLevel = 0;
         boolean escaped = false;
         boolean insideQuote = false;
+        boolean hasFields = false;
+        int injectionPointStart = -1;
+
+        final Map<BatchItem.Injection, BatchItem.InjectionConfiguration> injections =
+                new EnumMap<>(BatchItem.Injection.class);
+        final List<Integer> skipPositions = new ArrayList<>();
+
         while (curPos < end) {
             final char curChar = data.charAt(curPos);
+            if (shouldBeSkipped(curChar)) {
+                skipPositions.add(curPos - from);
+            }
             if (!escaped && curChar == '"') {
                 insideQuote = !insideQuote;
+                if (insideQuote && nestingLevel == 1 && injectionPointStart == -1) {
+                    injectionPointStart = curPos;
+                    hasFields = true;
+                }
             }
             if (escaped) {
                 escaped = false;
@@ -52,8 +69,13 @@ public class BatchFactory {
                 } else if (curChar == '}') {
                     --nestingLevel;
                     if (nestingLevel == 0) {
+                        if (injectionPointStart != -1) {
+                            extractInjection(from, injectionPointStart, curPos, data, injections::put);
+                        }
                         break;
                     }
+                } else if (nestingLevel == 1 && curChar == ',' && injectionPointStart != -1) {
+                    extractInjection(from, injectionPointStart, curPos, data, injections::put);
                 }
             }
             ++curPos;
@@ -61,8 +83,41 @@ public class BatchFactory {
         if (curPos == data.length()) {
             return -1;
         }
-        batchItemConsumer.accept(new BatchItem(data.substring(from, curPos + 1)));
+        batchItemConsumer.accept(
+                new BatchItem(
+                        data.substring(from, curPos + 1),
+                        BatchItem.EmptyInjectionConfiguration.build(1, hasFields),
+                        injections,
+                        skipPositions));
         return curPos;
+    }
+
+    private static void extractInjection(
+            final int messageOffset,
+            final int injectionPointStart,
+            final int end,
+            final String data,
+            final BiConsumer<BatchItem.Injection, BatchItem.InjectionConfiguration> injectionAcceptor) {
+        for (final BatchItem.Injection type : BatchItem.Injection.values()) {
+            if ((end - injectionPointStart - 3) < type.name.length()) {
+                continue;
+            }
+            boolean matches = data.charAt(injectionPointStart + 2 + type.name.length()) == '"';
+            if (matches) {
+                for (int i = 0; i < type.name.length(); ++i) {
+                    if (data.charAt(injectionPointStart + i + 1) != type.name.charAt(i)) {
+                        matches = false;
+                        break;
+                    }
+                }
+            }
+            if (matches) {
+                injectionAcceptor.accept(
+                        type,
+                        new BatchItem.InjectionConfiguration(injectionPointStart - messageOffset, end - messageOffset));
+                return;
+            }
+        }
     }
 
     public static List<BatchItem> from(final String events) {
@@ -101,6 +156,10 @@ public class BatchFactory {
             throw new JSONException("Array of events should end with ] at position " + pos);
         }
         return pos;
+    }
+
+    private static boolean shouldBeSkipped(final char c) {
+        return (c == '\r' || c == '\n');
     }
 
     private static boolean isEmptyCharacter(final char c) {
