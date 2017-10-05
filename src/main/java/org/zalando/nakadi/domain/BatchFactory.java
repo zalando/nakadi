@@ -68,10 +68,10 @@ public class BatchFactory {
                     ++nestingLevel;
                 } else if (curChar == '}') {
                     --nestingLevel;
+                    if (nestingLevel == 1 && injectionPointStart != -1) {
+                        extractInjection(from, injectionPointStart, curPos, data, injections::put);
+                    }
                     if (nestingLevel == 0) {
-                        if (injectionPointStart != -1) {
-                            extractInjection(from, injectionPointStart, curPos, data, injections::put);
-                        }
                         break;
                     }
                 } else if (nestingLevel == 1 && curChar == ',' && injectionPointStart != -1) {
@@ -102,7 +102,7 @@ public class BatchFactory {
             if ((end - injectionPointStart - 3) < type.name.length()) {
                 continue;
             }
-            boolean matches = data.charAt(injectionPointStart + 2 + type.name.length()) == '"';
+            boolean matches = data.charAt(injectionPointStart + 1 + type.name.length()) == '"';
             if (matches) {
                 for (int i = 0; i < type.name.length(); ++i) {
                     if (data.charAt(injectionPointStart + i + 1) != type.name.charAt(i)) {

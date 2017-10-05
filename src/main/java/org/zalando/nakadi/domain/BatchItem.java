@@ -166,17 +166,18 @@ public class BatchItem {
             if (positionStart > lastMainEventUsedPosition.get()) {
                 currentSkipPosition.set(
                         appendWithSkip(sb, lastMainEventUsedPosition.get(), positionStart, currentSkipPosition.get()));
-                sb.append(this.rawEvent, lastMainEventUsedPosition.get(), positionStart);
                 lastMainEventUsedPosition.set(positionEnd);
             }
-            sb.append(entry.getValue());
-            if (!emptyInjectionConfiguration.addComma) {
-                // Well, really rare case, but we are trying to load brain, so cover it as well
-                if (nonComaAdded.get()) {
-                    sb.append(",");
+            addReplacement(sb, entry);
+            if (config == null) {
+                if (!emptyInjectionConfiguration.addComma) {
+                    // Well, really rare case, but we are trying to load brain, so cover it as well
+                    if (nonComaAdded.get()) {
+                        sb.append(",");
+                    }
+                    nonComaAdded.set(true);
+                    addReplacement(sb, entry);
                 }
-                nonComaAdded.set(true);
-                sb.append(entry.getValue());
             }
         });
         if (lastMainEventUsedPosition.get() < rawEvent.length()) {
@@ -185,20 +186,27 @@ public class BatchItem {
         return sb.toString();
     }
 
+    private static void addReplacement(final StringBuilder sb, Map.Entry<Injection, String> entry) {
+        sb.append('\"').append(entry.getKey().name).append("\":");
+        sb.append(entry.getValue());
+    }
     private int appendWithSkip(final StringBuilder sb, final int from, final int to, final int currentSkipPosition) {
         int currentPos = from;
         int idx;
         for (idx = currentSkipPosition; idx < skipCharacters.size(); ++idx) {
             final int currentSkipIdx = skipCharacters.get(idx);
+            if (currentSkipIdx < from) {
+                continue;
+            }
             if (currentSkipIdx > to) {
                 break;
             }
-            if ((currentSkipIdx - currentPos) > 1) {
+            if (currentSkipIdx > currentPos) {
                 sb.append(rawEvent, currentPos, currentSkipIdx);
             }
             currentPos = currentSkipIdx + 1;
         }
-        if ((to - currentPos) > 1) {
+        if (to > currentPos) {
             sb.append(rawEvent, currentPos, to);
         }
         return idx;
