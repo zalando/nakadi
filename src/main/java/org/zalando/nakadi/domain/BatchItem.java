@@ -7,11 +7,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class BatchItem {
+
     private final BatchItemResponse response;
     private final JSONObject event;
     private String partition;
     private String brokerId;
     private int eventSize;
+
 
     public BatchItem(final String event) {
         this.event = new JSONObject(event);
