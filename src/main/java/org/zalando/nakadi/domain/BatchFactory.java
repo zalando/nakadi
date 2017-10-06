@@ -3,10 +3,7 @@ package org.zalando.nakadi.domain;
 import org.json.JSONException;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class BatchFactory {
@@ -43,8 +40,8 @@ public class BatchFactory {
         boolean hasFields = false;
         int injectionPointStart = -1;
 
-        final Map<BatchItem.Injection, BatchItem.InjectionConfiguration> injections =
-                new EnumMap<>(BatchItem.Injection.class);
+        final BatchItem.InjectionConfiguration[] injections =
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length];
         final List<Integer> skipPositions = new ArrayList<>();
 
         while (curPos < end) {
@@ -64,18 +61,22 @@ public class BatchFactory {
             } else if (!escaped && curChar == '\\') {
                 escaped = true;
             } else if (!insideQuote) {
+                BatchItem.InjectionConfiguration toAdd = null;
                 if (curChar == '{') {
                     ++nestingLevel;
                 } else if (curChar == '}') {
                     --nestingLevel;
                     if (nestingLevel == 1 && injectionPointStart != -1) {
-                        extractInjection(from, injectionPointStart, curPos, data, injections::put);
+                        toAdd = extractInjection(from, injectionPointStart, curPos, data);
                     }
                     if (nestingLevel == 0) {
                         break;
                     }
                 } else if (nestingLevel == 1 && curChar == ',' && injectionPointStart != -1) {
-                    extractInjection(from, injectionPointStart, curPos, data, injections::put);
+                    toAdd = extractInjection(from, injectionPointStart, curPos, data);
+                }
+                if (null != toAdd) {
+                    injections[toAdd.injection.ordinal()] = toAdd;
                 }
             }
             ++curPos;
@@ -92,12 +93,11 @@ public class BatchFactory {
         return curPos;
     }
 
-    private static void extractInjection(
+    private static BatchItem.InjectionConfiguration extractInjection(
             final int messageOffset,
             final int injectionPointStart,
             final int end,
-            final String data,
-            final BiConsumer<BatchItem.Injection, BatchItem.InjectionConfiguration> injectionAcceptor) {
+            final String data) {
         for (final BatchItem.Injection type : BatchItem.Injection.values()) {
             if ((end - injectionPointStart - 3) < type.name.length()) {
                 continue;
@@ -112,12 +112,11 @@ public class BatchFactory {
                 }
             }
             if (matches) {
-                injectionAcceptor.accept(
-                        type,
-                        new BatchItem.InjectionConfiguration(injectionPointStart - messageOffset, end - messageOffset));
-                return;
+                return new BatchItem.InjectionConfiguration(
+                        type, injectionPointStart - messageOffset, end - messageOffset);
             }
         }
+        return null;
     }
 
     public static List<BatchItem> from(final String events) {

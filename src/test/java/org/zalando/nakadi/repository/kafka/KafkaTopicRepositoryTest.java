@@ -225,7 +225,7 @@ public class KafkaTopicRepositoryTest {
         final BatchItem item = new BatchItem(
                 "{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
-                Collections.emptyMap(),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
@@ -252,7 +252,7 @@ public class KafkaTopicRepositoryTest {
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
         final BatchItem item = new BatchItem("{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
-                Collections.emptyMap(),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
@@ -279,11 +279,11 @@ public class KafkaTopicRepositoryTest {
     public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
 
         final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
-                Collections.emptyMap(),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         firstItem.setPartition("1");
         final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
-                Collections.emptyMap(),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
@@ -357,7 +357,7 @@ public class KafkaTopicRepositoryTest {
             try {
                 final BatchItem batchItem = new BatchItem("{}",
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
-                        Collections.emptyMap(),
+                        new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);

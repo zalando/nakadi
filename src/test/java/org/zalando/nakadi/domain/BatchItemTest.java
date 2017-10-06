@@ -24,7 +24,7 @@ public class BatchItemTest {
     public void testBatchItemSizeWithMultByteChar() {
         final BatchItem item = new BatchItem("{ \"name\": \"香港\"} ",
                 BatchItem.EmptyInjectionConfiguration.build(1, false),
-                Collections.emptyMap(),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         assertEquals(20, item.getEventSize());
     }

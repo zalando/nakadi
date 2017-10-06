@@ -4,13 +4,10 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class BatchItem {
 
@@ -24,10 +21,12 @@ public class BatchItem {
     }
 
     public static class InjectionConfiguration {
+        public final Injection injection;
         private final int startPos;
         private final int endPos;
 
-        public InjectionConfiguration(final int startPos, final int endPos) {
+        public InjectionConfiguration(final Injection injection, final int startPos, final int endPos) {
+            this.injection = injection;
             this.startPos = startPos;
             this.endPos = endPos;
         }
@@ -57,8 +56,8 @@ public class BatchItem {
     private final String rawEvent;
     private final JSONObject event;
     private final EmptyInjectionConfiguration emptyInjectionConfiguration;
-    private final Map<Injection, InjectionConfiguration> injections;
-    private Map<Injection, String> injectionValues;
+    private final InjectionConfiguration[] injections;
+    private String[] injectionValues;
     private final List<Integer> skipCharacters;
     private String partition;
     private String brokerId;
@@ -67,7 +66,7 @@ public class BatchItem {
     public BatchItem(
             final String event,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
-            final Map<Injection, InjectionConfiguration> injections,
+            final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
         this.rawEvent = event;
         this.skipCharacters = skipCharacters;
@@ -84,9 +83,9 @@ public class BatchItem {
 
     public void inject(final Injection type, final String value) {
         if (null == injectionValues) {
-            injectionValues = new HashMap<>();
+            injectionValues = new String[Injection.values().length];
         }
-        injectionValues.put(type, value);
+        injectionValues[type.ordinal()] =value;
     }
 
     public JSONObject getEvent() {
@@ -133,7 +132,7 @@ public class BatchItem {
     }
 
     public String dumpEventToString() {
-        if (null == injectionValues || injectionValues.isEmpty()) {
+        if (null == injectionValues) {
             if (skipCharacters.isEmpty()) {
                 return rawEvent;
             } else {
@@ -142,19 +141,22 @@ public class BatchItem {
                 return sb.toString();
             }
         }
-        final AtomicBoolean nonComaAdded = new AtomicBoolean();
-        final AtomicInteger lastMainEventUsedPosition = new AtomicInteger(0);
-        final AtomicInteger currentSkipPosition = new AtomicInteger(0);
+        boolean nonComaAdded = false;
+        int lastMainEventUsedPosition = 0;
+        int currentSkipPosition = 0;
         final StringBuilder sb = new StringBuilder();
+        final Injection[] sortedInjections = Arrays.copyOf(Injection.values(), Injection.values().length);
+        Arrays.sort(sortedInjections, Comparator.comparing(injection -> {
+            final InjectionConfiguration config = injections[injection.ordinal()];
+            return null == config ? emptyInjectionConfiguration.position : config.startPos;
+        }));
 
-        injectionValues.entrySet().stream().sorted(Comparator.comparing(v -> {
-            final InjectionConfiguration config = injections.get(v.getKey());
-            if (config == null) {
-                return emptyInjectionConfiguration.position;
+        for (final Injection injectionKey: sortedInjections) {
+            final String injectionValue = injectionValues[injectionKey.ordinal()];
+            if (injectionValue == null) {
+                continue;
             }
-            return config.startPos;
-        })).forEach(entry -> {
-            final InjectionConfiguration config = injections.get(entry.getKey());
+            final InjectionConfiguration config = injections[injectionKey.ordinal()];
             final int positionStart;
             final int positionEnd;
             if (null != config) {
@@ -165,33 +167,29 @@ public class BatchItem {
                 positionEnd = this.emptyInjectionConfiguration.position;
             }
 
-            if (positionStart > lastMainEventUsedPosition.get()) {
-                currentSkipPosition.set(
-                        appendWithSkip(sb, lastMainEventUsedPosition.get(), positionStart, currentSkipPosition.get()));
-                lastMainEventUsedPosition.set(positionEnd);
+            if (positionStart > lastMainEventUsedPosition) {
+                currentSkipPosition = appendWithSkip(sb, lastMainEventUsedPosition, positionStart, currentSkipPosition);
+                lastMainEventUsedPosition = positionEnd;
             }
-            addReplacement(sb, entry);
+            sb.append('\"').append(injectionKey.name).append("\":");
+            sb.append(injectionValue);
             if (config == null) {
                 if (!emptyInjectionConfiguration.addComma) {
                     // Well, really rare case, but we are trying to load brain, so cover it as well
-                    if (nonComaAdded.get()) {
+                    if (nonComaAdded) {
                         sb.append(',');
+                    } else {
+                        nonComaAdded = true;
                     }
-                    nonComaAdded.set(true);
                 } else {
                     sb.append(',');
                 }
             }
-        });
-        if (lastMainEventUsedPosition.get() < rawEvent.length()) {
-            appendWithSkip(sb, lastMainEventUsedPosition.get(), rawEvent.length(), currentSkipPosition.get());
+        }
+        if (lastMainEventUsedPosition < rawEvent.length()) {
+            appendWithSkip(sb, lastMainEventUsedPosition, rawEvent.length(), currentSkipPosition);
         }
         return sb.toString();
-    }
-
-    private static void addReplacement(final StringBuilder sb, final Map.Entry<Injection, String> entry) {
-        sb.append('\"').append(entry.getKey().name).append("\":");
-        sb.append(entry.getValue());
     }
 
     private int appendWithSkip(final StringBuilder sb, final int from, final int to, final int currentSkipPosition) {
