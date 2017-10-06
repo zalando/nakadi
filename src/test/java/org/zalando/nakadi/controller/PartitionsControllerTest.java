@@ -59,9 +59,11 @@ public class PartitionsControllerTest {
     private static final String UNKNOWN_PARTITION = "unknown-partition";
 
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_0 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "001-0000-000000000000000012", "001-0000-000000000000000067");
+            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "001-0000-000000000000000012",
+                    "001-0000-000000000000000067");
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_1 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "001-0000-000000000000000043", "001-0000-000000000000000098");
+            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "001-0000-000000000000000043",
+                    "001-0000-000000000000000098");
 
     private static final List<EventTypePartitionView> TEST_TOPIC_PARTITIONS = ImmutableList.of(
             TEST_TOPIC_PARTITION_0,

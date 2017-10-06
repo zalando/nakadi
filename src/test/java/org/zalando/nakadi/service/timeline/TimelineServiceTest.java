@@ -14,6 +14,8 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
@@ -37,12 +39,12 @@ public class TimelineServiceTest {
     private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     private final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
     private final AdminService adminService = mock(AdminService.class);
-
+    private final TimelineDbRepository timelineDbRepository = mock(TimelineDbRepository.class);
+    private final TopicRepositoryHolder topicRepositoryHolder = mock(TopicRepositoryHolder.class);
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
-            storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class),
-            mock(TimelineDbRepository.class), mock(TopicRepositoryHolder.class),
-            new TransactionTemplate(mock(PlatformTransactionManager.class)), new UUIDGenerator(),
-            new Storage(), adminService);
+            storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
+            topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
+            new UUIDGenerator(), new Storage(), adminService);
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
@@ -101,6 +103,20 @@ public class TimelineServiceTest {
                 testTimelines.get(4));
         final List<Timeline> result = timelineService.getActiveTimelinesOrdered(eventTypeName);
         Assert.assertEquals(expectedResult, result);
+    }
+
+    @Test
+    public void shouldDeleteTopicWhenTimelineCreationFails() throws Exception {
+        final TopicRepository repository = mock(TopicRepository.class);
+        Mockito.when(topicRepositoryHolder.getTopicRepository(any())).thenReturn(repository);
+        Mockito.when(timelineDbRepository.createTimeline(any()))
+                .thenThrow(new InconsistentStateException("shouldDeleteTopicWhenTimelineCreationFails"));
+        try {
+            timelineService.createDefaultTimeline("event_type_1", 1, 1);
+        } catch (final InconsistentStateException e) {
+        }
+
+        Mockito.verify(repository, Mockito.times(1)).deleteTopic(any());
     }
 
 }

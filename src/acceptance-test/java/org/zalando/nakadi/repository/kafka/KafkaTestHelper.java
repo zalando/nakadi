@@ -71,7 +71,8 @@ public class KafkaTestHelper {
                     }
                     else {
                         final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
-                        String offset = StringUtils.leftPad(toNakadiOffset(lastEventOffset), CURSOR_OFFSET_LENGTH, '0');
+                        final String offset = StringUtils.leftPad(toNakadiOffset(lastEventOffset),
+                                CURSOR_OFFSET_LENGTH, '0');
                         return new Cursor(cursor.getPartition(), String.format("001-0001-%s", offset));
                     }
                 })
