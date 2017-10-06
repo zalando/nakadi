@@ -41,6 +41,7 @@ public class BatchItem {
             this.position = position;
             this.addComma = addComma;
         }
+
         public static EmptyInjectionConfiguration build(final int position, final boolean addComma) {
             if (position == 1) {
                 return addComma ? CONFIG_COMMA : CONFIG_NO_COMMA;
@@ -48,6 +49,7 @@ public class BatchItem {
             return new EmptyInjectionConfiguration(position, addComma);
         }
     }
+
     private static final EmptyInjectionConfiguration CONFIG_COMMA = new EmptyInjectionConfiguration(1, true);
     private static final EmptyInjectionConfiguration CONFIG_NO_COMMA = new EmptyInjectionConfiguration(1, false);
 
@@ -173,10 +175,11 @@ public class BatchItem {
                 if (!emptyInjectionConfiguration.addComma) {
                     // Well, really rare case, but we are trying to load brain, so cover it as well
                     if (nonComaAdded.get()) {
-                        sb.append(",");
+                        sb.append(',');
                     }
                     nonComaAdded.set(true);
-                    addReplacement(sb, entry);
+                } else {
+                    sb.append(',');
                 }
             }
         });
@@ -186,10 +189,11 @@ public class BatchItem {
         return sb.toString();
     }
 
-    private static void addReplacement(final StringBuilder sb, Map.Entry<Injection, String> entry) {
+    private static void addReplacement(final StringBuilder sb, final Map.Entry<Injection, String> entry) {
         sb.append('\"').append(entry.getKey().name).append("\":");
         sb.append(entry.getValue());
     }
+
     private int appendWithSkip(final StringBuilder sb, final int from, final int to, final int currentSkipPosition) {
         int currentPos = from;
         int idx;
