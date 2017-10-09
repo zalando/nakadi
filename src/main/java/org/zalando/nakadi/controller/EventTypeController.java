@@ -198,25 +198,25 @@ public class EventTypeController {
         return Responses.create(exception.asProblem(), request);
     }
 
-//    @ExceptionHandler(NoSuchPartitionStrategyException.class)
-//    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NakadiException exception,
-//                                                                    final NativeWebRequest request) {
-//        LOG.debug(exception.getMessage(), exception);
-//        return Responses.create(exception.asProblem(), request);
-//    }
-//
-//    @ExceptionHandler(DuplicatedEventTypeNameException.class)
-//    public ResponseEntity<Problem> duplicatedEventTypeNameException(final DuplicatedEventTypeNameException exception,
-//                                                                    final NativeWebRequest request) {
-//        LOG.debug(exception.getMessage(), exception);
-//        return Responses.create(exception.asProblem(), request);
-//    }
-//
-//    @ExceptionHandler(InvalidEventTypeException.class)
-//    public ResponseEntity<Problem> invalidEventTypeException(final InvalidEventTypeException exception,
-//                                                             final NativeWebRequest request) {
-//        LOG.debug(exception.getMessage(), exception);
-//        return Responses.create(exception.asProblem(), request);
-//    }
+    @ExceptionHandler(NoSuchPartitionStrategyException.class)
+    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NakadiException exception,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(exception.asProblem(), request);
+    }
+
+    @ExceptionHandler(DuplicatedEventTypeNameException.class)
+    public ResponseEntity<Problem> duplicatedEventTypeNameException(final DuplicatedEventTypeNameException exception,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(exception.asProblem(), request);
+    }
+
+    @ExceptionHandler(InvalidEventTypeException.class)
+    public ResponseEntity<Problem> invalidEventTypeException(final InvalidEventTypeException exception,
+                                                             final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(exception.asProblem(), request);
+    }
 
 }

@@ -10,12 +10,12 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
 import java.text.MessageFormat;
 
 import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.http.ContentType.JSON;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class BlockEventPublishingAT extends BaseAT {
@@ -25,12 +25,7 @@ public class BlockEventPublishingAT extends BaseAT {
     @Before
     public void setUp() throws JsonProcessingException {
         eventType = EventTypeTestBuilder.builder().build();
-//        NakadiTestUtils.createEventTypeInNakadi(eventType);
-        given()
-                .body(MAPPER.writeValueAsString(eventType))
-                .contentType(JSON)
-                .post("/event-types")
-                .statusCode();
+        NakadiTestUtils.createEventTypeInNakadi(eventType);
     }
 
     @Test
