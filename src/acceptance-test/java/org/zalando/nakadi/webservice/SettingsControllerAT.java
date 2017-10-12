@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.hasItems;
 public class SettingsControllerAT extends BaseAT {
 
     private static final String BLACKLIST_URL = "/settings/blacklist";
+    private static final String ADMINS_URL="/settings/admins";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
@@ -56,6 +57,32 @@ public class SettingsControllerAT extends BaseAT {
                         .statusCode(HttpStatus.SC_OK)
                         .body("consumers.event_types", hasItems(eventType.getName())),
                 1000, 200);
+    }
+
+    @Test
+    public void testGetAdmins() throws Exception {
+        given().contentType(ContentType.JSON).get(ADMINS_URL).then().statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void testPostAdmins() throws Exception {
+        given().body("{\"admins\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"readers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"writers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}]}")
+                .contentType(ContentType.JSON).post(ADMINS_URL).then().statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void testPostNotAdminsThen422() throws Exception {
+        given().body("{\"admins\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"readers\":[{\"data_type\": \"user\", \"value\": \"user1\"}, " +
+                "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
+                "\"writers\":[]}")
+                .contentType(ContentType.JSON).post(ADMINS_URL).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {

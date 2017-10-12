@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -35,16 +35,19 @@ public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
     private final EventTypeRepository eventTypeRepository;
+    private final AdminService adminService;
 
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
-            final EventTypeRepository eventTypeRepository) {
+            final EventTypeRepository eventTypeRepository,
+            final AdminService adminService) {
         this.authorizationService = authorizationService;
         this.eventTypeRepository = eventTypeRepository;
+        this.adminService = adminService;
     }
 
-    public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
+    public void validateAuthorization(@Nullable final ResourceAuthorization auth) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
         if (auth != null) {
             final Map<String, List<AuthorizationAttribute>> allAttributes = ImmutableMap.of(
@@ -135,7 +138,9 @@ public class AuthorizationValidator {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
-                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+                    throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                }
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -171,8 +176,8 @@ public class AuthorizationValidator {
 
     public void validateAuthorization(final EventType original, final EventTypeBase newEventType)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        final EventTypeAuthorization originalAuth = original.getAuthorization();
-        final EventTypeAuthorization newAuth = newEventType.getAuthorization();
+        final ResourceAuthorization originalAuth = original.getAuthorization();
+        final ResourceAuthorization newAuth = newEventType.getAuthorization();
         if (originalAuth != null && newAuth == null) {
             throw new UnableProcessException(
                     "Changing authorization object to `null` is not possible due to existing one");
@@ -184,5 +189,4 @@ public class AuthorizationValidator {
 
         validateAuthorization(newAuth);
     }
-
 }

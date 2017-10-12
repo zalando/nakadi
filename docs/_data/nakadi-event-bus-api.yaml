@@ -73,7 +73,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.9.0'
+  version: '0.9.1'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -1313,6 +1313,55 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /settings/admins:
+    get:
+      tags:
+        - settings-api
+      description: |
+        Lists all administrator permissions. This endpoint is restricted to administrators with the 'read' permission.
+      responses:
+        '200':
+          description: List all administrator permissions.
+          schema:
+            $ref: '#/definitions/AdminAuthorization'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+    post:
+      tags:
+        - settings-api
+      description:
+        Updates the list of administrators. This endpoint is restricted to administrators with the 'admin' permission.
+      parameters:
+        - name: authorization
+          in: body
+          description: Lists of administrators
+          schema:
+            $ref: '#/definitions/AdminAuthorization'
+      responses:
+        '200':
+          description: List all administrator permissions.
+          schema:
+            $ref: '#/definitions/AdminAuthorization'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable entity due to not enough administrators in a list
+          schema:
+            $ref: '#/definitions/Problem'
+
   /settings/blacklist:
     get:
       tags:
@@ -2397,6 +2446,42 @@ definitions:
       - admins
       - readers
       - writers
+
+  AdminAuthorization:
+      type: object
+      description: |
+        Authorization section for admin operations. This section defines three access control lists: one for writing
+        to admin endpoints and producing events ('writers'), one for reading from admin endpoints and consuming events
+        ('readers'), and one for updating the list of administrators ('admins').
+      properties:
+        admins:
+          type: array
+          description: |
+            An array of subject attributes that are required for updating the list of administrators. Any one of the
+            attributes defined in this array is sufficient to be authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+        readers:
+          type: array
+          description: |
+            An array of subject attributes that are required for reading from admin endpoints. Any one of the
+            attributes defined in this array is sufficient to be authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+        writers:
+          type: array
+          description: |
+            An array of subject attributes that are required for writing to admin endpoints. Any one of the
+            attributes defined in this array is sufficient to be authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+      required:
+        - admins
+        - readers
+        - writers
 
   AuthorizationAttribute:
     type: object

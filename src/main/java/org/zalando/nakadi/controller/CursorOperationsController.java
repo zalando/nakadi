@@ -25,7 +25,6 @@ import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -69,8 +68,8 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
-                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+                                         @Valid @RequestBody final ValidListWrapper<CursorDistance> queries)
+            throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);
@@ -97,8 +96,8 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
-                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);
@@ -117,8 +116,8 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
     public List<CursorLag> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
-                                        @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
-                                        final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+                                        @Valid @RequestBody final ValidListWrapper<Cursor> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeStreamRead(eventType);

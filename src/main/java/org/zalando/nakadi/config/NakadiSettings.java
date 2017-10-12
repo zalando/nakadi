@@ -3,6 +3,8 @@ package org.zalando.nakadi.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 @Component
 public class NakadiSettings {
@@ -18,6 +20,7 @@ public class NakadiSettings {
     private final long timelineWaitTimeoutMs;
     private final long eventMaxBytes;
     private final int maxSubscriptionPartitions;
+    private final AuthorizationAttribute defaultAdmin;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -30,7 +33,9 @@ public class NakadiSettings {
                           @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
                           @Value("${nakadi.timeline.wait.timeoutMs}") final long timelineWaitTimeoutMs,
                           @Value("${nakadi.event.max.bytes}") final long eventMaxBytes,
-                          @Value("${nakadi.subscription.maxPartitions}") final int maxSubscriptionPartitions) {
+                          @Value("${nakadi.subscription.maxPartitions}") final int maxSubscriptionPartitions,
+                          @Value("${nakadi.admin.default.dataType}") final String defaultAdminDataType,
+                          @Value("${nakadi.admin.default.value}") final String defaultAdminValue) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -42,6 +47,7 @@ public class NakadiSettings {
         this.eventMaxBytes = eventMaxBytes;
         this.timelineWaitTimeoutMs = timelineWaitTimeoutMs;
         this.maxSubscriptionPartitions = maxSubscriptionPartitions;
+        this.defaultAdmin = new ResourceAuthorizationAttribute(defaultAdminDataType, defaultAdminValue);
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -86,5 +92,9 @@ public class NakadiSettings {
 
     public int getMaxSubscriptionPartitions() {
         return maxSubscriptionPartitions;
+    }
+
+    public AuthorizationAttribute getDefaultAdmin() {
+        return defaultAdmin;
     }
 }

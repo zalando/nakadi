@@ -101,7 +101,7 @@ public class SubscriptionValidationServiceTest {
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
         when(etRepo.findByNameO(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
@@ -110,7 +110,7 @@ public class SubscriptionValidationServiceTest {
         when(etRepo.findByNameO(ET2)).thenReturn(Optional.of(new EventType()));
 
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("NoEventTypeException expected");
         } catch (final NoEventTypeException e) {
             final String expectedMessage =
@@ -124,7 +124,7 @@ public class SubscriptionValidationServiceTest {
         when(topicRepository.listPartitionNames(argThat(isOneOf(
                 topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
                 .thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
@@ -134,7 +134,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -151,7 +151,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken("wrongET", P0, "")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -168,7 +168,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(ET3, P0, "b")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -187,7 +187,7 @@ public class SubscriptionValidationServiceTest {
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
         doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT))
                 .when(topicRepository).validateReadCursors(any());
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test(expected = RepositoryProblemException.class)
@@ -200,7 +200,7 @@ public class SubscriptionValidationServiceTest {
         final NakadiCursor cursor = mock(NakadiCursor.class);
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
         doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     private static String topicForET(final String etName) {
