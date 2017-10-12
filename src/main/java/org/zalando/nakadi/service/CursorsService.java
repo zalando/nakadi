@@ -29,6 +29,7 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedExce
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.TimeLogger;
+import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Comparator;
@@ -48,6 +49,7 @@ public class CursorsService {
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
     private final CursorConverter cursorConverter;
+    private final UUIDGenerator uuidGenerator;
 
     @Autowired
     public CursorsService(final TimelineService timelineService,
@@ -55,13 +57,15 @@ public class CursorsService {
                           final EventTypeRepository eventTypeRepository,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
-                          final CursorConverter cursorConverter) {
+                          final CursorConverter cursorConverter,
+                          final UUIDGenerator uuidGenerator) {
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
         this.cursorConverter = cursorConverter;
+        this.uuidGenerator = uuidGenerator;
     }
 
     /**
@@ -97,6 +101,11 @@ public class CursorsService {
                                   final ZkSubscriptionClient subscriptionClient)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException {
+
+        if (!uuidGenerator.isUUID(streamId)) {
+            throw new InvalidStreamIdException(
+                    String.format("Stream id has to be valid UUID, but `%s was provided", streamId), streamId);
+        }
 
         if (!subscriptionClient.isActiveSession(streamId)) {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);

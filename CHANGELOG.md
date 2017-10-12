@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Committing with empty X-Nakadi-StreamId causes 503
+
 ## [2.2.2] - 2017-09-28
 
 ### Added
@@ -16,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Admin endpoints use list of admins from Postgres
+
 
 ## [2.2.1] - 2017-09-26
 
