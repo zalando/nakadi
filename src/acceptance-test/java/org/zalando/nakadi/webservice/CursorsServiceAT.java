@@ -160,7 +160,7 @@ public class CursorsServiceAT extends BaseAT {
     public void shouldThrowInvalidStreamIdWhenStreamIdIsNotUUID() throws Exception {
         when(uuidGenerator.isUUID(any())).thenReturn(false);
         final String streamId = "/";
-        cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
+        cursorsService.commitCursors(streamId, sid, testCursors);
     }
 
     @Test
