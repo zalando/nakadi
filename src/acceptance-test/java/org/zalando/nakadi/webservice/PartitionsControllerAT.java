@@ -44,7 +44,8 @@ public class PartitionsControllerAT extends BaseAT {
     public static void setupClass() throws JsonProcessingException, NoSuchEventTypeException {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         NakadiTestUtils.createEventTypeInNakadi(eventType);
-        topicName = BaseAT.EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
+        // expect only one timeline, because we just created event type
+        topicName = BaseAT.TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).get(0).getTopic();
         eventTypeName = eventType.getName();
     }
 
@@ -82,12 +83,12 @@ public class PartitionsControllerAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createEventType();
         when().get(String.format("/event-types/%s/partitions", eventType.getName())).then()
                 .statusCode(HttpStatus.OK.value())
-                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
-                .body("newest_available_offset[0]", equalTo("BEGIN"));
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
+                .body("newest_available_offset[0]", equalTo("001-0001--1"));
         when().get(String.format("/event-types/%s/partitions/%d", eventType.getName(), 0)).then()
                 .statusCode(HttpStatus.OK.value())
-                .body("oldest_available_offset", equalTo("000000000000000000"))
-                .body("newest_available_offset", equalTo("BEGIN"));
+                .body("oldest_available_offset", equalTo("001-0001-000000000000000000"))
+                .body("newest_available_offset", equalTo("001-0001--1"));
     }
 
     @Test
@@ -189,7 +190,7 @@ public class PartitionsControllerAT extends BaseAT {
 
     private Long getNewestOffsetAsLong(final Map<String, String> partitionInfo) {
         final String offset = partitionInfo.get("newest_available_offset");
-        return Cursor.BEFORE_OLDEST_OFFSET.equals(offset) ? -1 : Long.parseLong(offset);
+        return Cursor.BEFORE_OLDEST_OFFSET.equals(offset) ? -1 : Long.parseLong(offset.split("-", 3)[2]);
     }
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {

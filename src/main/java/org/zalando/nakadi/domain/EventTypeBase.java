@@ -23,9 +23,6 @@ public class EventTypeBase {
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
 
-    @JsonIgnore
-    private String topic;
-
     @NotNull
     private String owningApplication;
 
@@ -67,7 +64,7 @@ public class EventTypeBase {
         this.compatibilityMode = CompatibilityMode.FORWARD;
     }
 
-    public EventTypeBase(final String name, final String topic, final String owningApplication,
+    public EventTypeBase(final String name, final String owningApplication,
                      final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
@@ -77,7 +74,6 @@ public class EventTypeBase {
                      final EventTypeOptions options,
                      final CompatibilityMode compatibilityMode) {
         this.name = name;
-        this.topic = topic;
         this.owningApplication = owningApplication;
         this.category = category;
         this.validationStrategies = validationStrategies;
@@ -92,7 +88,6 @@ public class EventTypeBase {
 
     public EventTypeBase(final EventTypeBase eventType) {
         this.setName(eventType.getName());
-        this.setTopic(eventType.getTopic());
         this.setOwningApplication(eventType.getOwningApplication());
         this.setCategory(eventType.getCategory());
         this.setValidationStrategies(eventType.getValidationStrategies());
@@ -172,14 +167,6 @@ public class EventTypeBase {
 
     public void setEnrichmentStrategies(final List<EnrichmentStrategyDescriptor> enrichmentStrategies) {
         this.enrichmentStrategies = enrichmentStrategies;
-    }
-
-    public String getTopic() {
-        return topic;
-    }
-
-    public void setTopic(final String topic) {
-        this.topic = topic;
     }
 
     public EventTypeOptions getOptions() {

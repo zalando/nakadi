@@ -113,7 +113,7 @@ public class SubscriptionValidationService {
 
     private List<EventTypePartition> getAllPartitions(final List<EventType> eventTypes) {
         return eventTypes.stream()
-                .map(timelineService::getTimeline)
+                .map(timelineService::getActiveTimeline)
                 .flatMap(timeline -> timelineService.getTopicRepository(timeline)
                         .listPartitionNames(timeline.getTopic())
                         .stream()

@@ -155,6 +155,7 @@ public class KafkaTopicRepository implements TopicRepository {
         if (!Boolean.TRUE.equals(allowsConsumption)) {
             throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }
+
     }
 
     @Override

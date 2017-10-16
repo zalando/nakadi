@@ -94,7 +94,6 @@ public class EventTypeControllerTestCase {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi");
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
-        when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
@@ -109,13 +108,10 @@ public class EventTypeControllerTestCase {
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings, settings,
-                adminService);
+                featureToggleService, eventTypeOptionsValidator, applicationService, adminService);
         doReturn(randomUUID).when(uuid).randomUUID();
 
         doReturn(true).when(applicationService).exists(any());
-        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
-        doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)

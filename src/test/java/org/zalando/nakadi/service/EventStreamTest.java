@@ -56,7 +56,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -66,7 +66,7 @@ public class EventStreamTest {
     private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
-    private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
+    private static final Timeline TIMELINE = buildTimelineWithTopic(TOPIC);
     private static CursorConverter cursorConverter;
     private static EventStreamWriterProvider writerProvider;
 
@@ -255,7 +255,7 @@ public class EventStreamTest {
         Arrays
                 .stream(batches)
                 .forEach(batch ->
-                        assertThat(batch, sameJSONAs(jsonBatch("0", "000000000000000000", empty()))));
+                        assertThat(batch, sameJSONAs(jsonBatch("0", "001-0000-000000000000000000", empty()))));
     }
 
     @Test(timeout = 10000)
@@ -279,11 +279,11 @@ public class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000",
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "001-0000-000000000000000000",
                 Optional.of(nCopies(5, new String(DUMMY))))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000",
+        assertThat(batches[1], sameJSONAs(jsonBatch("0", "001-0000-000000000000000000",
                 Optional.of(nCopies(5, new String(DUMMY))))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000",
+        assertThat(batches[2], sameJSONAs(jsonBatch("0", "001-0000-000000000000000000",
                 Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
@@ -322,7 +322,7 @@ public class EventStreamTest {
                 .forEach(index -> assertThat(
                         batches[index],
                         sameJSONAs(jsonBatch(
-                                "0", KafkaCursor.toNakadiOffset(index), Optional.of(nCopies(1, "event" + index))))
+                                "0", String.format("001-0000-%018d", index), Optional.of(nCopies(1, "event" + index))))
                 ));
     }
 
@@ -360,11 +360,11 @@ public class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000",
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "001-0000-000000000000000000",
                 Optional.of(nCopies(2, new String(DUMMY))))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000",
+        assertThat(batches[1], sameJSONAs(jsonBatch("1", "001-0000-000000000000000000",
                 Optional.of(nCopies(2, new String(DUMMY))))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000",
+        assertThat(batches[2], sameJSONAs(jsonBatch("2", "001-0000-000000000000000000",
                 Optional.of(nCopies(2, new String(DUMMY))))));
     }
 

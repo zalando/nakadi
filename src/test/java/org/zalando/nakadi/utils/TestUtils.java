@@ -16,7 +16,6 @@ import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -214,15 +213,15 @@ public class TestUtils {
         return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
     }
 
-    public static Timeline createFakeTimeline(final String topicName) {
-        return createFakeTimeline(topicName, topicName);
+    public static Timeline buildTimeline(final String etName, final String topic, final Date cratedAt) {
+        return new Timeline(etName, 0, new Storage(), topic, cratedAt);
     }
 
-    public static Timeline createFakeTimeline(final String eventType, final String topicName) {
-        final Storage storage = new Storage();
-        final EventTypeBase eventTypeBase = mock(EventTypeBase.class);
-        when(eventTypeBase.getTopic()).thenReturn(topicName);
-        when(eventTypeBase.getName()).thenReturn(eventType);
-        return Timeline.createFakeTimeline(eventTypeBase, storage);
+    public static Timeline buildTimelineWithTopic(final String topic) {
+        return new Timeline(randomUUID(), 0, new Storage(), topic, new Date());
+    }
+
+    public static String toTimelineOffset(final long offset) {
+        return String.format("001-0001-%018d", offset);
     }
 }

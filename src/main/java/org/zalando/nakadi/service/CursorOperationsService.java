@@ -47,9 +47,7 @@ public class CursorOperationsService {
         long result = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
         final int initialOrder = initialCursor.getTimeline().getOrder();
         final int finalOrder = finalCursor.getTimeline().getOrder();
-
-        // In case when fake timeline is still there, one should count it only once.
-        // eg. in case of offset 1234 it should be treated as 0001-0001-000...1234
+        
         int startOrder = Math.min(initialOrder, finalOrder);
         if (startOrder == Timeline.STARTING_ORDER) {
             startOrder += 1;
@@ -174,8 +172,7 @@ public class CursorOperationsService {
 
                 // Next case is a special one. User must have ability to move to the begin (actually - position before
                 // begin event that is not within limits)
-                if ((currentCursor.getTimeline().isFirstAfterFake() || currentCursor.getTimeline().isFake())
-                        && toMoveBack == 0) {
+                if (toMoveBack == 0) {
                     toMoveBack += totalBefore + 1;
                     break;
                 }

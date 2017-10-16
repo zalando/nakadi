@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -27,9 +28,14 @@ import java.util.Optional;
 
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -38,7 +44,6 @@ public class EventTypeServiceTest {
 
     private final Enrichment enrichment = mock(Enrichment.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final PartitionsCalculator partitionsCalculator = mock(PartitionsCalculator.class);
@@ -49,6 +54,7 @@ public class EventTypeServiceTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
+    private EventTypeService eventTypeService;
 
     @Before
     public void setUp() {
@@ -82,5 +88,18 @@ public class EventTypeServiceTest {
         }
 
         fail("Should have thrown an EventTypeDeletionException");
+    }
+
+    @Test
+    public void shouldRemoveEventTypeWhenTimelineCreationFails() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        when(timelineService.createDefaultTimeline(anyString(), anyInt(), anyLong()))
+                .thenThrow(new TopicCreationException("Failed to create topic"));
+        try {
+            eventTypeService.create(eventType);
+        } catch (final TopicCreationException e) {
+        }
+
+        verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
     }
 }

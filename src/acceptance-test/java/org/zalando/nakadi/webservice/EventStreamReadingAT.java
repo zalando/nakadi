@@ -71,7 +71,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(eventType);
         streamEndpoint = createStreamEndpointUrl(eventType.getName());
-        topicName = BaseAT.EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
+        // expect only one timeline, because we just created event type
+        topicName = BaseAT.TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).get(0).getTopic();
     }
 
     @Before
@@ -117,8 +118,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .filter(cursor -> TEST_PARTITION.equals(cursor.getPartition()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Failed to find cursor for needed partition"));
-        final String expectedOffset = String.format(
-                "%018d", Long.parseLong(partitionCursor.getOffset()) - 1 + eventsPushed);
+        final String expectedOffset = TestUtils.toTimelineOffset(Long.parseLong(partitionCursor.getOffset()) - 1 +
+                eventsPushed);
 
         // check that batch has offset, partition and events number we expect
         validateBatch(batchToCheck, TEST_PARTITION, expectedOffset, eventsPushed);
@@ -190,10 +191,10 @@ public class EventStreamReadingAT extends BaseAT {
                 .filter(cursor -> TEST_PARTITION.equals(cursor.getPartition()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Failed to find cursor for needed partition"));
-        final String expectedOffset1 = String.format(
-                "%018d", Long.parseLong(partitionCursor.getOffset()) - 1 + batchLimit);
-        final String expectedOffset2 = String.format(
-                "%018d", Long.parseLong(partitionCursor.getOffset()) - 1 + eventsPushed);
+        final String expectedOffset1 =
+                TestUtils.toTimelineOffset(Long.parseLong(partitionCursor.getOffset()) - 1 + batchLimit);
+        final String expectedOffset2 =
+                TestUtils.toTimelineOffset(Long.parseLong(partitionCursor.getOffset()) - 1 + eventsPushed);
 
         // check that batches have offset, partition and events number we expect
         validateBatch(batchesToCheck.get(0), TEST_PARTITION, expectedOffset1, batchLimit);

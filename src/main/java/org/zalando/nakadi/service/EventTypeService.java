@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -31,6 +32,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -45,7 +47,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -113,40 +114,38 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public Result<Void> create(final EventTypeBase eventType) {
-        final TopicRepository topicRepository = timelineService.getDefaultTopicRepository();
-        try {
-            validateSchema(eventType);
-            enrichment.validate(eventType);
-            partitionResolver.validate(eventType);
-            authorizationValidator.validateAuthorization(eventType.getAuthorization());
+    public void create(final EventTypeBase eventType) throws TopicCreationException, InternalNakadiException,
+            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException {
+        setDefaultEventTypeOptions(eventType);
+        validateSchema(eventType);
+        enrichment.validate(eventType);
+        partitionResolver.validate(eventType);
+        authorizationValidator.validateAuthorization(eventType.getAuthorization());
 
-            final String topicName = topicRepository.createTopic(
+        eventTypeRepository.saveEventType(eventType);
+
+        try {
+            timelineService.createDefaultTimeline(eventType.getName(),
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
                     eventType.getOptions().getRetentionTime());
-            eventType.setTopic(topicName);
-
-            boolean eventTypeCreated = false;
+        } catch (final Exception e) {
             try {
-                eventTypeRepository.saveEventType(eventType);
-                eventTypeCreated = true;
-            } finally {
-                if (!eventTypeCreated) {
-                    try {
-                        topicRepository.deleteTopic(topicName);
-                    } catch (final TopicDeletionException ex) {
-                        LOG.error("failed to delete topic for event type that failed to be created", ex);
-                    }
-                }
+                eventTypeRepository.removeEventType(eventType.getName());
+            } catch (final NoSuchEventTypeException e1) {
+                LOG.error("Error creating event type {}", eventType, e1);
             }
-            return Result.ok();
-        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
-                DuplicatedEventTypeNameException e) {
-            LOG.debug("Failed to create EventType.", e);
-            return Result.problem(e.asProblem());
-        } catch (final NakadiException e) {
-            LOG.error("Error creating event type " + eventType, e);
-            return Result.problem(e.asProblem());
+            throw e;
+        }
+    }
+
+    private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
+        final EventTypeOptions options = eventType.getOptions();
+        if (options == null) {
+            final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+            eventTypeOptions.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
+            eventType.setOptions(eventTypeOptions);
+        } else if (options.getRetentionTime() == null) {
+            options.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
         }
     }
 
@@ -210,8 +209,7 @@ public class EventTypeService {
     }
 
     public void update(final String eventTypeName,
-                       final EventTypeBase eventTypeBase,
-                       final Client client)
+                       final EventTypeBase eventTypeBase)
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,

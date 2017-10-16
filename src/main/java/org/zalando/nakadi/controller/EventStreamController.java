@@ -146,7 +146,7 @@ public class EventStreamController {
                 }
             }
         }
-        final Timeline latestTimeline = timelineService.getTimeline(eventType);
+        final Timeline latestTimeline = timelineService.getActiveTimeline(eventType);
         final TopicRepository latestTopicRepository = timelineService.getTopicRepository(latestTimeline);
         if (null != cursors) {
             final List<NakadiCursor> result = new ArrayList<>();

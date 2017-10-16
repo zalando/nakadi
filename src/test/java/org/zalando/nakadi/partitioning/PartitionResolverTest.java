@@ -47,7 +47,7 @@ public class PartitionResolverTest {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
-        when(timelineService.getTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
+        when(timelineService.getActiveTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
 
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");

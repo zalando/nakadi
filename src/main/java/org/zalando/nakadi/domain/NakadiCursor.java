@@ -82,10 +82,6 @@ public class NakadiCursor implements Comparable<NakadiCursor> {
 
     @Override
     public int compareTo(final NakadiCursor other) {
-        if ((other.getTimeline().isFake() && this.getTimeline().isFirstAfterFake())
-                || (this.getTimeline().isFake() && other.getTimeline().isFirstAfterFake())) {
-            return this.getOffset().compareTo(other.getOffset());
-        }
         final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
         if (0 != orderDiffers) {
             return orderDiffers;

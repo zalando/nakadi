@@ -17,8 +17,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -57,6 +57,15 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
+
+    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
+                                                  final String owningApp)
+            throws IOException {
+        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
+        return json
+                .replace("NAME_PLACEHOLDER", eventTypeName)
+                .replace("OWNING_APP_PLACEHOLDER", owningApp);
+    }
 
     @Before
     public void before() throws IOException {
@@ -131,8 +140,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("partition", equalTo("0"))
-                .body("oldest_available_offset", equalTo("000000000000000000"))
-                .body("newest_available_offset", equalTo("000000000000000001"));
+                .body("oldest_available_offset", equalTo("001-0001-000000000000000000"))
+                .body("newest_available_offset", equalTo("001-0001-000000000000000001"));
 
         // get offsets for all partitions
         jsonRequestSpec()
@@ -153,46 +162,45 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName + "/events")
                 .then()
                 .statusCode(OK.value())
-                .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"000000000000000001\"},\"events\":"
-                        + "[" + EVENT1 + "," + EVENT2 + "]}\n"));
+                .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"001-0001-000000000000000001\"}," +
+                        "\"events\":[" + EVENT1 + "," + EVENT2 + "]}\n"));
 
         // get distance between cursors
         jsonRequestSpec()
-                .body("[{\"initial_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000000\"}, " +
-                        "\"final_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000001\"}}]")
+                .body("[{\"initial_cursor\": {\"partition\": \"0\", \"offset\":\"001-0001-000000000000000000\"}, " +
+                        "\"final_cursor\": {\"partition\": \"0\", \"offset\":\"001-0001-000000000000000001\"}}]")
                 .when()
                 .post("/event-types/" + eventTypeName + "/cursor-distances")
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("initial_cursor[0].offset", equalTo("000000000000000000"))
-                .body("final_cursor[0].offset", equalTo("000000000000000001"))
+                .body("initial_cursor[0].offset", equalTo("001-0001-000000000000000000"))
+                .body("final_cursor[0].offset", equalTo("001-0001-000000000000000001"))
                 .body("distance[0]", equalTo(1));
 
         // navigate between cursors
         jsonRequestSpec()
-                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\", \"shift\": 1}, " +
-                        "{\"partition\": \"0\", \"offset\":\"000000000000000001\", \"shift\": -1}]")
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0001-000000000000000000\", \"shift\": 1}, " +
+                        "{\"partition\": \"0\", \"offset\":\"001-0001-000000000000000001\", \"shift\": -1}]")
                 .when()
                 .post("/event-types/" + eventTypeName + "/shifted-cursors")
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(2))
-                .body("offset[0]", equalTo("000000000000000001"))
-                .body("offset[1]", equalTo("000000000000000000"));
+                .body("offset[0]", equalTo("001-0001-000000000000000001"))
+                .body("offset[1]", equalTo("001-0001-000000000000000000"));
 
         // query for lag
         jsonRequestSpec()
-                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\"}]")
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0001-000000000000000000\"}]")
                 .when()
                 .post("/event-types/" + eventTypeName + "/cursors-lag")
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1))
-                .body("newest_available_offset[0]", equalTo("000000000000000001"))
-                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
+                .body("newest_available_offset[0]", equalTo("001-0001-000000000000000001"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(1));
-
     }
 
     @Test(timeout = 3000)
@@ -260,9 +268,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
-
-            final SubscriptionCursor cursor = new SubscriptionCursor(
-                    "0", KafkaCursor.toNakadiOffset(i), eventTypeName, "");
+            final SubscriptionCursor cursor = new SubscriptionCursor("0", TestUtils.toTimelineOffset(i),
+                    eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
                     ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
@@ -297,7 +304,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partition", equalTo("0"))
-                .body("items[0].offset", equalTo(KafkaCursor.toNakadiOffset(3)));
+                .body("items[0].offset", equalTo("001-0001-000000000000000003"));
 
         // delete subscription
         jsonRequestSpec()
@@ -329,15 +336,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
         return requestSpec()
                 .header("accept", "application/json")
                 .contentType(JSON);
-    }
-
-    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
-                                                  final String owningApp)
-            throws IOException {
-        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
-        return json
-                .replace("NAME_PLACEHOLDER", eventTypeName)
-                .replace("OWNING_APP_PLACEHOLDER", owningApp);
     }
 
 }

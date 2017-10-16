@@ -24,7 +24,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -43,13 +42,11 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         repository.saveEventType(eventType);
 
         final SqlRowSet rs =
-                template.queryForRowSet("SELECT et_topic, et_event_type_object FROM zn_data.event_type WHERE et_name=?",
+                template.queryForRowSet("SELECT et_event_type_object FROM zn_data.event_type WHERE et_name=?",
                         eventType.getName());
         rs.next();
 
-        assertThat("Topic is persisted", rs.getString(1), equalTo(eventType.getTopic()));
-
-        final EventType persisted = TestUtils.OBJECT_MAPPER.readValue(rs.getString(2), EventType.class);
+        final EventType persisted = TestUtils.OBJECT_MAPPER.readValue(rs.getString(1), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
@@ -100,16 +97,6 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         final EventType persistedEventType = repository.findByName(eventType2.getName());
 
         assertThat(persistedEventType, notNullValue());
-    }
-
-    @Test(expected =  org.springframework.dao.DuplicateKeyException.class)
-    public void validatesUniquenessOfTopic() throws Exception {
-        final EventType eventType1 = buildDefaultEventType();
-        final EventType eventType2 = buildDefaultEventType();
-        eventType2.setTopic(eventType1.getTopic());
-
-        insertEventType(eventType1);
-        insertEventType(eventType2);
     }
 
     @Test(expected = NoSuchEventTypeException.class)
@@ -204,12 +191,10 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         node.set("unknown_attribute", new TextNode("will just be ignored"));
 
         final String eventTypeName = eventType.getName();
-        final String topic = randomUUID();
-        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
-                "VALUES (?, ?, to_json(?::json))";
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) " +
+                "VALUES (?, to_json(?::json))";
         template.update(insertSQL,
                 eventTypeName,
-                topic,
                 TestUtils.OBJECT_MAPPER.writeValueAsString(node));
 
         final EventType persistedEventType = repository.findByName(eventTypeName);
@@ -218,11 +203,10 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
-        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
-                "VALUES (?, ?, to_json(?::json))";
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) " +
+                "VALUES (?, to_json(?::json))";
         template.update(insertSQL,
                 eventType.getName(),
-                eventType.getTopic(),
                 TestUtils.OBJECT_MAPPER.writer().writeValueAsString(eventType));
     }
 }

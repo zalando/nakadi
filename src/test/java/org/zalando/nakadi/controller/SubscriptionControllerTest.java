@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -90,7 +90,7 @@ public class SubscriptionControllerTest {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
-    private static final Timeline TIMELINE = createFakeTimeline("topic");
+    private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
     public SubscriptionControllerTest() throws Exception {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -103,7 +103,7 @@ public class SubscriptionControllerTest {
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = mock(TimelineService.class);
-        when(timelineService.getTimeline(any())).thenReturn(TIMELINE);
+        when(timelineService.getActiveTimeline(any())).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);

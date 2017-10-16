@@ -219,7 +219,7 @@ public class SubscriptionService {
         final List<PartitionEndStatistics> topicPartitions = new ArrayList<>();
 
         final Map<TopicRepository, List<Timeline>> timelinesByRepo = eventTypes.stream()
-                .map(timelineService::getTimeline)
+                .map(timelineService::getActiveTimeline)
                 .collect(Collectors.groupingBy(timelineService::getTopicRepository));
 
         for (final Map.Entry<TopicRepository, List<Timeline>> repoEntry : timelinesByRepo.entrySet()) {

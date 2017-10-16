@@ -108,10 +108,11 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
-        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("foo", "bar0"), "Stream started")));
-        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
-                ImmutableMap.of("foo", "bar1"))));
+        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of("foo", "bar0"),
+                "Stream started")));
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000001", eventType.getName(), ImmutableMap.of("foo", "bar1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
         commitCursors(subscription.getId(), ImmutableList.of(client.getBatches().get(1).getCursor()),
@@ -123,10 +124,11 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
 
         // check that we have read the next two events with correct offsets
-        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
+        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000002", eventType.getName(),
                 ImmutableMap.of("foo", "bar2"), "Stream started")));
-        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
-                ImmutableMap.of("foo", "bar3"))));
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000003", eventType.getName(), ImmutableMap.of("foo", "bar3"))));
     }
 
 
@@ -136,7 +138,7 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "batch_flush_timeout=1")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), not(empty())));
-        assertThat(client.getBatches().get(0).getCursor().getOffset(), equalTo(Cursor.BEFORE_OLDEST_OFFSET));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), equalTo("001-0001--1"));
     }
 
     @Test(timeout = 5000)
@@ -148,7 +150,7 @@ public class HilaAT extends BaseAT {
 
         when().get("/subscriptions/{sid}/cursors", subscription.getId())
                 .then()
-                .body("items[0].offset", equalTo(Cursor.BEFORE_OLDEST_OFFSET));
+                .body("items[0].offset", equalTo("001-0001--1"));
 
         final int commitResult = commitCursors(subscription.getId(),
                 ImmutableList.of(new SubscriptionCursor("0", Cursor.BEFORE_OLDEST_OFFSET, eventType.getName(), "abc")),
@@ -206,8 +208,8 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
-        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of(), "Commit timeout reached")));
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
     }
 
     @Test(timeout = 15000)
@@ -241,13 +243,13 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
 
         assertThat(client.getBatches().get(0).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("000000000000000004"));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("001-0001-000000000000000004"));
 
         assertThat(client.getBatches().get(1).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("000000000000000009"));
+        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("001-0001-000000000000000009"));
 
         assertThat(client.getBatches().get(2).getEvents(), hasSize(2));
-        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("000000000000000011"));
+        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("001-0001-000000000000000011"));
     }
 
     @Test(timeout = 10000)
@@ -438,7 +440,7 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client2.getBatches(), hasSize(10)));
 
-        Assert.assertEquals("000000000000000005", client2.getBatches().get(0).getCursor().getOffset());
+        Assert.assertEquals("001-0001-000000000000000005", client2.getBatches().get(0).getCursor().getOffset());
     }
 
     @Test(timeout = 15000)

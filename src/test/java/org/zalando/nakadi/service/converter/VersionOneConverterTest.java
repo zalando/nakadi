@@ -9,7 +9,6 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 
@@ -29,21 +28,6 @@ public class VersionOneConverterTest {
         timelineService = mock(TimelineService.class);
         eventTypeCache = mock(EventTypeCache.class);
         converter = new VersionOneConverter(eventTypeCache, timelineService);
-    }
-
-    @Test
-    public void testVZeroFallbackOnEmptyTimelines() throws Exception {
-        final Cursor cursor = new Cursor("1", "001-0001-012345");
-        final String eventTypeName = "my_et";
-        final Timeline fakeTimeline = mock(Timeline.class);
-        final EventType eventType = mock(EventType.class);
-        when(eventTypeCache.getEventType(eq(eventTypeName))).thenReturn(eventType);
-        when(timelineService.getFakeTimeline(eq(eventType))).thenReturn(fakeTimeline);
-
-        final NakadiCursor nakadiCursor = converter.convert(eventTypeName, cursor);
-        Assert.assertEquals(fakeTimeline, nakadiCursor.getTimeline());
-        Assert.assertEquals("1", nakadiCursor.getPartition());
-        Assert.assertEquals(KafkaCursor.toNakadiOffset(12345), nakadiCursor.getOffset());
     }
 
     @Test

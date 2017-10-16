@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.converter;
 
 import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -11,7 +10,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
@@ -32,11 +30,9 @@ import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN
 
 public class VersionZeroConverter implements VersionedConverter {
     public static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;
-    private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
 
-    VersionZeroConverter(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
-        this.eventTypeCache = eventTypeCache;
+    VersionZeroConverter(final TimelineService timelineService) {
         this.timelineService = timelineService;
     }
 
@@ -56,17 +52,6 @@ public class VersionZeroConverter implements VersionedConverter {
             }
             if (!NUMBERS_ONLY_PATTERN.matcher(cursor.getOffset()).matches()) {
                 throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor);
-            }
-            if (cursor.getOffset().startsWith("-")) {
-                result[idx] = new NakadiCursor(
-                        timelineService.getFakeTimeline(eventTypeCache.getEventType(cursor.getEventType())),
-                        cursor.getPartition(),
-                        cursor.getOffset());
-            } else {
-                result[idx] = new NakadiCursor(
-                        timelineService.getFakeTimeline(eventTypeCache.getEventType(cursor.getEventType())),
-                        cursor.getPartition(),
-                        StringUtils.leftPad(cursor.getOffset(), VERSION_ZERO_MIN_OFFSET_LENGTH, '0'));
             }
         }
         // now it is time for massive convert.
@@ -113,7 +98,6 @@ public class VersionZeroConverter implements VersionedConverter {
     @Override
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
-        final EventType eventType = eventTypeCache.getEventType(eventTypeStr);
         final String offset = cursor.getOffset();
         if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(offset)) {
             final Timeline timeline = timelineService.getActiveTimelinesOrdered(eventTypeStr).get(0);
@@ -124,14 +108,13 @@ public class VersionZeroConverter implements VersionedConverter {
         } else if (!NUMBERS_ONLY_PATTERN.matcher(offset).matches()) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor);
         }
+
+        final Timeline timeline = timelineService.getAllTimelinesOrdered(eventTypeStr).get(0);
         if (offset.startsWith("-")) {
-            return new NakadiCursor(
-                    timelineService.getFakeTimeline(eventType),
-                    cursor.getPartition(),
-                    cursor.getOffset());
+            return new NakadiCursor(timeline, cursor.getPartition(), cursor.getOffset());
         } else {
             return new NakadiCursor(
-                    timelineService.getFakeTimeline(eventType),
+                    timeline,
                     cursor.getPartition(),
                     StringUtils.leftPad(cursor.getOffset(), VERSION_ZERO_MIN_OFFSET_LENGTH, '0'));
         }

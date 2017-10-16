@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
@@ -62,7 +62,7 @@ public class CursorsControllerTest {
     private static final String MY_ET = "my-et";
     private static final String TOKEN = "cursor-token";
 
-    private static final Timeline TIMELINE = createFakeTimeline(MY_ET);
+    private static final Timeline TIMELINE = buildTimelineWithTopic(MY_ET);
 
     private static final ImmutableList<NakadiCursor> DUMMY_NAKADI_CURSORS = ImmutableList.of(
             new NakadiCursor(TIMELINE, "0", "000000000000000010"),

@@ -18,10 +18,10 @@ import static org.mockito.Mockito.mock;
 
 public class PartitionDataTest {
 
-    private static Timeline fakeTimeline = mock(Timeline.class);
+    private static Timeline firstTimeline = mock(Timeline.class);
 
     private static NakadiCursor createCursor(final long offset) {
-        return new KafkaCursor("x", 0, offset).toNakadiCursor(fakeTimeline);
+        return new KafkaCursor("x", 0, offset).toNakadiCursor(firstTimeline);
     }
 
     @Test

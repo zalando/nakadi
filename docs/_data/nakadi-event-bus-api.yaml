@@ -1675,42 +1675,6 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /event-types/{name}/timelines/{id}:
-    delete:
-      tags:
-        - timelines-api
-      description: |
-        Deletes a timeline if there is only one timeline.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
-      parameters:
-        - name: name
-          in: path
-          description: Name of the EventType.
-          type: string
-          required: true
-        - name: id
-          in: path
-          description: timeline id
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: Timeline was deleted
-        '404':
-          description: No such event type or timeline id
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: could not delete timeline, because there is more than one timeline
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access forbidden
-          schema:
-            $ref: '#/definitions/Problem'
-
 # ################################### #
 #                                     #
 #             Definitions             #

@@ -154,14 +154,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         final TopicRepository result = timelineService.getTopicRepository(electedTimeline);
         if (electedTimeline.getOrder() != cursor.getTimeline().getOrder()) {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.
-            final NakadiCursor replacement;
-            if (electedTimeline.isFake() || (cursor.getTimeline().isFake() && electedTimeline.isFirstAfterFake())) {
-                // There should be special treatment when there is a jump from fake timeline to first one, cause
-                // in this case consumption should start from the same offset, instead of starting from before first
-                replacement = new NakadiCursor(electedTimeline, cursor.getPartition(), cursor.getOffset());
-            } else {
-                replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
-            }
+            final NakadiCursor replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
             LOG.info("Replacing cursor because of jumping between timelines from {} to {}", cursor, replacement);
             cursorReplacer.accept(replacement);
         }

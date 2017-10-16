@@ -313,8 +313,6 @@ public class CursorOperationsServiceTest {
                     Collections.singletonList(latestOffset)));
         }
         when(timeline.isActive()).thenReturn(null == latestOffset);
-        when(timeline.isFake()).thenReturn(order == 0);
-        when(timeline.isFirstAfterFake()).thenReturn(order == 1);
 
         final TopicRepository repository = new KafkaTopicRepository(
                 mock(ZooKeeperHolder.class),

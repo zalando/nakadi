@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 
 public class PartitionsControllerTest {
@@ -59,37 +59,30 @@ public class PartitionsControllerTest {
     private static final String UNKNOWN_PARTITION = "unknown-partition";
 
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_0 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "000000000000000012", "000000000000000067");
+            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "001-0000-000000000000000012",
+                    "001-0000-000000000000000067");
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_1 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "000000000000000043", "000000000000000098");
+            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "001-0000-000000000000000043",
+                    "001-0000-000000000000000098");
 
     private static final List<EventTypePartitionView> TEST_TOPIC_PARTITIONS = ImmutableList.of(
             TEST_TOPIC_PARTITION_0,
             TEST_TOPIC_PARTITION_1);
 
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
-    private static final Timeline TIMELINE = createFakeTimeline(EVENT_TYPE.getTopic());
+    private static final Timeline TIMELINE = buildTimeline(EVENT_TYPE.getName());
 
     private static final List<PartitionStatistics> TEST_POSITION_STATS = ImmutableList.of(
             new KafkaPartitionStatistics(TIMELINE, 0, 12, 67),
             new KafkaPartitionStatistics(TIMELINE, 1, 43, 98));
-
-
-    private EventTypeRepository eventTypeRepositoryMock;
-
-    private TopicRepository topicRepositoryMock;
-
-    private EventTypeCache eventTypeCache;
-
-    private TimelineService timelineService;
-
-    private CursorOperationsService cursorOperationsService;
-
-    private MockMvc mockMvc;
-
-    private SecuritySettings settings;
-
     private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
+    private EventTypeRepository eventTypeRepositoryMock;
+    private TopicRepository topicRepositoryMock;
+    private EventTypeCache eventTypeCache;
+    private TimelineService timelineService;
+    private CursorOperationsService cursorOperationsService;
+    private MockMvc mockMvc;
+    private SecuritySettings settings;
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
@@ -101,6 +94,8 @@ public class PartitionsControllerTest {
         when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
                 .thenThrow(NoSuchEventTypeException.class);
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
+                .thenReturn(Collections.singletonList(TIMELINE));
+        when(timelineService.getAllTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenReturn(Collections.singletonList(TIMELINE));
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         final CursorConverter cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
@@ -121,7 +116,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenListPartitionsThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         when(topicRepositoryMock.loadTopicStatistics(
                 eq(Collections.singletonList(TIMELINE))))
                 .thenReturn(TEST_POSITION_STATS);
@@ -157,7 +152,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenGetPartitionThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
                 .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
 
@@ -192,7 +187,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenGetPartitionWithConsumedOffsetThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
                 .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
         final List<NakadiCursorLag> lags = mockCursorLag();
@@ -235,7 +230,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         when(topicRepositoryMock.loadPartitionStatistics(
                 eq(TIMELINE), eq(UNKNOWN_PARTITION)))
                 .thenReturn(Optional.empty());

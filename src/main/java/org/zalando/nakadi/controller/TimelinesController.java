@@ -53,13 +53,6 @@ public class TimelinesController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @RequestMapping(value = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> deleteTimeline(@PathVariable("name") final String eventTypeName,
-                                            @PathVariable("id") final String timelineId) {
-        timelineService.delete(eventTypeName, timelineId);
-        return ResponseEntity.ok().build();
-    }
-
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> getTimelines(@PathVariable("name") final String eventTypeName) {
         return ResponseEntity.ok(timelineService.getTimelines(eventTypeName).stream()
