@@ -43,7 +43,6 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -64,7 +63,6 @@ public class TimelineService {
     private final TimelineDbRepository timelineDbRepository;
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
-    private final UUIDGenerator uuidGenerator;
     private final Storage defaultStorage;
     private final AdminService adminService;
 
@@ -76,7 +74,6 @@ public class TimelineService {
                            final TimelineDbRepository timelineDbRepository,
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
-                           final UUIDGenerator uuidGenerator,
                            @Qualifier("default_storage") final Storage defaultStorage,
                            final AdminService adminService) {
         this.eventTypeCache = eventTypeCache;
@@ -86,7 +83,6 @@ public class TimelineService {
         this.timelineDbRepository = timelineDbRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.transactionTemplate = transactionTemplate;
-        this.uuidGenerator = uuidGenerator;
         this.defaultStorage = defaultStorage;
         this.adminService = adminService;
     }
@@ -130,7 +126,8 @@ public class TimelineService {
             throws TopicCreationException,
             InconsistentStateException,
             RepositoryProblemException,
-            DuplicatedTimelineException {
+            DuplicatedTimelineException,
+            TimelineException {
         final TopicRepository repository = topicRepositoryHolder.getTopicRepository(defaultStorage);
         final String topic = repository.createTopic(partitionsCount, retentionTime);
 
@@ -138,14 +135,22 @@ public class TimelineService {
             final Timeline timeline = Timeline.createTimeline(eventTypeName, 1, defaultStorage, topic, new Date());
             timeline.setSwitchedAt(new Date());
             timelineDbRepository.createTimeline(timeline);
+            eventTypeCache.updated(eventTypeName);
             return timeline;
-        } catch (final Exception e) {
-            try {
-                repository.deleteTopic(topic);
-            } catch (final TopicDeletionException ex) {
-                LOG.error("Failed to delete topic while recovering from timeline creation failure", ex);
-            }
+        } catch (final InconsistentStateException | RepositoryProblemException | DuplicatedTimelineException e) {
+            rollbackTopic(repository, topic);
             throw e;
+        } catch (final Exception e) {
+            rollbackTopic(repository, topic);
+            throw new TimelineException("Failed to update event type cache, while creating timeline", e);
+        }
+    }
+
+    private void rollbackTopic(final TopicRepository repository, final String topic) {
+        try {
+            repository.deleteTopic(topic);
+        } catch (final TopicDeletionException ex) {
+            LOG.error("Failed to delete topic while recovering from timeline creation failure", ex);
         }
     }
 
