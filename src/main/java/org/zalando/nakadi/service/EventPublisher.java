@@ -97,6 +97,8 @@ public class EventPublisher {
             partition(batch, eventType);
             collector.closeStart("enrich");
             enrich(batch, eventType);
+            collector.closeStart("event_to_string");
+            batch.forEach(BatchItem::getStringRepresentation);
             collector.closeStart("submit");
             submit(batch, eventType);
             collector.closeStart("convert_to_view");

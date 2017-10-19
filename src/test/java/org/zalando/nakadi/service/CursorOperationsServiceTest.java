@@ -320,7 +320,7 @@ public class CursorOperationsServiceTest {
                 mock(NakadiSettings.class),
                 mock(KafkaSettings.class),
                 mock(ZookeeperSettings.class),
-                mock(UUIDGenerator.class));
+                mock(UUIDGenerator.class), metrics);
         when(timelineService.getTopicRepository(timeline)).thenReturn(repository);
         return timeline;
     }

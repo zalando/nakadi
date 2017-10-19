@@ -369,7 +369,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    new UUIDGenerator());
+                    new UUIDGenerator(), metrics);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

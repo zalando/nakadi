@@ -36,6 +36,8 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.metrics.MetricsCollector;
+import org.zalando.nakadi.metrics.NakadiKPIMetrics;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -64,6 +66,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static java.lang.Enum.valueOf;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
@@ -82,6 +85,24 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final UUIDGenerator uuidGenerator;
+    private final NakadiKPIMetrics metrics;
+
+    public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
+                                final KafkaFactory kafkaFactory,
+                                final NakadiSettings nakadiSettings,
+                                final KafkaSettings kafkaSettings,
+                                final ZookeeperSettings zookeeperSettings,
+                                final UUIDGenerator uuidGenerator,
+                                final NakadiKPIMetrics metrics) {
+        this.zkFactory = zkFactory;
+        this.kafkaFactory = kafkaFactory;
+        this.nakadiSettings = nakadiSettings;
+        this.kafkaSettings = kafkaSettings;
+        this.zookeeperSettings = zookeeperSettings;
+        this.uuidGenerator = uuidGenerator;
+        this.metrics = metrics;
+        this.circuitBreakers = new ConcurrentHashMap<>();
+    }
 
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
                                 final KafkaFactory kafkaFactory,
@@ -89,13 +110,7 @@ public class KafkaTopicRepository implements TopicRepository {
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
                                 final UUIDGenerator uuidGenerator) {
-        this.zkFactory = zkFactory;
-        this.kafkaFactory = kafkaFactory;
-        this.nakadiSettings = nakadiSettings;
-        this.kafkaSettings = kafkaSettings;
-        this.zookeeperSettings = zookeeperSettings;
-        this.uuidGenerator = uuidGenerator;
-        this.circuitBreakers = new ConcurrentHashMap<>();
+        this(zkFactory, kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, uuidGenerator, new NakadiKPIMetrics());
     }
 
     public List<String> listTopics() throws TopicRepositoryException {
@@ -174,7 +189,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
-    private static CompletableFuture<Exception> publishItem(
+    private CompletableFuture<Exception> publishItem(
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
@@ -185,7 +200,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
                     item.getPartition(),
-                    item.getEvent().toString());
+                    item.getStringRepresentation());
 
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {

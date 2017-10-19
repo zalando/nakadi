@@ -200,7 +200,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                new UUIDGenerator());
+                new UUIDGenerator(), metrics);
     }
 
 }

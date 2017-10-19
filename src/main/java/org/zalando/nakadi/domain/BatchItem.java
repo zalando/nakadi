@@ -12,6 +12,7 @@ public class BatchItem {
     private String partition;
     private String brokerId;
     private int eventSize;
+    private String rawString;
 
     public BatchItem(final String event) {
         this.event = new JSONObject(event);
@@ -25,6 +26,13 @@ public class BatchItem {
 
     public JSONObject getEvent() {
         return this.event;
+    }
+
+    public String getStringRepresentation() {
+        if (rawString == null) {
+            rawString = this.event.toString();
+        }
+        return rawString;
     }
 
     public void setPartition(final String partition) {

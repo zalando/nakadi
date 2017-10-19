@@ -61,7 +61,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     metricRegistry,
                     kpiMetrics);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
-                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, uuidGenerator);
+                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, uuidGenerator, kpiMetrics);
             // check that it does work
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;
