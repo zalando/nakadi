@@ -93,13 +93,6 @@ public class BatchItem {
         return this.event;
     }
 
-    public String getStringRepresentation() {
-        if (rawString == null) {
-            rawString = this.event.toString();
-        }
-        return rawString;
-    }
-
     public void setPartition(final String partition) {
         this.partition = partition;
     }
@@ -140,13 +133,18 @@ public class BatchItem {
     }
 
     public String dumpEventToString() {
+        if (null != rawString) {
+            return rawString;
+        }
         if (null == injectionValues) {
             if (skipCharacters.isEmpty()) {
-                return rawEvent;
+                rawString = rawEvent;
+                return rawString;
             } else {
                 final StringBuilder sb = new StringBuilder();
                 appendWithSkip(sb, 0, rawEvent.length(), 0);
-                return sb.toString();
+                rawString = sb.toString();
+                return rawString;
             }
         }
         boolean nonComaAdded = false;
@@ -197,7 +195,8 @@ public class BatchItem {
         if (lastMainEventUsedPosition < rawEvent.length()) {
             appendWithSkip(sb, lastMainEventUsedPosition, rawEvent.length(), currentSkipPosition);
         }
-        return sb.toString();
+        rawString = sb.toString();
+        return rawString;
     }
 
     private int appendWithSkip(final StringBuilder sb, final int from, final int to, final int currentSkipPosition) {
