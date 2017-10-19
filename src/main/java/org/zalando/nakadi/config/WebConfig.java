@@ -18,6 +18,8 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.zalando.nakadi.filters.KpiFilter;
+import org.zalando.nakadi.metrics.NakadiKPIMetrics;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.GzipBodyRequestFilter;
@@ -54,9 +56,14 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
+    public FilterRegistrationBean metricsRequestFilter(final NakadiKPIMetrics metrics) {
+        return createFilterRegistrationBean(new KpiFilter(metrics), Ordered.HIGHEST_PRECEDENCE + 2);
+    }
+
+    @Bean
+    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper, final NakadiKPIMetrics metrics) {
         return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
+                new GzipBodyRequestFilter(mapper, metrics), Ordered.HIGHEST_PRECEDENCE + 3);
     }
 
     @Bean

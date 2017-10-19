@@ -170,9 +170,7 @@ public class EventTypeService {
                 throw new ConflictException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            topicsToDelete = transactionTemplate.execute(action -> {
-                return deleteEventType(eventTypeName);
-            });
+            topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);

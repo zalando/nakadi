@@ -1,6 +1,6 @@
 package org.zalando.nakadi.metrics;
 
-import java.util.Date;
+import java.util.Map;
 
 public class MeasurementEvent {
     public static class MeasurementStep {
@@ -12,7 +12,7 @@ public class MeasurementEvent {
             return name;
         }
 
-        public void setName(String name) {
+        public void setName(final String name) {
             this.name = name;
         }
 
@@ -20,7 +20,7 @@ public class MeasurementEvent {
             return count;
         }
 
-        public void setCount(int count) {
+        public void setCount(final int count) {
             this.count = count;
         }
 
@@ -28,38 +28,38 @@ public class MeasurementEvent {
             return timeTotalMs;
         }
 
-        public void setTimeTotalMs(long timeTotalMs) {
+        public void setTimeTotalMs(final long timeTotalMs) {
             this.timeTotalMs = timeTotalMs;
         }
     }
 
-    private String event;
-    private Date startedAt;
-    private Date endedAt;
+    private Map<String, String> additional;
+    private long startedAt;
+    private long endedAt;
     private long durationMillis;
     private MeasurementStep[] steps;
 
-    public String getEvent() {
-        return event;
+    public Map<String, String> getAdditional() {
+        return additional;
     }
 
-    public void setEvent(String event) {
-        this.event = event;
+    public void setAdditional(final Map<String, String> additional) {
+        this.additional = additional;
     }
 
-    public Date getStartedAt() {
+    public long getStartedAt() {
         return startedAt;
     }
 
-    public void setStartedAt(Date startedAt) {
+    public void setStartedAt(final long startedAt) {
         this.startedAt = startedAt;
     }
 
-    public Date getEndedAt() {
+    public long getEndedAt() {
         return endedAt;
     }
 
-    public void setEndedAt(Date endedAt) {
+    public void setEndedAt(final long endedAt) {
         this.endedAt = endedAt;
     }
 
@@ -67,7 +67,7 @@ public class MeasurementEvent {
         return durationMillis;
     }
 
-    public void setDurationMillis(long durationMillis) {
+    public void setDurationMillis(final long durationMillis) {
         this.durationMillis = durationMillis;
     }
 
@@ -75,7 +75,7 @@ public class MeasurementEvent {
         return steps;
     }
 
-    public void setSteps(MeasurementStep[] steps) {
+    public void setSteps(final MeasurementStep[] steps) {
         this.steps = steps;
     }
 }

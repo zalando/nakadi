@@ -24,9 +24,10 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.metrics.MetricsCollector;
+import org.zalando.nakadi.metrics.NakadiKPIMetrics;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -52,6 +53,7 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
+    private final NakadiKPIMetrics metrics;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -60,7 +62,7 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthorizationValidator authValidator) {
+                          final AuthorizationValidator authValidator, NakadiKPIMetrics metrics) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -68,25 +70,36 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
+        this.metrics = metrics;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
+    public EventPublishResult publish(final String events, final String eventTypeName)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException {
+        final MetricsCollector collector = metrics.current();
+
+        collector.start("read_batch");
+        final List<BatchItem> batch = BatchFactory.from(events);
 
         Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(events);
         try {
-            publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
+            collector.closeStart("timeline_sync");
+            publishingCloser =  timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
+            collector.closeStart("authorize");
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             authValidator.authorizeEventTypeWrite(eventType);
 
+            collector.closeStart("validate");
             validate(batch, eventType);
-            partition(batch, eventType);
-            enrich(batch, eventType);
-            submit(batch, eventType);
 
+            collector.closeStart("partition");
+            partition(batch, eventType);
+            collector.closeStart("enrich");
+            enrich(batch, eventType);
+            collector.closeStart("submit");
+            submit(batch, eventType);
+            collector.closeStart("convert_to_view");
             return ok(batch);
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
@@ -115,6 +128,7 @@ public class EventPublisher {
             } catch (final IOException e) {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
+            collector.closeLast();
         }
     }
 

@@ -144,14 +144,13 @@ public class KafkaTopicRepository implements TopicRepository {
         // receive information about topic creation, which in turn will block publishing.
         // This kind of behavior was observed during tests, but may also present on highly loaded event types.
         final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
-        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
-                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-                        return null != consumer.partitionsFor(topic);
-                    }
-                },
-                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
-                        .withWaitBetweenEachTry(100L)
-                        .withResultsThatForceRetry(Boolean.FALSE));
+        final Boolean allowsConsumption;
+        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+            allowsConsumption = Retryer.executeWithRetry(() -> null != consumer.partitionsFor(topic),
+                    new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                            .withWaitBetweenEachTry(100L)
+                            .withResultsThatForceRetry(Boolean.FALSE));
+        }
         if (!Boolean.TRUE.equals(allowsConsumption)) {
             throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }

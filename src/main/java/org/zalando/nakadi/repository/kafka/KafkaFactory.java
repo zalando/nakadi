@@ -8,6 +8,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.metrics.MetricsCollector;
+import org.zalando.nakadi.metrics.NakadiKPIMetrics;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -23,6 +25,7 @@ public class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final Counter useCountMetric;
     private final Counter producerTerminations;
+    private final NakadiKPIMetrics kpiMetrics;
     @Nullable
     private Producer<String, String> activeProducer;
     private final Map<Producer<String, String>, AtomicInteger> useCount = new ConcurrentHashMap<>();
@@ -30,10 +33,11 @@ public class KafkaFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
 
-    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry) {
+    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry, final NakadiKPIMetrics kpiMetrics) {
         this.kafkaLocationManager = kafkaLocationManager;
         this.useCountMetric = metricRegistry.counter("kafka.producer.use_count");
         this.producerTerminations = metricRegistry.counter("kafka.producer.termination_count");
+        this.kpiMetrics = kpiMetrics;
     }
 
     @Nullable
@@ -132,21 +136,32 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<byte[], byte[]> getConsumer(final Properties properties) {
+    private Consumer<byte[], byte[]> createConsumerInternal(Properties properties) {
         return new KafkaConsumer<>(properties);
     }
 
+
+    public Consumer<byte[], byte[]> getConsumer(final Properties properties) {
+        try (MetricsCollector.Step ignore = kpiMetrics.current().start("create_kafka_consumer")) {
+            return createConsumerInternal(properties);
+        }
+    }
+
     public Consumer<byte[], byte[]> getConsumer() {
-        return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
+        try (MetricsCollector.Step ignore = kpiMetrics.current().start("create_kafka_consumer")) {
+            return createConsumerInternal(kafkaLocationManager.getKafkaConsumerProperties());
+        }
     }
 
     public Consumer<byte[], byte[]> getConsumer(@Nullable final String clientId) {
-        final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
-        // TODO: the line bellow has been commented after a bug in Kafka's 0.9.x throttling feature has been detected.
-        // once Kafka is upgraded, we are going to enable it back. More on how it works can be found at
-        // https://docs.google.com/document/d/1JDgsBemNqS0SrNpWUL90205u0MFmSMnOqrC-ENAb6TM/edit
-        // properties.put("client.id", clientId);
-        return this.getConsumer(properties);
+        try (MetricsCollector.Step ignore = kpiMetrics.current().start("create_kafka_consumer")) {
+            final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
+            // TODO: the line bellow has been commented after a bug in Kafka's 0.9.x throttling feature has been detected.
+            // once Kafka is upgraded, we are going to enable it back. More on how it works can be found at
+            // https://docs.google.com/document/d/1JDgsBemNqS0SrNpWUL90205u0MFmSMnOqrC-ENAb6TM/edit
+            // properties.put("client.id", clientId);
+            return createConsumerInternal(properties);
+        }
     }
 
 }

@@ -3,6 +3,8 @@ package org.zalando.nakadi.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.metrics.MetricsCollector;
+import org.zalando.nakadi.metrics.NakadiKPIMetrics;
 import org.zalando.problem.Problem;
 
 import javax.servlet.Filter;
@@ -33,28 +35,33 @@ public class GzipBodyRequestFilter implements Filter {
     private static final Logger LOG = LoggerFactory.getLogger(GzipBodyRequestFilter.class);
 
     private final ObjectMapper objectMapper;
+    private final NakadiKPIMetrics metrics;
 
-    public GzipBodyRequestFilter(final ObjectMapper objectMapper) {
+    public GzipBodyRequestFilter(final ObjectMapper objectMapper, final NakadiKPIMetrics metrics) {
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
     }
 
     @Override
     public final void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
                                final FilterChain chain) throws IOException, ServletException {
-
         HttpServletRequest request = (HttpServletRequest) servletRequest;
+        final MetricsCollector.Step gzipStep = metrics.current().start("gzip_filter", false);
+        try {
+            final boolean isGzipped = Optional
+                    .ofNullable(request.getHeader(CONTENT_ENCODING))
+                    .map(encoding -> encoding.contains("gzip"))
+                    .orElse(false);
 
-        final boolean isGzipped = Optional
-                .ofNullable(request.getHeader(CONTENT_ENCODING))
-                .map(encoding -> encoding.contains("gzip"))
-                .orElse(false);
-
-        if (isGzipped && !POST.equals(request.getMethod())) {
-            reportNotAcceptableError((HttpServletResponse) servletResponse, request);
-            return;
-        }
-        else if (isGzipped) {
-            request = new GzipServletRequestWrapper(request);
+            if (isGzipped && !POST.equals(request.getMethod())) {
+                reportNotAcceptableError((HttpServletResponse) servletResponse, request);
+                return;
+            }
+            else if (isGzipped) {
+                request = new GzipServletRequestWrapper(request);
+            }
+        } finally {
+            gzipStep.close();
         }
         chain.doFilter(request, servletResponse);
     }
