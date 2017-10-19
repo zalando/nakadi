@@ -33,6 +33,7 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -221,7 +222,11 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem("{}");
+        final BatchItem item = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -245,7 +250,10 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem("{}");
+        final BatchItem item = new BatchItem("{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -270,9 +278,13 @@ public class KafkaTopicRepositoryTest {
     @Test
     public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
 
-        final BatchItem firstItem = new BatchItem("{}");
+        final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         firstItem.setPartition("1");
-        final BatchItem secondItem = new BatchItem("{}");
+        final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
@@ -343,7 +355,10 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                final BatchItem batchItem = new BatchItem("{}");
+                final BatchItem batchItem = new BatchItem("{}",
+                        BatchItem.EmptyInjectionConfiguration.build(1, true),
+                        new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                        Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));

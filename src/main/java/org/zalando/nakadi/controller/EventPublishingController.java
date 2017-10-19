@@ -67,8 +67,7 @@ public class EventPublishingController {
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
             }
 
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    request, eventTypeMetrics);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, request, eventTypeMetrics);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {

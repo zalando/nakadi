@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
@@ -175,7 +176,7 @@ public class TestUtils {
 
     @SuppressWarnings("unchecked")
     public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs,
-                               final Class<? extends  Throwable>... additionalException) {
+                               final Class<? extends Throwable>... additionalException) {
         final List<Class<? extends Throwable>> leadToRetry =
                 Stream.concat(Stream.of(additionalException), Stream.of(AssertionError.class)).collect(toList());
         executeWithRetry(
@@ -186,11 +187,11 @@ public class TestUtils {
     }
 
     public static BatchItem createBatchItem(final JSONObject event) {
-        return new BatchItem(event.toString());
+        return BatchFactory.from("[" + event.toString() + "]").get(0);
     }
 
     public static BatchItem createBatchItem(final String event) {
-        return new BatchItem(event);
+        return BatchFactory.from("[" + event + "]").get(0);
     }
 
     public static DateTime randomDate() {

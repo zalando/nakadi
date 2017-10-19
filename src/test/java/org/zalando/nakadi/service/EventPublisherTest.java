@@ -447,13 +447,6 @@ public class EventPublisherTest {
                 .syncPostBatch(any(), any());
     }
 
-    private void mockFaultPartition(final EventType eventType, final BatchItem item) throws PartitioningException {
-        Mockito
-                .doThrow(new PartitioningException("partition error"))
-                .when(partitionResolver)
-                .resolvePartition(eventType, item.getEvent());
-    }
-
     private void mockFaultPartition() throws PartitioningException {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
@@ -466,26 +459,6 @@ public class EventPublisherTest {
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
                 .enrich(any(), any());
-    }
-
-    private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error)
-            throws Exception {
-        final EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
-
-        Mockito
-                .doReturn(eventType)
-                .when(cache)
-                .getEventType(eventType.getName());
-
-        Mockito
-                .doReturn(faultyValidator)
-                .when(cache)
-                .getValidator(eventType.getName());
-
-        Mockito
-                .doReturn(Optional.of(new ValidationError(error)))
-                .when(faultyValidator)
-                .validate(event);
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {

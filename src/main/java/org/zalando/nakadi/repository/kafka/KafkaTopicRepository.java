@@ -200,7 +200,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
                     item.getPartition(),
-                    item.getStringRepresentation());
+                    item.dumpEventToString());
 
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
