@@ -1,0 +1,424 @@
+{
+  "owning_application": "dsorokin",
+  "event_types": [
+    "checkout-completed",
+    "eventlog.e9602e_order_cancellation_failed_functional_error",
+    "eventlog.e9602f_online_return_confirmation_mail_sent",
+    "eventlog.e96030_pseudo_disposition_result_saved",
+    "eventlog.e96031_shipment_packed",
+    "eventlog.e96034_fifa_cancelled_accounting_document",
+    "eventlog.e96035_newsletter_subscribed",
+    "eventlog.e96101_customer_personalization_return_label_attached",
+    "eventlog.e96102_express_shipment_created",
+    "eventlog.e96105_bonus_program_number_updated",
+    "eventlog.e96106_bonus_program_number_deleted",
+    "eventlog.e96107_customer_login_failed_soft_blocked",
+    "eventlog.e96108_customer_login_failed_hard_blocked",
+    "eventlog.e98001_order_created",
+    "eventlog.e98003_reservation_created",
+    "eventlog.e98005_order_blocked_for_fraud_check",
+    "eventlog.e98008_mail_delivery_status",
+    "eventlog.e98009_order_sanctioned",
+    "eventlog.e98012_order_received",
+    "eventlog.e98014_selligent_mail_sent",
+    "eventlog.e98015_selligent_mail_delivered",
+    "eventlog.ea1006_carrier_info_submitted",
+    "eventlog.ea1011_carrier_hub_in",
+    "eventlog.ea1012_customs_in",
+    "eventlog.ea1013_customs_released",
+    "eventlog.ea1015_carrier_hub_out",
+    "eventlog.ea1023_carrier_prealert_time_slot",
+    "eventlog.ea1071_carrier_1st_try_failed",
+    "eventlog.ea1072_carrier_2nd_try_failed",
+    "eventlog.ea1076_carrier_1st_try_delivered",
+    "eventlog.ea1077_carrier_2nd_try_delivered",
+    "eventlog.ea1078_carrier_3rd_try_delivered",
+    "eventlog.ea1079_carrier_4th_try_delivered",
+    "eventlog.ea1080_carrier_prealert_pickup",
+    "eventlog.ea1081_carrier_pickup_point_dropoff",
+    "eventlog.ea1082_carrier_pickup_point_delivery_successfull",
+    "eventlog.ea1083_carrier_pickup_point_after_failure",
+    "eventlog.ea1085_carrier_pickedup_by_customesr",
+    "eventlog.ea1087_carrier_pickup_back_to_sender",
+    "eventlog.ea1088_carrier_prealert_mail_trigger",
+    "eventlog.ea1089_carrier_delivered_neighbour",
+    "eventlog.ea1091_carrier_customer_denied",
+    "eventlog.ea1092_carrier_customer_denied_damaged",
+    "eventlog.ea1093_carrier_store_customer",
+    "eventlog.ea1094_carrier_store_cep",
+    "eventlog.ea1096_carrier_holdup_cep",
+    "eventlog.ea1097_carrier_holdup_noncep",
+    "eventlog.ea1098_carrier_parcel_lost",
+    "eventlog.ea1101_carrier_misroute",
+    "eventlog.ea1102_carrier_no_address_info",
+    "eventlog.ea1103_carrier_delivery_impossible",
+    "eventlog.ea1105_delivery_impossible_wrong_address",
+    "eventlog.ea1106_delivery_impossible_no_address",
+    "eventlog.ea1107_parcel_damaged_carrier_caused",
+    "eventlog.ea1108_parcel_damaged_not_by_carrier",
+    "eventlog.ea1115_parcel_cancelled_by_carrier",
+    "eventlog.ea1116_parcel_cancelled_not_by_carrier",
+    "eventlog.ea1117_fraud_suspicion_by_carrier",
+    "eventlog.ea1118_fraud_suspicion_not_by_carrier",
+    "eventlog.ea1120_shipping_not_meeting_terms",
+    "eventlog.ea1125_no_shipping_label",
+    "eventlog.ea1130_parcel_returned_legal_issue",
+    "eventlog.ea1300_carrier_generic_return_event",
+    "eventlog.ea1500_carrier_arrived_at_return",
+    "eventlog.ea1502_carrier_procssed_at_return",
+    "eventlog.ea1999_carrier_unused_type",
+    "eventlog.eff001_legacy_order_status_changed",
+    "eventlog.eff002_legacy_return_order_commented",
+    "eventlog.eff003_legacy_order_commented"
+  ],
+  "consumer_group": "default",
+  "read_from": "cursors",
+  "initial_cursors": [
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000006115",
+      "event_type": "eventlog.e9602e_order_cancellation_failed_functional_error"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000001155",
+      "event_type": "eventlog.e9602f_online_return_confirmation_mail_sent"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e96030_pseudo_disposition_result_saved"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000004937",
+      "event_type": "eventlog.e96031_shipment_packed"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e96034_fifa_cancelled_accounting_document"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000006850",
+      "event_type": "eventlog.e96035_newsletter_subscribed"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000001609",
+      "event_type": "eventlog.e96101_customer_personalization_return_label_attached"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000143508",
+      "event_type": "eventlog.e96102_express_shipment_created"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e96105_bonus_program_number_updated"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e96106_bonus_program_number_deleted"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000005526",
+      "event_type": "eventlog.e96107_customer_login_failed_soft_blocked"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000045766",
+      "event_type": "eventlog.e96108_customer_login_failed_hard_blocked"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000008",
+      "event_type": "eventlog.e98001_order_created"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000002542164",
+      "event_type": "eventlog.e98003_reservation_created"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e98005_order_blocked_for_fraud_check"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e98008_mail_delivery_status"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.e98009_order_sanctioned"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000003143528",
+      "event_type": "eventlog.e98012_order_received"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000845355",
+      "event_type": "eventlog.e98014_selligent_mail_sent"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000229941409",
+      "event_type": "eventlog.e98015_selligent_mail_delivered"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000002",
+      "event_type": "eventlog.ea1006_carrier_info_submitted"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000170",
+      "event_type": "eventlog.ea1011_carrier_hub_in"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1012_customs_in"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1013_customs_released"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000077",
+      "event_type": "eventlog.ea1015_carrier_hub_out"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000000",
+      "event_type": "eventlog.ea1023_carrier_prealert_time_slot"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000036",
+      "event_type": "eventlog.ea1071_carrier_1st_try_failed"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000004",
+      "event_type": "eventlog.ea1072_carrier_2nd_try_failed"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000012",
+      "event_type": "eventlog.ea1076_carrier_1st_try_delivered"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1077_carrier_2nd_try_delivered"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1078_carrier_3rd_try_delivered"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1079_carrier_4th_try_delivered"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1080_carrier_prealert_pickup"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1081_carrier_pickup_point_dropoff"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1082_carrier_pickup_point_delivery_successfull"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1083_carrier_pickup_point_after_failure"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1085_carrier_pickedup_by_customesr"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000000",
+      "event_type": "eventlog.ea1087_carrier_pickup_back_to_sender"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1088_carrier_prealert_mail_trigger"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000004",
+      "event_type": "eventlog.ea1089_carrier_delivered_neighbour"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1091_carrier_customer_denied"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1092_carrier_customer_denied_damaged"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1093_carrier_store_customer"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1094_carrier_store_cep"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1096_carrier_holdup_cep"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1097_carrier_holdup_noncep"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1098_carrier_parcel_lost"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1101_carrier_misroute"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1102_carrier_no_address_info"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1103_carrier_delivery_impossible"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1105_delivery_impossible_wrong_address"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1106_delivery_impossible_no_address"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1107_parcel_damaged_carrier_caused"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1108_parcel_damaged_not_by_carrier"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000000012",
+      "event_type": "eventlog.ea1115_parcel_cancelled_by_carrier"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1116_parcel_cancelled_not_by_carrier"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1117_fraud_suspicion_by_carrier"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1118_fraud_suspicion_not_by_carrier"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1120_shipping_not_meeting_terms"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1125_no_shipping_label"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1130_parcel_returned_legal_issue"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1300_carrier_generic_return_event"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1500_carrier_arrived_at_return"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1502_carrier_procssed_at_return"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.ea1999_carrier_unused_type"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.eff001_legacy_order_status_changed"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.eff002_legacy_return_order_commented"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001--1",
+      "event_type": "eventlog.eff003_legacy_order_commented"
+    },
+    {
+      "partition": "0",
+      "offset": "001-0001-000000000000038645",
+      "event_type": "checkout-completed"
+    }
+  ],
+  "url": "https://nakadi-staging.aruha-test.zalan.do"
+}
