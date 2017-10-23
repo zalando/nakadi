@@ -43,7 +43,7 @@ public class TimelineCleaningJobTest {
         when(jobWrapperFactory.createExclusiveJobWrapper(any(), anyLong())).thenReturn(jobWrapper);
 
         timelineCleanupJob = new TimelineCleanupJob(eventTypeCache, timelineDbRepository, timelineService,
-                jobWrapperFactory, 0);
+                jobWrapperFactory, 0, 0L);
     }
 
     @Test
