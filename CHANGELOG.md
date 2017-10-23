@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Committing with empty X-Nakadi-StreamId causes 503
+- Massive topic deletion while switching timelines is now made with small interval between deletions
 
 ## [2.2.2] - 2017-09-28
 
