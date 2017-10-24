@@ -134,7 +134,7 @@ public interface ZkSubscriptionClient {
      * Subscribes to cursor reset event.
      *
      * @param listener callback which is called when cursor reset happens
-     * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
+     * @return {@link Closeable}
      */
     Closeable subscribeForCursorsReset(Runnable listener)
             throws NakadiRuntimeException, UnsupportedOperationException;
