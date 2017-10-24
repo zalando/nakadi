@@ -1,10 +1,12 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+
 import java.io.Closeable;
 
 public interface ZkSubscr<T> extends Closeable {
 
-    T getData() throws Exception;
+    T getData() throws NakadiRuntimeException;
 
     @Override
     void close();

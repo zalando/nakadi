@@ -1,14 +1,17 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -83,7 +86,7 @@ public interface ZkSubscriptionClient {
      * @param listener called whenever /nakadi/subscriptions/{subscriptionId}/topology node is changed.
      * @return Subscription instance
      */
-    ZKSubscription subscribeForTopologyChanges(Runnable listener);
+    ZkSubscr<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiRuntimeException;
 
     ZKSubscription subscribeForOffsetChanges(EventTypePartition key, Runnable commitListener);
 
@@ -152,4 +155,46 @@ public interface ZkSubscriptionClient {
      */
     void resetCursors(List<SubscriptionCursorWithoutToken> cursors, long timeout)
             throws OperationTimeoutException, ZookeeperException;
+
+    class Topology {
+        private final Partition[] partitions;
+        private final int version;
+
+        public Topology(
+                @JsonProperty("partitions") final Partition[] partitions,
+                @JsonProperty("version") final int version) {
+            this.partitions = partitions;
+            this.version = version;
+        }
+
+        public Partition[] getPartitions() {
+            return partitions;
+        }
+
+        public Topology withUpdatedPartitions(final Partition[] partitions) {
+            final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
+            for (final Partition newValue : partitions) {
+                int selectedIdx = -1;
+                for (int idx = 0; idx < resultPartitions.length; ++idx) {
+                    if (resultPartitions[idx].getKey().equals(newValue.getKey())) {
+                        selectedIdx = idx;
+                    }
+                }
+                if (selectedIdx < 0) {
+                    throw new MyNakadiRuntimeException1(
+                            "Failed to find partition " + newValue.getKey() + " in " + this);
+                }
+                resultPartitions[selectedIdx] = newValue;
+            }
+            return new Topology(resultPartitions, version + 1);
+        }
+
+        @Override
+        public String toString() {
+            return "Topology{" +
+                    "partitions=" + Arrays.toString(partitions) +
+                    ", version=" + version +
+                    '}';
+        }
+    }
 }

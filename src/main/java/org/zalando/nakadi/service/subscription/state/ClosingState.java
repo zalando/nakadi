@@ -6,6 +6,8 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -23,7 +25,7 @@ class ClosingState extends State {
     private final LongSupplier lastCommitSupplier;
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
     private final Map<EventTypePartition, ZKSubscription> listeners = new HashMap<>();
-    private ZKSubscription topologyListener;
+    private ZkSubscr<ZkSubscriptionClient.Topology> topologyListener;
 
     ClosingState(final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier,
                  final LongSupplier lastCommitSupplier) {
@@ -41,7 +43,7 @@ class ClosingState extends State {
         } finally {
             if (null != topologyListener) {
                 try {
-                    topologyListener.cancel();
+                    topologyListener.close();
                 } finally {
                     topologyListener = null;
                 }
@@ -56,7 +58,12 @@ class ClosingState extends State {
         uncommittedOffsets = uncommittedOffsetsSupplier.get();
         if (!uncommittedOffsets.isEmpty() && timeToWaitMillis > 0) {
             scheduleTask(() -> switchState(new CleanupState()), timeToWaitMillis, TimeUnit.MILLISECONDS);
-            topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
+            try {
+                topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
+            } catch (final Exception e) {
+                switchState(new CleanupState(e));
+                return;
+            }
             reactOnTopologyChange();
         } else {
             switchState(new CleanupState());
@@ -68,19 +75,19 @@ class ClosingState extends State {
             throw new IllegalStateException(
                     "topologyListener should not be null when calling onTopologyChanged method");
         }
-        topologyListener.refresh();
         reactOnTopologyChange();
     }
 
-    private void reactOnTopologyChange() {
+    private void reactOnTopologyChange() throws NakadiRuntimeException {
+        final ZkSubscriptionClient.Topology topology = topologyListener.getData();
 
         // Collect current partitions state from Zk
         final Map<EventTypePartition, Partition> partitions = new HashMap<>();
-        getZk().runLocked(() -> Stream.of(getZk().listPartitions())
+        Stream.of(topology.getPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
-                .forEach(p -> partitions.put(p.getKey(), p)));
+                .forEach(p -> partitions.put(p.getKey(), p));
+
         // Select which partitions need to be freed from this session
-        // Ithere
         final Set<EventTypePartition> freeRightNow = new HashSet<>();
         final Set<EventTypePartition> addListeners = new HashSet<>();
         for (final Partition p : partitions.values()) {

@@ -325,12 +325,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZKSubscription subscribeForTopologyChanges(final Runnable onTopologyChanged) {
-        getLog().info("subscribeForTopologyChanges");
-        return ChangeListener.forData(getCurator(), getSubscriptionPath(NODE_TOPOLOGY), onTopologyChanged);
-    }
-
-    @Override
     public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException {
         final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
         try {

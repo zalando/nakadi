@@ -18,6 +18,8 @@ import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -43,7 +45,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private ZKSubscription topologyChangeSubscription;
+    private ZkSubscr<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private EventConsumer.ReassignableEventConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
@@ -74,7 +76,8 @@ class StreamingState extends State {
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
         // Subscribe for topology changes.
-        this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
+        this.topologyChangeSubscription =
+                getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
         // and call directly
         reactOnTopologyChange();
         addTask(this::pollDataFromKafka);
@@ -261,7 +264,7 @@ class StreamingState extends State {
 
         if (null != topologyChangeSubscription) {
             try {
-                topologyChangeSubscription.cancel();
+                topologyChangeSubscription.close();
             } catch (final RuntimeException ex) {
                 getLog().warn("Failed to cancel topology subscription", ex);
             } finally {
@@ -285,20 +288,15 @@ class StreamingState extends State {
         }
     }
 
-    void topologyChanged() {
-        if (null != topologyChangeSubscription) {
-            topologyChangeSubscription.refresh();
+    void reactOnTopologyChange() {
+        if (null == topologyChangeSubscription) {
+            return;
         }
-        reactOnTopologyChange();
-    }
-
-    private void reactOnTopologyChange() {
-        getZk().runLocked(() -> {
-            final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
-                    .filter(p -> getSessionId().equals(p.getSession()))
-                    .toArray(Partition[]::new);
-            addTask(() -> refreshTopologyUnlocked(assignedPartitions));
-        });
+        final ZkSubscriptionClient.Topology topology = topologyChangeSubscription.getData();
+        final Partition[] assignedPartitions = Stream.of(topology.getPartitions())
+                .filter(p -> getSessionId().equals(p.getSession()))
+                .toArray(Partition[]::new);
+        addTask(() -> refreshTopologyUnlocked(assignedPartitions));
     }
 
     void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
@@ -476,7 +474,7 @@ class StreamingState extends State {
                 reconfigureKafkaConsumer(true);
             }
 
-	    if (commitResult.committedCount > 0) {
+            if (commitResult.committedCount > 0) {
                 committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
                 streamToOutput();

@@ -20,6 +20,7 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -85,22 +86,24 @@ public class StreamingStateTest {
 
     @Test
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
-        final ZKSubscription topologySubscription = mock(ZKSubscription.class);
+        final ZkSubscr topologySubscription = mock(ZkSubscr.class);
+        Mockito.when(topologySubscription.getData())
+                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();
 
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
-        Mockito.verify(topologySubscription, Mockito.times(0)).refresh();
+        Mockito.verify(topologySubscription, Mockito.times(1)).getData();
 
-        state.topologyChanged();
+        state.reactOnTopologyChange();
 
-        Mockito.verify(topologySubscription, Mockito.times(1)).refresh();
-        Mockito.verify(topologySubscription, Mockito.times(0)).cancel();
+        Mockito.verify(topologySubscription, Mockito.times(2)).getData();
+        Mockito.verify(topologySubscription, Mockito.times(0)).close();
 
         state.onExit();
 
-        Mockito.verify(topologySubscription, Mockito.times(1)).cancel();
+        Mockito.verify(topologySubscription, Mockito.times(1)).close();
         // verify that no new locks created.
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
     }

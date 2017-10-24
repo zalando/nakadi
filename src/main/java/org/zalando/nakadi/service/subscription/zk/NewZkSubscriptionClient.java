@@ -1,17 +1,15 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
@@ -59,48 +57,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     private final ObjectMapper objectMapper;
 
-    public static class Topology {
-        private final Partition[] partitions;
-        private final int version;
-
-        public Topology(
-                @JsonProperty("partitions") final Partition[] partitions,
-                @JsonProperty("version") final int version) {
-            this.partitions = partitions;
-            this.version = version;
-        }
-
-        public Partition[] getPartitions() {
-            return partitions;
-        }
-
-        public Topology withUpdatedPartitions(final Partition[] partitions) {
-            final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
-            for (final Partition newValue : partitions) {
-                int selectedIdx = -1;
-                for (int idx = 0; idx < resultPartitions.length; ++idx) {
-                    if (resultPartitions[idx].getKey().equals(newValue.getKey())) {
-                        selectedIdx = idx;
-                    }
-                }
-                if (selectedIdx < 0) {
-                    throw new MyNakadiRuntimeException1(
-                            "Failed to find partition " + newValue.getKey() + " in " + this);
-                }
-                resultPartitions[selectedIdx] = newValue;
-            }
-            return new Topology(resultPartitions, version + 1);
-        }
-
-        @Override
-        public String toString() {
-            return "Topology{" +
-                    "partitions=" + Arrays.toString(partitions) +
-                    ", version=" + version +
-                    '}';
-        }
-    }
-
     public NewZkSubscriptionClient(
             final String subscriptionId,
             final CuratorFramework curatorFramework,
@@ -145,16 +101,35 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     private Topology readTopology() throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
         try {
-            final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
-            final Topology result = objectMapper.readValue(data, Topology.class);
-            getLog().info("Topology is {}", result);
-            return result;
+            return parseTopology(getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY)));
         } catch (KeeperException.NoNodeException ex) {
             throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (final Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
     }
+
+    private Topology parseTopology(final byte[] data) {
+        try {
+            final Topology result = objectMapper.readValue(data, Topology.class);
+            getLog().info("Topology is {}", result);
+            return result;
+        } catch (IOException e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
+    @Override
+    public final ZkSubscr<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
+            throws NakadiRuntimeException {
+        getLog().info("subscribeForTopologyChanges");
+        return new ZkSubscrImpl.ZkSubscrValueImpl<>(
+                getCurator(),
+                onTopologyChanged,
+                this::parseTopology,
+                getSubscriptionPath(NODE_TOPOLOGY));
+    }
+
 
     @Override
     public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException {

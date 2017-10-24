@@ -236,18 +236,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private void rebalance() {
         if (null != sessionListSubscription) {
-            try {
-                // This call is needed to renew subscription for session list changes.
-                sessionListSubscription.getData();
-                zkClient.runLocked(() -> {
-                    final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                    if (changeset.length > 0) {
-                        zkClient.updatePartitionsConfiguration(changeset);
-                    }
-                });
-            } catch (Exception e) {
-                switchState(new CleanupState(e));
-            }
+            // This call is needed to renew subscription for session list changes.
+            sessionListSubscription.getData();
+            zkClient.runLocked(() -> {
+                final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
+                if (changeset.length > 0) {
+                    zkClient.updatePartitionsConfiguration(changeset);
+                }
+            });
         }
     }
 
