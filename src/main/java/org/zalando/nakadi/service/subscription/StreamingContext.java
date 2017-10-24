@@ -21,12 +21,13 @@ import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -60,7 +61,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeChangeListener eventTypeChangeListener;
 
     private State currentState = new DummyState();
-    private ZKSubscription clientListChanges;
+    private ZkSubscr<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
 
     private final Logger log;
@@ -184,20 +185,20 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
-    public void registerSession() {
+    public void registerSession() throws Exception {
         log.info("Registering session {}", session);
         // Install rebalance hook on client list change.
-        clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
+        sessionListSubscription = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
         zkClient.registerSession(session);
     }
 
     public void unregisterSession() {
         log.info("Unregistering session {}", session);
-        if (null != clientListChanges) {
+        if (null != sessionListSubscription) {
             try {
-                clientListChanges.cancel();
+                sessionListSubscription.close();
             } finally {
-                this.clientListChanges = null;
+                this.sessionListSubscription = null;
                 zkClient.unregisterSession(session);
             }
         }
@@ -234,14 +235,19 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void rebalance() {
-        if (null != clientListChanges) {
-            clientListChanges.refresh();
-            zkClient.runLocked(() -> {
-                final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                if (changeset.length > 0) {
-                    zkClient.updatePartitionsConfiguration(changeset);
-                }
-            });
+        if (null != sessionListSubscription) {
+            try {
+                // This call is needed to renew subscription for session list changes.
+                sessionListSubscription.getData();
+                zkClient.runLocked(() -> {
+                    final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
+                    if (changeset.length > 0) {
+                        zkClient.updatePartitionsConfiguration(changeset);
+                    }
+                });
+            } catch (Exception e) {
+                switchState(new CleanupState(e));
+            }
         }
     }
 

@@ -264,7 +264,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final void resetCursors(final List<SubscriptionCursorWithoutToken> cursors, final long timeout)
             throws OperationTimeoutException, ZookeeperException, OperationInterruptedException,
             RequestInProgressException {
-        ZKSubscription sessionsListener = null;
+        ZkSubscr<List<String>> sessionsListener = null;
         boolean resetWasAlreadyInitiated = false;
         try {
             // close subscription connections
@@ -281,13 +281,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final long finishAt = System.currentTimeMillis() + timeout;
             while (finishAt > System.currentTimeMillis()) {
                 if (sessionsChanged.compareAndSet(true, false)) {
-                    if (getCurator().getChildren().forPath(getSubscriptionPath("/sessions")).isEmpty()) {
+                    if (sessionsListener.getData().isEmpty()) {
                         forceCommitOffsets(cursors);
                         return;
                     }
-                    sessionsListener.refresh();
                 }
-
                 synchronized (sessionsChanged) {
                     sessionsChanged.wait(100);
                 }
@@ -305,7 +303,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
         } finally {
             if (sessionsListener != null) {
-                sessionsListener.cancel();
+                sessionsListener.close();
             }
 
             try {
@@ -321,9 +319,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZKSubscription subscribeForSessionListChanges(final Runnable listener) {
+    public final ZkSubscr<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
-        return ChangeListener.forChildren(getCurator(), getSubscriptionPath("/sessions"), listener);
+        return new ZkSubscrImpl.ZkSubscrChildrenImpl(getCurator(), listener, getSubscriptionPath("/sessions"));
     }
 
     @Override

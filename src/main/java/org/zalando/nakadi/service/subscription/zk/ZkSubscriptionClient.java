@@ -75,7 +75,7 @@ public interface ZkSubscriptionClient {
      *
      * @param listener method to call on any change of client list.
      */
-    ZKSubscription subscribeForSessionListChanges(Runnable listener);
+    ZkSubscr<List<String>> subscribeForSessionListChanges(Runnable listener) throws Exception;
 
     /**
      * Subscribe for topology changes.
