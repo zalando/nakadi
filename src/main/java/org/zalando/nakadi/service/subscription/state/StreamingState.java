@@ -17,12 +17,12 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,7 +54,7 @@ class StreamingState extends State {
     private Meter bytesSentMeter;
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
-    private ZKSubscription cursorResetSubscription;
+    private Closeable cursorResetSubscription;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -283,7 +283,10 @@ class StreamingState extends State {
         }
 
         if (cursorResetSubscription != null) {
-            cursorResetSubscription.cancel();
+            try {
+                cursorResetSubscription.close();
+            } catch (IOException ignore) {
+            }
             cursorResetSubscription = null;
         }
     }

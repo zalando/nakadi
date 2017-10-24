@@ -11,6 +11,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -135,7 +136,7 @@ public interface ZkSubscriptionClient {
      * @param listener callback which is called when cursor reset happens
      * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
      */
-    ZKSubscription subscribeForCursorsReset(Runnable listener)
+    Closeable subscribeForCursorsReset(Runnable listener)
             throws NakadiRuntimeException, UnsupportedOperationException;
 
     /**

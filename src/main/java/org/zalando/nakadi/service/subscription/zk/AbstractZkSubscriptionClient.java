@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -224,7 +225,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZKSubscription subscribeForCursorsReset(final Runnable listener)
+    public final Closeable subscribeForCursorsReset(final Runnable listener)
             throws NakadiRuntimeException, UnsupportedOperationException {
         final NodeCache cursorResetCache = new NodeCache(getCurator(), resetCursorPath);
         cursorResetCache.getListenable().addListener(listener::run);
@@ -235,20 +236,12 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new NakadiRuntimeException(e);
         }
 
-        return new ZKSubscription() {
-            @Override
-            public void refresh() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void cancel() {
-                try {
-                    cursorResetCache.getListenable().clear();
-                    cursorResetCache.close();
-                } catch (final IOException e) {
-                    throw new NakadiRuntimeException(e);
-                }
+        return () -> {
+            try {
+                cursorResetCache.getListenable().clear();
+                cursorResetCache.close();
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(e);
             }
         };
     }
