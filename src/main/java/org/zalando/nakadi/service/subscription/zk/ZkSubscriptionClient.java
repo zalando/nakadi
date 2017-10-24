@@ -88,7 +88,7 @@ public interface ZkSubscriptionClient {
      */
     ZkSubscr<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiRuntimeException;
 
-    ZKSubscription subscribeForOffsetChanges(EventTypePartition key, Runnable commitListener);
+    ZkSubscr<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(EventTypePartition key, Runnable commitListener);
 
     /**
      * Returns current offset value for specified partition key. Offset includes timeline and version data.

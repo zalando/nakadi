@@ -254,10 +254,16 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public ZKSubscription subscribeForOffsetChanges(final EventTypePartition key, final Runnable commitListener) {
+    public ZkSubscr<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
+            final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
         getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
-        return ChangeListener.forData(getCurator(), path, commitListener);
+        return new ZkSubscrImpl.ZkSubscrValueImpl<>(
+                getCurator(),
+                commitListener,
+                data -> new SubscriptionCursorWithoutToken(
+                        key.getEventType(), key.getPartition(), new String(data, UTF_8)),
+                path);
     }
 
     @Override

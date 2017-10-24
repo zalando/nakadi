@@ -5,9 +5,9 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -24,7 +24,7 @@ class ClosingState extends State {
     private final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier;
     private final LongSupplier lastCommitSupplier;
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
-    private final Map<EventTypePartition, ZKSubscription> listeners = new HashMap<>();
+    private final Map<EventTypePartition, ZkSubscr<SubscriptionCursorWithoutToken>> listeners = new HashMap<>();
     private ZkSubscr<ZkSubscriptionClient.Topology> topologyListener;
 
     ClosingState(final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier,
@@ -115,21 +115,17 @@ class ClosingState extends State {
         listeners.put(
                 key,
                 getZk().subscribeForOffsetChanges(
-                        key, () -> addTask(() -> this.offsetChanged(key))));
-        reactOnOffset(key);
-    }
-
-    private void offsetChanged(final EventTypePartition key) {
-        if (listeners.containsKey(key)) {
-            listeners.get(key).refresh();
-        }
+                        key, () -> addTask(() -> this.reactOnOffset(key))));
         reactOnOffset(key);
     }
 
     private void reactOnOffset(final EventTypePartition key) {
+        if (!listeners.containsKey(key)) {
+            return;
+        }
         final NakadiCursor newCursor;
         try {
-            newCursor = getContext().getCursorConverter().convert(key.getEventType(), getZk().getOffset(key));
+            newCursor = getContext().getCursorConverter().convert(key.getEventType(), listeners.get(key).getData());
         } catch (Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
@@ -149,10 +145,10 @@ class ClosingState extends State {
         RuntimeException exceptionCaught = null;
         for (final EventTypePartition partitionKey : keys) {
             uncommittedOffsets.remove(partitionKey);
-            final ZKSubscription listener = listeners.remove(partitionKey);
+            final ZkSubscr<SubscriptionCursorWithoutToken> listener = listeners.remove(partitionKey);
             if (null != listener) {
                 try {
-                    listener.cancel();
+                    listener.close();
                 } catch (final RuntimeException ex) {
                     exceptionCaught = ex;
                     getLog().error("Failed to cancel offsets listener {}", listener, ex);

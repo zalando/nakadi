@@ -437,7 +437,7 @@ class StreamingState extends State {
     private void addToStreaming(final Partition partition) {
         final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(partition.getKey()));
         getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
-        final ZKSubscription subscription = getZk().subscribeForOffsetChanges(
+        final ZkSubscr<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
         final PartitionData pd = new PartitionData(
@@ -465,9 +465,8 @@ class StreamingState extends State {
     void offsetChanged(final EventTypePartition key) {
         if (offsets.containsKey(key)) {
             final PartitionData data = offsets.get(key);
-            data.getSubscription().refresh();
 
-            final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(key));
+            final NakadiCursor cursor = createNakadiCursor(data.getSubscription().getData());
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
             if (commitResult.seekOnKafka) {
@@ -501,7 +500,7 @@ class StreamingState extends State {
                     getLog().warn("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }
-                data.getSubscription().cancel();
+                data.getSubscription().close();
             } catch (final RuntimeException ex) {
                 getLog().warn("Failed to cancel subscription, skipping exception", ex);
             }

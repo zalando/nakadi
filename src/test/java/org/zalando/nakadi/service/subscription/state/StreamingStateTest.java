@@ -19,7 +19,6 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -112,7 +111,7 @@ public class StreamingStateTest {
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed()
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
             InvalidCursorException {
-        final ZKSubscription offsetSubscription = mock(ZKSubscription.class);
+        final ZkSubscr<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscr.class);
 
         final EventTypePartition pk = new EventTypePartition("t", "0");
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
@@ -140,19 +139,19 @@ public class StreamingStateTest {
                         pk.getEventType(), pk.getPartition(), SESSION_ID, null, Partition.State.ASSIGNED)});
 
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(0)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).getData();
 
         state.offsetChanged(pk);
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
 
         // Verify that offset change listener is removed
         state.refreshTopologyUnlocked(new Partition[0]);
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(1)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
     }
 
 }
