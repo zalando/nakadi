@@ -17,7 +17,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -45,7 +45,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private ZkSubscr<ZkSubscriptionClient.Topology> topologyChangeSubscription;
+    private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private EventConsumer.ReassignableEventConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
@@ -440,7 +440,7 @@ class StreamingState extends State {
     private void addToStreaming(final Partition partition) {
         final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(partition.getKey()));
         getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
-        final ZkSubscr<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
+        final ZkSubscription<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
         final PartitionData pd = new PartitionData(

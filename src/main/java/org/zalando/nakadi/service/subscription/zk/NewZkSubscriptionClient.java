@@ -120,10 +120,10 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public final ZkSubscr<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
+    public final ZkSubscription<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
             throws NakadiRuntimeException {
         getLog().info("subscribeForTopologyChanges");
-        return new ZkSubscrImpl.ZkSubscrValueImpl<>(
+        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 onTopologyChanged,
                 this::parseTopology,

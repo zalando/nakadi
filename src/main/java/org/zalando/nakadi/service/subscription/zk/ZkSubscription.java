@@ -4,7 +4,7 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 
 import java.io.Closeable;
 
-public interface ZkSubscr<T> extends Closeable {
+public interface ZkSubscription<T> extends Closeable {
 
     T getData() throws NakadiRuntimeException;
 

@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 class PartitionData {
-    private final ZkSubscr<SubscriptionCursorWithoutToken> subscription;
+    private final ZkSubscription<SubscriptionCursorWithoutToken> subscription;
     private final List<ConsumedEvent> nakadiEvents = new LinkedList<>();
     private final NavigableSet<NakadiCursor> allCursorsOrdered = new TreeSet<>();
     private final Logger log;
@@ -28,13 +28,13 @@ class PartitionData {
     private int keepAliveInARow;
 
     @VisibleForTesting
-    PartitionData(final ZkSubscr<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
+    PartitionData(final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
                   final long currentTime) {
         this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
     }
 
     PartitionData(
-            final ZkSubscr<SubscriptionCursorWithoutToken> subscription,
+            final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
             final NakadiCursor commitOffset,
             final Logger log,
             final long currentTime) {
@@ -163,7 +163,7 @@ class PartitionData {
         return allCursorsOrdered.headSet(sentOffset, true).size();
     }
 
-    public ZkSubscr<SubscriptionCursorWithoutToken> getSubscription() {
+    public ZkSubscription<SubscriptionCursorWithoutToken> getSubscription() {
         return subscription;
     }
 }

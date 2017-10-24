@@ -5,7 +5,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -24,8 +24,8 @@ class ClosingState extends State {
     private final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier;
     private final LongSupplier lastCommitSupplier;
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
-    private final Map<EventTypePartition, ZkSubscr<SubscriptionCursorWithoutToken>> listeners = new HashMap<>();
-    private ZkSubscr<ZkSubscriptionClient.Topology> topologyListener;
+    private final Map<EventTypePartition, ZkSubscription<SubscriptionCursorWithoutToken>> listeners = new HashMap<>();
+    private ZkSubscription<ZkSubscriptionClient.Topology> topologyListener;
 
     ClosingState(final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier,
                  final LongSupplier lastCommitSupplier) {
@@ -145,7 +145,7 @@ class ClosingState extends State {
         RuntimeException exceptionCaught = null;
         for (final EventTypePartition partitionKey : keys) {
             uncommittedOffsets.remove(partitionKey);
-            final ZkSubscr<SubscriptionCursorWithoutToken> listener = listeners.remove(partitionKey);
+            final ZkSubscription<SubscriptionCursorWithoutToken> listener = listeners.remove(partitionKey);
             if (null != listener) {
                 try {
                     listener.close();

@@ -21,7 +21,7 @@ import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -61,7 +61,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeChangeListener eventTypeChangeListener;
 
     private State currentState = new DummyState();
-    private ZkSubscr<List<String>> sessionListSubscription;
+    private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
 
     private final Logger log;

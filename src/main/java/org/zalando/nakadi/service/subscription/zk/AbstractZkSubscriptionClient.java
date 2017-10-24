@@ -247,11 +247,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public ZkSubscr<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
+    public ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
             final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
         getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
-        return new ZkSubscrImpl.ZkSubscrValueImpl<>(
+        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 commitListener,
                 data -> new SubscriptionCursorWithoutToken(
@@ -263,7 +263,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final void resetCursors(final List<SubscriptionCursorWithoutToken> cursors, final long timeout)
             throws OperationTimeoutException, ZookeeperException, OperationInterruptedException,
             RequestInProgressException {
-        ZkSubscr<List<String>> sessionsListener = null;
+        ZkSubscription<List<String>> sessionsListener = null;
         boolean resetWasAlreadyInitiated = false;
         try {
             // close subscription connections
@@ -318,9 +318,10 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscr<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
+    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
-        return new ZkSubscrImpl.ZkSubscrChildrenImpl(getCurator(), listener, getSubscriptionPath("/sessions"));
+        return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
+                getCurator(), listener, getSubscriptionPath("/sessions"));
     }
 
     @Override

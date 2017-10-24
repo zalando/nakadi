@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-public abstract class ZkSubscrImpl<ReturnType, ZkType> implements ZkSubscr<ReturnType>, Watcher {
+public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscription<ReturnType>, Watcher {
     protected final CuratorFramework curatorFramework;
     protected final String key;
     private final AtomicReference<Runnable> listener;
@@ -40,7 +40,7 @@ public abstract class ZkSubscrImpl<ReturnType, ZkType> implements ZkSubscr<Retur
         }
     }
 
-    public ZkSubscrImpl(
+    public ZkSubscriptionImpl(
             final CuratorFramework curatorFramework,
             final Runnable listener,
             final Function<ZkType, ReturnType> converter,
@@ -85,9 +85,9 @@ public abstract class ZkSubscrImpl<ReturnType, ZkType> implements ZkSubscr<Retur
         }
     }
 
-    public static class ZkSubscrValueImpl<R> extends ZkSubscrImpl<R, byte[]> {
+    public static class ZkSubscriptionValueImpl<R> extends ZkSubscriptionImpl<R, byte[]> {
 
-        public ZkSubscrValueImpl(
+        public ZkSubscriptionValueImpl(
                 final CuratorFramework curatorFramework,
                 final Runnable listener,
                 final Function<byte[], R> converter,
@@ -111,9 +111,9 @@ public abstract class ZkSubscrImpl<ReturnType, ZkType> implements ZkSubscr<Retur
         }
     }
 
-    public static class ZkSubscrChildrenImpl extends ZkSubscrImpl<List<String>, List<String>> {
+    public static class ZkSubscriptionChildrenImpl extends ZkSubscriptionImpl<List<String>, List<String>> {
 
-        public ZkSubscrChildrenImpl(
+        public ZkSubscriptionChildrenImpl(
                 final CuratorFramework curatorFramework,
                 final Runnable listener,
                 final String key) throws NakadiRuntimeException {

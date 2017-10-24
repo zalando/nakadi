@@ -79,7 +79,7 @@ public interface ZkSubscriptionClient {
      *
      * @param listener method to call on any change of client list.
      */
-    ZkSubscr<List<String>> subscribeForSessionListChanges(Runnable listener) throws Exception;
+    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws Exception;
 
     /**
      * Subscribe for topology changes.
@@ -87,9 +87,10 @@ public interface ZkSubscriptionClient {
      * @param listener called whenever /nakadi/subscriptions/{subscriptionId}/topology node is changed.
      * @return Subscription instance
      */
-    ZkSubscr<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiRuntimeException;
+    ZkSubscription<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiRuntimeException;
 
-    ZkSubscr<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(EventTypePartition key, Runnable commitListener);
+    ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
+            EventTypePartition key, Runnable commitListener);
 
     /**
      * Returns current offset value for specified partition key. Offset includes timeline and version data.

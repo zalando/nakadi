@@ -19,7 +19,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscr;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -85,7 +85,7 @@ public class StreamingStateTest {
 
     @Test
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
-        final ZkSubscr topologySubscription = mock(ZkSubscr.class);
+        final ZkSubscription topologySubscription = mock(ZkSubscription.class);
         Mockito.when(topologySubscription.getData())
                 .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
@@ -111,7 +111,7 @@ public class StreamingStateTest {
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed()
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
             InvalidCursorException {
-        final ZkSubscr<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscr.class);
+        final ZkSubscription<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscription.class);
 
         final EventTypePartition pk = new EventTypePartition("t", "0");
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
