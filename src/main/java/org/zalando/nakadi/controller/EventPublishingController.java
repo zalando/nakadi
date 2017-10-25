@@ -71,7 +71,7 @@ public class EventPublishingController {
                     request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
-        } catch (RuntimeException ex) {
+        } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
@@ -91,7 +91,7 @@ public class EventPublishingController {
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
-            reportSLOs(startingNanos, totalSizeBytes, eventCount, result);
+            reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
 
             return response(result);
         } catch (final JSONException e) {
@@ -109,10 +109,14 @@ public class EventPublishingController {
     }
 
     private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount,
-                            final EventPublishResult eventPublishResult) {
+                            final EventPublishResult eventPublishResult, final String eventTypeName,
+                            final Client client) {
         if (eventPublishResult.getStatus() == EventPublishingStatus.SUBMITTED) {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
-            LOG.info("[SLO] [publishing-latency] time={} size={} count={}", msSpent, totalSizeBytes, eventCount);
+            final String applicationName = client.getClientId();
+
+            LOG.info("[SLO] [publishing-latency] time={} size={} count={} eventTypeName={} app={}", msSpent,
+                    totalSizeBytes, eventCount, eventTypeName, applicationName);
         }
     }
 
