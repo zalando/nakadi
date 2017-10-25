@@ -138,8 +138,6 @@ class EventStreamWriterBinary implements EventStreamWriter {
         os.write(B_CLOSE_CURLY_BRACKET);
         os.write(B_BATCH_SEPARATOR);
 
-        os.flush();
-
         return byteCount;
     }
 }

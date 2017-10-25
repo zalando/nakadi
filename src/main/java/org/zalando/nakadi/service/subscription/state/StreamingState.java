@@ -220,6 +220,13 @@ class StreamingState extends State {
                 messagesAllowedToSend -= toSend.size();
             }
         }
+
+        try {
+            getOut().getOutputStream().flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         if (wasCommitted && sentSomething) {
             this.lastCommitMillis = System.currentTimeMillis();
         }
