@@ -6,8 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.4] - 2017-10-13
+
 ### Fixed
 - Committing with empty X-Nakadi-StreamId causes 503
+
+### Added
+- Create event type with SAFE rack-awareness
 
 ## [2.2.2] - 2017-09-28
 
