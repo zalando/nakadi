@@ -101,6 +101,7 @@ public class KafkaLocationManager {
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1024 * 10);
         return properties;
     }
 
