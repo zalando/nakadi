@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.7] - 2017-10-25
+
+### Changed
+- Improve SLO log with application and event type names
+
 ## [2.2.6] - 2017-10-17
 
 ### Changed
