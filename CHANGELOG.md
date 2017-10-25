@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.6] - 2017-10-17
+
+### Changed
+- Create first timeline for event type by default
+
 ## [2.2.4] - 2017-10-13
 
 ### Fixed
