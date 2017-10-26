@@ -1,12 +1,14 @@
 server:
   port: 8080
+  jetty.acceptors: 4
 management:
   port: 7979
 jetty:
   threadPool:
     maxThreads: 200
-    minThreads: 8
+    minThreads: 10
     idleTimeout: 60000
+    queueSize: 3000
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
