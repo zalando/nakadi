@@ -8,14 +8,13 @@ import org.apache.zookeeper.Watcher;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscription<ReturnType>, Watcher {
     protected final CuratorFramework curatorFramework;
     protected final String key;
-    private final AtomicReference<Runnable> listener;
-    private final AtomicReference<ExceptionOrData<ReturnType>> data = new AtomicReference<>();
+    private volatile Runnable listener;
+    private volatile ExceptionOrData<ReturnType> data;
     private final Function<ZkType, ReturnType> converter;
 
     private static class ExceptionOrData<T> {
@@ -45,29 +44,30 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
             final Runnable listener,
             final Function<ZkType, ReturnType> converter,
             final String key) {
-        this.listener = new AtomicReference<>(listener);
+        this.listener = listener;
         this.curatorFramework = curatorFramework;
         this.key = key;
         this.converter = converter;
+        this.data = null;
     }
 
     @Override
     public ReturnType getData() throws NakadiRuntimeException {
-        if (data.get() == null) { // If there is new value pending
+        if (data == null) { // If there is new value pending
             try {
                 // create listener only in case if subscription is still active.
-                final ZkType zkData = query(null != listener.get());
-                data.set(new ExceptionOrData<>(converter.apply(zkData)));
+                final ZkType zkData = query(null != listener);
+                data = new ExceptionOrData<>(converter.apply(zkData));
             } catch (NakadiRuntimeException ex) {
-                data.set(new ExceptionOrData<>(ex));
+                data = new ExceptionOrData<>(ex);
             }
         }
-        return data.get().get();
+        return data.get();
     }
 
     @Override
     public void close() {
-        listener.set(null);
+        listener = null;
     }
 
     protected abstract ZkType query(boolean createListener) throws NakadiRuntimeException;
@@ -77,8 +77,8 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
         // on this call one actually notifies that data has changed and waits for refresh call.
         // The reason for that is that sometimes it is not possible to query data from zk while being called from
         // notification callback.
-        data.set(null);
-        final Runnable toNotify = listener.get();
+        data = null;
+        final Runnable toNotify = listener;
         // In case if subscription is still active - notify
         if (null != toNotify) {
             toNotify.run();
