@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.8] - 2017-11-01
+
+### Fixed
+- Massive topic deletion while switching timelines is now made with small interval between deletions
+
 ## [2.2.7] - 2017-10-25
 
 ### Changed
@@ -20,7 +25,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Committing with empty X-Nakadi-StreamId causes 503
-- Massive topic deletion while switching timelines is now made with small interval between deletions
 
 ### Added
 - Create event type with SAFE rack-awareness
