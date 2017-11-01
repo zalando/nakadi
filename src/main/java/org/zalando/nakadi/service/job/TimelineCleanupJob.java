@@ -15,6 +15,8 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
+import java.util.List;
+
 @Service
 public class TimelineCleanupJob {
 
@@ -26,17 +28,20 @@ public class TimelineCleanupJob {
     private final TimelineDbRepository timelineDbRepository;
     private final TimelineService timelineService;
     private final ExclusiveJobWrapper jobWrapper;
+    private final long deletionDelayMs;
 
     @Autowired
     public TimelineCleanupJob(final EventTypeCache eventTypeCache,
                               final TimelineDbRepository timelineDbRepository,
                               final TimelineService timelineService,
                               final JobWrapperFactory jobWrapperFactory,
-                              @Value("${nakadi.jobs.timelineCleanup.runPeriodMs}") final int periodMs) {
+                              @Value("${nakadi.jobs.timelineCleanup.runPeriodMs}") final int periodMs,
+                              @Value("${nakadi.jobs.timelineCleanup.deletionDelayMs}") final long deletionDelayMs) {
         this.eventTypeCache = eventTypeCache;
         this.timelineDbRepository = timelineDbRepository;
         this.timelineService = timelineService;
         this.jobWrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, periodMs);
+        this.deletionDelayMs = deletionDelayMs;
     }
 
     @Scheduled(
@@ -44,14 +49,27 @@ public class TimelineCleanupJob {
             initialDelayString = "${random.int(${nakadi.jobs.checkRunMs})}")
     public void cleanupTimelines() {
         try {
-            jobWrapper.runJobLocked(() ->
-                    timelineDbRepository.getExpiredTimelines().stream()
-                            .forEach(timeline -> {
-                                deleteTimelineTopic(timeline);
-                                markTimelineDeleted(timeline);
-                            }));
+            jobWrapper.runJobLocked(this::deleteTimelinesLocked);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when trying to get expired timelines", e);
+        }
+    }
+
+    private void deleteTimelinesLocked() {
+        final List<Timeline> expired = timelineDbRepository.getExpiredTimelines();
+        for (int i = 0; i < expired.size(); ++i) {
+            if (i != 0 && deletionDelayMs > 0) {
+                try {
+                    Thread.sleep(deletionDelayMs);
+                } catch (InterruptedException e) {
+                    LOG.warn("Timeline deletion thread was interrupted", e);
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            final Timeline timeline = expired.get(i);
+            deleteTimelineTopic(timeline);
+            markTimelineDeleted(timeline);
         }
     }
 
