@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ## [2.2.8] - 2017-11-01
+
 ### Fixed
 - Massive topic deletion while switching timelines is now made with small interval between deletions
 
