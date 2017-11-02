@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.2.4] - 2017-10-13
 
 ### Fixed
+- Optimized reactions on offset change while streaming subscription
 - Committing with empty X-Nakadi-StreamId causes 503
 
 ### Added

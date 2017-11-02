@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -224,7 +225,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZKSubscription subscribeForCursorsReset(final Runnable listener)
+    public final Closeable subscribeForCursorsReset(final Runnable listener)
             throws NakadiRuntimeException, UnsupportedOperationException {
         final NodeCache cursorResetCache = new NodeCache(getCurator(), resetCursorPath);
         cursorResetCache.getListenable().addListener(listener::run);
@@ -235,36 +236,34 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new NakadiRuntimeException(e);
         }
 
-        return new ZKSubscription() {
-            @Override
-            public void refresh() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void cancel() {
-                try {
-                    cursorResetCache.getListenable().clear();
-                    cursorResetCache.close();
-                } catch (final IOException e) {
-                    throw new NakadiRuntimeException(e);
-                }
+        return () -> {
+            try {
+                cursorResetCache.getListenable().clear();
+                cursorResetCache.close();
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(e);
             }
         };
     }
 
     @Override
-    public ZKSubscription subscribeForOffsetChanges(final EventTypePartition key, final Runnable commitListener) {
+    public ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
+            final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
         getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
-        return ChangeListener.forData(getCurator(), path, commitListener);
+        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
+                getCurator(),
+                commitListener,
+                data -> new SubscriptionCursorWithoutToken(
+                        key.getEventType(), key.getPartition(), new String(data, UTF_8)),
+                path);
     }
 
     @Override
     public final void resetCursors(final List<SubscriptionCursorWithoutToken> cursors, final long timeout)
             throws OperationTimeoutException, ZookeeperException, OperationInterruptedException,
             RequestInProgressException {
-        ZKSubscription sessionsListener = null;
+        ZkSubscription<List<String>> sessionsListener = null;
         boolean resetWasAlreadyInitiated = false;
         try {
             // close subscription connections
@@ -281,13 +280,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final long finishAt = System.currentTimeMillis() + timeout;
             while (finishAt > System.currentTimeMillis()) {
                 if (sessionsChanged.compareAndSet(true, false)) {
-                    if (getCurator().getChildren().forPath(getSubscriptionPath("/sessions")).isEmpty()) {
+                    if (sessionsListener.getData().isEmpty()) {
                         forceCommitOffsets(cursors);
                         return;
                     }
-                    sessionsListener.refresh();
                 }
-
                 synchronized (sessionsChanged) {
                     sessionsChanged.wait(100);
                 }
@@ -305,7 +302,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
         } finally {
             if (sessionsListener != null) {
-                sessionsListener.cancel();
+                sessionsListener.close();
             }
 
             try {
@@ -321,15 +318,10 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZKSubscription subscribeForSessionListChanges(final Runnable listener) {
+    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
-        return ChangeListener.forChildren(getCurator(), getSubscriptionPath("/sessions"), listener);
-    }
-
-    @Override
-    public final ZKSubscription subscribeForTopologyChanges(final Runnable onTopologyChanged) {
-        getLog().info("subscribeForTopologyChanges");
-        return ChangeListener.forData(getCurator(), getSubscriptionPath(NODE_TOPOLOGY), onTopologyChanged);
+        return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
+                getCurator(), listener, getSubscriptionPath("/sessions"));
     }
 
     @Override

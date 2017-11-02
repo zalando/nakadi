@@ -78,7 +78,12 @@ public class StartingState extends State {
             return;
         }
 
-        getContext().registerSession();
+        try {
+            getContext().registerSession();
+        } catch (Exception ex) {
+            switchState(new CleanupState(ex));
+            return;
+        }
 
         try {
             getOut().onInitialized(getSessionId());
