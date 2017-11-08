@@ -147,7 +147,9 @@
         }
       }
     },
-    "errors": ["Invalid schema found in [#/definitions/paradox]: extraneous key [not] is not permitted"]
+    "errors": ["Invalid schema found in [#/definitions/paradox]: extraneous key [not] is not permitted",
+      "Invalid schema found in [#/items/$ref]: [#/definitions/paradox] is not a valid URI",
+      "Invalid schema found in [#/items]: expected type: JSONArray, found: JSONObject"]
   },
   {
     "description": "Invalid attribute in combined schemas",
