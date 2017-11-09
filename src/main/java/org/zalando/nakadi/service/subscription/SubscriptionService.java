@@ -264,12 +264,14 @@ public class SubscriptionService {
                             }
                         })
                         .orElse(null);
+
+                final String state = subscriptionNode.guessState(stat.getTimeline().getEventType(), stat.getPartition())
+                        .getDescription();
+                final String streamId = Optional.ofNullable(subscriptionNode.guessStream(
+                        stat.getTimeline().getEventType(), stat.getPartition())).orElse("");
+
                 resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(),
-                        subscriptionNode.guessState(stat.getPartition()).getDescription(),
-                        distance,
-                        Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
-                ));
+                        lastPosition.getPartition(), state, distance, streamId));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
             result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
