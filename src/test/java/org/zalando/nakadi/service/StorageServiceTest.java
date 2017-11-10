@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
@@ -25,7 +26,8 @@ public class StorageServiceTest {
     @Before
     public void setUp() {
         storageDbRepository = mock(StorageDbRepository.class);
-        storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository);
+        storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
+                new DefaultStorage(mock(Storage.class)));
     }
 
     @Test

@@ -9,6 +9,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
@@ -34,10 +35,10 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("default_storage")
-    public Storage defaultStorage(final StorageDbRepository storageDbRepository,
-                                  final Environment environment) throws InternalNakadiException {
+    public DefaultStorage defaultStorage(final StorageDbRepository storageDbRepository,
+                                         final Environment environment) throws InternalNakadiException {
         final Storage storage = new Storage();
-        storage.setId("default");
+        storage.setId(environment.getProperty("nakadi.timelines.storage.default"));
         storage.setType(Storage.Type.KAFKA);
         storage.setConfiguration(new Storage.KafkaConfiguration(
                 environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
@@ -49,7 +50,7 @@ public class NakadiConfig {
         } catch (final DuplicatedStorageException e) {
             LOGGER.info("Creation of default storage failed: {}", e.getMessage());
         }
-        return storage;
+        return new DefaultStorage(storage);
     }
 
 }
