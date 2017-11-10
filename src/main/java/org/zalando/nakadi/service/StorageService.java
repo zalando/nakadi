@@ -6,8 +6,10 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
@@ -32,12 +34,15 @@ public class StorageService {
 
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
+    private final DefaultStorage defaultStorage;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
-                          final StorageDbRepository storageDbRepository) {
+                          final StorageDbRepository storageDbRepository,
+                          @Qualifier("default_storage") final DefaultStorage defaultStorage) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
+        this.defaultStorage = defaultStorage;
     }
 
     public Result<List<Storage>> listStorages() {
@@ -125,4 +130,12 @@ public class StorageService {
         return Result.ok();
     }
 
+    public Result<Storage> setDefaultStorage(final String defaultStorageId) {
+        final Result<Storage> storageResult = getStorage(defaultStorageId);
+        if (storageResult.isSuccessful()) {
+            defaultStorage.setStorage(storageResult.getValue());
+            return storageResult;
+        }
+        return storageResult;
+    }
 }

@@ -268,7 +268,8 @@ public class SubscriptionService {
                         lastPosition.getPartition(),
                         subscriptionNode.guessState(stat.getPartition()).getDescription(),
                         distance,
-                        Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
+                        Optional.ofNullable(subscriptionNode.
+                                guessStream(stat.getPartition())).orElse("")
                 ));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
