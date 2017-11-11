@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Limited stream_timeout for consumption to 1h ± 10min
+
 ## [2.2.8] - 2017-11-01
 
 ### Fixed
