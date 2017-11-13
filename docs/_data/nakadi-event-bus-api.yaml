@@ -1582,6 +1582,34 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /storages/default/{id}:
+    put:
+      tags:
+        - timelines-api
+      description: |
+        Sets default storage to use in Nakadi.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
   /event-types/{name}/timelines:
     post:
       tags:

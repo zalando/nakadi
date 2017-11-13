@@ -1,5 +1,6 @@
 package org.zalando.nakadi.config;
 
+import com.google.common.base.Charsets;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,14 +74,14 @@ public class NakadiConfig {
             curator.create().creatingParentsIfNeeded()
                     .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE, null);
         } catch (final Exception e) {
-            LOGGER.debug("Node {} is already there", StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
+            LOGGER.error("Zookeeper access error {}", e.getMessage(), e);
         }
 
         try {
             final byte[] storageIdBytes = curator.getData()
                     .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
             if (storageIdBytes != null) {
-                return new String(storageIdBytes);
+                return new String(storageIdBytes, Charsets.UTF_8);
             }
         } catch (final Exception e) {
             LOGGER.warn("Init of default storage from zk failed, will use default from env", e);

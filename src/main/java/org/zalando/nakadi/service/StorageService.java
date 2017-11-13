@@ -67,7 +67,7 @@ public class StorageService {
                 watchDefaultStorage();
             }).forPath(ZK_TIMELINES_DEFAULT_STORAGE);
         } catch (final Exception e) {
-            LOG.warn(e.getMessage(), e);
+            LOG.warn("Error while creating watcher for default storage updates {}", e.getMessage(), e);
         }
     }
 
@@ -160,9 +160,10 @@ public class StorageService {
         if (storageResult.isSuccessful()) {
             try {
                 curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
-            } catch (Exception e) {
-                LOG.error(e.getMessage(), e);
-                return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, "Zookeeper connection error"));
+            } catch (final Exception e) {
+                LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
+                return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
+                        "Error while setting default storage in zk"));
             }
         }
         return storageResult;

@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Change default storage via env var or at runtime 
+
 ## [2.2.8] - 2017-11-01
 
 ### Fixed

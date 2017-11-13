@@ -26,5 +26,6 @@ public class StorageControllerAT extends BaseAT {
         NakadiTestUtils.createEventTypeInNakadi(EventTypeTestBuilder.builder().name("event_b").build());
         storageId = (String) NakadiTestUtils.listTimelines("event_b").get(0).get("storage_id");
         Assert.assertEquals("default-test", storageId);
+
     }
 }
