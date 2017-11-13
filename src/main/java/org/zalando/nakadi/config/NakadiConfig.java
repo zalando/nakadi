@@ -16,6 +16,9 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
+import org.zalando.nakadi.service.StorageService;
+
+import java.util.Optional;
 
 @Configuration
 @EnableScheduling
@@ -36,21 +39,52 @@ public class NakadiConfig {
     @Bean
     @Qualifier("default_storage")
     public DefaultStorage defaultStorage(final StorageDbRepository storageDbRepository,
-                                         final Environment environment) throws InternalNakadiException {
-        final Storage storage = new Storage();
-        storage.setId(environment.getProperty("nakadi.timelines.storage.default"));
-        storage.setType(Storage.Type.KAFKA);
-        storage.setConfiguration(new Storage.KafkaConfiguration(
-                environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
-                Integer.valueOf(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")),
-                environment.getProperty("nakadi.zookeeper.brokers"),
-                environment.getProperty("nakadi.zookeeper.kafkaNamespace", "")));
-        try {
-            storageDbRepository.createStorage(storage);
-        } catch (final DuplicatedStorageException e) {
-            LOGGER.info("Creation of default storage failed: {}", e.getMessage());
+                                         final Environment environment,
+                                         final ZooKeeperHolder zooKeeperHolder)
+            throws InternalNakadiException {
+        final String storageId = getStorageId(zooKeeperHolder, environment);
+        final Optional<Storage> storageOpt = storageDbRepository.getStorage(storageId);
+        if (!storageOpt.isPresent()) {
+            LOGGER.info("Creating timelines storage `{}` from defaults", storageId);
+            final Storage storage = new Storage();
+            storage.setId(storageId);
+            storage.setType(Storage.Type.KAFKA);
+            storage.setConfiguration(new Storage.KafkaConfiguration(
+                    environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
+                    Integer.valueOf(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")),
+                    environment.getProperty("nakadi.zookeeper.brokers"),
+                    environment.getProperty("nakadi.zookeeper.kafkaNamespace", "")));
+            try {
+                storageDbRepository.createStorage(storage);
+            } catch (final DuplicatedStorageException e) {
+                LOGGER.info("Creation of default storage failed: {}", e.getMessage());
+            }
+            return new DefaultStorage(storage);
+        } else {
+            return new DefaultStorage(storageOpt.get());
         }
-        return new DefaultStorage(storage);
+    }
+
+    private String getStorageId(final ZooKeeperHolder zooKeeperHolder,
+                                final Environment environment) {
+        try {
+            zooKeeperHolder.get().create().creatingParentsIfNeeded()
+                    .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE, null);
+        } catch (final Exception e) {
+            LOGGER.debug("Node {} is already there", StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
+        }
+
+        try {
+            final byte[] storageIdBytes = zooKeeperHolder.get().getData()
+                    .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
+            if (storageIdBytes != null) {
+                return new String(storageIdBytes);
+            }
+        } catch (final Exception e) {
+            LOGGER.warn("Init of default storage from zk failed, will use default from env", e);
+        }
+
+        return environment.getProperty("nakadi.timelines.storage.default");
     }
 
 }
