@@ -208,21 +208,20 @@ public class EventStreamControllerTest {
                 .andExpect(status().isOk());
 
         // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
-        TestUtils.waitFor(
-                () -> {
-                    final EventStreamConfig actualConfig = configCaptor.getValue();
+        TestUtils.waitFor(() -> {
+            final EventStreamConfig actualConfig = configCaptor.getValue();
 
-                    assertThat(actualConfig.getBatchLimit(), equalTo(1));
-                    assertThat(actualConfig.getBatchTimeout(), equalTo(30));
-                    assertThat(actualConfig.getCursors(),
-                            equalTo(ImmutableList.of(new NakadiCursor(timeline, "0", "000000000000000000"))));
-                    assertThat(actualConfig.getStreamKeepAliveLimit(), equalTo(0));
-                    assertThat(actualConfig.getStreamLimit(), equalTo(0));
-                    assertThat(actualConfig.getStreamTimeout(),
-                            greaterThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT - 1200));
-                    assertThat(actualConfig.getStreamTimeout(),
-                            lessThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT));
-                }, 2000, 50, MockitoException.class);
+            assertThat(actualConfig.getBatchLimit(), equalTo(1));
+            assertThat(actualConfig.getBatchTimeout(), equalTo(30));
+            assertThat(actualConfig.getCursors(),
+                    equalTo(ImmutableList.of(new NakadiCursor(timeline, "0", "000000000000000000"))));
+            assertThat(actualConfig.getStreamKeepAliveLimit(), equalTo(0));
+            assertThat(actualConfig.getStreamLimit(), equalTo(0));
+            assertThat(actualConfig.getStreamTimeout(),
+                    greaterThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT - 1200));
+            assertThat(actualConfig.getStreamTimeout(),
+                    lessThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT));
+        }, 2000, 50, MockitoException.class);
     }
 
     @Test
