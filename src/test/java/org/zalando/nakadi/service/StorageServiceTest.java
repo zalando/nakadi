@@ -8,6 +8,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.utils.TestUtils;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -27,7 +28,7 @@ public class StorageServiceTest {
     public void setUp() {
         storageDbRepository = mock(StorageDbRepository.class);
         storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
-                new DefaultStorage(mock(Storage.class)));
+                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class));
     }
 
     @Test

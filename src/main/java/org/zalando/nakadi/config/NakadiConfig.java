@@ -1,5 +1,6 @@
 package org.zalando.nakadi.config;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -67,15 +68,16 @@ public class NakadiConfig {
 
     private String getStorageId(final ZooKeeperHolder zooKeeperHolder,
                                 final Environment environment) {
+        final CuratorFramework curator = zooKeeperHolder.get();
         try {
-            zooKeeperHolder.get().create().creatingParentsIfNeeded()
+            curator.create().creatingParentsIfNeeded()
                     .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE, null);
         } catch (final Exception e) {
             LOGGER.debug("Node {} is already there", StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
         }
 
         try {
-            final byte[] storageIdBytes = zooKeeperHolder.get().getData()
+            final byte[] storageIdBytes = curator.getData()
                     .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
             if (storageIdBytes != null) {
                 return new String(storageIdBytes);
