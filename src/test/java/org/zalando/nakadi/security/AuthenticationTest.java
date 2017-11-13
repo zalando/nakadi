@@ -55,6 +55,7 @@ import javax.servlet.Filter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
@@ -250,7 +251,9 @@ public abstract class AuthenticationTest {
 
         @Bean
         public StorageDbRepository storageDbRepository() {
-            return mock(StorageDbRepository.class);
+            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+            when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
+            return storageDbRepository;
         }
 
     }
