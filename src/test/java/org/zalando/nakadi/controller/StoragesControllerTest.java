@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -28,6 +30,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
@@ -118,6 +121,49 @@ public class StoragesControllerTest {
                 .content(json.toString())
                 .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void testSetDefaultStorageOk() throws Exception {
+        when(storageService.setDefaultStorage("test_storage"))
+                .thenReturn(Result.ok(createKafkaStorage("test_storage")));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
+        mockMvc.perform(put("/storages/default/test_storage")
+                .contentType(APPLICATION_JSON)
+                .principal(mockPrincipal("nakadi")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testSetDefaultStorageNotFound() throws Exception {
+        when(storageService.setDefaultStorage("test_storage"))
+                .thenReturn(Result.problem(Problem.valueOf(NOT_FOUND, "No storage with id test_storage")));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
+        mockMvc.perform(put("/storages/default/test_storage")
+                .contentType(APPLICATION_JSON)
+                .principal(mockPrincipal("nakadi")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testSetDefaultStorageInternalServiceError() throws Exception {
+        when(storageService.setDefaultStorage("test_storage"))
+                .thenReturn(Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
+                        "Error while setting default storage in zk")));
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
+        mockMvc.perform(put("/storages/default/test_storage")
+                .contentType(APPLICATION_JSON)
+                .principal(mockPrincipal("nakadi")))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testSetDefaultStorageAccessDenied() throws Exception {
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
+        mockMvc.perform(put("/storages/default/test_storage")
+                .contentType(APPLICATION_JSON)
+                .principal(mockPrincipal("nakadi")))
+                .andExpect(status().isForbidden());
     }
 
     private List<Storage> createStorageList() {

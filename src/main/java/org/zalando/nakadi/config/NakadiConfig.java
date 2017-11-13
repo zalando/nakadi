@@ -2,6 +2,7 @@ package org.zalando.nakadi.config;
 
 import com.google.common.base.Charsets;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -73,6 +74,8 @@ public class NakadiConfig {
         try {
             curator.create().creatingParentsIfNeeded()
                     .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE, null);
+        } catch (final KeeperException.NodeExistsException e) {
+            LOGGER.trace("Node {} already is there", StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
         } catch (final Exception e) {
             LOGGER.error("Zookeeper access error {}", e.getMessage(), e);
         }
