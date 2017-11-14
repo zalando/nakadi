@@ -2640,16 +2640,20 @@ parameters:
     in: query
     description: |
       Maximum time in seconds a stream will live before connection is closed by the server.
-      If 0 or unspecified will stream indefinitely.
+      If 0 or unspecified will stream for 1h ±10min.
 
       If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
       to the client.
 
       Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+      If the `stream_timeout` is greater than max value (4200 seconds) - Nakadi will treat this as not
+      specifying `stream_timeout` (this is done due to backwards compatibility).
     type: number
     format: int32
     required: false
     default: 0
+    minimum: 0
+    maximum: 4200
 
   SubscriptionId:
     name: subscription_id
