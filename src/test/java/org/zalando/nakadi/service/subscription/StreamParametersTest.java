@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.subscription;
 
-import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -17,12 +16,12 @@ import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
 public class StreamParametersTest {
 
     @Test(expected = UnprocessableEntityException.class)
-    public void whenBatchLimitLowerOrEqualToZeroTheException() throws Exception{
+    public void whenBatchLimitLowerOrEqualToZeroTheException() throws Exception {
         StreamParameters.of(0, null, 0, null, null, 0, 0, "");
     }
 
     @Test
-    public void checkParamsAreTransformedCorrectly() throws Exception{
+    public void checkParamsAreTransformedCorrectly() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, null, 10, 60L, null, 1000, 20, "");
 
         assertThat(streamParameters.batchLimitEvents, equalTo(1));
@@ -33,14 +32,14 @@ public class StreamParametersTest {
     }
 
     @Test
-    public void whenStreamTimeoutOmittedThenItIsGenerated() throws Exception{
+    public void whenStreamTimeoutOmittedThenItIsGenerated() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, null, 0, null, null, 0, 0, "");
 
         checkStreamTimeoutIsGeneratedCorrectly(streamParameters);
     }
 
     @Test
-    public void whenStreamTimeoutIsGreaterThanMaxThenItIsGenerated() throws Exception{
+    public void whenStreamTimeoutIsGreaterThanMaxThenItIsGenerated() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, null, 0,
                 EventStreamConfig.MAX_STREAM_TIMEOUT + 1L, null, 0, 0, "");
 
@@ -48,7 +47,7 @@ public class StreamParametersTest {
     }
 
     @Test
-    public void checkIsStreamLimitReached() throws Exception{
+    public void checkIsStreamLimitReached() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, 150L, 0, null, null, 0, 0, "");
 
         assertThat(streamParameters.isStreamLimitReached(140), is(false));
@@ -57,7 +56,7 @@ public class StreamParametersTest {
     }
 
     @Test
-    public void checkIsKeepAliveLimitReached() throws Exception{
+    public void checkIsKeepAliveLimitReached() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, null, 0, null, 5, 0, 0, "");
 
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 6, 12)), is(true));
@@ -65,7 +64,7 @@ public class StreamParametersTest {
     }
 
     @Test
-    public void checkgetMessagesAllowedToSend() throws Exception{
+    public void checkgetMessagesAllowedToSend() throws Exception {
         final StreamParameters streamParameters = StreamParameters.of(1, 200L, 0, null, null, 0, 0, "");
 
         assertThat(streamParameters.getMessagesAllowedToSend(50, 190), equalTo(10L));
@@ -76,6 +75,6 @@ public class StreamParametersTest {
         assertThat(streamParameters.streamTimeoutMillis, lessThanOrEqualTo(
                 TimeUnit.SECONDS.toMillis((long) EventStreamConfig.MAX_STREAM_TIMEOUT)));
         assertThat(streamParameters.streamTimeoutMillis, greaterThanOrEqualTo(
-                TimeUnit.SECONDS.toMillis((long)EventStreamConfig.MAX_STREAM_TIMEOUT - 1200)));
+                TimeUnit.SECONDS.toMillis((long) EventStreamConfig.MAX_STREAM_TIMEOUT - 1200)));
     }
 }
