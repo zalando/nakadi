@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.9] - 2017-11-14
+
 ### Fixed
 - Fixed displaying of streamId for /stats endpoint
 
