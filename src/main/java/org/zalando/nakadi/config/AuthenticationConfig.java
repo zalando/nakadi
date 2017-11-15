@@ -19,6 +19,7 @@ import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.stups.oauth2.spring.authorization.DefaultUserRolesProvider;
 import org.zalando.stups.oauth2.spring.server.DefaultAuthenticationExtractor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
+import org.zalando.stups.oauth2.spring.server.TokenResponseErrorHandler;
 
 @Configuration
 @Profile("!test")
@@ -91,7 +92,9 @@ public class AuthenticationConfig {
     public RestTemplate restTemplate(final HttpClient httpClient) {
         final HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         requestFactory.setHttpClient(httpClient);
-        return new RestTemplate(requestFactory);
+        final RestTemplate restTemplate = new RestTemplate(requestFactory);
+        restTemplate.setErrorHandler(TokenResponseErrorHandler.getDefault());
+        return restTemplate;
     }
 
 }
