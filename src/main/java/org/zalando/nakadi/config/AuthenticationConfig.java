@@ -69,7 +69,7 @@ public class AuthenticationConfig {
     @Bean
     public RequestConfig requestConfig() {
         final RequestConfig result = RequestConfig.custom()
-                .setConnectionRequestTimeout(500)
+                .setConnectionRequestTimeout(2000)
                 .setConnectTimeout(1000)
                 .setSocketTimeout(2000)
                 .build();
@@ -93,4 +93,5 @@ public class AuthenticationConfig {
         requestFactory.setHttpClient(httpClient);
         return new RestTemplate(requestFactory);
     }
+
 }
