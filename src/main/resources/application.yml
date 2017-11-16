@@ -69,6 +69,7 @@ nakadi:
     mode: BASIC
     adminClientId: adminClientId
     tokenInfoUrl: https://example.com/tokeninfo
+    localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
     clientId: stups_aruha-event-store-poc
     realms: '/arealm, /anotherone'
     scopes:
@@ -92,6 +93,12 @@ nakadi:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
     consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
+  http.pool.connection:
+      max.total: 20
+      max.per.route: 10
+      request.timeout: 2000
+      connect.timeout: 1000
+      socket.timeout: 2000
   timelines.storage.default: "default"
 
 twintip:
