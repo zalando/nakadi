@@ -70,6 +70,8 @@ import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -205,19 +207,21 @@ public class EventStreamControllerTest {
                         .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"000000000000000000\"}]"))
                 .andExpect(status().isOk());
 
-        final EventStreamConfig expectedConfig = EventStreamConfig
-                .builder()
-                .withBatchLimit(1)
-                .withBatchTimeout(30)
-                .withCursors(ImmutableList.of(
-                        new NakadiCursor(timeline, "0", "000000000000000000")))
-                .withStreamKeepAliveLimit(0)
-                .withStreamLimit(0)
-                .withStreamTimeout(0)
-                .build();
         // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
-        TestUtils.waitFor(
-                () -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)), 2000, 50, MockitoException.class);
+        TestUtils.waitFor(() -> {
+            final EventStreamConfig actualConfig = configCaptor.getValue();
+
+            assertThat(actualConfig.getBatchLimit(), equalTo(1));
+            assertThat(actualConfig.getBatchTimeout(), equalTo(30));
+            assertThat(actualConfig.getCursors(),
+                    equalTo(ImmutableList.of(new NakadiCursor(timeline, "0", "000000000000000000"))));
+            assertThat(actualConfig.getStreamKeepAliveLimit(), equalTo(0));
+            assertThat(actualConfig.getStreamLimit(), equalTo(0));
+            assertThat(actualConfig.getStreamTimeout(),
+                    greaterThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT - 1200));
+            assertThat(actualConfig.getStreamTimeout(),
+                    lessThanOrEqualTo(EventStreamConfig.MAX_STREAM_TIMEOUT));
+        }, 2000, 50, MockitoException.class);
     }
 
     @Test
