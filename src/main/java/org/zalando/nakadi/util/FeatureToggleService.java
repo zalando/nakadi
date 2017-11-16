@@ -36,7 +36,8 @@ public interface FeatureToggleService {
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application"),
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),
-        SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream");
+        SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream"),
+        REMOTE_TOKENINFO("remote_tokeninfo");
 
         private final String id;
 

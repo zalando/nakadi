@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.web.client.RestTemplate;
 import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.stups.oauth2.spring.authorization.DefaultUserRolesProvider;
 import org.zalando.stups.oauth2.spring.server.DefaultAuthenticationExtractor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
@@ -28,9 +29,17 @@ public class AuthenticationConfig {
     @Bean
     public ResourceServerTokenServices zalandoResourceTokenServices(final SecuritySettings settings,
                                                                     final MetricRegistry metricRegistry,
-                                                                    final RestTemplate restTemplate) {
+                                                                    final RestTemplate restTemplate,
+                                                                    final FeatureToggleService featureToggleService) {
+        final String tokenInfoUrl;
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.REMOTE_TOKENINFO)) {
+            tokenInfoUrl = settings.getTokenInfoUrl();
+        } else {
+            tokenInfoUrl = settings.getLocalTokenInfoUrl();
+        }
+
         return new MeasuringTokenInfoResourceServerTokenServices(
-                settings.getTokenInfoUrl(), settings.getClientId(), metricRegistry, restTemplate);
+                tokenInfoUrl, settings.getClientId(), metricRegistry, restTemplate);
     }
 
     public static class MeasuringTokenInfoResourceServerTokenServices extends TokenInfoResourceServerTokenServices {
