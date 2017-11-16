@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [2.3.0] - 2017-11-14
+## [2.3.0] - 2017-11-16
 
 ### Added
 - Switch from local token info service to remote one
