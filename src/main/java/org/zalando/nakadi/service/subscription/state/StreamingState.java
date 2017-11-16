@@ -83,13 +83,12 @@ class StreamingState extends State {
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() -> {
-                            final String debugMessage = "Stream timeout reached";
-                            this.sendMetadata(debugMessage);
-                            this.shutdownGracefully(debugMessage);
-                        }, timeout,
-                        TimeUnit.MILLISECONDS));
+        scheduleTask(() -> {
+                    final String debugMessage = "Stream timeout reached";
+                    this.sendMetadata(debugMessage);
+                    this.shutdownGracefully(debugMessage);
+                }, getParameters().streamTimeoutMillis,
+                TimeUnit.MILLISECONDS);
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
