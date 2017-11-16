@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.3.0] - 2017-11-14
+
 ### Added
+- Switch from local token info service to remote one
 - Change default storage via env var or at runtime 
 
 ### Changed
