@@ -7,6 +7,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -37,19 +38,24 @@ public class AuthenticationConfig {
     }
 
     @Bean
-    public PoolingHttpClientConnectionManager poolingHttpClientConnectionManager() {
+    public PoolingHttpClientConnectionManager poolingHttpClientConnectionManager(
+            @Value("${nakadi.http.pool.connection.max.total}") final int maxTotal,
+            @Value("${nakadi.http.pool.connection.max.per.route}") final int maxPerRoute) {
         final PoolingHttpClientConnectionManager result = new PoolingHttpClientConnectionManager();
-        result.setMaxTotal(20);
-        result.setDefaultMaxPerRoute(10);
+        result.setMaxTotal(maxTotal);
+        result.setDefaultMaxPerRoute(maxPerRoute);
         return result;
     }
 
     @Bean
-    public RequestConfig requestConfig() {
+    public RequestConfig requestConfig(
+            @Value("${nakadi.http.pool.connection.request.timeout}") final int requestTimeout,
+            @Value("${nakadi.http.pool.connection.connect.timeout}") final int connectTimeout,
+            @Value("${nakadi.http.pool.connection.socket.timeout}") final int socketTimeout) {
         final RequestConfig result = RequestConfig.custom()
-                .setConnectionRequestTimeout(2000)
-                .setConnectTimeout(1000)
-                .setSocketTimeout(2000)
+                .setConnectionRequestTimeout(requestTimeout)
+                .setConnectTimeout(connectTimeout)
+                .setSocketTimeout(socketTimeout)
                 .build();
         return result;
     }
