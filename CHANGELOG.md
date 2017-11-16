@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Change default storage via env var or at runtime 
+
 ### Changed
 - Limited stream_timeout for consumption to 1h ± 10min
 

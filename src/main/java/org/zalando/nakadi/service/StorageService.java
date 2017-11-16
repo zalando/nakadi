@@ -1,21 +1,28 @@
 package org.zalando.nakadi.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.CuratorWatcher;
+import org.apache.curator.shaded.com.google.common.base.Charsets;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.problem.Problem;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -28,16 +35,40 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 @Service
 public class StorageService {
 
+    public static final String ZK_TIMELINES_DEFAULT_STORAGE = "/nakadi/timelines/default_storage";
     private static final Logger LOG = LoggerFactory.getLogger(StorageService.class);
-
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
+    private final DefaultStorage defaultStorage;
+    private final CuratorFramework curator;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
-                          final StorageDbRepository storageDbRepository) {
+                          final StorageDbRepository storageDbRepository,
+                          @Qualifier("default_storage") final DefaultStorage defaultStorage,
+                          final ZooKeeperHolder zooKeeperHolder) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
+        this.defaultStorage = defaultStorage;
+        this.curator = zooKeeperHolder.get();
+    }
+
+    @PostConstruct
+    private void watchDefaultStorage() {
+        try {
+            curator.getData().usingWatcher((CuratorWatcher) event -> {
+                final byte[] defaultStorageId = curator.getData().forPath(ZK_TIMELINES_DEFAULT_STORAGE);
+                if (defaultStorageId != null) {
+                    final Result<Storage> storageResult = getStorage(new String(defaultStorageId));
+                    if (storageResult.isSuccessful()) {
+                        defaultStorage.setStorage(storageResult.getValue());
+                    }
+                }
+                watchDefaultStorage();
+            }).forPath(ZK_TIMELINES_DEFAULT_STORAGE);
+        } catch (final Exception e) {
+            LOG.warn("Error while creating watcher for default storage updates {}", e.getMessage(), e);
+        }
     }
 
     public Result<List<Storage>> listStorages() {
@@ -100,8 +131,7 @@ public class StorageService {
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when creating storage", e);
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
-        }
-        catch (final DuplicatedStorageException e) {
+        } catch (final DuplicatedStorageException e) {
             return Result.problem(Problem.valueOf(CONFLICT, e.getMessage()));
         }
         return Result.ok();
@@ -125,4 +155,17 @@ public class StorageService {
         return Result.ok();
     }
 
+    public Result<Storage> setDefaultStorage(final String defaultStorageId) {
+        final Result<Storage> storageResult = getStorage(defaultStorageId);
+        if (storageResult.isSuccessful()) {
+            try {
+                curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
+            } catch (final Exception e) {
+                LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
+                return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
+                        "Error while setting default storage in zk"));
+            }
+        }
+        return storageResult;
+    }
 }

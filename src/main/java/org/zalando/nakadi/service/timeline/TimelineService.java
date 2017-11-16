@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
@@ -63,7 +64,7 @@ public class TimelineService {
     private final TimelineDbRepository timelineDbRepository;
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
-    private final Storage defaultStorage;
+    private final DefaultStorage defaultStorage;
     private final AdminService adminService;
 
     @Autowired
@@ -74,7 +75,7 @@ public class TimelineService {
                            final TimelineDbRepository timelineDbRepository,
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
-                           @Qualifier("default_storage") final Storage defaultStorage,
+                           @Qualifier("default_storage") final DefaultStorage defaultStorage,
                            final AdminService adminService) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -128,11 +129,12 @@ public class TimelineService {
             RepositoryProblemException,
             DuplicatedTimelineException,
             TimelineException {
-        final TopicRepository repository = topicRepositoryHolder.getTopicRepository(defaultStorage);
+        final TopicRepository repository = topicRepositoryHolder.getTopicRepository(defaultStorage.getStorage());
         final String topic = repository.createTopic(partitionsCount, retentionTime);
 
         try {
-            final Timeline timeline = Timeline.createTimeline(eventTypeName, 1, defaultStorage, topic, new Date());
+            final Timeline timeline = Timeline.createTimeline(eventTypeName, 1,
+                    defaultStorage.getStorage(), topic, new Date());
             timeline.setSwitchedAt(new Date());
             timelineDbRepository.createTimeline(timeline);
             eventTypeCache.updated(eventTypeName);

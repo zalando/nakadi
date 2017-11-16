@@ -92,6 +92,7 @@ nakadi:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
     consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
+  timelines.storage.default: "default"
 
 twintip:
   mapping: /api
