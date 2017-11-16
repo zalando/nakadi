@@ -7,34 +7,21 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.stups.oauth2.spring.authorization.DefaultUserRolesProvider;
 import org.zalando.stups.oauth2.spring.server.DefaultAuthenticationExtractor;
-import org.zalando.stups.oauth2.spring.server.TokenInfoRequestExecutor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
 import org.zalando.stups.oauth2.spring.server.TokenResponseErrorHandler;
-
-import java.net.URI;
-import java.util.Map;
-
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-import static org.springframework.security.oauth2.common.OAuth2AccessToken.BEARER_TYPE;
 
 @Configuration
 @Profile("!test")
@@ -45,9 +32,8 @@ public class AuthenticationConfig {
                                                                     final MetricRegistry metricRegistry,
                                                                     final RestTemplate restTemplate,
                                                                     final FeatureToggleService featureToggleService) {
-        final SplitTokenInfoExecutor executor =
-                new SplitTokenInfoExecutor(featureToggleService, settings, restTemplate);
-        return new MeasuringTokenInfoResourceServerTokenServices(settings.getClientId(), metricRegistry, executor);
+        return new MeasureAndDispatchResourceServerTokenServices(
+                metricRegistry, settings, restTemplate, featureToggleService);
     }
 
     @Bean
@@ -88,76 +74,55 @@ public class AuthenticationConfig {
         return restTemplate;
     }
 
-    public static class MeasuringTokenInfoResourceServerTokenServices extends TokenInfoResourceServerTokenServices {
-        private final Timer timer;
+    public static class MeasureAndDispatchResourceServerTokenServices implements ResourceServerTokenServices {
 
-        public MeasuringTokenInfoResourceServerTokenServices(final String clientId,
-                                                             final MetricRegistry metricRegistry,
-                                                             final SplitTokenInfoExecutor splitTokenInfoExecutor) {
-            super(clientId,
+        private final Timer timer;
+        private final TokenInfoResourceServerTokenServices remoteService;
+        private final TokenInfoResourceServerTokenServices localService;
+        private final FeatureToggleService featureToggleService;
+
+        public MeasureAndDispatchResourceServerTokenServices(final MetricRegistry metricRegistry,
+                                                             final SecuritySettings securitySettings,
+                                                             final RestTemplate restTemplate,
+                                                             final FeatureToggleService featureToggleService) {
+            remoteService = new TokenInfoResourceServerTokenServices(
+                    securitySettings.getTokenInfoUrl(),
+                    securitySettings.getClientId(),
                     new DefaultAuthenticationExtractor(),
                     new DefaultUserRolesProvider(),
-                    splitTokenInfoExecutor);
+                    restTemplate);
+            localService = new TokenInfoResourceServerTokenServices(
+                    securitySettings.getTokenInfoUrl(),
+                    securitySettings.getClientId(),
+                    new DefaultAuthenticationExtractor(),
+                    new DefaultUserRolesProvider(),
+                    restTemplate);
             timer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.accessTokenValidation");
+            this.featureToggleService = featureToggleService;
         }
 
         @Override
         public OAuth2Authentication loadAuthentication(final String accessToken) throws AuthenticationException {
             final Timer.Context context = timer.time();
             try {
-                return super.loadAuthentication(accessToken);
+                if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.REMOTE_TOKENINFO)) {
+                    return remoteService.loadAuthentication(accessToken);
+                } else {
+                    return localService.loadAuthentication(accessToken);
+                }
             } finally {
                 context.stop();
             }
         }
-    }
-
-    @Component
-    private static class SplitTokenInfoExecutor implements TokenInfoRequestExecutor {
-
-        private static final Logger LOG = LoggerFactory.getLogger(SplitTokenInfoExecutor.class);
-        private static final String SPACE = " ";
-        private static final ParameterizedTypeReference<Map<String, Object>> TOKENINFO_MAP =
-                new ParameterizedTypeReference<Map<String, Object>>() { };
-
-        private final FeatureToggleService featureToggleService;
-        private final RestTemplate restTemplate;
-        private final URI remoteTokenInfoEndpointUri;
-        private final URI localTokenInfoEndpointUri;
-
-        @Autowired
-        public SplitTokenInfoExecutor(final FeatureToggleService featureToggleService,
-                                      final SecuritySettings settings,
-                                      final RestTemplate restTemplate) {
-            this.featureToggleService = featureToggleService;
-            this.restTemplate = restTemplate;
-            this.remoteTokenInfoEndpointUri = URI.create(settings.getTokenInfoUrl());
-            this.localTokenInfoEndpointUri = URI.create(settings.getLocalTokenInfoUrl());
-        }
 
         @Override
-        public Map<String, Object> getMap(final String accessToken) {
-            return doGetMap(accessToken);
-        }
-
-        protected Map<String, Object> doGetMap(final String accessToken) {
+        public OAuth2AccessToken readAccessToken(final String accessToken) {
             if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.REMOTE_TOKENINFO)) {
-                return call(remoteTokenInfoEndpointUri, accessToken);
+                return remoteService.readAccessToken(accessToken);
             } else {
-                return call(localTokenInfoEndpointUri, accessToken);
+                return localService.readAccessToken(accessToken);
             }
         }
-
-        private Map<String, Object> call(final URI tokenInfoEndpointUri, final String accessToken) {
-            LOG.debug("Getting token-info from: {}", tokenInfoEndpointUri.toString());
-            final RequestEntity<Void> entity = buildRequestEntity(tokenInfoEndpointUri, accessToken);
-            return restTemplate.exchange(entity, TOKENINFO_MAP).getBody();
-        }
-
-        public static RequestEntity<Void> buildRequestEntity(final URI tokenInfoEndpointUri, final String accessToken) {
-            return RequestEntity.get(tokenInfoEndpointUri).accept(MediaType.APPLICATION_JSON)
-                    .header(AUTHORIZATION, BEARER_TYPE + SPACE + accessToken).build();
-        }
-
     }
+
 }
