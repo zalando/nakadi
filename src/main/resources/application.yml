@@ -99,6 +99,7 @@ nakadi:
       request.timeout: 2000
       connect.timeout: 1000
       socket.timeout: 2000
+  timelines.storage.default: "default"
 
 twintip:
   mapping: /api

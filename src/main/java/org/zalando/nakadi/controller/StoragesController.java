@@ -88,4 +88,16 @@ public class StoragesController {
         }
         return Responses.create(result.getProblem(), request);
     }
+
+    @RequestMapping(value = "/storages/default/{id}", method = RequestMethod.PUT)
+    public ResponseEntity<?> setDefaultStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+            return status(FORBIDDEN).build();
+        }
+        final Result<Storage> result = storageService.setDefaultStorage(id);
+        if (result.isSuccessful()) {
+            return status(OK).body(result.getValue());
+        }
+        return Responses.create(result.getProblem(), request);
+    }
 }

@@ -6,15 +6,18 @@ import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.List;
+import java.util.Random;
 
 @Immutable
 public class EventStreamConfig {
 
+    public static final int MAX_STREAM_TIMEOUT = 3600 + 600; // 1h 10m
+
     private static final int BATCH_LIMIT_DEFAULT = 1;
     private static final int STREAM_LIMIT_DEFAULT = 0;
     private static final int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
-    private static final int STREAM_TIMEOUT_DEFAULT = 0;
     private static final int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
+    private static final Random RANDOM = new Random();
 
     private final List<NakadiCursor> cursors;
     private final int batchLimit;
@@ -108,13 +111,17 @@ public class EventStreamConfig {
         return new Builder();
     }
 
+    public static int generateDefaultStreamTimeout() {
+        return 3600 + RANDOM.nextInt(1200) - 600; // 1h ± 10min
+    }
+
     public static class Builder {
 
         private List<NakadiCursor> cursors = null;
         private int batchLimit = BATCH_LIMIT_DEFAULT;
         private int streamLimit = STREAM_LIMIT_DEFAULT;
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
-        private int streamTimeout = STREAM_TIMEOUT_DEFAULT;
+        private int streamTimeout = generateDefaultStreamTimeout();
         private int streamKeepAliveLimit = STREAM_KEEP_ALIVE_LIMIT_DEFAULT;
         private String etName;
         private String consumingAppId;
@@ -150,7 +157,7 @@ public class EventStreamConfig {
         }
 
         public Builder withStreamTimeout(@Nullable final Integer streamTimeout) {
-            if (streamTimeout != null) {
+            if (streamTimeout != null && streamTimeout <= MAX_STREAM_TIMEOUT && streamTimeout > 0) {
                 this.streamTimeout = streamTimeout;
             }
             return this;
