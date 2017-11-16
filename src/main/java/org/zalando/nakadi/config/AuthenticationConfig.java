@@ -92,7 +92,7 @@ public class AuthenticationConfig {
                     new DefaultUserRolesProvider(),
                     restTemplate);
             localService = new TokenInfoResourceServerTokenServices(
-                    securitySettings.getTokenInfoUrl(),
+                    securitySettings.getLocalTokenInfoUrl(),
                     securitySettings.getClientId(),
                     new DefaultAuthenticationExtractor(),
                     new DefaultUserRolesProvider(),
