@@ -3,8 +3,10 @@ package org.zalando.nakadi.filters;
 import com.google.common.net.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.service.kpi.NakadiAccessLogPublisher;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -18,6 +20,13 @@ import java.util.Optional;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
+
+    private final NakadiAccessLogPublisher publisher;
+
+    @Autowired
+    public LoggingFilter(final NakadiAccessLogPublisher publisher) {
+        this.publisher = publisher;
+    }
 
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
@@ -50,6 +59,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                     timing,
                     contentEncoding,
                     acceptEncoding);
+
+            publisher.publish(method,path, query,user, response.getStatus(), timing);
         }
     }
 }
