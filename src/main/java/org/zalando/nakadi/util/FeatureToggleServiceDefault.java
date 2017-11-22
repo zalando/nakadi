@@ -12,8 +12,7 @@ import java.util.Set;
 public class FeatureToggleServiceDefault implements FeatureToggleService {
     private static final Set<Feature> DEPRECATED_FEATURES = ImmutableSet.of(
             Feature.DISABLE_EVENT_TYPE_CREATION,
-            Feature.DISABLE_SUBSCRIPTION_CREATION,
-            Feature.KPI_COLLECTION
+            Feature.DISABLE_SUBSCRIPTION_CREATION
     );
 
     @Override

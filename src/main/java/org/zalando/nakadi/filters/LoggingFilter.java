@@ -1,6 +1,7 @@
 package org.zalando.nakadi.filters;
 
 import com.google.common.net.HttpHeaders;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,13 @@ public class LoggingFilter extends OncePerRequestFilter {
                     contentEncoding,
                     acceptEncoding);
 
-            publisher.publish(method,path, query,user, response.getStatus(), timing);
+            publisher.publishAccessLog(() -> new JSONObject()
+                    .put("method", method)
+                    .put("path", path)
+                    .put("query", query)
+                    .put("app", user)
+                    .put("status_code", response.getStatus())
+                    .put("response_time_ms", timing));
         }
     }
 }

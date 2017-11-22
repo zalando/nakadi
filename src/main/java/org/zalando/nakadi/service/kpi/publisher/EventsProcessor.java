@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.kpi;
+package org.zalando.nakadi.service.kpi.publisher;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -21,9 +21,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public final class NakadiPublisher {
+public final class EventsProcessor {
 
-    private final static Logger LOG = LoggerFactory.getLogger(NakadiPublisher.class);
+    private final static Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
     private final EventPublisher eventPublisher;
     private final Map<String, BlockingQueue<JSONObject>> eventTypeEvents;
     private final ExecutorService executorService;
@@ -34,18 +34,16 @@ public final class NakadiPublisher {
     private final int batchSize;
     private final long pollTimeout;
     private final int eventsQueueSize;
-    private final long scheduleTimeout;
 
     @Autowired
-    public NakadiPublisher(final EventPublisher eventPublisher,
+    public EventsProcessor(final EventPublisher eventPublisher,
                            final UUIDGenerator uuidGenerator,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.kpi.batch-collection-timeout:1000}") final long batchCollectionTimeout,
                            @Value("${nakadi.kpi.batch-size:3}") final int batchSize,
                            @Value("${nakadi.kpi.workers:1}") final int workers,
                            @Value("${nakadi.kpi.poll-timeout:100}") final long pollTimeout,
-                           @Value("${nakadi.kpi.events-queue-size:100}") final int eventsQueueSize,
-                           @Value("${nakadi.kpi.schedule-timeout:5000}") final long scheduleTimeout) {
+                           @Value("${nakadi.kpi.events-queue-size:100}") final int eventsQueueSize) {
         this.eventPublisher = eventPublisher;
         this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
@@ -53,31 +51,18 @@ public final class NakadiPublisher {
         this.batchSize = batchSize;
         this.pollTimeout = pollTimeout;
         this.eventsQueueSize = eventsQueueSize;
-        this.scheduleTimeout = scheduleTimeout;
         this.eventTypeEvents = new ConcurrentHashMap<>();
         this.executorService = Executors.newFixedThreadPool(workers);
-        this.executorService.submit(() -> scheduleEventsBatchesSend());
-    }
-
-    private void scheduleEventsBatchesSend() {
-        LOG.trace("Schedule events collection on {}", Thread.currentThread().getName());
-        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.KPI_COLLECTION)) {
-            for (final String etName : eventTypeEvents.keySet()) {
-                executorService.submit(() -> sendEventBatch(etName));
-            }
-        }
-        try {
-            Thread.sleep(scheduleTimeout);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        executorService.submit(() -> scheduleEventsBatchesSend());
     }
 
     private void sendEventBatch(final String etName) {
         LOG.trace("Collecting batch for {} on {}", etName, Thread.currentThread().getName());
         try {
             final BlockingQueue<JSONObject> events = eventTypeEvents.get(etName);
+            if (events == null) {
+                return;
+            }
+
             final long finishAt = System.currentTimeMillis() + batchCollectionTimeout;
             int eventsCount = 0;
             JSONArray jsonArray = null;
@@ -112,13 +97,20 @@ public final class NakadiPublisher {
         }
     }
 
-    public final void enrichAndSubmit(final JSONObject event, final String etName) {
+    final void enrichAndSubmit(final JSONObject event, final String etName) {
         final JSONObject metadata = new JSONObject()
                 .put("occurred_at", Instant.now())
                 .put("eid", uuidGenerator.randomUUID());
         event.put("metadata", metadata);
+
         final BlockingQueue<JSONObject> events =
-                eventTypeEvents.computeIfAbsent(etName, etn -> new ArrayBlockingQueue<>(eventsQueueSize));
+                eventTypeEvents.computeIfAbsent(etName, etn ->
+                {
+                    LOG.trace("Schedule events collection");
+                    executorService.submit(() -> sendEventBatch(etName));
+                    return new ArrayBlockingQueue<>(eventsQueueSize);
+                });
+
         if (!events.offer(event)) {
             LOG.warn("Rejecting events to be queued for {} due to queue overload", etName);
         }
