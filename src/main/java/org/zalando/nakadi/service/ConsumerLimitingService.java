@@ -57,7 +57,6 @@ public class ConsumerLimitingService {
         this.maxConnections = maxConnections;
     }
 
-    @SuppressWarnings("unchecked")
     public List<ConnectionSlot> acquireConnectionSlots(final String client, final String eventType,
                                                        final List<String> partitions)
             throws NoConnectionSlotsException, ServiceUnavailableException {
@@ -140,10 +139,13 @@ public class ConsumerLimitingService {
     }
 
     private void deleteCacheIfPossible(final ConnectionSlot slot) throws IOException {
-        final boolean hasMoreConnectionsToPartition = ACQUIRED_SLOTS.stream()
-                .anyMatch(s -> s.getPartition().equals(slot.getPartition())
-                        && s.getClient().equals(slot.getClient())
-                        && s.getEventType().equals(slot.getEventType()));
+        final boolean hasMoreConnectionsToPartition;
+        synchronized (ACQUIRED_SLOTS) {
+            hasMoreConnectionsToPartition = ACQUIRED_SLOTS.stream()
+                    .anyMatch(s -> s.getPartition().equals(slot.getPartition())
+                            && s.getClient().equals(slot.getClient())
+                            && s.getEventType().equals(slot.getEventType()));
+        }
         if (!hasMoreConnectionsToPartition) {
             final String consumerPath = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
             final PathChildrenCache cache = SLOTS_CACHES.remove(consumerPath);
