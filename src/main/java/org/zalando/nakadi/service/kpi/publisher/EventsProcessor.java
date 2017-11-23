@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public final class EventsProcessor {
 
-    private final static Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
     private final EventPublisher eventPublisher;
     private final Map<String, BlockingQueue<JSONObject>> eventTypeEvents;
     private final ExecutorService executorService;
@@ -97,15 +97,14 @@ public final class EventsProcessor {
         }
     }
 
-    final void enrichAndSubmit(final JSONObject event, final String etName) {
+    void enrichAndSubmit(final JSONObject event, final String etName) {
         final JSONObject metadata = new JSONObject()
                 .put("occurred_at", Instant.now())
                 .put("eid", uuidGenerator.randomUUID());
         event.put("metadata", metadata);
 
         final BlockingQueue<JSONObject> events =
-                eventTypeEvents.computeIfAbsent(etName, etn ->
-                {
+                eventTypeEvents.computeIfAbsent(etName, etn -> {
                     LOG.trace("Schedule events collection");
                     executorService.submit(() -> sendEventBatch(etName));
                     return new ArrayBlockingQueue<>(eventsQueueSize);
