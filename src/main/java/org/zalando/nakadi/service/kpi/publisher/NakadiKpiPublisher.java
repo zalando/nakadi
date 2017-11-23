@@ -20,12 +20,12 @@ public class NakadiKpiPublisher {
         this.eventsProcessor = eventsProcessor;
     }
 
-    public void publish(final String etName, final Supplier<JSONObject> data) {
+    public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
         if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.KPI_COLLECTION)) {
             return;
         }
 
-        final JSONObject event = data.get();
+        final JSONObject event = eventSupplier.get();
         eventsProcessor.enrichAndSubmit(event, etName);
     }
 

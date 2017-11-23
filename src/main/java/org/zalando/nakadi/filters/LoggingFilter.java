@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.zalando.nakadi.service.kpi.NakadiAccessLogPublisher;
+import org.zalando.nakadi.service.kpi.NakadiPublishingController;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -22,11 +22,11 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
 
-    private final NakadiAccessLogPublisher publisher;
+    private final NakadiPublishingController publishingController;
 
     @Autowired
-    public LoggingFilter(final NakadiAccessLogPublisher publisher) {
-        this.publisher = publisher;
+    public LoggingFilter(final NakadiPublishingController publishingController) {
+        this.publishingController = publishingController;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     contentEncoding,
                     acceptEncoding);
 
-            publisher.publishAccessLog(() -> new JSONObject()
+            publishingController.publishAccessLog(() -> new JSONObject()
                     .put("method", method)
                     .put("path", path)
                     .put("query", query)

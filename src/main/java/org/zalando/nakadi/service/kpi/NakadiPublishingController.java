@@ -9,21 +9,21 @@ import org.zalando.nakadi.service.kpi.publisher.NakadiKpiPublisher;
 import java.util.function.Supplier;
 
 @Service
-public class NakadiAccessLogPublisher {
+public class NakadiPublishingController {
 
     private final NakadiKpiPublisher nakadiKpiPublisher;
-    private final String nakadiAccessLogEventType;
+    private final String accessLogEventType;
 
     @Autowired
-    public NakadiAccessLogPublisher(
+    public NakadiPublishingController(
             final NakadiKpiPublisher nakadiKpiPublisher,
-            @Value("${nakadi.kpi.event-types.nakadi.access.log:nakadi.access.log}") final String etName) {
+            @Value("${nakadi.kpi.event-types.nakadiAccessLog:nakadi.access.log}") final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
-        this.nakadiAccessLogEventType = etName;
+        this.accessLogEventType = accessLogEventType;
     }
 
-    public void publishAccessLog(final Supplier<JSONObject> data) {
-        nakadiKpiPublisher.publish(nakadiAccessLogEventType, data);
+    public void publishAccessLog(final Supplier<JSONObject> eventSupplier) {
+        nakadiKpiPublisher.publish(accessLogEventType, eventSupplier);
     }
 
 }
