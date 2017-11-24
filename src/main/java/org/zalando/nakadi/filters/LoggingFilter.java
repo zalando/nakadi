@@ -5,9 +5,10 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.zalando.nakadi.service.kpi.NakadiPublishingController;
+import org.zalando.nakadi.service.kpi.publisher.NakadiKpiPublisher;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -21,12 +22,14 @@ import java.util.Optional;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
-
-    private final NakadiPublishingController publishingController;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String accessLogEventType;
 
     @Autowired
-    public LoggingFilter(final NakadiPublishingController publishingController) {
-        this.publishingController = publishingController;
+    public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
+                         @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.accessLogEventType = accessLogEventType;
     }
 
     @Override
@@ -61,7 +64,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     contentEncoding,
                     acceptEncoding);
 
-            publishingController.publishAccessLog(() -> new JSONObject()
+            nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                     .put("method", method)
                     .put("path", path)
                     .put("query", query)

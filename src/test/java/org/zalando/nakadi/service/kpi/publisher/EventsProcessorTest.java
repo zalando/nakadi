@@ -27,7 +27,7 @@ public class EventsProcessorTest {
             try {
                 Mockito.verify(eventPublisher).publish(Mockito.any(), Mockito.any(), Mockito.any());
             } catch (final Exception e) {
-                e.printStackTrace();
+                throw new AssertionError(e);
             }
         }, 500);
     }
