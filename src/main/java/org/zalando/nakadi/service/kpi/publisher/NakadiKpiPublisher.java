@@ -26,7 +26,7 @@ public class NakadiKpiPublisher {
         }
 
         final JSONObject event = eventSupplier.get();
-        eventsProcessor.enrichAndSubmit(event, etName);
+        eventsProcessor.enrichAndSubmit(etName, event);
     }
 
 }

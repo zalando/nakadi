@@ -17,7 +17,7 @@ public class NakadiPublishingController {
     @Autowired
     public NakadiPublishingController(
             final NakadiKpiPublisher nakadiKpiPublisher,
-            @Value("${nakadi.kpi.event-types.nakadiAccessLog:nakadi.access.log}") final String accessLogEventType) {
+            @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
     }

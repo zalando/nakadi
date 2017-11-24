@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public final class EventsProcessor {
+public class EventsProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
     private final EventPublisher eventPublisher;
@@ -39,11 +39,11 @@ public final class EventsProcessor {
     public EventsProcessor(final EventPublisher eventPublisher,
                            final UUIDGenerator uuidGenerator,
                            final FeatureToggleService featureToggleService,
-                           @Value("${nakadi.kpi.batch-collection-timeout:1000}") final long batchCollectionTimeout,
-                           @Value("${nakadi.kpi.batch-size:3}") final int batchSize,
-                           @Value("${nakadi.kpi.workers:1}") final int workers,
-                           @Value("${nakadi.kpi.poll-timeout:100}") final long pollTimeout,
-                           @Value("${nakadi.kpi.events-queue-size:100}") final int eventsQueueSize) {
+                           @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
+                           @Value("${nakadi.kpi.config.batch-size}") final int batchSize,
+                           @Value("${nakadi.kpi.config.workers}") final int workers,
+                           @Value("${nakadi.kpi.config.poll-timeout}") final long pollTimeout,
+                           @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
         this.eventPublisher = eventPublisher;
         this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
@@ -97,7 +97,7 @@ public final class EventsProcessor {
         }
     }
 
-    void enrichAndSubmit(final JSONObject event, final String etName) {
+    void enrichAndSubmit(final String etName, final JSONObject event) {
         final JSONObject metadata = new JSONObject()
                 .put("occurred_at", Instant.now())
                 .put("eid", uuidGenerator.randomUUID());

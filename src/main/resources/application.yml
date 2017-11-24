@@ -100,6 +100,15 @@ nakadi:
       connect.timeout: 1000
       socket.timeout: 2000
   timelines.storage.default: "default"
+  kpi:
+    config:
+      batch-collection-timeout: 1000
+      batch-size: 100
+      workers: 1
+      poll-timeout: 100
+      events-queue-size: 100
+    event-types:
+      nakadiAccessLog: "nakadi.access.log"
 
 twintip:
   mapping: /api
