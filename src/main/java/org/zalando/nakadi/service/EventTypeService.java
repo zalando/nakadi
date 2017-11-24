@@ -122,11 +122,17 @@ public class EventTypeService {
         partitionResolver.validate(eventType);
         authorizationValidator.validateAuthorization(eventType.getAuthorization());
 
+        Integer partitions = eventType.getPartitionsNumber();
+        if (partitions == null) {
+            partitions = partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic());
+            eventType.setPartitionsNumber(partitions);
+        }
+
         eventTypeRepository.saveEventType(eventType);
 
         try {
             timelineService.createDefaultTimeline(eventType.getName(),
-                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
+                    partitions,
                     eventType.getOptions().getRetentionTime());
         } catch (final Exception e) {
             try {

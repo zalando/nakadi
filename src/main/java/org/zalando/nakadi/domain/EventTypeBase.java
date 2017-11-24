@@ -49,6 +49,10 @@ public class EventTypeBase {
     private EventTypeStatistics defaultStatistic;
 
     @Valid
+    @Nullable
+    private Integer partitionsNumber;
+
+    @Valid
     private EventTypeOptions options;
 
     @Valid
@@ -71,6 +75,7 @@ public class EventTypeBase {
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
                      final EventTypeStatistics defaultStatistic,
+                     final Integer partitionsNumber,
                      final EventTypeOptions options,
                      final CompatibilityMode compatibilityMode) {
         this.name = name;
@@ -82,6 +87,7 @@ public class EventTypeBase {
         this.partitionKeyFields = partitionKeyFields;
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
+        this.partitionsNumber = partitionsNumber;
         this.options = options;
         this.compatibilityMode = compatibilityMode;
     }
@@ -96,6 +102,7 @@ public class EventTypeBase {
         this.setPartitionKeyFields(eventType.getPartitionKeyFields());
         this.setSchema(eventType.getSchema());
         this.setDefaultStatistic(eventType.getDefaultStatistic());
+        this.setPartitionsNumber(eventType.getPartitionsNumber());
         this.setOptions(eventType.getOptions());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
@@ -151,6 +158,14 @@ public class EventTypeBase {
 
     public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
         this.defaultStatistic = defaultStatistic;
+    }
+
+    public Integer getPartitionsNumber() {
+        return partitionsNumber;
+    }
+
+    public void setPartitionsNumber(final Integer partitionsNumber) {
+        this.partitionsNumber = partitionsNumber;
     }
 
     public List<String> getPartitionKeyFields() {

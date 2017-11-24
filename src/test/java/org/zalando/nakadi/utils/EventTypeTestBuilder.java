@@ -34,6 +34,7 @@ public class EventTypeTestBuilder {
     private List<String> partitionKeyFields;
     private EventTypeSchema schema;
     private EventTypeStatistics defaultStatistic;
+    private Integer numberPartitions;
     private EventTypeOptions options;
     private CompatibilityMode compatibilityMode;
     private DateTime createdAt;
@@ -115,6 +116,11 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder numberPartitions(final Integer numberPartitions) {
+        this.numberPartitions = numberPartitions;
+        return this;
+    }
+
     public EventTypeTestBuilder options(final EventTypeOptions options) {
         this.options = options;
         return this;
@@ -143,7 +149,7 @@ public class EventTypeTestBuilder {
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
-                defaultStatistic, options, compatibilityMode);
+                defaultStatistic, numberPartitions, options, compatibilityMode);
         eventTypeBase.setAuthorization(authorization);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
