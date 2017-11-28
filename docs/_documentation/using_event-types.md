@@ -18,11 +18,11 @@ API that lists all the available event types.
 
 There are three main _categories_ of event type defined by Nakadi -
 
-- **Undefined Event**: A free form category suitable for events that are entirely custom to the producer.
+- **Business Event**: An event that is part of, or drives a business process, such as a state transition in a customer order.
 
 - **Data Change Event**: An event that represents a change to a record or other item, or a new item. Change events are associated with a create, update, delete, or snapshot operation.
 
-- **Business Event**: An event that is part of, or drives a business process, such as a state transition in a customer order.
+- **Undefined Event**: A free form category suitable for events that are entirely custom to the producer.
 
 Each event category enables different capabilities for an event type, notably their schema and validation rules, which we'll describe next.
 
