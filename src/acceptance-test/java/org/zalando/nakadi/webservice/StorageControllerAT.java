@@ -27,5 +27,7 @@ public class StorageControllerAT extends BaseAT {
         storageId = (String) NakadiTestUtils.listTimelines("event_b").get(0).get("storage_id");
         Assert.assertEquals("default-test", storageId);
 
+        // cleanup
+        given().contentType(JSON).put("/storages/default/default");
     }
 }

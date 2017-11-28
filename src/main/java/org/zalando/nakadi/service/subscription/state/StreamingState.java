@@ -40,7 +40,6 @@ import java.util.stream.Stream;
 
 
 class StreamingState extends State {
-    public static final int RECHECK_TOPOLOGY_INTERVAL_SEC = 60;
     private final Map<EventTypePartition, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
@@ -317,7 +316,7 @@ class StreamingState extends State {
             recreateTopologySubscription();
         }
         // addTask() is used to check if state is not changed.
-        scheduleTask(() -> addTask(this::recheckTopology), RECHECK_TOPOLOGY_INTERVAL_SEC, TimeUnit.SECONDS);
+        scheduleTask(() -> addTask(this::recheckTopology), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     boolean refreshTopologyUnlocked(final Partition[] assignedPartitions) {
