@@ -89,8 +89,7 @@ public class CursorOperationsService {
                                 .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
                         // trick to avoid -1 position - move cursor to previous timeline while there is no data before
                         // it
-                        while (getTopicRepository(newestPosition.getTimeline())
-                                .numberOfEventsBeforeCursor(newestPosition) == -1) {
+                        while (numberOfEventsBeforeCursor(newestPosition) == -1) {
                             final int prevOrder = newestPosition.getTimeline().getOrder() - 1;
                             final Timeline prevTimeline = timelines.stream()
                                     .filter(t -> t.getOrder() == prevOrder)
@@ -168,8 +167,7 @@ public class CursorOperationsService {
         NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
         long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
-            final long totalBefore = getTopicRepository(currentCursor.getTimeline())
-                    .numberOfEventsBeforeCursor(currentCursor);
+            final long totalBefore = numberOfEventsBeforeCursor(currentCursor);
             if (totalBefore < toMoveBack) {
                 toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
 

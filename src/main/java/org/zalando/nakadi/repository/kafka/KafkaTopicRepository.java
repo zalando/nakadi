@@ -470,11 +470,6 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
-        // could be -1 in case the cursor points to BEGIN
-        return KafkaCursor.toKafkaOffset(cursor.getOffset());
-    }
-
     @Override
     public NakadiCursor createBeforeBeginCursor(final Timeline timeline, final String partition) {
         return new KafkaCursor(timeline.getTopic(), KafkaCursor.toKafkaPartition(partition), -1)
