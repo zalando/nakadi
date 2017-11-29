@@ -9,13 +9,16 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Collections;
@@ -195,8 +198,13 @@ public class CursorOperationsService {
     }
 
     private long numberOfEventsBeforeCursor(final NakadiCursor initialCursor) {
-        final TopicRepository topicRepository = getTopicRepository(initialCursor.getTimeline());
-        return topicRepository.numberOfEventsBeforeCursor(initialCursor);
+        final Storage.Type storageType = initialCursor.getTimeline().getStorage().getType();
+        switch (storageType) {
+            case KAFKA:
+                return KafkaCursor.toKafkaOffset(initialCursor.getOffset());
+            default:
+                throw new UnknownStorageTypeException("Unknown storage type: " + storageType.toString());
+        }
     }
 
     private Timeline getTimeline(final String eventTypeName, final int order) {
