@@ -5,6 +5,7 @@ import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -303,6 +304,10 @@ public class CursorOperationsServiceTest {
     private Timeline mockTimeline(final int order, @Nullable final Long latestOffset) {
         final Timeline timeline = mock(Timeline.class);
         when(timeline.getOrder()).thenReturn(order);
+
+        final Storage storage = new Storage();
+        storage.setType(Storage.Type.KAFKA);
+        when(timeline.getStorage()).thenReturn(storage);
 
         if (latestOffset == null) {
             when(timeline.isActive()).thenReturn(false);
