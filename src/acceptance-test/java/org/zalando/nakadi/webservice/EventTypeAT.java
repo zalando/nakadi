@@ -289,6 +289,19 @@ public class EventTypeAT extends BaseAT {
                         "Changing authorization object to `null` is not possible due to existing one"))));
     }
 
+    @Test
+    public void shouldDeleteEventTypeWhenOneTimelineWasDeleted() throws Exception {
+        final EventType eventType = NakadiTestUtils.createEventType();
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+
+        final List<Timeline> timelines = TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName());
+        final Timeline timeline = timelines.get(0);
+        timeline.setDeleted(true);
+        TIMELINE_REPOSITORY.updateTimelime(timeline);
+
+        deleteEventTypeAndOK(eventType);
+    }
+
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
         final EventType eventType = NakadiTestUtils.getEventType(etName);
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
