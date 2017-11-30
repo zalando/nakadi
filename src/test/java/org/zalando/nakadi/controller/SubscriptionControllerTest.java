@@ -18,12 +18,14 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -49,6 +51,7 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +77,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -89,6 +93,7 @@ public class SubscriptionControllerTest {
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
+    private final TimelineService timelineService;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
     private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
@@ -102,7 +107,7 @@ public class SubscriptionControllerTest {
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
-        final TimelineService timelineService = mock(TimelineService.class);
+        timelineService = mock(TimelineService.class);
         when(timelineService.getActiveTimeline(any())).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
@@ -255,6 +260,37 @@ public class SubscriptionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         TestUtils.JSON_TEST_HELPER.matchesObject(new ItemsWrapper<>(expectedStats))));
+    }
+
+    @Test
+    public void whenGetSubscriptionStatsWithOffsetFromDeletedStorageThenOk() throws Exception {
+        Storage deletedStorage = new Storage();
+        final Timeline TIMELINE_DELETED_STORAGE = buildTimeline(TIMELINE.getEventType(), deletedStorage, "topic", new Date());
+        final Subscription subscription = builder().withEventType(TIMELINE_DELETED_STORAGE.getEventType()).build();
+        final Partition[] partitions = {
+                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
+        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
+        zkSubscriptionNode.setPartitions(partitions);
+        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
+        final SubscriptionCursorWithoutToken currentOffset =
+                new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
+        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
+                .thenReturn(currentOffset);
+        when(eventTypeRepository.findByName(TIMELINE.getEventType()))
+                .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
+        final List<PartitionEndStatistics> statistics = Collections.singletonList(
+                new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
+        when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
+        final NakadiCursor currentCursor = mock(NakadiCursor.class);
+        when(currentCursor.getEventTypePartition()).thenReturn(new EventTypePartition(TIMELINE.getEventType(), "0"));
+        when(cursorConverter.convert((List<SubscriptionCursorWithoutToken>) any()))
+                .thenReturn(Collections.singletonList(currentCursor));
+        when(timelineService.getTopicRepository(TIMELINE_DELETED_STORAGE)).thenThrow(new MyNakadiRuntimeException1("Exception"));
+
+        getSubscriptionStats(subscription.getId())
+                .andExpect(status().isOk());
     }
 
     @Test

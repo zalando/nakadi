@@ -213,8 +213,12 @@ public class TestUtils {
         return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
     }
 
-    public static Timeline buildTimeline(final String etName, final String topic, final Date cratedAt) {
-        return new Timeline(etName, 0, new Storage(), topic, cratedAt);
+    public static Timeline buildTimeline(final String etName, final String topic, final Date createdAt) {
+        return new Timeline(etName, 0, new Storage(), topic, createdAt);
+    }
+
+    public static Timeline buildTimeline(final String etName, final Storage storage, final String topic, final Date createdAt) {
+        return new Timeline(etName, 0, storage, topic, createdAt);
     }
 
     public static Timeline buildTimelineWithTopic(final String topic) {
