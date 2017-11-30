@@ -58,8 +58,7 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = getTopicRepository(timeline).totalEventsInPartition(
-                    timeline, initialCursor.getPartition());
+            final long eventsTotal = totalEventsInPartition(timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
         return result;
@@ -220,5 +219,19 @@ public class CursorOperationsService {
 
     private TopicRepository getTopicRepository(final Timeline timeline) {
         return timelineService.getTopicRepository(timeline);
+    }
+
+
+    //  Method can work only with finished timeline (e.g. it will break for active timeline)
+    private long totalEventsInPartition(final Timeline timeline, final String partitionString)
+            throws InvalidCursorOperation {
+        final Timeline.StoragePosition positions = timeline.getLatestPosition();
+
+        try {
+            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
+                    KafkaCursor.toKafkaPartition(partitionString));
+        } catch (final IllegalArgumentException ex) {
+            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
+        }
     }
 }

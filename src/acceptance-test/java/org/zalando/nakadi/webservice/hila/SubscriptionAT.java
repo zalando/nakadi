@@ -388,12 +388,6 @@ public class SubscriptionAT extends BaseAT {
         }
     }
 
-    @Test
-    public void whenStatsWithOffsetInDeletedStorageThenDoNotFail() throws IOException {
-        final String et = createEventType().getName();
-        final Subscription s = createSubscriptionForEventType(et);
-    }
-
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
         return given()
                 .body(cursor)

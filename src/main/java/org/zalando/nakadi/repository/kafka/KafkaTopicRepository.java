@@ -33,7 +33,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -455,19 +454,6 @@ public class KafkaTopicRepository implements TopicRepository {
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
-    }
-
-    //  Method can work only with finished timeline (e.g. it will break for active timeline)
-    public long totalEventsInPartition(final Timeline timeline, final String partitionString)
-            throws InvalidCursorOperation {
-        final Timeline.StoragePosition positions = timeline.getLatestPosition();
-
-        try {
-            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
-                    KafkaCursor.toKafkaPartition(partitionString));
-        } catch (final IllegalArgumentException ex) {
-            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-        }
     }
 
     @Override
