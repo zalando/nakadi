@@ -352,8 +352,7 @@ class StreamingState extends State {
 
         // 3. Add releasing partitions information
         modified |= !newReassigning.keySet().stream()
-                .map(this::addPartitionToReassigned)
-                .filter(v -> v)
+                .filter(this::addPartitionToReassigned)
                 .collect(Collectors.toList()).isEmpty();
 
         // 4. Select which partitions must be added and add it.
