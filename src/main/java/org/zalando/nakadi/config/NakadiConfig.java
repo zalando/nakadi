@@ -7,6 +7,7 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
@@ -98,7 +99,9 @@ public class NakadiConfig {
 
     @Bean
     @Scope("prototype")
-    public MessageDigest sha256MessageDigest() {
-        return DigestUtils.getSha256Digest();
+    public MessageDigest sha256MessageDigest(@Value("${nakadi.hasher.salt}") final String salt) {
+        final MessageDigest sha256Digest = DigestUtils.getSha256Digest();
+        sha256Digest.update(salt.getBytes());
+        return sha256Digest;
     }
 }

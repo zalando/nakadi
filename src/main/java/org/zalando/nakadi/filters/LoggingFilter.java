@@ -69,12 +69,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                     timing,
                     contentEncoding,
                     acceptEncoding);
-
             nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                     .put("method", method)
                     .put("path", path)
                     .put("query", query)
-                    .put("app", Hex.encodeHexString(sha256MessageDigest.digest(user.getBytes(Charsets.UTF_8))))
+                    .put("app", user)
+                    .put("app_hashed", Hex.encodeHexString(sha256MessageDigest.digest(user.getBytes(Charsets.UTF_8))))
                     .put("status_code", response.getStatus())
                     .put("response_time_ms", timing));
         }
