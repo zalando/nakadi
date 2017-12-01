@@ -226,44 +226,6 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenGetSubscriptionStatThenOk() throws Exception {
-        final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
-        final Partition[] partitions = {
-                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
-        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
-        zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
-        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
-        final SubscriptionCursorWithoutToken currentOffset =
-                new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
-        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
-                .thenReturn(currentOffset);
-        when(eventTypeRepository.findByName(TIMELINE.getEventType()))
-                .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
-        final List<PartitionEndStatistics> statistics = Collections.singletonList(
-                new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
-        when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
-        final NakadiCursor currentCursor = mock(NakadiCursor.class);
-        when(currentCursor.getEventTypePartition()).thenReturn(new EventTypePartition(TIMELINE.getEventType(), "0"));
-        when(cursorConverter.convert((List<SubscriptionCursorWithoutToken>) any()))
-                .thenReturn(Collections.singletonList(currentCursor));
-        when(cursorOperationsService.calculateDistance(eq(currentCursor), eq(statistics.get(0).getLast())))
-                .thenReturn(10L);
-
-        final List<SubscriptionEventTypeStats> expectedStats =
-                Collections.singletonList(new SubscriptionEventTypeStats(
-                        TIMELINE.getEventType(),
-                        Collections.singletonList(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
-                );
-
-        getSubscriptionStats(subscription.getId())
-                .andExpect(status().isOk())
-                .andExpect(content().string(
-                        TestUtils.JSON_TEST_HELPER.matchesObject(new ItemsWrapper<>(expectedStats))));
-    }
-
-    @Test
     @SuppressWarnings("unchecked")
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
