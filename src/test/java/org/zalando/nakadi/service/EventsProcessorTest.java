@@ -1,9 +1,8 @@
-package org.zalando.nakadi.service.kpi.publisher;
+package org.zalando.nakadi.service;
 
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;

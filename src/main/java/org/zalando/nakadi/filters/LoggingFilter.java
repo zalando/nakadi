@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.zalando.nakadi.service.kpi.publisher.NakadiKpiPublisher;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;

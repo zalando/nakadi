@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.kpi.publisher;
+package org.zalando.nakadi.service;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;

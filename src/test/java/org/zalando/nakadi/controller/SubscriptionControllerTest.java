@@ -18,12 +18,14 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -49,6 +51,7 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +77,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -91,6 +95,7 @@ public class SubscriptionControllerTest {
     private final CursorOperationsService cursorOperationsService;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
     private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
+    private final TimelineService timelineService;
 
     public SubscriptionControllerTest() throws Exception {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -98,6 +103,7 @@ public class SubscriptionControllerTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(false);
 
+        timelineService = mock*
         topicRepository = mock(TopicRepository.class);
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);

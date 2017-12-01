@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.kpi.publisher;
+package org.zalando.nakadi.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -85,7 +84,7 @@ public class EventsProcessor {
                     LOG.trace("No kpi events send to {}", etName);
                     return;
                 }
-                eventPublisher.publish(jsonArray.toString(), etName, null);
+                eventPublisher.publishInternal(jsonArray.toString(), etName);
                 LOG.trace("Published batch of {} to {}", eventsCount, etName);
             } catch (final Exception e) {
                 LOG.error("Error occurred while publishing events to {}, {}", etName, e.getMessage(), e);
