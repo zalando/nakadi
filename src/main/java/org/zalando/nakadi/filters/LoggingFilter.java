@@ -1,6 +1,8 @@
 package org.zalando.nakadi.filters;
 
+import com.google.common.base.Charsets;
 import com.google.common.net.HttpHeaders;
+import org.apache.commons.codec.binary.Hex;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.security.Principal;
 import java.util.Optional;
 
@@ -22,12 +25,15 @@ import java.util.Optional;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
+    private final MessageDigest sha256MessageDigest;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
 
     @Autowired
-    public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
+    public LoggingFilter(final MessageDigest sha256MessageDigest,
+                         final NakadiKpiPublisher nakadiKpiPublisher,
                          @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
+        this.sha256MessageDigest = sha256MessageDigest;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
     }
@@ -68,7 +74,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .put("method", method)
                     .put("path", path)
                     .put("query", query)
-                    .put("app", user)
+                    .put("app", Hex.encodeHexString(sha256MessageDigest.digest(user.getBytes(Charsets.UTF_8))))
                     .put("status_code", response.getStatus())
                     .put("response_time_ms", timing));
         }
