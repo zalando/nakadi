@@ -23,7 +23,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -72,6 +71,17 @@ public class EventPublisher {
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
+            throws NoSuchEventTypeException,
+            InternalNakadiException,
+            EventTypeTimeoutException,
+            AccessDeniedException,
+            ServiceTemporarilyUnavailableException {
+        return publishInternal(events, eventTypeName, true);
+    }
+
+    EventPublishResult publishInternal(final String events,
+                                       final String eventTypeName,
+                                       final boolean useAuthz)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
@@ -81,7 +91,9 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authValidator.authorizeEventTypeWrite(eventType);
+            if (useAuthz) {
+                authValidator.authorizeEventTypeWrite(eventType);
+            }
 
             validate(batch, eventType);
             partition(batch, eventType);
@@ -108,33 +120,6 @@ public class EventPublisher {
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
-        } finally {
-            try {
-                if (publishingCloser != null) {
-                    publishingCloser.close();
-                }
-            } catch (final IOException e) {
-                LOG.error("Exception occurred when releasing usage of event-type", e);
-            }
-        }
-    }
-
-    EventPublishResult publishInternal(final String events, final String eventTypeName) {
-        Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(events);
-        try {
-            publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            partition(batch, eventType);
-            submit(batch, eventType);
-            return ok(batch);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOG.error("Failed to wait for timeline switch", e);
-            throw new MyNakadiRuntimeException1("Event type is currently in maintenance, please repeat request", e);
-        } catch (final Exception e) {
-            LOG.error("Failed to publish events internally", e);
-            throw new MyNakadiRuntimeException1("Failed to publish events internally", e);
         } finally {
             try {
                 if (publishingCloser != null) {
