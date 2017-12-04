@@ -109,11 +109,11 @@ nakadi:
       events-queue-size: 100
     event-types:
       nakadiAccessLog: "nakadi.access.log"
+  hasher.salt: "salt"
 
 twintip:
   mapping: /api
   yaml: "file:nakadi-event-bus-api.yaml"
-
 ---
 
 spring:
