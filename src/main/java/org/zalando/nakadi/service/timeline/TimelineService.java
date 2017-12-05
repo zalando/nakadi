@@ -271,7 +271,7 @@ public class TimelineService {
             NoSuchEventTypeException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        for (final Timeline timeline : getActiveTimelinesOrdered(eventTypeName)) {
+        for (final Timeline timeline : getAllTimelinesOrdered(eventTypeName)) {
             topicsToDelete.put(getTopicRepository(timeline), timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
