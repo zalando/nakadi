@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fixed issue with subscription stats, which would fail when the last committed offset is on a storage that was deleted
+- Fixed issue with deletion of event types which had obsolete timelines
 
 ## [2.3.0] - 2017-11-14
 
