@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.time.Instant;
@@ -99,7 +100,8 @@ public class EventsProcessor {
     void enrichAndSubmit(final String etName, final JSONObject event) {
         final JSONObject metadata = new JSONObject()
                 .put("occurred_at", Instant.now())
-                .put("eid", uuidGenerator.randomUUID());
+                .put("eid", uuidGenerator.randomUUID())
+                .put("flow_id", FlowIdUtils.peek());
         event.put("metadata", metadata);
 
         final BlockingQueue<JSONObject> events =
