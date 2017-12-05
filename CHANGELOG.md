@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed issue with subscription stats, which would fail when the last committed offset is on a storage that was deleted
+
 ## [2.3.0] - 2017-11-14
 
 ### Added
