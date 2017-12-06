@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_NARROWED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.COMPOSITION_METHOD_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_ARRAY_CHANGED;
@@ -113,6 +114,7 @@ public class ValidatorConfig {
         forwardChanges.put(DEPENDENCY_SCHEMA_REMOVED, MAJOR);
         forwardChanges.put(REQUIRED_ARRAY_CHANGED, MAJOR);
         forwardChanges.put(ADDITIONAL_PROPERTIES_CHANGED, MAJOR);
+        forwardChanges.put(ADDITIONAL_PROPERTIES_NARROWED, MINOR);
         forwardChanges.put(ADDITIONAL_ITEMS_CHANGED, MAJOR);
 
         final Map<SchemaChange.Type, String> errorMessage = new HashMap<>();
@@ -130,6 +132,7 @@ public class ValidatorConfig {
         errorMessage.put(REQUIRED_ARRAY_CHANGED, "required array changed");
         errorMessage.put(REQUIRED_ARRAY_EXTENDED, "required array changed");
         errorMessage.put(ADDITIONAL_PROPERTIES_CHANGED, "change not allowed");
+        errorMessage.put(ADDITIONAL_PROPERTIES_NARROWED, "change not allowed");
         errorMessage.put(ADDITIONAL_ITEMS_CHANGED, "change not allowed");
 
         final SchemaDiff diff = new SchemaDiff();
