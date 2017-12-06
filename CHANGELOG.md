@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- NullPointer when changing additionalProperties from true to Object.
+
 ## [2.3.0] - 2017-11-14
 
 ### Added
