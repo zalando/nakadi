@@ -75,10 +75,6 @@ public interface TopicRepository {
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 
-    long totalEventsInPartition(Timeline timeline, String partition);
-
-    long numberOfEventsBeforeCursor(NakadiCursor cursor);
-
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 
     NakadiCursor createBeforeBeginCursor(Timeline timeline, String partition);

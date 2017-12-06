@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - NullPointer when changing additionalProperties from true to Object.
 
+## [2.3.2] - 2017-12-05
+
+### Fixed
+
+- Fixed issue with subscription stats, which would fail when the last committed offset is on a storage that was deleted
+- Fixed issue with deletion of event types which had obsolete timelines
+
 ## [2.3.0] - 2017-11-14
 
 ### Added

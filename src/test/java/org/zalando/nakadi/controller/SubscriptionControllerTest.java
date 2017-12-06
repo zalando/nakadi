@@ -89,6 +89,7 @@ public class SubscriptionControllerTest {
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
+    private final TimelineService timelineService;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
     private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
@@ -102,7 +103,7 @@ public class SubscriptionControllerTest {
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
-        final TimelineService timelineService = mock(TimelineService.class);
+        timelineService = mock(TimelineService.class);
         when(timelineService.getActiveTimeline(any())).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
