@@ -18,31 +18,6 @@ public class LocalLocking {
     private final Map<String, Integer> eventTypesBeingPublished = new HashMap<>();
     private final Object lock = new Object();
 
-    public Set<String> lockedEventTypesChanged(final Set<String> lockedEventTypes) throws InterruptedException {
-        final Set<String> unlockedEventTypes = new HashSet<>();
-        synchronized (lock) {
-            for (final String item : this.lockedEventTypes) {
-                if (!lockedEventTypes.contains(item)) {
-                    unlockedEventTypes.add(item);
-                }
-            }
-            this.lockedEventTypes.clear();
-            this.lockedEventTypes.addAll(lockedEventTypes);
-            boolean haveUsage = true;
-            while (haveUsage) {
-                final List<String> stillLocked = this.lockedEventTypes.stream()
-                        .filter(eventTypesBeingPublished::containsKey).collect(Collectors.toList());
-                haveUsage = !stillLocked.isEmpty();
-                if (haveUsage) {
-                    LOG.info("Event types are still locked: {}", stillLocked);
-                    lock.wait();
-                }
-            }
-            lock.notifyAll();
-        }
-        return unlockedEventTypes;
-    }
-
     public Closeable workWithEventType(final String eventType, final long timeoutMs)
             throws InterruptedException, TimeoutException {
         final long finishAt = System.currentTimeMillis() + timeoutMs;
@@ -69,5 +44,35 @@ public class LocalLocking {
                 }
             }
         };
+    }
+
+    public Set<String> getUnlockedEventTypes(final Set<String> lockedEventTypes) {
+        final Set<String> unlockedEventTypes = new HashSet<>();
+        synchronized (lock) {
+            for (final String item : this.lockedEventTypes) {
+                if (!lockedEventTypes.contains(item)) {
+                    unlockedEventTypes.add(item);
+                }
+            }
+        }
+        return unlockedEventTypes;
+    }
+
+    public void updateLockedEventTypes(final Set<String> lockedEventTypes) throws InterruptedException {
+        synchronized (lock) {
+            this.lockedEventTypes.clear();
+            this.lockedEventTypes.addAll(lockedEventTypes);
+            boolean haveUsage = true;
+            while (haveUsage) {
+                final List<String> stillLocked = this.lockedEventTypes.stream()
+                        .filter(eventTypesBeingPublished::containsKey).collect(Collectors.toList());
+                haveUsage = !stillLocked.isEmpty();
+                if (haveUsage) {
+                    LOG.info("Event types are still locked: {}", stillLocked);
+                    lock.wait();
+                }
+            }
+            lock.notifyAll();
+        }
     }
 }
