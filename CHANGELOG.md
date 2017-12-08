@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Fix concurrency issue when switching Timelines
 - NullPointer when changing additionalProperties from true to Object.
 
 ## [2.3.2] - 2017-12-05
