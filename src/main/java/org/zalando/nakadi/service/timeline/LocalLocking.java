@@ -46,16 +46,12 @@ public class LocalLocking {
         };
     }
 
-    public Set<String> getUnlockedEventTypes(final Set<String> lockedEventTypes) {
-        final Set<String> unlockedEventTypes = new HashSet<>();
+    public Set<String> getUnlockedEventTypes(final Set<String> lockedEventTypesUpdated) {
         synchronized (lock) {
-            for (final String item : this.lockedEventTypes) {
-                if (!lockedEventTypes.contains(item)) {
-                    unlockedEventTypes.add(item);
-                }
-            }
+            return this.lockedEventTypes.stream()
+                    .filter(v -> !lockedEventTypesUpdated.contains(v))
+                    .collect(Collectors.toSet());
         }
-        return unlockedEventTypes;
     }
 
     public void updateLockedEventTypes(final Set<String> lockedEventTypes) throws InterruptedException {
