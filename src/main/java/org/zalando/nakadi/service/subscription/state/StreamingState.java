@@ -443,6 +443,7 @@ class StreamingState extends State {
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
         final PartitionData pd = new PartitionData(
+                getComparator(),
                 subscription,
                 cursor,
                 LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()),

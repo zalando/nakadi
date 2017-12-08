@@ -32,7 +32,7 @@ public class CursorConverterImpl implements CursorConverter {
 
     @Autowired
     public CursorConverterImpl(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
-        registerConverter(new VersionOneConverter(eventTypeCache, timelineService));
+        registerConverter(new VersionOneConverter(eventTypeCache));
         registerConverter(new VersionZeroConverter(timelineService));
     }
 

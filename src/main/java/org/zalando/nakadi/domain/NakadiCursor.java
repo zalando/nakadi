@@ -4,7 +4,8 @@ import com.google.common.base.Preconditions;
 
 import java.util.Objects;
 
-public class NakadiCursor implements Comparable<NakadiCursor> {
+//public class NakadiCursor implements Comparable<NakadiCursor> {
+public class NakadiCursor {
     public static final int VERSION_LENGTH = 3;
     /**
      * - ZERO is reserved for old offset format, e.g. those previous to timelines: "000000000000000010"
@@ -79,15 +80,18 @@ public class NakadiCursor implements Comparable<NakadiCursor> {
                 && Objects.equals(this.partition, that.partition)
                 && Objects.equals(this.offset, that.offset);
     }
-
-    @Override
-    public int compareTo(final NakadiCursor other) {
-        final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
-        if (0 != orderDiffers) {
-            return orderDiffers;
-        }
-        return this.getOffset().compareTo(other.getOffset());
-    }
+//
+//    @Override
+//    public int compareTo(final NakadiCursor other) {
+//        final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
+//        if (0 != orderDiffers) {
+//            return orderDiffers;
+//        }
+//
+//        // here comes a problem... It is not possible to compare cursors...
+//
+//        return this.getOffset().compareTo(other.getOffset());
+//    }
 
     @Override
     public int hashCode() {
