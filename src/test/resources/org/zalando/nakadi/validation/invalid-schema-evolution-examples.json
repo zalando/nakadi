@@ -562,6 +562,18 @@
     "errors": ["ADDITIONAL_PROPERTIES_CHANGED #/additionalProperties"]
   },
   {
+    "description": "Detect narrowing changes to additional properties schema",
+    "original_schema": {
+      "additionalProperties": true
+    },
+    "update_schema": {
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "errors": ["ADDITIONAL_PROPERTIES_NARROWED #/additionalProperties"]
+  },
+  {
     "description": "Detect changes to additional properties schema",
     "original_schema": {
       "additionalProperties": {
