@@ -4,9 +4,9 @@ import com.google.common.base.Preconditions;
 
 import java.util.Objects;
 
-//public class NakadiCursor implements Comparable<NakadiCursor> {
 public class NakadiCursor {
     public static final int VERSION_LENGTH = 3;
+
     /**
      * - ZERO is reserved for old offset format, e.g. those previous to timelines: "000000000000000010"
      * - ONE is reserved for the first version of timeline offsets: "001-0001-0000000000000001"
@@ -80,18 +80,6 @@ public class NakadiCursor {
                 && Objects.equals(this.partition, that.partition)
                 && Objects.equals(this.offset, that.offset);
     }
-//
-//    @Override
-//    public int compareTo(final NakadiCursor other) {
-//        final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
-//        if (0 != orderDiffers) {
-//            return orderDiffers;
-//        }
-//
-//        // here comes a problem... It is not possible to compare cursors...
-//
-//        return this.getOffset().compareTo(other.getOffset());
-//    }
 
     @Override
     public int hashCode() {
@@ -103,11 +91,10 @@ public class NakadiCursor {
 
     @Override
     public String toString() {
-        return "NakadiCursor{" +
-                "partition='" + partition + '\'' +
-                ", offset='" + offset + '\'' +
-                ", timeline='" + timeline + '\'' +
-                '}';
+        //Ok, it's time to compact the message.
+        return "T(" + Timeline.debugString(timeline) + ")-" +
+                "P(" + partition + ")-" +
+                "O(" + offset + ")";
     }
 
 }
