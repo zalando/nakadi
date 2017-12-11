@@ -120,7 +120,8 @@ public class EventTypeServiceTest {
         checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
-                        .put("status", "created"));
+                        .put("status", "created")
+                        .put("category", et.getCategory().toString()));
     }
 
     @Test
@@ -133,7 +134,8 @@ public class EventTypeServiceTest {
         checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
-                        .put("status", "updated"));
+                        .put("status", "updated")
+                        .put("category", et.getCategory().toString()));
     }
 
     @Test
@@ -145,7 +147,8 @@ public class EventTypeServiceTest {
         checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
-                        .put("status", "deleted"));
+                        .put("status", "deleted")
+                        .put("category", et.getCategory().toString()));
     }
 
     @SuppressWarnings("unchecked")

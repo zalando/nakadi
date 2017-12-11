@@ -146,7 +146,8 @@ public class EventTypeService {
         try {
             nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                     .put("event_type", eventType.getName())
-                    .put("status", "created"));
+                    .put("status", "created")
+                    .put("category", eventType.getCategory().toString()));
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
@@ -166,6 +167,7 @@ public class EventTypeService {
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
             NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
+        final EventCategory category;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -175,6 +177,7 @@ public class EventTypeService {
                 throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             final EventType eventType = eventTypeOpt.get();
+            category = eventType.getCategory();
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
@@ -219,9 +222,12 @@ public class EventTypeService {
             }
         }
         try {
-            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                    .put("event_type", eventTypeName)
-                    .put("status", "deleted"));
+            if (category != null) {
+                nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                        .put("event_type", eventTypeName)
+                        .put("status", "deleted")
+                        .put("category", category.toString()));
+            }
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
@@ -272,7 +278,8 @@ public class EventTypeService {
         try {
             nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                     .put("event_type", eventTypeName)
-                    .put("status", "updated"));
+                    .put("status", "updated")
+                    .put("category", eventTypeBase.getCategory().toString()));
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
