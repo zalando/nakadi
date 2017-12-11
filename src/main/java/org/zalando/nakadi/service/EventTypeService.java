@@ -145,7 +145,7 @@ public class EventTypeService {
         }
         try {
             nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                    .put("event_type", eventType)
+                    .put("event_type", eventType.getName())
                     .put("status", "created"));
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
