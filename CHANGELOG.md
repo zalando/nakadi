@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Sending of KPI metrics for event-types count 
+
 ### Fixed
 - Fix concurrency issue when switching Timelines
 - NullPointer when changing additionalProperties from true to Object.
