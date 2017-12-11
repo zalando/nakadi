@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -82,6 +83,8 @@ public class EventTypeService {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TransactionTemplate transactionTemplate;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String etLogEventType;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -95,7 +98,9 @@ public class EventTypeService {
                             final AuthorizationValidator authorizationValidator,
                             final TimelineSync timelineSync,
                             final TransactionTemplate transactionTemplate,
-                            final NakadiSettings nakadiSettings) {
+                            final NakadiSettings nakadiSettings,
+                            final NakadiKpiPublisher nakadiKpiPublisher,
+                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -108,6 +113,8 @@ public class EventTypeService {
         this.timelineSync = timelineSync;
         this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.etLogEventType = etLogEventType;
     }
 
     public List<EventType> list() {
@@ -135,6 +142,13 @@ public class EventTypeService {
                 LOG.error("Error creating event type {}", eventType, e1);
             }
             throw e;
+        }
+        try {
+            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                    .put("event_type", eventType)
+                    .put("status", "created"));
+        } catch (final Exception e) {
+            LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
     }
 
@@ -170,9 +184,7 @@ public class EventTypeService {
                 throw new ConflictException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            topicsToDelete = transactionTemplate.execute(action -> {
-                return deleteEventType(eventTypeName);
-            });
+            topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -205,6 +217,13 @@ public class EventTypeService {
                     }
                 }
             }
+        }
+        try {
+            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                    .put("event_type", eventTypeName)
+                    .put("status", "deleted"));
+        } catch (final Exception e) {
+            LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
     }
 
@@ -249,6 +268,13 @@ public class EventTypeService {
             } catch (final IOException e) {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
+        }
+        try {
+            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                    .put("event_type", eventTypeName)
+                    .put("status", "updated"));
+        } catch (final Exception e) {
+            LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
     }
 
