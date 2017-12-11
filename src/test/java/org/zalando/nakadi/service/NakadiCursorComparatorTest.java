@@ -61,9 +61,9 @@ public class NakadiCursorComparatorTest {
     }
 
     private static void checkGreater(final NakadiCursor less, final NakadiCursor greater) {
-        Assert.assertTrue("Cursor " + less + " should be less then " + greater,
+        Assert.assertTrue("Cursor " + less + " should be less than " + greater,
                 comparator.compare(less, greater) < 0);
-        Assert.assertTrue("Cursor " + greater + " should be greater then " + less,
+        Assert.assertTrue("Cursor " + greater + " should be greater than " + less,
                 comparator.compare(greater, less) > 0);
     }
 
