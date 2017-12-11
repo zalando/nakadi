@@ -26,6 +26,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -80,6 +81,7 @@ public class EventTypeControllerTestCase {
             .schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final AdminService adminService = mock(AdminService.class);
+    protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
 
     protected MockMvc mockMvc;
 
@@ -103,7 +105,8 @@ public class EventTypeControllerTestCase {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings);
+                featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
+                nakadiKpiPublisher, "");
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
