@@ -147,7 +147,7 @@ public class EventTypeService {
             nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                     .put("event_type", eventType.getName())
                     .put("status", "created")
-                    .put("category", eventType.getCategory().toString()));
+                    .put("category", eventType.getCategory()));
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
         }
@@ -226,7 +226,7 @@ public class EventTypeService {
                 nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                         .put("event_type", eventTypeName)
                         .put("status", "deleted")
-                        .put("category", category.toString()));
+                        .put("category", category));
             }
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
@@ -279,7 +279,7 @@ public class EventTypeService {
             nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                     .put("event_type", eventTypeName)
                     .put("status", "updated")
-                    .put("category", eventTypeBase.getCategory().toString()));
+                    .put("category", eventTypeBase.getCategory()));
         } catch (final Exception e) {
             LOG.error("Exception occurred when submitting KPI metrics event", e);
         }

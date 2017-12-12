@@ -121,7 +121,7 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "created")
-                        .put("category", et.getCategory().toString()));
+                        .put("category", et.getCategory()));
     }
 
     @Test
@@ -135,7 +135,7 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "updated")
-                        .put("category", et.getCategory().toString()));
+                        .put("category", et.getCategory()));
     }
 
     @Test
@@ -148,7 +148,7 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "deleted")
-                        .put("category", et.getCategory().toString()));
+                        .put("category", et.getCategory()));
     }
 
     @SuppressWarnings("unchecked")
