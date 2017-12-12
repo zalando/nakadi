@@ -217,12 +217,10 @@ public class EventTypeService {
                 }
             }
         }
-        if (category != null) {
-            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                    .put("event_type", eventTypeName)
-                    .put("status", "deleted")
-                    .put("category", category));
-        }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventTypeName)
+                .put("status", "deleted")
+                .put("category", category));
     }
 
     public void update(final String eventTypeName,
