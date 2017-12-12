@@ -9,13 +9,16 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Collections;
@@ -55,8 +58,7 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = getTopicRepository(timeline).totalEventsInPartition(
-                    timeline, initialCursor.getPartition());
+            final long eventsTotal = totalEventsInPartition(timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
         return result;
@@ -86,8 +88,7 @@ public class CursorOperationsService {
                                 .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
                         // trick to avoid -1 position - move cursor to previous timeline while there is no data before
                         // it
-                        while (getTopicRepository(newestPosition.getTimeline())
-                                .numberOfEventsBeforeCursor(newestPosition) == -1) {
+                        while (numberOfEventsBeforeCursor(newestPosition) == -1) {
                             final int prevOrder = newestPosition.getTimeline().getOrder() - 1;
                             final Timeline prevTimeline = timelines.stream()
                                     .filter(t -> t.getOrder() == prevOrder)
@@ -165,8 +166,7 @@ public class CursorOperationsService {
         NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
         long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
-            final long totalBefore = getTopicRepository(currentCursor.getTimeline())
-                    .numberOfEventsBeforeCursor(currentCursor);
+            final long totalBefore = numberOfEventsBeforeCursor(currentCursor);
             if (totalBefore < toMoveBack) {
                 toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
 
@@ -195,8 +195,13 @@ public class CursorOperationsService {
     }
 
     private long numberOfEventsBeforeCursor(final NakadiCursor initialCursor) {
-        final TopicRepository topicRepository = getTopicRepository(initialCursor.getTimeline());
-        return topicRepository.numberOfEventsBeforeCursor(initialCursor);
+        final Storage.Type storageType = initialCursor.getTimeline().getStorage().getType();
+        switch (storageType) {
+            case KAFKA:
+                return KafkaCursor.toKafkaOffset(initialCursor.getOffset());
+            default:
+                throw new UnknownStorageTypeException("Unknown storage type: " + storageType.toString());
+        }
     }
 
     private Timeline getTimeline(final String eventTypeName, final int order) {
@@ -214,5 +219,19 @@ public class CursorOperationsService {
 
     private TopicRepository getTopicRepository(final Timeline timeline) {
         return timelineService.getTopicRepository(timeline);
+    }
+
+
+    //  Method can work only with finished timeline (e.g. it will break for active timeline)
+    private long totalEventsInPartition(final Timeline timeline, final String partitionString)
+            throws InvalidCursorOperation {
+        final Timeline.StoragePosition positions = timeline.getLatestPosition();
+
+        try {
+            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
+                    KafkaCursor.toKafkaPartition(partitionString));
+        } catch (final IllegalArgumentException ex) {
+            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
+        }
     }
 }

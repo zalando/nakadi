@@ -12,6 +12,7 @@ import java.util.Stack;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_NARROWED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_ARRAY_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_SCHEMA_CHANGED;
@@ -59,7 +60,11 @@ public class ObjectSchemaDiff {
         jsonPath.push("additionalProperties");
         if (original.permitsAdditionalProperties() != update.permitsAdditionalProperties()) {
             SchemaDiff.addChange(ADDITIONAL_PROPERTIES_CHANGED, jsonPath, changes);
-        } else {
+        } else if (original.getSchemaOfAdditionalProperties() == null &&
+                update.getSchemaOfAdditionalProperties() != null) {
+            SchemaDiff.addChange(ADDITIONAL_PROPERTIES_NARROWED, jsonPath, changes);
+        }
+        else {
             SchemaDiff.recursiveCheck(original.getSchemaOfAdditionalProperties(),
                     update.getSchemaOfAdditionalProperties(), jsonPath, changes);
         }
