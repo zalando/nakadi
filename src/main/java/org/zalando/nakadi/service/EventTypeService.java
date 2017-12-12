@@ -143,14 +143,10 @@ public class EventTypeService {
             }
             throw e;
         }
-        try {
-            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                    .put("event_type", eventType.getName())
-                    .put("status", "created")
-                    .put("category", eventType.getCategory()));
-        } catch (final Exception e) {
-            LOG.error("Exception occurred when submitting KPI metrics event", e);
-        }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventType.getName())
+                .put("status", "created")
+                .put("category", eventType.getCategory()));
     }
 
     private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
@@ -221,15 +217,11 @@ public class EventTypeService {
                 }
             }
         }
-        try {
-            if (category != null) {
-                nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                        .put("event_type", eventTypeName)
-                        .put("status", "deleted")
-                        .put("category", category));
-            }
-        } catch (final Exception e) {
-            LOG.error("Exception occurred when submitting KPI metrics event", e);
+        if (category != null) {
+            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                    .put("event_type", eventTypeName)
+                    .put("status", "deleted")
+                    .put("category", category));
         }
     }
 
@@ -275,14 +267,10 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        try {
-            nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                    .put("event_type", eventTypeName)
-                    .put("status", "updated")
-                    .put("category", eventTypeBase.getCategory()));
-        } catch (final Exception e) {
-            LOG.error("Exception occurred when submitting KPI metrics event", e);
-        }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventTypeName)
+                .put("status", "updated")
+                .put("category", eventTypeBase.getCategory()));
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) throws NakadiException {
