@@ -75,11 +75,8 @@ class StreamingState extends State {
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        // Subscribe for topology changes.
-        this.topologyChangeSubscription =
-                getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
-        // and call directly
-        reactOnTopologyChange();
+        recreateTopologySubscription();
+        addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
@@ -95,6 +92,14 @@ class StreamingState extends State {
 
         cursorResetSubscription = getZk().subscribeForCursorsReset(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
+    }
+
+    private void recreateTopologySubscription() {
+        if (null != topologyChangeSubscription) {
+            topologyChangeSubscription.close();
+        }
+        topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
+        reactOnTopologyChange();
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -301,7 +306,20 @@ class StreamingState extends State {
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
     }
 
-    void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
+    void recheckTopology() {
+        // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
+        final Partition[] partitions = Stream.of(getZk().listPartitions())
+                .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
+                .toArray(Partition[]::new);
+        if (refreshTopologyUnlocked(partitions)) {
+            getLog().info("Topology changed not by event, but by schedule. Recreating zk listener");
+            recreateTopologySubscription();
+        }
+        // addTask() is used to check if state is not changed.
+        scheduleTask(() -> addTask(this::recheckTopology), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
+    }
+
+    boolean refreshTopologyUnlocked(final Partition[] assignedPartitions) {
         final Map<EventTypePartition, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
@@ -310,32 +328,52 @@ class StreamingState extends State {
                 .filter(p -> p.getState() == Partition.State.REASSIGNING)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
+        boolean modified = false;
+
         // 1. Select which partitions must be removed right now for some (strange) reasons
         // (no need to release topology).
-        offsets.keySet().stream()
+        final List<EventTypePartition> forciblyRemoved = offsets.keySet().stream()
                 .filter(e -> !newAssigned.containsKey(e))
                 .filter(e -> !newReassigning.containsKey(e))
-                .collect(Collectors.toList()).forEach(this::removeFromStreaming);
+                .collect(Collectors.toList());
+        if (!forciblyRemoved.isEmpty()) {
+            modified = true;
+            forciblyRemoved.forEach(this::removeFromStreaming);
+        }
         // 2. Clear releasing partitions that was returned to this session.
-        releasingPartitions.keySet().stream()
-                .filter(p -> !newReassigning.containsKey(p))
-                .collect(Collectors.toList()).forEach(releasingPartitions::remove);
+        final List<EventTypePartition> removedFromReassign =
+                releasingPartitions.keySet().stream()
+                        .filter(p -> !newReassigning.containsKey(p))
+                        .collect(Collectors.toList());
+        if (!removedFromReassign.isEmpty()) {
+            modified = true;
+            removedFromReassign.forEach(releasingPartitions::remove);
+        }
 
         // 3. Add releasing partitions information
-        newReassigning.keySet().forEach(this::addPartitionToReassigned);
+        modified |= !newReassigning.keySet().stream()
+                .filter(this::addPartitionToReassigned)
+                .collect(Collectors.toList()).isEmpty();
 
         // 4. Select which partitions must be added and add it.
-        newAssigned.values()
+        final List<Partition> newAssignedPartitions = newAssigned.values()
                 .stream()
                 .filter(p -> !offsets.containsKey(p.getKey()))
-                .forEach(this::addToStreaming);
+                .collect(Collectors.toList());
+        if (!newAssignedPartitions.isEmpty()) {
+            modified = true;
+            newAssignedPartitions.forEach(this::addToStreaming);
+        }
         // 5. Check if something can be released right now
-        reassignCommitted();
+        if (modified) {
+            reassignCommitted();
 
-        // 6. Reconfigure kafka consumer
-        reconfigureKafkaConsumer(false);
+            // 6. Reconfigure kafka consumer
+            reconfigureKafkaConsumer(false);
 
-        logPartitionAssignment("Topology refreshed");
+            logPartitionAssignment("Topology refreshed");
+        }
+        return modified;
     }
 
     private void logPartitionAssignment(final String reason) {
@@ -349,14 +387,16 @@ class StreamingState extends State {
         }
     }
 
-    private void addPartitionToReassigned(final EventTypePartition partitionKey) {
+    private boolean addPartitionToReassigned(final EventTypePartition partitionKey) {
         if (!releasingPartitions.containsKey(partitionKey)) {
             final long currentTime = System.currentTimeMillis();
             final long barrier = currentTime + getParameters().commitTimeoutMillis;
             releasingPartitions.put(partitionKey, barrier);
             scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
                     TimeUnit.MILLISECONDS);
+            return true;
         }
+        return false;
     }
 
     private void barrierOnRebalanceReached(final EventTypePartition pk) {

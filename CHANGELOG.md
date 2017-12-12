@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Periodically recreate topology listener while streaming subscription
+
 ### Fixed
 - Fix concurrency issue when switching Timelines
 - NullPointer when changing additionalProperties from true to Object.
@@ -13,7 +16,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.3.2] - 2017-12-05
 
 ### Fixed
-
 - Fixed issue with subscription stats, which would fail when the last committed offset is on a storage that was deleted
 - Fixed issue with deletion of event types which had obsolete timelines
 
