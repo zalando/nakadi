@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Optimized stream initialization
+
 ## [2.3.3] - 2017-12-12
 
 ### Added
