@@ -14,6 +14,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -24,7 +25,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,6 +37,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.groupingBy;
 
 
 class StreamingState extends State {
@@ -441,19 +443,51 @@ class StreamingState extends State {
 
         if (!currentAssignment.equals(newAssignment)) {
             try {
-                final List<NakadiCursor> cursors = new ArrayList<>();
-                for (final EventTypePartition pk : newAssignment) {
-                    // Next 2 lines checks that current cursor is still available in storage
-                    final NakadiCursor beforeFirstAvailable = getBeforeFirstCursor(pk);
-                    offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
-                    // Now it is safe to reposition.
-                    cursors.add(offsets.get(pk).getSentOffset());
-                }
+                final Map<String, List<NakadiCursor>> beforeFirst = getBeforeFirstNakadiCursors(newAssignment);
+                final List<NakadiCursor> cursors = newAssignment.stream()
+                        .map(pk -> {
+                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk.getEventType()).stream()
+                                    .filter(c -> c.getPartition().equals(pk.getPartition()))
+                                    .findFirst()
+                                    .orElseThrow(() -> new MyNakadiRuntimeException1("problem starting stream"));
+
+                            // Checks that current cursor is still available in storage
+                            offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
+                            return offsets.get(pk).getSentOffset();
+                        })
+                        .collect(Collectors.toList());
+
                 eventConsumer.reassign(cursors);
             } catch (NakadiException | InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
+    }
+
+    private Map<String, List<NakadiCursor>> getBeforeFirstNakadiCursors(final Set<EventTypePartition> newAssignment) {
+        return newAssignment.stream()
+                .map(EventTypePartition::getEventType)
+                .map(et -> {
+                    try {
+                        // get oldest active timeline
+                        return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
+                    } catch (final NakadiException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                .values()
+                .stream()
+                .flatMap(timelines -> {
+                    try {
+                        return getContext().getTimelineService().getTopicRepository(timelines.get(0))
+                                .loadTopicStatistics(timelines).stream();
+                    } catch (final ServiceUnavailableException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .map(PartitionStatistics::getBeforeFirst)
+                .collect(groupingBy(NakadiCursor::getEventType));
     }
 
     private NakadiCursor getBeforeFirstCursor(final EventTypePartition pk)
