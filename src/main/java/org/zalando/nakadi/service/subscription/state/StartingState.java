@@ -1,11 +1,13 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -15,11 +17,12 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
 
 public class StartingState extends State {
     @Override
@@ -113,19 +116,30 @@ public class StartingState extends State {
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
-            try {
-                for (final String eventType : subscription.getEventTypes()) {
-                    final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
-                    final Timeline timeline = activeTimelines.get(0);
-                    timelineService.getTopicRepository(timeline)
-                            .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getBeforeFirst())));
-                }
-                return result;
-            } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
-            }
+                return subscription.getEventTypes()
+                        .stream()
+                        .map(et -> {
+                            try {
+                                // get oldest active timeline
+                                return timelineService.getActiveTimelinesOrdered(et).get(0);
+                            } catch (final NakadiException e) {
+                                throw new NakadiRuntimeException(e);
+                            }
+                        })
+                        .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                        .values()
+                        .stream()
+                        .flatMap(timelines -> {
+                            try {
+                                return timelineService.getTopicRepository(timelines.get(0))
+                                        .loadTopicStatistics(timelines).stream();
+                            } catch (final ServiceUnavailableException e) {
+                                throw new NakadiRuntimeException(e);
+                            }
+                        })
+                        .map(PartitionStatistics::getBeforeFirst)
+                        .map(converter::convertToNoToken)
+                        .collect(Collectors.toList());
         }
     }
 
@@ -140,19 +154,31 @@ public class StartingState extends State {
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
-            try {
-                for (final String eventType : subscription.getEventTypes()) {
-                    final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
-                    final Timeline timeline = activeTimelines.get(activeTimelines.size() - 1);
-                    timelineService.getTopicRepository(timeline)
-                            .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getLast())));
-                }
-                return result;
-            } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
-            }
+            return subscription.getEventTypes()
+                    .stream()
+                    .map(et -> {
+                        try {
+                            // get newest active timeline
+                            final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(et);
+                            return activeTimelines.get(activeTimelines.size() - 1);
+                        } catch (final NakadiException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                    .values()
+                    .stream()
+                    .flatMap(timelines -> {
+                        try {
+                            return timelineService.getTopicRepository(timelines.get(0))
+                                    .loadTopicStatistics(timelines).stream();
+                        } catch (final ServiceUnavailableException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .map(PartitionStatistics::getLast)
+                    .map(converter::convertToNoToken)
+                    .collect(Collectors.toList());
         }
     }
 

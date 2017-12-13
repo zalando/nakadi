@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
@@ -17,9 +18,9 @@ import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -57,7 +58,6 @@ public class StartingStateTest {
     public void testGetSubscriptionOffsetsBegin() throws Exception {
         when(subscription.getReadFrom()).thenReturn(SubscriptionBase.InitialPosition.BEGIN);
 
-
         final NakadiCursor beforeBegin0 = mock(NakadiCursor.class);
         final SubscriptionCursorWithoutToken beforeBegin0Converted = mock(SubscriptionCursorWithoutToken.class);
         when(cursorConverter.convertToNoToken(eq(beforeBegin0))).thenReturn(beforeBegin0Converted);
@@ -65,24 +65,22 @@ public class StartingStateTest {
         final SubscriptionCursorWithoutToken beforeBegin1Converted = mock(SubscriptionCursorWithoutToken.class);
         when(cursorConverter.convertToNoToken(eq(beforeBegin1))).thenReturn(beforeBegin1Converted);
 
-        final TopicRepository firstTR = mock(TopicRepository.class);
+        final TopicRepository topicRepository = mock(TopicRepository.class);
 
-        final List<PartitionStatistics> resultForTopic0 = Collections.singletonList(
-                mock(PartitionStatistics.class));
-        when(resultForTopic0.get(0).getBeforeFirst()).thenReturn(beforeBegin0);
-        when(firstTR.loadTopicStatistics(eq(Collections.singletonList(timelineEt00))))
-                .thenReturn(resultForTopic0);
+        final PartitionStatistics resultForTopic0 = mock(PartitionStatistics.class);
+        when(resultForTopic0.getBeforeFirst()).thenReturn(beforeBegin0);
 
-        final TopicRepository secondTR = mock(TopicRepository.class);
-        final List<PartitionStatistics> resultForTopic1 = Collections.singletonList(
-                mock(PartitionStatistics.class));
-        when(resultForTopic1.get(0).getBeforeFirst()).thenReturn(beforeBegin1);
+        final PartitionStatistics resultForTopic1 = mock(PartitionStatistics.class);
+        when(resultForTopic1.getBeforeFirst()).thenReturn(beforeBegin1);
 
-        when(secondTR.loadTopicStatistics(eq(Collections.singletonList(timelineEt10))))
-                .thenReturn(resultForTopic1);
+        when(topicRepository.loadTopicStatistics(any()))
+                .thenReturn(Lists.newArrayList(resultForTopic0, resultForTopic1));
 
-        when(timelineService.getTopicRepository(eq(timelineEt00))).thenReturn(firstTR);
-        when(timelineService.getTopicRepository(eq(timelineEt10))).thenReturn(secondTR);
+        when(timelineService.getTopicRepository(eq(timelineEt00))).thenReturn(topicRepository);
+
+        final Storage storage = mock(Storage.class);
+        when(timelineEt00.getStorage()).thenReturn(storage);
+        when(timelineEt10.getStorage()).thenReturn(storage);
 
         final List<SubscriptionCursorWithoutToken> cursors = StartingState.calculateStartPosition(
                 subscription, timelineService, cursorConverter);
@@ -103,18 +101,20 @@ public class StartingStateTest {
         final SubscriptionCursorWithoutToken end1Converted = mock(SubscriptionCursorWithoutToken.class);
         when(cursorConverter.convertToNoToken(eq(end1))).thenReturn(end1Converted);
 
-        final TopicRepository firstTR = mock(TopicRepository.class);
-        final List<PartitionStatistics> statsForEt0 = Collections.singletonList(mock(PartitionStatistics.class));
-        when(statsForEt0.get(0).getLast()).thenReturn(end0);
-        when(firstTR.loadTopicStatistics(eq(Collections.singletonList(timelineEt01)))).thenReturn(statsForEt0);
+        final TopicRepository topicRepository = mock(TopicRepository.class);
+        final PartitionStatistics statsForEt0 = mock(PartitionStatistics.class);
+        when(statsForEt0.getLast()).thenReturn(end0);
 
-        final TopicRepository secondTR = mock(TopicRepository.class);
-        final List<PartitionStatistics> statsForTopic1 = Collections.singletonList(mock(PartitionStatistics.class));
-        when(statsForTopic1.get(0).getLast()).thenReturn(end1);
-        when(secondTR.loadTopicStatistics(eq(Collections.singletonList(timelineEt11)))).thenReturn(statsForTopic1);
+        final PartitionStatistics statsForTopic1 = mock(PartitionStatistics.class);
+        when(statsForTopic1.getLast()).thenReturn(end1);
 
-        when(timelineService.getTopicRepository(eq(timelineEt01))).thenReturn(firstTR);
-        when(timelineService.getTopicRepository(eq(timelineEt11))).thenReturn(secondTR);
+        when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(statsForEt0, statsForTopic1));
+
+        when(timelineService.getTopicRepository(eq(timelineEt01))).thenReturn(topicRepository);
+
+        final Storage storage = mock(Storage.class);
+        when(timelineEt01.getStorage()).thenReturn(storage);
+        when(timelineEt11.getStorage()).thenReturn(storage);
 
         final List<SubscriptionCursorWithoutToken> cursors = StartingState.calculateStartPosition(
                 subscription, timelineService, cursorConverter);
