@@ -1,12 +1,14 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -27,7 +29,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Optional;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -123,13 +124,14 @@ public class StreamingStateTest {
         when(timelineService.createEventConsumer(any())).thenReturn(consumer);
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
 
-        final Timeline timeline = new Timeline("t", 0, null, "t", new Date());
+        final Storage storage = mock(Storage.class);
+        final Timeline timeline = new Timeline("t", 0, storage, "t", new Date());
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(timelineService.getTopicRepository(eq(timeline))).thenReturn(topicRepository);
         final PartitionStatistics stats = mock(PartitionStatistics.class);
         when(stats.getBeforeFirst()).thenReturn(new NakadiCursor(timeline, "0", "0"));
-        when(topicRepository.loadPartitionStatistics(eq(timeline), eq("0"))).thenReturn(Optional.of(stats));
+        when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(stats));
 
         state.onEnter();
 
