@@ -58,12 +58,12 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = totalEventsInPartition(timeline, initialCursor.getPartition());
+            final long eventsTotal = StaticStorageWorkerFactory.get(timeline.getStorage())
+                    .totalEventsInPartition(timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
         return result;
     }
-
 
     public List<NakadiCursorLag> cursorsLag(final String eventTypeName, final List<NakadiCursor> cursors)
             throws InvalidCursorOperation {
@@ -222,16 +222,4 @@ public class CursorOperationsService {
     }
 
 
-    //  Method can work only with finished timeline (e.g. it will break for active timeline)
-    private long totalEventsInPartition(final Timeline timeline, final String partitionString)
-            throws InvalidCursorOperation {
-        final Timeline.StoragePosition positions = timeline.getLatestPosition();
-
-        try {
-            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
-                    KafkaCursor.toKafkaPartition(partitionString));
-        } catch (final IllegalArgumentException ex) {
-            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-        }
-    }
 }
