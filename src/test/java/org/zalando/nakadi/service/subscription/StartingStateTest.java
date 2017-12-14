@@ -108,7 +108,7 @@ public class StartingStateTest {
         final PartitionStatistics statsForTopic1 = mock(PartitionStatistics.class);
         when(statsForTopic1.getLast()).thenReturn(end1);
 
-        when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(statsForEt0, statsForTopic1));
+        when(topicRepository.loadTopicEndStatistics(any())).thenReturn(Lists.newArrayList(statsForEt0, statsForTopic1));
 
         when(timelineService.getTopicRepository(eq(timelineEt01))).thenReturn(topicRepository);
 

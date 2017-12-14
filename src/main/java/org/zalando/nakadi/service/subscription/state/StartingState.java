@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -171,12 +172,12 @@ public class StartingState extends State {
                     .flatMap(timelines -> {
                         try {
                             return timelineService.getTopicRepository(timelines.get(0))
-                                    .loadTopicStatistics(timelines).stream();
+                                    .loadTopicEndStatistics(timelines).stream();
                         } catch (final ServiceUnavailableException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })
-                    .map(PartitionStatistics::getLast)
+                    .map(PartitionEndStatistics::getLast)
                     .map(converter::convertToNoToken)
                     .collect(Collectors.toList());
         }
