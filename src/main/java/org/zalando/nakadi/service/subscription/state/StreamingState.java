@@ -8,13 +8,10 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -443,13 +440,10 @@ class StreamingState extends State {
 
         if (!currentAssignment.equals(newAssignment)) {
             try {
-                final Map<String, List<NakadiCursor>> beforeFirst = getBeforeFirstNakadiCursors(newAssignment);
+                final Map<EventTypePartition, NakadiCursor> beforeFirst = getBeforeFirstCursors(newAssignment);
                 final List<NakadiCursor> cursors = newAssignment.stream()
                         .map(pk -> {
-                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk.getEventType()).stream()
-                                    .filter(c -> c.getPartition().equals(pk.getPartition()))
-                                    .findFirst()
-                                    .orElseThrow(() -> new MyNakadiRuntimeException1("problem starting stream"));
+                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
 
                             // Checks that current cursor is still available in storage
                             offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
@@ -464,7 +458,7 @@ class StreamingState extends State {
         }
     }
 
-    private Map<String, List<NakadiCursor>> getBeforeFirstNakadiCursors(final Set<EventTypePartition> newAssignment) {
+    private Map<EventTypePartition, NakadiCursor> getBeforeFirstCursors(final Set<EventTypePartition> newAssignment) {
         return newAssignment.stream()
                 .map(EventTypePartition::getEventType)
                 .map(et -> {
@@ -487,19 +481,9 @@ class StreamingState extends State {
                     }
                 })
                 .map(PartitionStatistics::getBeforeFirst)
-                .collect(groupingBy(NakadiCursor::getEventType));
-    }
-
-    private NakadiCursor getBeforeFirstCursor(final EventTypePartition pk)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
-        final Timeline firstTimelineForET = getContext().getTimelineService()
-                .getActiveTimelinesOrdered(pk.getEventType()).get(0);
-
-        final Optional<PartitionStatistics> stats = getContext().getTimelineService()
-                .getTopicRepository(firstTimelineForET)
-                .loadPartitionStatistics(firstTimelineForET, pk.getPartition());
-
-        return stats.get().getBeforeFirst();
+                .collect(Collectors.toMap(
+                        cursor -> new EventTypePartition(cursor.getEventType(), cursor.getPartition()),
+                        cursor -> cursor));
     }
 
     private NakadiCursor createNakadiCursor(final SubscriptionCursorWithoutToken cursor) {
