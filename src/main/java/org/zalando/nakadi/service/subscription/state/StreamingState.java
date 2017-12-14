@@ -481,9 +481,7 @@ class StreamingState extends State {
                     }
                 })
                 .map(PartitionStatistics::getBeforeFirst)
-                .collect(Collectors.toMap(
-                        cursor -> new EventTypePartition(cursor.getEventType(), cursor.getPartition()),
-                        cursor -> cursor));
+                .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, cursor -> cursor));
     }
 
     private NakadiCursor createNakadiCursor(final SubscriptionCursorWithoutToken cursor) {
