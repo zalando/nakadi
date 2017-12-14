@@ -4,6 +4,7 @@ import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -23,6 +24,7 @@ public class Timeline {
     private Date cleanedUpAt;
     private StoragePosition latestPosition;
     private boolean deleted;
+
     public Timeline(
             final String eventType,
             final int order,
@@ -193,6 +195,7 @@ public class Timeline {
 
         NakadiCursor toNakadiCursor(Timeline timeline, String partition);
 
+        String toDebugString();
     }
 
     public static class KafkaStoragePosition implements StoragePosition {
@@ -231,6 +234,11 @@ public class Timeline {
         }
 
         @Override
+        public String toDebugString() {
+            return Arrays.toString(offsets.toArray());
+        }
+
+        @Override
         public boolean equals(final Object o) {
             if (this == o) {
                 return true;
@@ -250,4 +258,12 @@ public class Timeline {
         }
     }
 
+    public static String debugString(final Timeline timeline) {
+        if (null == timeline) {
+            return "NULL";
+        }
+        final String latestOffsetDescr = null == timeline.getLatestPosition() ? "NULL" :
+                timeline.getLatestPosition().toDebugString();
+        return timeline.getEventType() + ":" + timeline.getOrder() + ":" + latestOffsetDescr;
+    }
 }

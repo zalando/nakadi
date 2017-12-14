@@ -25,6 +25,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Optional;
 
@@ -48,6 +49,7 @@ public class StreamingStateTest {
         state = new StreamingState();
 
         final StreamingContext contextMock = mock(StreamingContext.class);
+        when(contextMock.getCursorComparator()).thenReturn(Comparator.comparing(NakadiCursor::getOffset));
 
         when(contextMock.getSessionId()).thenReturn(SESSION_ID);
         when(contextMock.isInState(Mockito.same(state))).thenReturn(true);

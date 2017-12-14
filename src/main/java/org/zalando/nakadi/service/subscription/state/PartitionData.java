@@ -10,6 +10,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
@@ -17,9 +18,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 class PartitionData {
+    private final Comparator<NakadiCursor> comparator;
     private final ZkSubscription<SubscriptionCursorWithoutToken> subscription;
     private final List<ConsumedEvent> nakadiEvents = new LinkedList<>();
-    private final NavigableSet<NakadiCursor> allCursorsOrdered = new TreeSet<>();
+    private final NavigableSet<NakadiCursor> allCursorsOrdered;
     private final Logger log;
 
     private NakadiCursor commitOffset;
@@ -28,16 +30,20 @@ class PartitionData {
     private int keepAliveInARow;
 
     @VisibleForTesting
-    PartitionData(final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
+    PartitionData(final Comparator<NakadiCursor> comparator,
+                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
                   final long currentTime) {
-        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
+        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
     }
 
     PartitionData(
+            final Comparator<NakadiCursor> comparator,
             final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
             final NakadiCursor commitOffset,
             final Logger log,
             final long currentTime) {
+        this.comparator = comparator;
+        this.allCursorsOrdered = new TreeSet<>(comparator);
         this.subscription = subscription;
         this.log = log;
 
@@ -99,11 +105,11 @@ class PartitionData {
      * @param beforeFirst Position to check against (last inaccessible position in stream)
      */
     void ensureDataAvailable(final NakadiCursor beforeFirst) {
-        if (beforeFirst.compareTo(commitOffset) > 0) {
+        if (comparator.compare(beforeFirst, commitOffset) > 0) {
             log.warn("Oldest kafka position is {} and commit offset is {}, updating", beforeFirst, commitOffset);
             commitOffset = beforeFirst;
         }
-        if (beforeFirst.compareTo(sentOffset) > 0) {
+        if (comparator.compare(beforeFirst, sentOffset) > 0) {
             log.warn("Oldest kafka position is {} and sent offset is {}, updating", beforeFirst, sentOffset);
             sentOffset = beforeFirst;
         }
@@ -121,14 +127,14 @@ class PartitionData {
 
     CommitResult onCommitOffset(final NakadiCursor offset) {
         boolean seekKafka = false;
-        if (offset.compareTo(sentOffset) > 0) {
+        if (comparator.compare(offset, sentOffset) > 0) {
             log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset,
                     commitOffset);
             seekKafka = true;
             sentOffset = offset;
         }
         final long committed;
-        if (offset.compareTo(commitOffset) >= 0) {
+        if (comparator.compare(offset, commitOffset) >= 0) {
             final Set<NakadiCursor> committedCursors = allCursorsOrdered.headSet(offset, true);
             committed = committedCursors.size();
             commitOffset = offset;
@@ -144,7 +150,7 @@ class PartitionData {
             nakadiEvents.clear();
             committed = 0;
         }
-        while (!nakadiEvents.isEmpty() && nakadiEvents.get(0).getPosition().compareTo(commitOffset) <= 0) {
+        while (!nakadiEvents.isEmpty() && comparator.compare(nakadiEvents.get(0).getPosition(), commitOffset) <= 0) {
             nakadiEvents.remove(0);
         }
         return new CommitResult(seekKafka, committed);
@@ -156,7 +162,7 @@ class PartitionData {
     }
 
     boolean isCommitted() {
-        return sentOffset.compareTo(commitOffset) <= 0;
+        return comparator.compare(sentOffset, commitOffset) <= 0;
     }
 
     int getUnconfirmed() {
