@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Nakadi collects access log events
+- Sending of KPI metrics for event-types count
 
 ## [2.3.4] - 2017-12-14
 

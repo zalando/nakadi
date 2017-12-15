@@ -109,6 +109,7 @@ nakadi:
       events-queue-size: 100
     event-types:
       nakadiAccessLog: "nakadi.access.log"
+      nakadiEventTypeLog: "nakadi.event.type.log"
   hasher.salt: "salt"
 
 twintip:
