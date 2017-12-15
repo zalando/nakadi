@@ -162,7 +162,7 @@ public class CursorsController {
     @ExceptionHandler(InvalidStreamIdException.class)
     public ResponseEntity<Problem> handleInvalidStreamId(final InvalidStreamIdException ex,
                                                          final NativeWebRequest request) {
-        LOG.warn("Stream id {} is not found", ex.getStreamId(), ex.getMessage());
+        LOG.warn("Stream id {} is not found: {}", ex.getStreamId(), ex.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
