@@ -58,7 +58,7 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = StaticStorageWorkerFactory.get(timeline.getStorage())
+            final long eventsTotal = StaticStorageWorkerFactory.get(timeline)
                     .totalEventsInPartition(timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }

@@ -6,7 +6,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
@@ -36,7 +35,7 @@ class VersionOneConverter implements VersionedConverter {
 
     @Override
     public List<NakadiCursor> convertBatched(final List<SubscriptionCursorWithoutToken> cursors) throws
-            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException {
         // For version one it doesn't matter - batched or not
         final List<NakadiCursor> result = new ArrayList<>(cursors.size());
         for (final SubscriptionCursorWithoutToken cursor : cursors) {
@@ -89,12 +88,11 @@ class VersionOneConverter implements VersionedConverter {
             throw new InvalidCursorException(CursorError.UNAVAILABLE);
         }
         String offsetReplacement = offset;
-        while (StaticStorageWorkerFactory.get(timeline.getStorage())
+        while (StaticStorageWorkerFactory.get(timeline)
                 .isLastOffsetForPartition(timeline, partition, offsetReplacement)) {
             // Will not check this call, because latest offset is not set for last timeline
             timeline = timelineIterator.next();
-            offsetReplacement = StaticStorageWorkerFactory.get(timeline.getStorage())
-                    .getFirstOffsetInTimeline(partition);
+            offsetReplacement = StaticStorageWorkerFactory.get(timeline).getBeforeFirstOffset();
         }
         return new NakadiCursor(
                 timeline,

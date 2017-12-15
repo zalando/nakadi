@@ -16,11 +16,15 @@ public class StaticStorageWorkerFactory {
 
         boolean isInitialOffset(String offset);
 
-        String getFirstOffsetInTimeline(String partition);
+        String getBeforeFirstOffset();
     }
 
     public static StaticStorageWorker get(final Storage storage) {
         return WORKER_MAP.get(storage.getType());
+    }
+
+    public static StaticStorageWorker get(final Timeline timeline) {
+        return get(timeline.getStorage());
     }
 
     private static class StaticKafkaStorageWorker implements StaticStorageWorker {
@@ -57,7 +61,7 @@ public class StaticStorageWorkerFactory {
         }
 
         @Override
-        public String getFirstOffsetInTimeline(final String partition) {
+        public String getBeforeFirstOffset() {
             return "-1"; // Yes, it is always like that for kafka.
         }
     }
