@@ -106,7 +106,7 @@ If you get the message "Is the docker daemon running on this host?" first check 
 eval "$(docker-machine env default)"
 ```
 
-#### What's the reason for newest available offset being bigger than oldest offset?
+#### What's the reason for newest available offset being smaller than oldest offset?
 
 When there are no events available for an event-type because they've expired, then `newest_available_offset` will be smaller than `oldest_available_offset`. Because Nakadi has exclusive offset handling, it shows the offset of the last message in `newest_available_offset`.
 

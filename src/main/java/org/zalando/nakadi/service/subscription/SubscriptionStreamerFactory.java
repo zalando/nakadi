@@ -11,12 +11,14 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamWriterProvider;
 import org.zalando.nakadi.service.EventTypeChangeListener;
+import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -39,7 +41,7 @@ public class SubscriptionStreamerFactory {
     private final EventStreamWriterProvider eventStreamWriterProvider;
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
-
+    private final EventTypeCache eventTypeCache;
     @Autowired
     public SubscriptionStreamerFactory(
             final TimelineService timelineService,
@@ -50,7 +52,8 @@ public class SubscriptionStreamerFactory {
             final SubscriptionClientFactory zkClientFactory,
             final EventStreamWriterProvider eventStreamWriterProvider,
             final AuthorizationValidator authorizationValidator,
-            final EventTypeChangeListener eventTypeChangeListener) {
+            final EventTypeChangeListener eventTypeChangeListener,
+            final EventTypeCache eventTypeCache) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -60,6 +63,7 @@ public class SubscriptionStreamerFactory {
         this.eventStreamWriterProvider = eventStreamWriterProvider;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
+        this.eventTypeCache = eventTypeCache;
     }
 
     public SubscriptionStreamer build(
@@ -93,6 +97,7 @@ public class SubscriptionStreamerFactory {
                 .setWriter(eventStreamWriterProvider.getWriter())
                 .setAuthorizationValidator(authorizationValidator)
                 .setEventTypeChangeListener(eventTypeChangeListener)
+                .setCursorComparator(new NakadiCursorComparator(eventTypeCache))
                 .build();
     }
 

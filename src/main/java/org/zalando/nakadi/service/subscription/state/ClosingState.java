@@ -129,7 +129,8 @@ class ClosingState extends State {
         } catch (Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
-        if (uncommittedOffsets.containsKey(key) && uncommittedOffsets.get(key).compareTo(newCursor) <= 0) {
+        if (uncommittedOffsets.containsKey(key) &&
+                getComparator().compare(uncommittedOffsets.get(key), newCursor) <= 0) {
             freePartitions(Collections.singletonList(key));
         }
         tryCompleteState();

@@ -34,7 +34,7 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
             admins = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource='nakadi'",
                     permissionRowMapper);
         } catch (final DataAccessException e) {
-            throw new RepositoryProblemException("Errorr occurred when fetching admininstrators", e);
+            throw new RepositoryProblemException("Error occurred when fetching administrators", e);
         }
 
         return admins;

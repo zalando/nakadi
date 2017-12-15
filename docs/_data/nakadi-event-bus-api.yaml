@@ -1118,8 +1118,9 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for resetting subscription offsets.
-        The subscription consumers will be disconnected during offset reset. The request can hang up until
+        Reset subscription offsets to specified values.
+        Client connected after this operation will get events starting from next offset position.
+        During this operation the subscription's consumers will be disconnected. The request can hang up until
         subscription commit timeout. During that time requests to subscription streaming endpoint
         will be rejected with 409. The clients should reconnect once the request is finished with 204.
       parameters:
@@ -2006,6 +2007,13 @@ definitions:
         description: |
           Offset of the event being pointed to.
 
+          Note that if you want to specify beginning position of a stream with first event at offset `N`,
+          you should specify offset `N-1`.
+          This applies in cases when you create new subscription or reset subscription offsets.
+          Also for stream start offsets one can use two special values:
+          - `begin` - read from the oldest available event.
+          - `end` - read from the most recent offset.
+
   ShiftedCursor:
     allOf:
       - $ref: "#/definitions/Cursor"
@@ -2172,6 +2180,7 @@ definitions:
         description: |
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
+          Clients will get events starting from next offset positions.
 
     required:
       - owning_application
