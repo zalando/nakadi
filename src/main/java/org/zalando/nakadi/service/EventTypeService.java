@@ -139,7 +139,7 @@ public class EventTypeService {
             try {
                 eventTypeRepository.removeEventType(eventType.getName());
             } catch (final NoSuchEventTypeException e1) {
-                LOG.error("Error creating event type {}", eventType, e1);
+                LOG.error("Error creating event type {}: {}", eventType, e1.getProblemMessage());
             }
             throw e;
         }
@@ -186,15 +186,15 @@ public class EventTypeService {
             topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Failed to wait for timeline switch", e);
+            LOG.error("Failed to wait for timeline switch: {}", e.getMessage());
             throw new EventTypeUnavailableException("Event type " + eventTypeName
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            LOG.error("Failed to wait for timeline switch", e);
+            LOG.error("Failed to wait for timeline switch: {}", e.getMessage());
             throw new EventTypeUnavailableException("Event type " + eventTypeName
                     + " is currently in maintenance, please repeat request");
         } catch (final NakadiException e) {
-            LOG.error("Error deleting event type " + eventTypeName, e);
+            LOG.error("Error deleting event type {}: {}", eventTypeName, e.getProblemMessage());
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         } finally {
             try {
@@ -202,7 +202,7 @@ public class EventTypeService {
                     deletionCloser.close();
                 }
             } catch (final IOException e) {
-                LOG.error("Exception occurred when releasing usage of event-type", e);
+                LOG.error("Exception occurred when releasing usage of event-type: {}", e.getMessage());
             }
         }
         if (topicsToDelete != null) {
@@ -212,7 +212,7 @@ public class EventTypeService {
                         topicRepository.deleteTopic(topic);
                     } catch (TopicDeletionException e) {
                         // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
-                        LOG.info("Could not delete topic " + topic, e);
+                        LOG.info("Could not delete topic {}: {}", topic, e.getProblemMessage());
                     }
                 }
             }
@@ -250,11 +250,11 @@ public class EventTypeService {
             throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final TimeoutException e) {
-            LOG.error("Failed to wait for timeline switch", e);
+            LOG.error("Failed to wait for timeline switch: {}", e.getMessage());
             throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final NakadiException e) {
-            LOG.error("Unable to update event type", e);
+            LOG.error("Unable to update event type: {}", e.getProblemMessage());
             throw new NakadiRuntimeException(e);
         } finally {
             try {
@@ -262,7 +262,7 @@ public class EventTypeService {
                     updatingCloser.close();
                 }
             } catch (final IOException e) {
-                LOG.error("Exception occurred when releasing usage of event-type", e);
+                LOG.error("Exception occurred when releasing usage of event-type: {}", e.getMessage());
             }
         }
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
@@ -339,10 +339,10 @@ public class EventTypeService {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
             return Result.ok(eventType);
         } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Could not find EventType: {}", eventTypeName);
+            LOG.debug("Could not find EventType {}: {}", eventTypeName, e.getProblemMessage());
             return Result.problem(e.asProblem());
         } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type " + eventTypeName, e);
+            LOG.error("Problem loading event type {}: {}", eventTypeName, e.getProblemMessage());
             return Result.problem(e.asProblem());
         }
     }
@@ -355,13 +355,13 @@ public class EventTypeService {
             eventTypeRepository.removeEventType(eventTypeName);
             return topicsToDelete;
         } catch (TopicDeletionException e) {
-            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
+            LOG.error("Problem deleting kafka topic for event type {}: {}", eventTypeName, e.getProblemMessage());
             throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName);
         } catch (TimelineException | NotFoundException e) {
-            LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
+            LOG.error("Problem deleting timeline for event type {}: {}", eventTypeName, e.getMessage());
             throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
         } catch (NakadiException e) {
-            LOG.error("Error deleting event type " + eventTypeName, e);
+            LOG.error("Error deleting event type {}: {}", eventTypeName, e.getProblemMessage());
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         }
     }

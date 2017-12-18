@@ -49,9 +49,9 @@ public class ConsumerLimitingCleaningJob {
                     .forPath(CONNECTIONS_ZK_PATH)
                     .forEach(limitingService::deletePartitionNodeIfPossible);
         } catch (final KeeperException.NoNodeException e) {
-            LOG.debug("ZK node for connections doesn't exist");
+            LOG.debug("ZK node for connections doesn't exist: {}", e.getMessage());
         } catch (final Exception e) {
-            LOG.error("ZK error when cleaning consumer nodes");
+            LOG.error("ZK error when cleaning consumer nodes: {}", e.getMessage());
         }
     }
 

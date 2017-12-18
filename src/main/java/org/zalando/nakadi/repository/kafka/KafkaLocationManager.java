@@ -61,11 +61,11 @@ public class KafkaLocationManager {
                     final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                     brokers.add(Broker.fromByteJson(brokerData));
                 } catch (final Exception e) {
-                    LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
+                    LOG.info("Failed to fetch connection string for broker {}: {}", brokerId, e.getMessage());
                 }
             }
         } catch (final Exception e) {
-            LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
+            LOG.error("Failed to fetch list of brokers from ZooKeeper: {}", e.getMessage());
         }
 
         return brokers;

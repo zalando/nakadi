@@ -128,14 +128,14 @@ public class ConsumerLimitingService {
                     .forPath(connectionNodePath);
             deletePartitionNodeIfPossible(consumerNode);
         } catch (final Exception e) {
-            LOG.error("Zookeeper error when deleting consumer connection node", e);
+            LOG.error("Zookeeper error when deleting consumer connection node: {}", e.getMessage());
         }
 
         ACQUIRED_SLOTS.remove(slot);
         try {
             deleteCacheIfPossible(slot);
         } catch (final Exception e) {
-            LOG.error("Zookeeper error when deleting consumer connections cache", e);
+            LOG.error("Zookeeper error when deleting consumer connections cache: {}", e.getMessage());
         }
     }
 
@@ -162,7 +162,7 @@ public class ConsumerLimitingService {
             // if the node has children - we should not delete it
             // if the node doesn't exist - good, other thread/instance already deleted it
         } catch (final Exception e) {
-            LOG.error("Zookeeper error when trying delete consumer node", e);
+            LOG.error("Zookeeper error when trying delete consumer node: {}", e.getMessage());
         }
     }
 
@@ -179,7 +179,7 @@ public class ConsumerLimitingService {
                     .withMode(CreateMode.EPHEMERAL)
                     .forPath(zkPath);
         } catch (Exception e) {
-            LOG.error("Zookeeper error when creating consumer node", e);
+            LOG.error("Zookeeper error when creating consumer node: {}", e.getMessage());
             throw new NakadiRuntimeException(e);
         }
         final ConnectionSlot acquiredSlot = new ConnectionSlot(client, eventType, partition, slotId);

@@ -122,7 +122,7 @@ public class CursorsController {
             } catch (final NoSuchEventTypeException | InvalidCursorException e) {
                 return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
             } catch (final NakadiException e) {
-                LOG.error("Failed to commit cursors", e);
+                LOG.error("Failed to commit cursors: {}", e.getProblemMessage());
                 return create(e.asProblem(), request);
             }
         } finally {
@@ -171,28 +171,28 @@ public class CursorsController {
             CursorUnavailableException.class})
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(RequestInProgressException.class)
     public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
                                                                     final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Problem> handleMethodArgumentNotValidException(final MethodArgumentNotValidException ex,
                                                                          final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
     public ResponseEntity<Problem> handleFeatureNotAllowed(final FeatureNotAvailableException ex,
                                                            final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
     }
 

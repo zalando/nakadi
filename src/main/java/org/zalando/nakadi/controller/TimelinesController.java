@@ -62,19 +62,19 @@ public class TimelinesController {
 
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> unprocessable(final UnableProcessException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.error(ex.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.error(ex.getMessage());
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Problem> conflict(final ConflictException ex, final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 

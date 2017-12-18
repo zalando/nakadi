@@ -89,7 +89,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
         } catch (final DataAccessException e) {
-            LOG.error("Database error when getting subscription", e);
+            LOG.error("Database error when getting subscription: {}", e.getMessage());
             throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
@@ -101,7 +101,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                 throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
             }
         } catch (final DataAccessException e) {
-            LOG.error("Database error when deleting subscription", e);
+            LOG.error("Database error when deleting subscription: {}", e.getMessage());
             throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
@@ -137,7 +137,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         try {
             return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
         } catch (final DataAccessException e) {
-            LOG.error("Database error when listing subscriptions", e);
+            LOG.error("Database error when listing subscriptions: {}", e.getMessage());
             throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }

@@ -29,7 +29,7 @@ public class ShutdownHooks {
                 try {
                     hook.run();
                 } catch (final RuntimeException ex) {
-                    LOG.warn("Failed to call on shutdown hook for {}", hook, ex);
+                    LOG.warn("Failed to call on shutdown hook for {}: {}", hook, ex.getMessage());
                 }
             }
         }

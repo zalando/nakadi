@@ -51,7 +51,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     @Override
     public void configure(final HttpSecurity http) throws Exception {
-        LOG.info("Authentication mode: " + settings.getAuthMode());
+        LOG.info("Authentication mode: {}", settings.getAuthMode());
 
         if (settings.getAuthMode() == SecuritySettings.AuthMode.FULL) {
             http.authorizeRequests()

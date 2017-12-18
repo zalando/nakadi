@@ -97,7 +97,7 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming", ex);
+            LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
             if (!headersSent) {
                 headersSent = true;
                 try {
@@ -113,10 +113,11 @@ public class SubscriptionStreamController {
                     }
                     out.flush();
                 } catch (final IOException e) {
-                    LOG.error("Failed to write exception to response", e);
+                    LOG.error("Failed to write exception to response: {}", e.getMessage());
                 }
             } else {
-                LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
+                LOG.warn("Exception found while streaming, but no data could be provided to client: {}",
+                        ex.getMessage());
             }
         }
 
@@ -171,7 +172,7 @@ public class SubscriptionStreamController {
 
                 streamer.stream();
             } catch (final InterruptedException ex) {
-                LOG.warn("Interrupted while streaming with " + streamer, ex);
+                LOG.warn("Interrupted while streaming with {}: {}", streamer, ex.getMessage());
                 Thread.currentThread().interrupt();
             } catch (final Exception e) {
                 output.onException(e);

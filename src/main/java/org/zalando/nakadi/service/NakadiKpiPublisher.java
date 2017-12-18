@@ -33,7 +33,7 @@ public class NakadiKpiPublisher {
             final JSONObject event = eventSupplier.get();
             eventsProcessor.enrichAndSubmit(etName, event);
         } catch (final Exception e) {
-            LOG.error("Error occurred when submitting KPI event for publishing", e);
+            LOG.error("Error occurred when submitting KPI event for publishing: {}", e.getMessage());
         }
     }
 

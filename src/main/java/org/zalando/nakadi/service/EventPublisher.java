@@ -111,14 +111,14 @@ public class EventPublisher {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final EventPublishingException e) {
-            LOG.error("error publishing event", e);
+            LOG.error("error publishing event: {}", e.getProblemMessage());
             return failed(batch);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Failed to wait for timeline switch", e);
+            LOG.error("Failed to wait for timeline switch: {}", e.getMessage());
             throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            LOG.error("Failed to wait for timeline switch", e);
+            LOG.error("Failed to wait for timeline switch: {}", e.getMessage());
             throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
         } finally {
             try {
@@ -126,7 +126,7 @@ public class EventPublisher {
                     publishingCloser.close();
                 }
             } catch (final IOException e) {
-                LOG.error("Exception occurred when releasing usage of event-type", e);
+                LOG.error("Exception occurred when releasing usage of event-type: {}", e.getMessage());
             }
         }
     }

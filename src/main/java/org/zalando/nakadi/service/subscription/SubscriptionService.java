@@ -132,7 +132,7 @@ public class SubscriptionService {
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
             return Result.ok(new PaginationWrapper<>(subscriptions, paginationLinks));
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred during listing of subscriptions", e);
+            LOG.error("Error occurred during listing of subscriptions: {}", e.getProblemMessage());
             return Result.problem(e.asProblem());
         }
     }
@@ -142,10 +142,10 @@ public class SubscriptionService {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            LOG.debug("Failed to find subscription {}: {}", subscriptionId, e.getProblemMessage());
             return Result.problem(e.asProblem());
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
+            LOG.error("Error occurred when trying to get subscription {}: {}", subscriptionId, e.getProblemMessage());
             return Result.problem(e.asProblem());
         }
     }
@@ -161,13 +161,14 @@ public class SubscriptionService {
 
             return Result.ok();
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            LOG.debug("Failed to find subscription {}: {}", subscriptionId, e.getProblemMessage());
             return Result.problem(e.asProblem());
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
+            LOG.error("Error occurred when trying to delete subscription {}: {}",
+                    subscriptionId, e.getProblemMessage());
             return Result.problem(e.asProblem());
         } catch (final NoSuchEventTypeException | InternalNakadiException e) {
-            LOG.error("Exception can not occur", e);
+            LOG.error("Exception cannot occur: {}", e.getProblemMessage());
             return Result.problem(e.asProblem());
         }
     }

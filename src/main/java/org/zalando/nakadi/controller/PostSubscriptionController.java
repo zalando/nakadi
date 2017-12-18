@@ -113,7 +113,7 @@ public class PostSubscriptionController {
             TooManyPartitionsException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
                                                                    final NativeWebRequest request) {
-        LOG.debug("Error occurred when working with subscriptions", exception);
+        LOG.debug("Error occurred when working with subscriptions: {}", exception.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
@@ -121,7 +121,7 @@ public class PostSubscriptionController {
     public ResponseEntity<Problem> handleFeatureNotAvailable(
             final FeatureNotAvailableException ex,
             final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
 
     }
