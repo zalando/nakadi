@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -28,7 +27,6 @@ public class EventsProcessor {
     private final Map<String, BlockingQueue<JSONObject>> eventTypeEvents;
     private final ExecutorService executorService;
     private final UUIDGenerator uuidGenerator;
-    private final FeatureToggleService featureToggleService;
 
     private final long batchCollectionTimeout;
     private final int batchSize;
@@ -38,7 +36,6 @@ public class EventsProcessor {
     @Autowired
     public EventsProcessor(final EventPublisher eventPublisher,
                            final UUIDGenerator uuidGenerator,
-                           final FeatureToggleService featureToggleService,
                            @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
                            @Value("${nakadi.kpi.config.batch-size}") final int batchSize,
                            @Value("${nakadi.kpi.config.workers}") final int workers,
@@ -46,7 +43,6 @@ public class EventsProcessor {
                            @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
         this.eventPublisher = eventPublisher;
         this.uuidGenerator = uuidGenerator;
-        this.featureToggleService = featureToggleService;
         this.batchCollectionTimeout = batchCollectionTimeout;
         this.batchSize = batchSize;
         this.pollTimeout = pollTimeout;
@@ -91,9 +87,7 @@ public class EventsProcessor {
                 LOG.error("Error occurred while publishing events to {}, {}", etName, e.getMessage(), e);
             }
         } finally {
-            if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.KPI_COLLECTION)) {
-                executorService.submit(() -> sendEventBatch(etName));
-            }
+            executorService.submit(() -> sendEventBatch(etName));
         }
     }
 
