@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.4.1] - 2017-12-18
+
+### Fixed
+- Fixed sending of KPI events after feature toggling
+
 ## [2.4.0] - 2017-12-18
 
 ### Added
