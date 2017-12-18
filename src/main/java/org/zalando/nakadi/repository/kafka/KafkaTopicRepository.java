@@ -453,12 +453,6 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public NakadiCursor shiftWithinTimeline(final NakadiCursor current, final long stillToAdd)
-            throws InvalidCursorException {
-        return KafkaCursor.fromNakadiCursor(current).addOffset(stillToAdd).toNakadiCursor(current.getTimeline());
-    }
-
-    @Override
     public void validateReadCursors(final List<NakadiCursor> cursors)
             throws InvalidCursorException, ServiceUnavailableException {
         convertToKafkaCursors(cursors);

@@ -11,7 +11,6 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -26,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSOR_FORMAT_EXCEPTION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 
@@ -124,22 +122,16 @@ public class CursorOperationsService {
     }
 
     public NakadiCursor unshiftCursor(final ShiftedNakadiCursor cursor) throws InvalidCursorOperation {
-        try {
-            if (cursor.getShift() < 0) {
-                return moveBack(cursor);
-            } else if (cursor.getShift() > 0) {
-                return moveForward(cursor);
-            } else {
-                return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
-            }
-        } catch (final InvalidCursorException ex) {
-            LOG.warn("Can not shift cursor " + cursor, ex);
-            // This exception should not happen, so that is why there is special treatment.
-            throw new InvalidCursorOperation(CURSOR_FORMAT_EXCEPTION);
+        if (cursor.getShift() < 0) {
+            return moveBack(cursor);
+        } else if (cursor.getShift() > 0) {
+            return moveForward(cursor);
+        } else {
+            return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
         }
     }
 
-    private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) throws InvalidCursorException {
+    private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) {
         NakadiCursor currentCursor = cursor;
         long stillToAdd = cursor.getShift();
         while (currentCursor.getTimeline().getLatestPosition() != null) {
@@ -160,12 +152,12 @@ public class CursorOperationsService {
             }
         }
         if (stillToAdd > 0) {
-            return getTopicRepository(currentCursor.getTimeline()).shiftWithinTimeline(currentCursor, stillToAdd);
+            return getStorageWorker(currentCursor.getTimeline()).shiftWithinTimeline(currentCursor, stillToAdd);
         }
         return currentCursor;
     }
 
-    private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) throws InvalidCursorException {
+    private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) {
         NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
         long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
@@ -191,7 +183,7 @@ public class CursorOperationsService {
             }
         }
         if (toMoveBack != 0) {
-            currentCursor = getTopicRepository(currentCursor.getTimeline())
+            currentCursor = getStorageWorker(currentCursor.getTimeline())
                     .shiftWithinTimeline(currentCursor, -toMoveBack);
         }
         return currentCursor;
