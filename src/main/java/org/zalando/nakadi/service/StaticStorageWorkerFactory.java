@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -19,7 +18,6 @@ public class StaticStorageWorkerFactory {
 
         String getBeforeFirstOffset();
 
-        NakadiCursor shiftWithinTimeline(NakadiCursor source, long toAdd);
     }
 
     public static StaticStorageWorker get(final Storage storage) {
@@ -68,14 +66,6 @@ public class StaticStorageWorkerFactory {
             return "-1"; // Yes, it is always like that for kafka.
         }
 
-        @Override
-        public NakadiCursor shiftWithinTimeline(final NakadiCursor source, final long toAdd) {
-            return new NakadiCursor(
-                    source.getTimeline(),
-                    source.getPartition(),
-                    KafkaCursor.toNakadiOffset(KafkaCursor.toKafkaOffset(source.getOffset()) + toAdd)
-            );
-        }
     }
 
     private static final EnumMap<Storage.Type, StaticStorageWorker> WORKER_MAP =

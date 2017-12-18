@@ -130,7 +130,7 @@ public class KafkaTopicRepositoryTest {
 
     private static List<NakadiCursor> asTopicPosition(final String topic, final List<Cursor> cursors) {
         return cursors.stream()
-                .map(c -> new NakadiCursor(buildTimelineWithTopic(topic), c.getPartition(), c.getOffset()))
+                .map(c -> NakadiCursor.of(buildTimelineWithTopic(topic), c.getPartition(), c.getOffset()))
                 .collect(toList());
     }
 
@@ -304,7 +304,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(buildTimelineWithTopic(MY_TOPIC), "0", "23"));
+        kafkaTopicRepository.validateCommitCursor(NakadiCursor.of(buildTimelineWithTopic(MY_TOPIC), "0", "23"));
     }
 
     @Test
@@ -316,7 +316,7 @@ public class KafkaTopicRepositoryTest {
                 .forEach(testCase -> {
                     try {
                         kafkaTopicRepository.validateCommitCursor(
-                                new NakadiCursor(
+                                NakadiCursor.of(
                                         buildTimelineWithTopic(MY_TOPIC),
                                         testCase.getKey().getPartition(),
                                         testCase.getKey().getOffset()));

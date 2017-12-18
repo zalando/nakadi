@@ -37,7 +37,7 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
     }
 
     public NakadiCursor toNakadiCursor(final Timeline timeline) {
-        return new NakadiCursor(timeline,
+        return NakadiCursor.of(timeline,
                 toNakadiPartition(partition),
                 toNakadiOffset(offset));
     }

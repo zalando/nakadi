@@ -210,15 +210,15 @@ public class TestUtils {
     }
 
     public static Timeline buildTimeline(final String etName) {
-        return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
+        return new Timeline(etName, 0, new Storage("ccc", Storage.Type.KAFKA), randomUUID(), new Date());
     }
 
     public static Timeline buildTimeline(final String etName, final String topic, final Date createdAt) {
-        return new Timeline(etName, 0, new Storage(), topic, createdAt);
+        return new Timeline(etName, 0, new Storage("ccc", Storage.Type.KAFKA), topic, createdAt);
     }
 
     public static Timeline buildTimelineWithTopic(final String topic) {
-        return new Timeline(randomUUID(), 0, new Storage(), topic, new Date());
+        return new Timeline(randomUUID(), 0, new Storage("ccc", Storage.Type.KAFKA), topic, new Date());
     }
 
     public static String toTimelineOffset(final long offset) {

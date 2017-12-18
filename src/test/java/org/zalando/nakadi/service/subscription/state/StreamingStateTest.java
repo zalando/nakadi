@@ -125,18 +125,19 @@ public class StreamingStateTest {
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
 
         final Storage storage = mock(Storage.class);
+        when(storage.getType()).thenReturn(Storage.Type.KAFKA);
         final Timeline timeline = new Timeline("t", 0, storage, "t", new Date());
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(timelineService.getTopicRepository(eq(timeline))).thenReturn(topicRepository);
         final PartitionStatistics stats = mock(PartitionStatistics.class);
-        when(stats.getBeforeFirst()).thenReturn(new NakadiCursor(timeline, "0", "0"));
+        final NakadiCursor beforeFirstCursor = NakadiCursor.of(timeline, "0", "0");
+        when(stats.getBeforeFirst()).thenReturn(beforeFirstCursor);
         when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(stats));
 
         state.onEnter();
-
-        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(
-                new NakadiCursor(timeline, "0", "0"));
+        final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
+        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(anyCursor);
 
         state.refreshTopologyUnlocked(new Partition[]{
                 new Partition(

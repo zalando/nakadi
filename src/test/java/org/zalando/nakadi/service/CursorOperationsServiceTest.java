@@ -40,8 +40,8 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenCursorsAreInTheSameTimeline() throws Exception {
-        final NakadiCursor initialCursor = new NakadiCursor(timeline, "0", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000002");
+        final NakadiCursor initialCursor = NakadiCursor.of(timeline, "0", "0000000000000001");
+        final NakadiCursor finalCursor = NakadiCursor.of(timeline, "0", "0000000000000002");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
 
@@ -50,8 +50,8 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenCursorsOffsetsAreInvertedThenNegativeDistance() throws Exception {
-        final NakadiCursor initialCursor = new NakadiCursor(timeline, "0", "0000000000000002");
-        final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000001");
+        final NakadiCursor initialCursor = NakadiCursor.of(timeline, "0", "0000000000000002");
+        final NakadiCursor finalCursor = NakadiCursor.of(timeline, "0", "0000000000000001");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
 
@@ -64,8 +64,8 @@ public class CursorOperationsServiceTest {
         final Timeline intermediaryTimeline = mockTimeline(2, 9L);
         final Timeline finalTimeline = mockTimeline(3, 5L);
 
-        final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000003");
+        final NakadiCursor initialCursor = NakadiCursor.of(initialTimeline, "0", "0000000000000001");
+        final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000003");
 
         mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
@@ -76,8 +76,8 @@ public class CursorOperationsServiceTest {
 
     @Test
     public void whenPartitionsDontMatch() throws Exception {
-        final NakadiCursor initialCursor = new NakadiCursor(timeline, "1", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000002");
+        final NakadiCursor initialCursor = NakadiCursor.of(timeline, "1", "0000000000000001");
+        final NakadiCursor finalCursor = NakadiCursor.of(timeline, "0", "0000000000000002");
 
         expectException(initialCursor, finalCursor, CURSORS_WITH_DIFFERENT_PARTITION);
     }
@@ -89,8 +89,8 @@ public class CursorOperationsServiceTest {
 
         mockTimelines(initialTimeline, finalTimeline);
 
-        final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
-        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
+        final NakadiCursor initialCursor = NakadiCursor.of(initialTimeline, "0", "0000000000000003");
+        final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000001");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
         assertThat(distance, equalTo(9L));
@@ -105,8 +105,8 @@ public class CursorOperationsServiceTest {
 
         mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
-        final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
-        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
+        final NakadiCursor initialCursor = NakadiCursor.of(initialTimeline, "0", "0000000000000003");
+        final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000001");
 
         assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(7L + 10L + 2L));
     }
@@ -119,8 +119,8 @@ public class CursorOperationsServiceTest {
 
         mockTimelines(initialTimeline, finalTimeline);
 
-        final NakadiCursor initialCursor = new NakadiCursor(expiredTimeline, "0", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(expiredTimeline, "2", "0000000000000002");
+        final NakadiCursor initialCursor = NakadiCursor.of(expiredTimeline, "0", "0000000000000001");
+        final NakadiCursor finalCursor = NakadiCursor.of(expiredTimeline, "2", "0000000000000002");
 
         service.calculateDistance(initialCursor, finalCursor);
     }
@@ -133,8 +133,8 @@ public class CursorOperationsServiceTest {
 
         mockTimelines(initialTimeline, finalTimeline);
 
-        final NakadiCursor initialCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(futureTimeline, "0", "0000000000000002");
+        final NakadiCursor initialCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000001");
+        final NakadiCursor finalCursor = NakadiCursor.of(futureTimeline, "0", "0000000000000002");
 
         expectException(initialCursor, finalCursor, TIMELINE_NOT_FOUND);
     }
@@ -147,8 +147,8 @@ public class CursorOperationsServiceTest {
 
         mockTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
 
-        final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "1", "0000000000000003");
-        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "1", "0000000000000001");
+        final NakadiCursor initialCursor = NakadiCursor.of(initialTimeline, "1", "0000000000000003");
+        final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "1", "0000000000000001");
 
         expectException(initialCursor, finalCursor, PARTITION_NOT_FOUND);
     }
@@ -247,8 +247,8 @@ public class CursorOperationsServiceTest {
         final Timeline first = mockTimeline(1, 9L);
         final Timeline last = mockOpenTimeline(5);
         mockTimelines(first, mockTimeline(2, -1L), mockTimeline(3, -1L), mockTimeline(4, -1L), last);
-        final NakadiCursor firstCursor = new NakadiCursor(first, "0", "000000000000000001");
-        final NakadiCursor lastCursor = new NakadiCursor(last, "0", "000000000000000010");
+        final NakadiCursor firstCursor = NakadiCursor.of(first, "0", "000000000000000001");
+        final NakadiCursor lastCursor = NakadiCursor.of(last, "0", "000000000000000010");
 
         assertEquals(service.calculateDistance(firstCursor, lastCursor), 19L);
         assertEquals(service.calculateDistance(lastCursor, firstCursor), -19L);
@@ -261,10 +261,10 @@ public class CursorOperationsServiceTest {
         mockTimelines(first, mockTimeline(2, -1L), mockTimeline(3, -1L), mockTimeline(4, -1L), last);
 
         final ShiftedNakadiCursor moveForward = new ShiftedNakadiCursor(first, "0", "000000000000000001", 19);
-        assertEquals(service.unshiftCursor(moveForward), new NakadiCursor(last, "0", "000000000000000010"));
+        assertEquals(service.unshiftCursor(moveForward), NakadiCursor.of(last, "0", "000000000000000010"));
 
         final ShiftedNakadiCursor moveBackward = new ShiftedNakadiCursor(last, "0", "000000000000000010", -19);
-        assertEquals(service.unshiftCursor(moveBackward), new NakadiCursor(first, "0", "000000000000000001"));
+        assertEquals(service.unshiftCursor(moveBackward), NakadiCursor.of(first, "0", "000000000000000001"));
     }
 
     @Test
@@ -273,7 +273,7 @@ public class CursorOperationsServiceTest {
         final Timeline last = mockOpenTimeline(2);
         mockTimelines(first, last);
         final ShiftedNakadiCursor moveBack = new ShiftedNakadiCursor(last, "0", "000000000000000001", -4);
-        assertEquals(new NakadiCursor(first, "0", "-1"), service.unshiftCursor(moveBack));
+        assertEquals(NakadiCursor.of(first, "0", "-1"), service.unshiftCursor(moveBack));
     }
 
     @Test(expected = InvalidCursorOperation.class)

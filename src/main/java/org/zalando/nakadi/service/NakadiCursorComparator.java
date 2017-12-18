@@ -46,7 +46,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         // Handle obsolete timeline information
         if (first.getTimeline().getLatestPosition() == null) {
             timelineIterator = createTimelinesIterator(first.getEventType(), first.getTimeline().getOrder());
-            first = new NakadiCursor(timelineIterator.next(), first.getPartition(), first.getOffset());
+            first = NakadiCursor.of(timelineIterator.next(), first.getPartition(), first.getOffset());
         }
 
         while (first.getTimeline().getOrder() != c2.getTimeline().getOrder()) {
@@ -60,10 +60,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
             }
             final Timeline nextTimeline = timelineIterator.next();
             final String initialOffset = StaticStorageWorkerFactory.get(nextTimeline).getBeforeFirstOffset();
-            first = new NakadiCursor(
-                    nextTimeline,
-                    first.getPartition(),
-                    initialOffset);
+            first = NakadiCursor.of(nextTimeline, first.getPartition(), initialOffset);
         }
         return first.getOffset().compareTo(c2.getOffset());
     }

@@ -94,10 +94,7 @@ class VersionOneConverter implements VersionedConverter {
             timeline = timelineIterator.next();
             offsetReplacement = StaticStorageWorkerFactory.get(timeline).getBeforeFirstOffset();
         }
-        return new NakadiCursor(
-                timeline,
-                partition,
-                offsetReplacement);
+        return NakadiCursor.of(timeline, partition, offsetReplacement);
     }
 
     public String formatOffset(final NakadiCursor nakadiCursor) {

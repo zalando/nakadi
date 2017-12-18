@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -206,9 +207,10 @@ public class PartitionsControllerTest {
 
     private List<NakadiCursorLag> mockCursorLag() {
         final Timeline timeline = mock(Timeline.class);
+        when(timeline.getStorage()).thenReturn(new Storage("ccc", Storage.Type.KAFKA));
         final NakadiCursorLag lag = mock(NakadiCursorLag.class);
-        final NakadiCursor firstCursor = new NakadiCursor(timeline, "0", "0");
-        final NakadiCursor lastCursor = new NakadiCursor(timeline, "0", "1");
+        final NakadiCursor firstCursor = NakadiCursor.of(timeline, "0", "0");
+        final NakadiCursor lastCursor = NakadiCursor.of(timeline, "0", "1");
         when(lag.getLag()).thenReturn(42L);
         when(lag.getPartition()).thenReturn("0");
         when(lag.getFirstCursor()).thenReturn(firstCursor);

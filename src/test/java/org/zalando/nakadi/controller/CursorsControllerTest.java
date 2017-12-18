@@ -65,8 +65,8 @@ public class CursorsControllerTest {
     private static final Timeline TIMELINE = buildTimelineWithTopic(MY_ET);
 
     private static final ImmutableList<NakadiCursor> DUMMY_NAKADI_CURSORS = ImmutableList.of(
-            new NakadiCursor(TIMELINE, "0", "000000000000000010"),
-            new NakadiCursor(TIMELINE, "1", "000000000000000010")
+            NakadiCursor.of(TIMELINE, "0", "000000000000000010"),
+            NakadiCursor.of(TIMELINE, "1", "000000000000000010")
     );
 
     private static final ImmutableList<SubscriptionCursor> DUMMY_CURSORS = ImmutableList.of(

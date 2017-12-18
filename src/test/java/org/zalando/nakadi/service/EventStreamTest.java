@@ -91,7 +91,7 @@ public class EventStreamTest {
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .build();
@@ -119,7 +119,7 @@ public class EventStreamTest {
     public void whenCrutchWorkedThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .build();
@@ -146,7 +146,7 @@ public class EventStreamTest {
     public void whenAuthorizationChangedStreamClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .build();
@@ -204,7 +204,7 @@ public class EventStreamTest {
     public void whenStreamLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withStreamLimit(1)
                 .build();
@@ -219,7 +219,7 @@ public class EventStreamTest {
     public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
@@ -236,7 +236,7 @@ public class EventStreamTest {
     public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "000000000000000000")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "000000000000000000")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .withStreamTimeout(2)
@@ -262,7 +262,7 @@ public class EventStreamTest {
     public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", String.format("%18d", 0))))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", String.format("%18d", 0))))
                 .withBatchLimit(5)
                 .withBatchTimeout(1)
                 .withStreamTimeout(1)
@@ -291,7 +291,7 @@ public class EventStreamTest {
     public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
-                .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "0")))
+                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withStreamLimit(4)
                 .build();
@@ -303,7 +303,7 @@ public class EventStreamTest {
                 .range(0, eventNum)
                 .boxed()
                 .map(index -> new ConsumedEvent(
-                        ("event" + index).getBytes(UTF_8), new NakadiCursor(TIMELINE, "0",
+                        ("event" + index).getBytes(UTF_8), NakadiCursor.of(TIMELINE, "0",
                         KafkaCursor.toNakadiOffset(index))))
                 .collect(Collectors.toList()));
 
@@ -333,9 +333,9 @@ public class EventStreamTest {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(
-                        new NakadiCursor(TIMELINE, "0", "000000000000000000"),
-                        new NakadiCursor(TIMELINE, "1", "000000000000000000"),
-                        new NakadiCursor(TIMELINE, "2", "000000000000000000")))
+                        NakadiCursor.of(TIMELINE, "0", "000000000000000000"),
+                        NakadiCursor.of(TIMELINE, "1", "000000000000000000"),
+                        NakadiCursor.of(TIMELINE, "2", "000000000000000000")))
                 .withBatchLimit(2)
                 .withStreamLimit(6)
                 .withBatchTimeout(30)
@@ -344,12 +344,12 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final LinkedList<ConsumedEvent> events = new LinkedList<>();
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "0", "000000000000000000")));
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "1", "000000000000000000")));
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "2", "000000000000000000")));
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "0", "000000000000000000")));
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "1", "000000000000000000")));
-        events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, "2", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "0", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "1", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "2", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "0", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "1", "000000000000000000")));
+        events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "2", "000000000000000000")));
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
@@ -378,7 +378,7 @@ public class EventStreamTest {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         when(nakadiKafkaConsumer.readEvents())
                 .thenReturn(Collections.singletonList(
-                        new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, partition, "0"))));
+                        new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, partition, "0"))));
         return nakadiKafkaConsumer;
     }
 
@@ -390,7 +390,7 @@ public class EventStreamTest {
             if (eventsToCreate.get() > 0) {
                 eventsToCreate.set(eventsToCreate.get() - 1);
                 return Collections.singletonList(
-                        new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, partition, "000000000000000000")));
+                        new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, partition, "000000000000000000")));
             } else {
                 return Collections.emptyList();
             }

@@ -127,23 +127,23 @@ public class CursorOperationsService {
         } else if (cursor.getShift() > 0) {
             return moveForward(cursor);
         } else {
-            return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
+            return cursor.getNakadiCursor();
         }
     }
 
     private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) {
-        NakadiCursor currentCursor = cursor;
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
         long stillToAdd = cursor.getShift();
         while (currentCursor.getTimeline().getLatestPosition() != null) {
             final NakadiCursor timelineLastPosition = currentCursor.getTimeline().getLatestPosition()
-                    .toNakadiCursor(currentCursor.getTimeline(), cursor.getPartition());
+                    .toNakadiCursor(currentCursor.getTimeline(), currentCursor.getPartition());
             final long distance = calculateDistance(currentCursor, timelineLastPosition);
             if (stillToAdd > distance) {
                 stillToAdd -= distance;
                 final Timeline nextTimeline = getTimeline(
                         currentCursor.getEventType(), currentCursor.getTimeline().getOrder() + 1);
 
-                currentCursor = new NakadiCursor(
+                currentCursor = NakadiCursor.of(
                         nextTimeline,
                         currentCursor.getPartition(),
                         StaticStorageWorkerFactory.get(nextTimeline).getBeforeFirstOffset());
@@ -152,13 +152,13 @@ public class CursorOperationsService {
             }
         }
         if (stillToAdd > 0) {
-            return getStorageWorker(currentCursor.getTimeline()).shiftWithinTimeline(currentCursor, stillToAdd);
+            return currentCursor.shiftWithinTimeline(stillToAdd);
         }
         return currentCursor;
     }
 
     private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) {
-        NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
         long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
             final long totalBefore = numberOfEventsBeforeCursor(currentCursor);
@@ -183,8 +183,7 @@ public class CursorOperationsService {
             }
         }
         if (toMoveBack != 0) {
-            currentCursor = getStorageWorker(currentCursor.getTimeline())
-                    .shiftWithinTimeline(currentCursor, -toMoveBack);
+            currentCursor = currentCursor.shiftWithinTimeline(-toMoveBack);
         }
         return currentCursor;
     }
