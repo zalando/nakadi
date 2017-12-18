@@ -101,7 +101,6 @@ public class CursorsServiceAT extends BaseAT {
         when(zkHolder.get()).thenReturn(CURATOR);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
-        when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         timeline = buildTimeline(etName, topic, CREATED_AT);

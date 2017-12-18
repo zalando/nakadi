@@ -68,8 +68,6 @@ public interface TopicRepository {
     EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException;
 
-    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
-
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceUnavailableException;
 
