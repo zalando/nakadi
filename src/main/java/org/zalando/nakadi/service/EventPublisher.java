@@ -71,6 +71,17 @@ public class EventPublisher {
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
+            throws NoSuchEventTypeException,
+            InternalNakadiException,
+            EventTypeTimeoutException,
+            AccessDeniedException,
+            ServiceTemporarilyUnavailableException {
+        return publishInternal(events, eventTypeName, true);
+    }
+
+    EventPublishResult publishInternal(final String events,
+                                       final String eventTypeName,
+                                       final boolean useAuthz)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
@@ -80,7 +91,9 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authValidator.authorizeEventTypeWrite(eventType);
+            if (useAuthz) {
+                authValidator.authorizeEventTypeWrite(eventType);
+            }
 
             validate(batch, eventType);
             partition(batch, eventType);

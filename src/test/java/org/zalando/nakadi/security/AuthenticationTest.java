@@ -52,6 +52,7 @@ import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecu
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -254,6 +255,11 @@ public abstract class AuthenticationTest {
             final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
             when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
             return storageDbRepository;
+        }
+
+        @Bean
+        public MessageDigest sha256MessageDigest() {
+            return mock(MessageDigest.class);
         }
 
     }
