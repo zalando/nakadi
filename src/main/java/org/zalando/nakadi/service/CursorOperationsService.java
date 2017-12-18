@@ -50,7 +50,7 @@ public class CursorOperationsService {
         long result = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
         final int initialOrder = initialCursor.getTimeline().getOrder();
         final int finalOrder = finalCursor.getTimeline().getOrder();
-        
+
         int startOrder = Math.min(initialOrder, finalOrder);
         if (startOrder == Timeline.STARTING_ORDER) {
             startOrder += 1;
@@ -58,7 +58,7 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = StaticStorageWorkerFactory.get(timeline)
+            final long eventsTotal = getStorageWorker(timeline)
                     .totalEventsInPartition(timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
@@ -150,8 +150,11 @@ public class CursorOperationsService {
                 stillToAdd -= distance;
                 final Timeline nextTimeline = getTimeline(
                         currentCursor.getEventType(), currentCursor.getTimeline().getOrder() + 1);
-                currentCursor = getTopicRepository(nextTimeline)
-                        .createBeforeBeginCursor(nextTimeline, currentCursor.getPartition());
+
+                currentCursor = new NakadiCursor(
+                        nextTimeline,
+                        currentCursor.getPartition(),
+                        StaticStorageWorkerFactory.get(nextTimeline).getBeforeFirstOffset());
             } else {
                 break;
             }
@@ -221,5 +224,8 @@ public class CursorOperationsService {
         return timelineService.getTopicRepository(timeline);
     }
 
+    private static StaticStorageWorkerFactory.StaticStorageWorker getStorageWorker(final Timeline timeline) {
+        return StaticStorageWorkerFactory.get(timeline);
+    }
 
 }

@@ -453,17 +453,12 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public NakadiCursor createBeforeBeginCursor(final Timeline timeline, final String partition) {
-        return new KafkaCursor(timeline.getTopic(), KafkaCursor.toKafkaPartition(partition), -1)
-                .toNakadiCursor(timeline);
-    }
-
-    @Override
     public NakadiCursor shiftWithinTimeline(final NakadiCursor current, final long stillToAdd)
             throws InvalidCursorException {
         return KafkaCursor.fromNakadiCursor(current).addOffset(stillToAdd).toNakadiCursor(current.getTimeline());
     }
 
+    @Override
     public void validateReadCursors(final List<NakadiCursor> cursors)
             throws InvalidCursorException, ServiceUnavailableException {
         convertToKafkaCursors(cursors);
@@ -472,7 +467,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         // Validate, that topic for this cursor is available
-        for (final NakadiCursor c: cursors) {
+        for (final NakadiCursor c : cursors) {
             if (c.getTimeline().isDeleted()) {
                 throw new InvalidCursorException(UNAVAILABLE, c);
             }

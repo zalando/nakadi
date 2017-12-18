@@ -75,7 +75,5 @@ public interface TopicRepository {
 
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 
-    NakadiCursor createBeforeBeginCursor(Timeline timeline, String partition);
-
     NakadiCursor shiftWithinTimeline(NakadiCursor current, long stillToAdd) throws InvalidCursorException;
 }
