@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,15 +61,18 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineService timelineService;
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
+    private final Comparator<NakadiCursor> comparator;
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
 
     public MultiTimelineEventConsumer(
             final String clientId,
             final TimelineService timelineService,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            final Comparator<NakadiCursor> comparator) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
+        this.comparator = comparator;
     }
 
     @Override
@@ -136,13 +140,13 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             final NakadiCursor latest = toCheck.calculateNakadiLatestPosition(cursor.getPartition());
             if (latest == null) {
                 electedTimeline = toCheck;
-            } else if (latest.compareTo(cursor) > 0) {
+            } else if (comparator.compare(latest, cursor) > 0) {
                 // There is a border case - latest is equal to begin (that means that there are no available events
                 // there), and one should position on timeline that have something inside.
                 final NakadiCursor firstItem = timelineService.getTopicRepository(toCheck)
                         .loadPartitionStatistics(toCheck, cursor.getPartition())
                         .get().getFirst();
-                if (latest.compareTo(firstItem) >= 0) {
+                if (comparator.compare(latest, firstItem) >= 0) {
                     electedTimeline = toCheck;
                 } else {
                     LOG.info("Timeline {} is empty, skipping", toCheck);

@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.4.1] - 2017-12-18
+
+### Fixed
+- Fixed sending of KPI events after feature toggling
+
+## [2.4.0] - 2017-12-18
+
+### Added
+- Nakadi collects access log events
+- Sending of KPI metrics for event-types count
+
+## [2.3.4] - 2017-12-14
+
+### Changed
+- Optimized stream initialization
+
+## [2.3.3] - 2017-12-12
+
+### Added
+- Periodically recreate topology listener while streaming subscription
+
 ### Fixed
 - Fix concurrency issue when switching Timelines
 - NullPointer when changing additionalProperties from true to Object.
@@ -13,7 +34,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.3.2] - 2017-12-05
 
 ### Fixed
-
 - Fixed issue with subscription stats, which would fail when the last committed offset is on a storage that was deleted
 - Fixed issue with deletion of event types which had obsolete timelines
 
