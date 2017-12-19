@@ -6,7 +6,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -52,12 +51,6 @@ public class CursorsServiceAT extends BaseAT {
     private static final String NEW_OFFSET = "002_newOffset";
     private static final String OLD_OFFSET = "001_oldOffset";
     private static final String OLDEST_OFFSET = "000_oldestOffset";
-
-    private static final Answer<Integer> FAKE_OFFSET_COMPARATOR = invocation -> {
-        final NakadiCursor c1 = (NakadiCursor) invocation.getArguments()[0];
-        final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
-        return c1.getOffset().compareTo(c2.getOffset());
-    };
 
     private static final String P1 = "p1";
     private static final String P2 = "p2";
@@ -114,7 +107,7 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(zkHolder, MAPPER);
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
-        cursorsService = new CursorsService(timelineService, subscriptionRepo, null,
+        cursorsService = new CursorsService(subscriptionRepo, null,
                 mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator);
 
         // Register cursors in converter
