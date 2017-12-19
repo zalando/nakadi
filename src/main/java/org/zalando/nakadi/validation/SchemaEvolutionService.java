@@ -134,9 +134,13 @@ public class SchemaEvolutionService {
                     }
                 }
             }
+            throw new InvalidEventTypeException("Category change is allowed only from 'undefined' to 'business'. " +
+                    "'enrichment_strategies' should be properly set as well");
         }
 
-        throw new InvalidEventTypeException(incompatibilities.get(0).getReason());
+        throw new InvalidEventTypeException(incompatibilities.stream()
+                .map(SchemaEvolutionIncompatibility::getReason)
+                .collect(Collectors.joining("; ")));
     }
 
     private boolean isForwardToCompatibleUpgrade(final EventType original, final EventTypeBase eventType) {
