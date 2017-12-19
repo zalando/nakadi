@@ -28,6 +28,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
+
 @Service
 public class SubscriptionValidationService {
 
@@ -101,6 +103,9 @@ public class SubscriptionValidationService {
         try {
             for (final SubscriptionCursorWithoutToken cursor : subscription.getInitialCursors()) {
                 final NakadiCursor nakadiCursor = cursorConverter.convert(cursor);
+                if (nakadiCursor.getTimeline().isDeleted()) {
+                    throw new InvalidCursorException(UNAVAILABLE, nakadiCursor);
+                }
                 timelineService.getTopicRepository(nakadiCursor.getTimeline()).validateReadCursors(
                         Collections.singletonList(nakadiCursor));
             }

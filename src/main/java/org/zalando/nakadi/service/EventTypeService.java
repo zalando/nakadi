@@ -354,9 +354,6 @@ public class EventTypeService {
                     timelineService.deleteAllTimelinesForEventType(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
             return topicsToDelete;
-        } catch (TopicDeletionException e) {
-            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
-            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName);
         } catch (TimelineException | NotFoundException e) {
             LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
