@@ -164,7 +164,7 @@ public class EventStreamController {
             }
             final Map<Storage, List<NakadiCursor>> groupedCursors = result.stream().collect(
                     Collectors.groupingBy(c -> c.getTimeline().getStorage()));
-            for (Map.Entry<Storage, List<NakadiCursor>> entry : groupedCursors.entrySet()) {
+            for (final Map.Entry<Storage, List<NakadiCursor>> entry : groupedCursors.entrySet()) {
                 timelineService.getTopicRepository(entry.getKey())
                         .validateReadCursors(entry.getValue());
             }

@@ -167,12 +167,12 @@ public class CursorsService {
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, UnableProcessException {
+            throws UnableProcessException {
         validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
             try {
-                timelineService.getTopicRepository(cursor.getTimeline()).validateCommitCursor(cursor);
+                cursor.validate();
             } catch (final InvalidCursorException e) {
                 throw new UnableProcessException(e.getMessage(), e);
             }

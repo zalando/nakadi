@@ -72,7 +72,5 @@ public interface TopicRepository {
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceUnavailableException;
 
-    void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
-
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 }

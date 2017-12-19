@@ -1,7 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -300,30 +299,6 @@ public class KafkaTopicRepositoryTest {
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(secondItem.getResponse().getDetail(), equalTo("internal error"));
         }
-    }
-
-    @Test
-    public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursor(NakadiCursor.of(buildTimelineWithTopic(MY_TOPIC), "0", "23"));
-    }
-
-    @Test
-    public void whenValidateInvalidCommitCursorsThenException() throws NakadiException {
-        ImmutableMap.of(
-                cursor("345", "1"), CursorError.PARTITION_NOT_FOUND,
-                cursor("0", "abc"), CursorError.INVALID_FORMAT)
-                .entrySet()
-                .forEach(testCase -> {
-                    try {
-                        kafkaTopicRepository.validateCommitCursor(
-                                NakadiCursor.of(
-                                        buildTimelineWithTopic(MY_TOPIC),
-                                        testCase.getKey().getPartition(),
-                                        testCase.getKey().getOffset()));
-                    } catch (final InvalidCursorException e) {
-                        assertThat(e.getError(), equalTo(testCase.getValue()));
-                    }
-                });
     }
 
     @Test

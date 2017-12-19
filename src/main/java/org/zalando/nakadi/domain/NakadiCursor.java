@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.base.Preconditions;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
@@ -70,6 +71,12 @@ public abstract class NakadiCursor {
 
     public abstract NakadiCursor shiftWithinTimeline(long offset);
 
+    public KafkaCursor asKafkaCursor() throws InvalidCursorException {
+        throw new UnsupportedOperationException("Cursor of class " + getClass() + " can not be converted to kafka one");
+    }
+
+    public abstract void validate() throws InvalidCursorException;
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -124,6 +131,16 @@ public abstract class NakadiCursor {
                     getPartition(),
                     KafkaCursor.toNakadiOffset(KafkaCursor.toKafkaOffset(getOffset()) + toAdd)
             );
+        }
+
+        @Override
+        public KafkaCursor asKafkaCursor() throws InvalidCursorException {
+            return KafkaCursor.fromNakadiCursor(this);
+        }
+
+        @Override
+        public void validate() throws InvalidCursorException {
+            asKafkaCursor();
         }
     }
 

@@ -479,7 +479,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }
-            final KafkaCursor toCheck = KafkaCursor.fromNakadiCursor(position);
+            final KafkaCursor toCheck = position.asKafkaCursor();
 
             // Checking oldest position
             final KafkaCursor oldestCursor = KafkaCursor.fromNakadiCursor(partition.get().getBeforeFirst());
@@ -495,11 +495,6 @@ public class KafkaTopicRepository implements TopicRepository {
             }
         }
         return result;
-    }
-
-    @Override
-    public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        KafkaCursor.fromNakadiCursor(position);
     }
 
     @Override

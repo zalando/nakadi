@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -151,6 +152,7 @@ public class EventStreamControllerTest {
         timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
+        when(timelineService.getTopicRepository((Storage) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getActiveTimelinesOrdered(any())).thenReturn(Collections.singletonList(timeline));
         when(timelineService.getAllTimelinesOrdered(any())).thenReturn(Collections.singletonList(timeline));
 
