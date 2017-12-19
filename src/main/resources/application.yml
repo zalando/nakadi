@@ -110,6 +110,7 @@ nakadi:
     event-types:
       nakadiAccessLog: "nakadi.access.log"
       nakadiEventTypeLog: "nakadi.event.type.log"
+      nakadiBatchPublished: "nakadi.batch.published"
   hasher.salt: "salt"
 
 twintip:
