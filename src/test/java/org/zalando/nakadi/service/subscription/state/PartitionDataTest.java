@@ -30,7 +30,6 @@ public class PartitionDataTest {
         when(firstTimeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
     }
 
-
     private static NakadiCursor createCursor(final long offset) {
         return new KafkaCursor("x", 0, offset).toNakadiCursor(firstTimeline);
     }
@@ -90,7 +89,7 @@ public class PartitionDataTest {
     }
 
     @Test
-    public void eventsShouldBeStreamedOnTimeout() throws InterruptedException {
+    public void eventsShouldBeStreamedOnTimeout() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         long currentTime = System.currentTimeMillis();
 
