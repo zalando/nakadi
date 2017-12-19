@@ -20,14 +20,10 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -42,7 +38,6 @@ import static java.text.MessageFormat.format;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
-import static org.apache.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -133,7 +128,7 @@ public class HilaAT extends BaseAT {
 
 
     @Test(timeout = 5000)
-    public void whenNoEventsThenFirstOffsetIsBEGIN() throws Exception {
+    public void whenNoEventsThenFirstOffsetIsBEGIN() {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1")
                 .start();
@@ -198,7 +193,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
+    public void whenCommitTimeoutReachedSessionIsClosed() {
 
         publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
@@ -232,7 +227,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() throws Exception {
+    public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() {
 
         publishEvents(eventType.getName(), 12, i -> "{\"foo\":\"bar\"}");
 
@@ -253,7 +248,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenThereAreNoEmptySlotsThenConflict() throws Exception {
+    public void whenThereAreNoEmptySlotsThenConflict() {
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
@@ -394,7 +389,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenStreamTimeout0ThenInfiniteStreaming() throws Exception {
+    public void whenStreamTimeout0ThenInfiniteStreaming() {
         publishEvents(eventType.getName(), 5, i -> "{\"foo\":\"bar\"}");
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_timeout=0")
@@ -441,24 +436,5 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client2.getBatches(), hasSize(10)));
 
         Assert.assertEquals("001-0001-000000000000000005", client2.getBatches().get(0).getCursor().getOffset());
-    }
-
-    @Test(timeout = 15000)
-    public void whenResetCursorsWithOffsetOverflowThen422() throws Exception {
-        publishEvents(eventType.getName(), 5, i -> "{\"foo\":\"bar\"}");
-
-        final SubscriptionCursorWithoutToken resetCursor =
-                new SubscriptionCursorWithoutToken(eventType.getName(), "0", "000000000000000007");
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "offset 000000000000000007 for partition 0 is unavailable");
-
-        given()
-                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(ImmutableList.of(resetCursor))))
-                .contentType(JSON)
-                .patch("/subscriptions/{id}/cursors", subscription.getId())
-                .then()
-                .statusCode(SC_UNPROCESSABLE_ENTITY)
-                .body(JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 }

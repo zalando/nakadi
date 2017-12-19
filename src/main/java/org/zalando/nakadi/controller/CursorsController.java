@@ -166,11 +166,16 @@ public class CursorsController {
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({
-            UnableProcessException.class,
-            CursorUnavailableException.class})
+    @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CursorUnavailableException.class)
+    public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+                                                                     final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }

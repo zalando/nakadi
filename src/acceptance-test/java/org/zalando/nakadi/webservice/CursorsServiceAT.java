@@ -48,12 +48,12 @@ public class CursorsServiceAT extends BaseAT {
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
     private static final String SUBSCRIPTIONS_PATH = "/nakadi/subscriptions";
 
-    private static final String NEW_OFFSET = "002_newOffset";
-    private static final String OLD_OFFSET = "001_oldOffset";
-    private static final String OLDEST_OFFSET = "000_oldestOffset";
+    private static final String NEW_OFFSET = "002";
+    private static final String OLD_OFFSET = "001";
+    private static final String OLDEST_OFFSET = "000";
 
-    private static final String P1 = "p1";
-    private static final String P2 = "p2";
+    private static final String P1 = "0";
+    private static final String P2 = "1";
     private static final Date CREATED_AT = new Date();
 
     private CursorConverter cursorConverter;
