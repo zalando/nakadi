@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -62,7 +63,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -133,12 +133,13 @@ public class EventStreamController {
         List<Cursor> cursors = null;
         if (cursorsStr != null) {
             try {
-                cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
+                cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {
+                });
             } catch (final IOException ex) {
                 throw new UnparseableCursorException("incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
             }
             // Unfortunately, In order to have consistent exception checking, one can not just call validator
-            for (final Cursor cursor: cursors) {
+            for (final Cursor cursor : cursors) {
                 if (null == cursor.getPartition()) {
                     throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
                 } else if (null == cursor.getOffset()) {
@@ -147,32 +148,29 @@ public class EventStreamController {
             }
         }
         final Timeline latestTimeline = timelineService.getActiveTimeline(eventType);
-        final TopicRepository latestTopicRepository = timelineService.getTopicRepository(latestTimeline);
         if (null != cursors) {
-            final List<NakadiCursor> result = new ArrayList<>();
-            for (final Cursor c : cursors) {
-                final NakadiCursor nakadiCursor = cursorConverter.convert(eventType.getName(), c);
-                result.add(nakadiCursor);
-            }
-            if (result.isEmpty()) {
+            if (cursors.isEmpty()) {
                 throw new InvalidCursorException(CursorError.INVALID_FORMAT);
             }
+            final List<NakadiCursor> result = new ArrayList<>();
+            for (final Cursor c : cursors) {
+                result.add(cursorConverter.convert(eventType.getName(), c));
+            }
 
-            final Map<TopicRepository, List<NakadiCursor>> topicRepoToCursors = new HashMap<>();
-            for (final NakadiCursor c: result) {
+            for (final NakadiCursor c : result) {
                 if (c.getTimeline().isDeleted()) {
                     throw new InvalidCursorException(CursorError.UNAVAILABLE, c);
                 }
-                final TopicRepository topicRepository = timelineService.getTopicRepository(c.getTimeline());
-                topicRepoToCursors
-                        .computeIfAbsent(topicRepository, k -> new ArrayList<>())
-                        .add(c);
             }
-            for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : topicRepoToCursors.entrySet()) {
-                entry.getKey().validateReadCursors(entry.getValue());
+            final Map<Storage, List<NakadiCursor>> groupedCursors = result.stream().collect(
+                    Collectors.groupingBy(c -> c.getTimeline().getStorage()));
+            for (Map.Entry<Storage, List<NakadiCursor>> entry : groupedCursors.entrySet()) {
+                timelineService.getTopicRepository(entry.getKey())
+                        .validateReadCursors(entry.getValue());
             }
             return result;
         } else {
+            final TopicRepository latestTopicRepository = timelineService.getTopicRepository(latestTimeline);
             // if no cursors provided - read from the newest available events
             return latestTopicRepository.loadTopicStatistics(Collections.singletonList(latestTimeline))
                     .stream()
@@ -200,8 +198,7 @@ public class EventStreamController {
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client)
-            throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
 
         return outputStream -> {
 

@@ -197,6 +197,10 @@ public class TimelineService {
         }
     }
 
+    public TopicRepository getTopicRepository(final Storage storage) {
+        return topicRepositoryHolder.getTopicRepository(storage);
+    }
+
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getActiveTimeline(eventType);
