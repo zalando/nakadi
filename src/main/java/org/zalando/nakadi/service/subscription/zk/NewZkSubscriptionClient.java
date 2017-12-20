@@ -82,6 +82,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
         final Topology topology = new Topology(partitions, 0);
+        getLog().info("Generating topology {}", topology);
         return objectMapper.writeValueAsBytes(topology);
     }
 
@@ -90,6 +91,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             SubscriptionNotInitializedException {
         final Topology newTopology = readTopology().withUpdatedPartitions(partitions);
         try {
+            getLog().info("Updating topology to {}", newTopology);
             getCurator().setData().forPath(
                     getSubscriptionPath(NODE_TOPOLOGY),
                     objectMapper.writeValueAsBytes(newTopology));
@@ -111,9 +113,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     private Topology parseTopology(final byte[] data) {
         try {
-            final Topology result = objectMapper.readValue(data, Topology.class);
-            getLog().info("Topology is {}", result);
-            return result;
+            return objectMapper.readValue(data, Topology.class);
         } catch (IOException e) {
             throw new NakadiRuntimeException(e);
         }

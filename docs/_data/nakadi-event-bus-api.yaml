@@ -1118,8 +1118,9 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for resetting subscription offsets.
-        The subscription consumers will be disconnected during offset reset. The request can hang up until
+        Reset subscription offsets to specified values.
+        Client connected after this operation will get events starting from next offset position.
+        During this operation the subscription's consumers will be disconnected. The request can hang up until
         subscription commit timeout. During that time requests to subscription streaming endpoint
         will be rejected with 409. The clients should reconnect once the request is finished with 204.
       parameters:
@@ -1582,6 +1583,34 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /storages/default/{id}:
+    put:
+      tags:
+        - timelines-api
+      description: |
+        Sets default storage to use in Nakadi.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
   /event-types/{name}/timelines:
     post:
       tags:
@@ -1978,6 +2007,13 @@ definitions:
         description: |
           Offset of the event being pointed to.
 
+          Note that if you want to specify beginning position of a stream with first event at offset `N`,
+          you should specify offset `N-1`.
+          This applies in cases when you create new subscription or reset subscription offsets.
+          Also for stream start offsets one can use two special values:
+          - `begin` - read from the oldest available event.
+          - `end` - read from the most recent offset.
+
   ShiftedCursor:
     allOf:
       - $ref: "#/definitions/Cursor"
@@ -2144,6 +2180,7 @@ definitions:
         description: |
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
+          Clients will get events starting from next offset positions.
 
     required:
       - owning_application
@@ -2640,16 +2677,20 @@ parameters:
     in: query
     description: |
       Maximum time in seconds a stream will live before connection is closed by the server.
-      If 0 or unspecified will stream indefinitely.
+      If 0 or unspecified will stream for 1h ±10min.
 
       If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
       to the client.
 
       Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+      If the `stream_timeout` is greater than max value (4200 seconds) - Nakadi will treat this as not
+      specifying `stream_timeout` (this is done due to backwards compatibility).
     type: number
     format: int32
     required: false
     default: 0
+    minimum: 0
+    maximum: 4200
 
   SubscriptionId:
     name: subscription_id

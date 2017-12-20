@@ -7,6 +7,7 @@ import org.mockito.Mockito;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
@@ -32,6 +33,7 @@ import static java.util.stream.IntStream.range;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class TimelineServiceTest {
 
@@ -43,7 +45,7 @@ public class TimelineServiceTest {
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new Storage(), adminService);
+            new DefaultStorage(new Storage()), adminService);
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
@@ -116,6 +118,22 @@ public class TimelineServiceTest {
         }
 
         Mockito.verify(repository, Mockito.times(1)).deleteTopic(any());
+    }
+
+    @Test
+    public void shouldDeleteAllTimelinesWhenOneTimelineWasMarkedAsDeleted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final Timeline t1 = Timeline.createTimeline(eventType.getName(), 1, null, "topic1", new Date());
+        t1.setDeleted(true);
+        t1.setSwitchedAt(new Date());
+        final Timeline t2 = Timeline.createTimeline(eventType.getName(), 2, null, "topic2", new Date());
+        t2.setSwitchedAt(new Date());
+        Mockito.when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
+                .thenReturn(ImmutableList.of(t1, t2));
+
+        timelineService.deleteAllTimelinesForEventType(eventType.getName());
+
+        Mockito.verify(timelineDbRepository, Mockito.times(2)).deleteTimeline(Mockito.any());
     }
 
 }

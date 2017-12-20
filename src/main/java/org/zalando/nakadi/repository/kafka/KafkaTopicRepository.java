@@ -33,7 +33,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -435,7 +434,7 @@ public class KafkaTopicRepository implements TopicRepository {
             @Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
 
-        final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
+        final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
@@ -457,24 +456,6 @@ public class KafkaTopicRepository implements TopicRepository {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
-    //  Method can work only with finished timeline (e.g. it will break for active timeline)
-    public long totalEventsInPartition(final Timeline timeline, final String partitionString)
-            throws InvalidCursorOperation {
-        final Timeline.StoragePosition positions = timeline.getLatestPosition();
-
-        try {
-            return 1 + ((Timeline.KafkaStoragePosition) positions).getLastOffsetForPartition(
-                    KafkaCursor.toKafkaPartition(partitionString));
-        } catch (final IllegalArgumentException ex) {
-            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-        }
-    }
-
-    public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
-        // could be -1 in case the cursor points to BEGIN
-        return KafkaCursor.toKafkaOffset(cursor.getOffset());
-    }
-
     @Override
     public NakadiCursor createBeforeBeginCursor(final Timeline timeline, final String partition) {
         return new KafkaCursor(timeline.getTopic(), KafkaCursor.toKafkaPartition(partition), -1)
@@ -494,6 +475,12 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
+        // Validate, that topic for this cursor is available
+        for (final NakadiCursor c: cursors) {
+            if (c.getTimeline().isDeleted()) {
+                throw new InvalidCursorException(UNAVAILABLE, c);
+            }
+        }
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 

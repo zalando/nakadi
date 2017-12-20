@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.service.EventStreamConfig;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public class StreamParameters {
     /**
      * Stream time to live
      */
-    public final Optional<Long> streamTimeoutMillis;
+    public final long streamTimeoutMillis;
     /**
      * If count of keepAliveIterations in a row for each batch is reached - stream is closed.
      * Works only if set.
@@ -51,8 +52,10 @@ public class StreamParameters {
         }
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents).filter(v -> v != 0);
         this.batchTimeoutMillis = batchTimeoutMillis;
-        this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutSeconds)
-                .map(TimeUnit.SECONDS::toMillis).filter(timeout -> timeout.longValue() != 0);
+        this.streamTimeoutMillis = TimeUnit.SECONDS.toMillis(
+                Optional.ofNullable(streamTimeoutSeconds)
+                        .filter(timeout -> timeout > 0 && timeout <= EventStreamConfig.MAX_STREAM_TIMEOUT)
+                        .orElse((long) EventStreamConfig.generateDefaultStreamTimeout()));
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;

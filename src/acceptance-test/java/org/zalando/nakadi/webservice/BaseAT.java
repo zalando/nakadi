@@ -10,7 +10,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
-import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 
@@ -31,7 +30,6 @@ public abstract class BaseAT {
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
             new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
     protected static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    protected static final EventTypeDbRepository EVENT_TYPE_REPO = new EventTypeDbRepository(JDBC_TEMPLATE, MAPPER);
     protected static final StorageDbRepository STORAGE_DB_REPOSITORY = new StorageDbRepository(JDBC_TEMPLATE, MAPPER);
     protected static final TimelineDbRepository TIMELINE_REPOSITORY = new TimelineDbRepository(JDBC_TEMPLATE, MAPPER);
 

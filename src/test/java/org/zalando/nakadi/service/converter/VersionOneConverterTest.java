@@ -6,10 +6,10 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.Collections;
@@ -19,15 +19,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class VersionOneConverterTest {
-    private TimelineService timelineService;
     private EventTypeCache eventTypeCache;
     private VersionedConverter converter;
 
     @Before
     public void setupMocks() {
-        timelineService = mock(TimelineService.class);
         eventTypeCache = mock(EventTypeCache.class);
-        converter = new VersionOneConverter(eventTypeCache, timelineService);
+        converter = new VersionOneConverter(eventTypeCache);
     }
 
     @Test
@@ -53,8 +51,8 @@ public class VersionOneConverterTest {
         final Cursor cursor = new Cursor("1", "001-0010-012345");
         final String eventTypeName = "my_et";
         final Timeline firstTimeline = mock(Timeline.class);
+        when(firstTimeline.getStorage()).thenReturn(new Storage("default", Storage.Type.KAFKA));
         when(firstTimeline.getOrder()).thenReturn(16);
-        final EventType eventType = mock(EventType.class);
         when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(Collections.singletonList(firstTimeline));
         final NakadiCursor nakadiCursor = converter.convert(eventTypeName, cursor);
@@ -85,7 +83,7 @@ public class VersionOneConverterTest {
         final NakadiCursor cursor = new NakadiCursor(timeline, "x", "012345");
 
         Assert.assertEquals(
-                "001-000f-012345", new VersionOneConverter(null, null).formatOffset(cursor));
+                "001-000f-012345", new VersionOneConverter(null).formatOffset(cursor));
     }
 
 }

@@ -6,6 +6,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -27,6 +28,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -59,6 +61,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventStreamWriter writer;
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
+    private final Comparator<NakadiCursor> cursorComparator;
 
     private State currentState = new DummyState();
     private ZkSubscription<List<String>> sessionListSubscription;
@@ -87,6 +90,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.writer = builder.writer;
         this.authorizationValidator = builder.authorizationValidator;
         this.eventTypeChangeListener = builder.eventTypeChangeListener;
+        this.cursorComparator = builder.cursorComparator;
     }
 
     public TimelineService getTimelineService() {
@@ -273,6 +277,10 @@ public class StreamingContext implements SubscriptionStreamer {
         this.authorizationValidator.authorizeSubscriptionRead(subscription);
     }
 
+    public Comparator<NakadiCursor> getCursorComparator() {
+        return cursorComparator;
+    }
+
     public static final class Builder {
         private SubscriptionOutput out;
         private StreamParameters parameters;
@@ -293,9 +301,15 @@ public class StreamingContext implements SubscriptionStreamer {
         private EventStreamWriter writer;
         private AuthorizationValidator authorizationValidator;
         private EventTypeChangeListener eventTypeChangeListener;
+        private Comparator<NakadiCursor> cursorComparator;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
+            return this;
+        }
+
+        public Builder setCursorComparator(final Comparator<NakadiCursor> comparator) {
+            this.cursorComparator = comparator;
             return this;
         }
 

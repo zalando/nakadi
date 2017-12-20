@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.mock;
 public class PartitionDataTest {
 
     private static Timeline firstTimeline = mock(Timeline.class);
+    private static final Comparator<NakadiCursor> COMP = Comparator.comparing(NakadiCursor::getOffset);
 
     private static NakadiCursor createCursor(final long offset) {
         return new KafkaCursor("x", 0, offset).toNakadiCursor(firstTimeline);
@@ -26,7 +28,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportRollback() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(90L));
 
         assertEquals(0L, cr.committedCount);
@@ -37,7 +39,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportCommitInFuture() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(110L));
 
         assertEquals(0L, cr.committedCount);
@@ -48,7 +50,7 @@ public class PartitionDataTest {
 
     @Test
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (long i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1)));
         }
@@ -65,7 +67,7 @@ public class PartitionDataTest {
 
     @Test
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
             pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
             assertEquals(i + 1, pd.getKeepAliveInARow());
@@ -83,7 +85,7 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         long currentTime = System.currentTimeMillis();
 
-        final PartitionData pd = new PartitionData(null, createCursor(100L), currentTime);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime);
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
         }
@@ -114,7 +116,7 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnBatchSize() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
-        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
         }

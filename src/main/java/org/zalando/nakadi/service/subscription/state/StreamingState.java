@@ -8,11 +8,9 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -24,7 +22,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.groupingBy;
 
 
 class StreamingState extends State {
@@ -75,27 +74,31 @@ class StreamingState extends State {
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        // Subscribe for topology changes.
-        this.topologyChangeSubscription =
-                getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
-        // and call directly
-        reactOnTopologyChange();
+        recreateTopologySubscription();
+        addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() -> {
-                            final String debugMessage = "Stream timeout reached";
-                            this.sendMetadata(debugMessage);
-                            this.shutdownGracefully(debugMessage);
-                        }, timeout,
-                        TimeUnit.MILLISECONDS));
+        scheduleTask(() -> {
+                    final String debugMessage = "Stream timeout reached";
+                    this.sendMetadata(debugMessage);
+                    this.shutdownGracefully(debugMessage);
+                }, getParameters().streamTimeoutMillis,
+                TimeUnit.MILLISECONDS);
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
 
         cursorResetSubscription = getZk().subscribeForCursorsReset(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
+    }
+
+    private void recreateTopologySubscription() {
+        if (null != topologyChangeSubscription) {
+            topologyChangeSubscription.close();
+        }
+        topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
+        reactOnTopologyChange();
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -302,7 +305,20 @@ class StreamingState extends State {
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
     }
 
-    void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
+    void recheckTopology() {
+        // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
+        final Partition[] partitions = Stream.of(getZk().listPartitions())
+                .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
+                .toArray(Partition[]::new);
+        if (refreshTopologyUnlocked(partitions)) {
+            getLog().info("Topology changed not by event, but by schedule. Recreating zk listener");
+            recreateTopologySubscription();
+        }
+        // addTask() is used to check if state is not changed.
+        scheduleTask(() -> addTask(this::recheckTopology), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
+    }
+
+    boolean refreshTopologyUnlocked(final Partition[] assignedPartitions) {
         final Map<EventTypePartition, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
@@ -311,32 +327,52 @@ class StreamingState extends State {
                 .filter(p -> p.getState() == Partition.State.REASSIGNING)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
+        boolean modified = false;
+
         // 1. Select which partitions must be removed right now for some (strange) reasons
         // (no need to release topology).
-        offsets.keySet().stream()
+        final List<EventTypePartition> forciblyRemoved = offsets.keySet().stream()
                 .filter(e -> !newAssigned.containsKey(e))
                 .filter(e -> !newReassigning.containsKey(e))
-                .collect(Collectors.toList()).forEach(this::removeFromStreaming);
+                .collect(Collectors.toList());
+        if (!forciblyRemoved.isEmpty()) {
+            modified = true;
+            forciblyRemoved.forEach(this::removeFromStreaming);
+        }
         // 2. Clear releasing partitions that was returned to this session.
-        releasingPartitions.keySet().stream()
-                .filter(p -> !newReassigning.containsKey(p))
-                .collect(Collectors.toList()).forEach(releasingPartitions::remove);
+        final List<EventTypePartition> removedFromReassign =
+                releasingPartitions.keySet().stream()
+                        .filter(p -> !newReassigning.containsKey(p))
+                        .collect(Collectors.toList());
+        if (!removedFromReassign.isEmpty()) {
+            modified = true;
+            removedFromReassign.forEach(releasingPartitions::remove);
+        }
 
         // 3. Add releasing partitions information
-        newReassigning.keySet().forEach(this::addPartitionToReassigned);
+        modified |= !newReassigning.keySet().stream()
+                .filter(this::addPartitionToReassigned)
+                .collect(Collectors.toList()).isEmpty();
 
         // 4. Select which partitions must be added and add it.
-        newAssigned.values()
+        final List<Partition> newAssignedPartitions = newAssigned.values()
                 .stream()
                 .filter(p -> !offsets.containsKey(p.getKey()))
-                .forEach(this::addToStreaming);
+                .collect(Collectors.toList());
+        if (!newAssignedPartitions.isEmpty()) {
+            modified = true;
+            newAssignedPartitions.forEach(this::addToStreaming);
+        }
         // 5. Check if something can be released right now
-        reassignCommitted();
+        if (modified) {
+            reassignCommitted();
 
-        // 6. Reconfigure kafka consumer
-        reconfigureKafkaConsumer(false);
+            // 6. Reconfigure kafka consumer
+            reconfigureKafkaConsumer(false);
 
-        logPartitionAssignment("Topology refreshed");
+            logPartitionAssignment("Topology refreshed");
+        }
+        return modified;
     }
 
     private void logPartitionAssignment(final String reason) {
@@ -350,14 +386,16 @@ class StreamingState extends State {
         }
     }
 
-    private void addPartitionToReassigned(final EventTypePartition partitionKey) {
+    private boolean addPartitionToReassigned(final EventTypePartition partitionKey) {
         if (!releasingPartitions.containsKey(partitionKey)) {
             final long currentTime = System.currentTimeMillis();
             final long barrier = currentTime + getParameters().commitTimeoutMillis;
             releasingPartitions.put(partitionKey, barrier);
             scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
                     TimeUnit.MILLISECONDS);
+            return true;
         }
+        return false;
     }
 
     private void barrierOnRebalanceReached(final EventTypePartition pk) {
@@ -402,14 +440,17 @@ class StreamingState extends State {
 
         if (!currentAssignment.equals(newAssignment)) {
             try {
-                final List<NakadiCursor> cursors = new ArrayList<>();
-                for (final EventTypePartition pk : newAssignment) {
-                    // Next 2 lines checks that current cursor is still available in storage
-                    final NakadiCursor beforeFirstAvailable = getBeforeFirstCursor(pk);
-                    offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
-                    // Now it is safe to reposition.
-                    cursors.add(offsets.get(pk).getSentOffset());
-                }
+                final Map<EventTypePartition, NakadiCursor> beforeFirst = getBeforeFirstCursors(newAssignment);
+                final List<NakadiCursor> cursors = newAssignment.stream()
+                        .map(pk -> {
+                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
+
+                            // Checks that current cursor is still available in storage
+                            offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
+                            return offsets.get(pk).getSentOffset();
+                        })
+                        .collect(Collectors.toList());
+
                 eventConsumer.reassign(cursors);
             } catch (NakadiException | InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
@@ -417,16 +458,30 @@ class StreamingState extends State {
         }
     }
 
-    private NakadiCursor getBeforeFirstCursor(final EventTypePartition pk)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
-        final Timeline firstTimelineForET = getContext().getTimelineService()
-                .getActiveTimelinesOrdered(pk.getEventType()).get(0);
-
-        final Optional<PartitionStatistics> stats = getContext().getTimelineService()
-                .getTopicRepository(firstTimelineForET)
-                .loadPartitionStatistics(firstTimelineForET, pk.getPartition());
-
-        return stats.get().getBeforeFirst();
+    private Map<EventTypePartition, NakadiCursor> getBeforeFirstCursors(final Set<EventTypePartition> newAssignment) {
+        return newAssignment.stream()
+                .map(EventTypePartition::getEventType)
+                .map(et -> {
+                    try {
+                        // get oldest active timeline
+                        return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
+                    } catch (final NakadiException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                .values()
+                .stream()
+                .flatMap(timelines -> {
+                    try {
+                        return getContext().getTimelineService().getTopicRepository(timelines.get(0))
+                                .loadTopicStatistics(timelines).stream();
+                    } catch (final ServiceUnavailableException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .map(PartitionStatistics::getBeforeFirst)
+                .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, cursor -> cursor));
     }
 
     private NakadiCursor createNakadiCursor(final SubscriptionCursorWithoutToken cursor) {
@@ -444,6 +499,7 @@ class StreamingState extends State {
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
         final PartitionData pd = new PartitionData(
+                getComparator(),
                 subscription,
                 cursor,
                 LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()),

@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.zalando.nakadi.Application;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -51,9 +52,11 @@ import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecu
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
@@ -243,13 +246,20 @@ public abstract class AuthenticationTest {
 
         @Bean
         @Qualifier("default_storage")
-        public Storage defaultStorage() {
-            return mock(Storage.class);
+        public DefaultStorage defaultStorage() {
+            return new DefaultStorage(mock(Storage.class));
         }
 
         @Bean
         public StorageDbRepository storageDbRepository() {
-            return mock(StorageDbRepository.class);
+            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+            when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
+            return storageDbRepository;
+        }
+
+        @Bean
+        public MessageDigest sha256MessageDigest() {
+            return mock(MessageDigest.class);
         }
 
     }

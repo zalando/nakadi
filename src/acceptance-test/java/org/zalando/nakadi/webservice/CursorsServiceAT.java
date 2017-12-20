@@ -13,7 +13,6 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -66,7 +65,6 @@ public class CursorsServiceAT extends BaseAT {
 
     private CursorConverter cursorConverter;
     private CursorsService cursorsService;
-    private EventTypeRepository eventTypeRepository;
     private UUIDGenerator uuidGenerator;
 
     private String etName;
@@ -99,9 +97,6 @@ public class CursorsServiceAT extends BaseAT {
         final EventType eventType = mock(EventType.class);
         when(eventType.getName()).thenReturn(etName);
 
-        eventTypeRepository = mock(EventTypeRepository.class);
-        when(eventTypeRepository.findByName(etName)).thenReturn(eventType);
-
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
 
@@ -120,7 +115,7 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(zkHolder, MAPPER);
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
-        cursorsService = new CursorsService(timelineService, subscriptionRepo, eventTypeRepository,
+        cursorsService = new CursorsService(timelineService, subscriptionRepo, null,
                 mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator);
 
         // Register cursors in converter

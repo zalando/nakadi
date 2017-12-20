@@ -128,7 +128,7 @@ public class TimelineSyncImpl implements TimelineSync {
         while (!queuedChanges.isEmpty()) {
             final DelayedChange change = queuedChanges.peek();
             LOG.info("Reacting on delayed change {}", change);
-            final Set<String> unlockedEventTypes = localLocking.lockedEventTypesChanged(change.lockedEventTypes);
+            final Set<String> unlockedEventTypes = localLocking.getUnlockedEventTypes(change.lockedEventTypes);
             // Notify consumers that they should refresh timeline information
             for (final String unlocked : unlockedEventTypes) {
                 LOG.info("Notifying about unlock of {}", unlocked);
@@ -147,6 +147,10 @@ public class TimelineSyncImpl implements TimelineSync {
                     }
                 }
             }
+            // Updating the list of locked event types is done only after updating the cache in order to guarantee that
+            // there is no concurrency between publisher threads and cache expire thread, which has lead to events being
+            // published to the wrong timeline. More details in ARUHA-1359.
+            localLocking.updateLockedEventTypes(change.lockedEventTypes);
             try {
                 updateSelfVersionTo(change.version);
             } catch (final Exception ex) {

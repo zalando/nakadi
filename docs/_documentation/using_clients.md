@@ -16,7 +16,6 @@ Nakadi does not ship with a client, but there are some open source clients avail
 | Nakadion        | Rust               | <https://github.com/chridou/nakadion>               |
 | nakadi-client   | Haskell            | <https://hackage.haskell.org/package/nakadi-client> |
 | go-nakadi       | Go                 | <https://github.com/stoewer/go-nakadi>              |
-| Peek            | Java/CLI tool      | <https://github.com/bocytko/peek>                   |
 | nakacli         | CLI                | <https://github.com/amrhassan/nakacli>              |
 
 
