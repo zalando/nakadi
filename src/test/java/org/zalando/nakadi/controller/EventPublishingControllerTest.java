@@ -198,6 +198,8 @@ public class EventPublishingControllerTest {
                 .when(publisher)
                 .publish(any(), any(), any(Client.class));
 
+        when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
+
         postBatch(TOPIC, EVENT_BATCH);
 
         final ArgumentCaptor<String> etNameCaptor = ArgumentCaptor.forClass(String.class);
@@ -210,6 +212,7 @@ public class EventPublishingControllerTest {
 
         assertThat((JSONObject) eventGeneratorCaptor.getValue().get(),
                 is(sameJSONObjectAs(new JSONObject().put("app", "adminClientId")
+                        .put("app_hashed", "hashed-application-name")
                         .put("event_type", "my-topic")
                         .put("batch_size", 33)
                         .put("number_of_events",3))));
