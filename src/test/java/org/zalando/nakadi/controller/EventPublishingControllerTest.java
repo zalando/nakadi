@@ -35,9 +35,11 @@ import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -210,12 +212,15 @@ public class EventPublishingControllerTest {
 
         assertThat(etNameCaptor.getValue(), equalTo("kpiEventTypeName"));
 
-        assertThat((JSONObject) eventGeneratorCaptor.getValue().get(),
+        final JSONObject kpi = (JSONObject) eventGeneratorCaptor.getValue().get();
+        assertThat(kpi,
                 is(sameJSONObjectAs(new JSONObject().put("app", "adminClientId")
                         .put("app_hashed", "hashed-application-name")
                         .put("event_type", "my-topic")
                         .put("batch_size", 33)
-                        .put("number_of_events",3))));
+                        .put("number_of_events",3)).allowingExtraUnexpectedFields()));
+
+        assertThat(kpi.getInt("ms_spent"), is(notNullValue()));
     }
 
     private List<BatchItemResponse> responses() {

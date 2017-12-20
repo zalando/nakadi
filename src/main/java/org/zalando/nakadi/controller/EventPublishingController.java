@@ -133,6 +133,7 @@ public class EventPublishingController {
                     .put("app", applicationName)
                     .put("app_hashed", nakadiKpiPublisher.hash(applicationName))
                     .put("number_of_events", eventCount)
+                    .put("ms_spent", msSpent)
                     .put("batch_size", totalSizeBytes));
         }
     }
