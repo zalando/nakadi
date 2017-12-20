@@ -245,16 +245,7 @@ class StreamingState extends State {
                         final long bytes = kpiDataPerEventType.get(et).getAndResetBytesSent();
                         final long count = kpiDataPerEventType.get(et).getAndResetNumberOfEventsSent();
                         if (count > 0) {
-                            kpiPublisher.publish(
-                                    getContext().getKpiDataStreamedEventType(),
-                                    () -> new JSONObject()
-                                            .put("api", "hila")
-                                            .put("subscription", getContext().getSubscription())
-                                            .put("event_type", et)
-                                            .put("app", appName)
-                                            .put("app_hashed", kpiPublisher.hash(appName))
-                                            .put("number_of_events", count)
-                                            .put("bytes_streamed", bytes));
+                            publishKpi(appName, kpiPublisher, et, bytes, count);
                         }
                     });
             lastKpiEventSent = System.currentTimeMillis();
@@ -269,6 +260,20 @@ class StreamingState extends State {
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
+    }
+
+    private void publishKpi(final String appName, final NakadiKpiPublisher kpiPublisher, final String et,
+                            final long bytes, final long count) {
+        kpiPublisher.publish(
+                getContext().getKpiDataStreamedEventType(),
+                () -> new JSONObject()
+                        .put("api", "hila")
+                        .put("subscription", getContext().getSubscription())
+                        .put("event_type", et)
+                        .put("app", appName)
+                        .put("app_hashed", kpiPublisher.hash(appName))
+                        .put("number_of_events", count)
+                        .put("bytes_streamed", bytes));
     }
 
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
@@ -311,16 +316,7 @@ class StreamingState extends State {
                 .forEach(et -> {
                     final long bytes = kpiDataPerEventType.get(et).getAndResetBytesSent();
                     final long count = kpiDataPerEventType.get(et).getAndResetNumberOfEventsSent();
-                    kpiPublisher.publish(
-                            getContext().getKpiDataStreamedEventType(),
-                            () -> new JSONObject()
-                                    .put("api", "hila")
-                                    .put("subscription", getContext().getSubscription())
-                                    .put("event_type", et)
-                                    .put("app", appName)
-                                    .put("app_hashed", kpiPublisher.hash(appName))
-                                    .put("number_of_events", count)
-                                    .put("bytes_streamed", bytes));
+                    publishKpi(appName, kpiPublisher, et, bytes, count);
                 });
 
         if (null != topologyChangeSubscription) {

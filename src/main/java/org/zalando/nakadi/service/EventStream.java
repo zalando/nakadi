@@ -36,7 +36,8 @@ public class EventStream {
     private final Meter bytesFlushedMeter;
     private final EventStreamWriterProvider writer;
     private final StreamKpiData kpiData;
-    private long lastKpiEventSent;
+    private final String kpiDataStreamedEventType;
+    private final long kpiFrequencyMs;
     private final NakadiKpiPublisher kpiPublisher;
 
     public EventStream(final EventConsumer eventConsumer,
@@ -45,7 +46,8 @@ public class EventStream {
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
                        final EventStreamWriterProvider writer,
-                       final NakadiKpiPublisher kpiPublisher) {
+                       final NakadiKpiPublisher kpiPublisher, final String kpiDataStreamedEventType,
+                       final long kpiFrequencyMs) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
@@ -55,6 +57,8 @@ public class EventStream {
         this.writer = writer;
         this.kpiPublisher = kpiPublisher;
         this.kpiData = new StreamKpiData();
+        this.kpiDataStreamedEventType = kpiDataStreamedEventType;
+        this.kpiFrequencyMs = kpiFrequencyMs;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady, final Runnable checkAuthorization) {
@@ -119,23 +123,13 @@ public class EventStream {
                     }
                 }
 
-                if (lastKpiEventSent + 30000l < System.currentTimeMillis()) {
-                    LOG.info("foi last kpi" + lastKpiEventSent + " check " + (lastKpiEventSent + 30000l) + " current "
-                            + System.currentTimeMillis());
-                    final String appName = config.getConsumingAppId();
+                if (lastKpiEventSent + kpiFrequencyMs < System.currentTimeMillis()) {
                     final long count = kpiData.getAndResetNumberOfEventsSent();
                     final long bytes = kpiData.getAndResetBytesSent();
 
                     if (count > 0) {
-                        kpiPublisher.publish(
-                                "nakadi.data.streamed",
-                                () -> new JSONObject()
-                                        .put("api", "lola")
-                                        .put("event_type", config.getEtName())
-                                        .put("app", appName)
-                                        .put("app_hashed", kpiPublisher.hash(appName))
-                                        .put("number_of_events", count)
-                                        .put("bytes_streamed", bytes));
+                        publishKpi(
+                                config.getConsumingAppId(), count, bytes);
                     }
 
                     lastKpiEventSent = System.currentTimeMillis();
@@ -175,17 +169,23 @@ public class EventStream {
             LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
                     config.getConsumingAppId(), config.getEtName(), e);
         } finally {
-            final String appName = config.getConsumingAppId();
-            kpiPublisher.publish(
-                    "nakadi.data.streamed",
-                    () -> new JSONObject()
-                            .put("api", "lola")
-                            .put("event_type", config.getEtName())
-                            .put("app", appName)
-                            .put("app_hashed", kpiPublisher.hash(appName))
-                            .put("number_of_events", kpiData.getAndResetNumberOfEventsSent())
-                            .put("bytes_streamed", kpiData.getAndResetBytesSent()));
+            publishKpi(
+                    config.getConsumingAppId(),
+                    kpiData.getAndResetNumberOfEventsSent(),
+                    kpiData.getAndResetBytesSent());
         }
+    }
+
+    private void publishKpi(final String appName, final long count, final long bytes) {
+        kpiPublisher.publish(
+                kpiDataStreamedEventType,
+                () -> new JSONObject()
+                        .put("api", "lola")
+                        .put("event_type", config.getEtName())
+                        .put("app", appName)
+                        .put("app_hashed", kpiPublisher.hash(appName))
+                        .put("number_of_events", count)
+                        .put("bytes_streamed", bytes));
     }
 
     private <T> Map<String, T> createMapWithPartitionKeys(final Function<String, T> valueFunction) {
