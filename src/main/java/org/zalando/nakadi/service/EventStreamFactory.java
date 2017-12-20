@@ -15,15 +15,18 @@ public class EventStreamFactory {
     private final CursorConverter cursorConverter;
     private final EventStreamWriterProvider writerProvider;
     private final BlacklistService blacklistService;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
     public EventStreamFactory(
             final CursorConverter cursorConverter,
             final EventStreamWriterProvider writerProvider,
-            final BlacklistService blacklistService) {
+            final BlacklistService blacklistService,
+            final NakadiKpiPublisher nakadiKpiPublisher) {
         this.cursorConverter = cursorConverter;
         this.writerProvider = writerProvider;
         this.blacklistService = blacklistService;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
 
@@ -37,6 +40,7 @@ public class EventStreamFactory {
                 blacklistService,
                 cursorConverter,
                 bytesFlushedMeter,
-                writerProvider);
+                writerProvider,
+                nakadiKpiPublisher);
     }
 }

@@ -3,10 +3,12 @@ package org.zalando.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
 import org.apache.kafka.common.KafkaException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.IOException;
@@ -33,13 +35,17 @@ public class EventStream {
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
     private final EventStreamWriterProvider writer;
+    private final StreamKpiData kpiData;
+    private long lastKpiEventSent;
+    private final NakadiKpiPublisher kpiPublisher;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                       final EventStreamWriterProvider writer) {
+                       final EventStreamWriterProvider writer,
+                       final NakadiKpiPublisher kpiPublisher) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
@@ -47,6 +53,8 @@ public class EventStream {
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
         this.writer = writer;
+        this.kpiPublisher = kpiPublisher;
+        this.kpiData = new StreamKpiData();
     }
 
     public void streamEvents(final AtomicBoolean connectionReady, final Runnable checkAuthorization) {
@@ -63,6 +71,8 @@ public class EventStream {
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
+            long lastKpiEventSent = System.currentTimeMillis();
+
             while (connectionReady.get() &&
                     !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
 
@@ -109,6 +119,28 @@ public class EventStream {
                     }
                 }
 
+                if (lastKpiEventSent + 30000l < System.currentTimeMillis()) {
+                    LOG.info("foi last kpi" + lastKpiEventSent + " check " + (lastKpiEventSent + 30000l) + " current "
+                            + System.currentTimeMillis());
+                    final String appName = config.getConsumingAppId();
+                    final long count = kpiData.getAndResetNumberOfEventsSent();
+                    final long bytes = kpiData.getAndResetBytesSent();
+
+                    if (count > 0) {
+                        kpiPublisher.publish(
+                                "nakadi.data.streamed",
+                                () -> new JSONObject()
+                                        .put("api", "lola")
+                                        .put("event_type", config.getEtName())
+                                        .put("app", appName)
+                                        .put("app_hashed", kpiPublisher.hash(appName))
+                                        .put("number_of_events", count)
+                                        .put("bytes_streamed", bytes));
+                    }
+
+                    lastKpiEventSent = System.currentTimeMillis();
+                }
+
                 // check if we reached keepAliveInARow for all the partitions; if yes - then close stream
                 if (config.getStreamKeepAliveLimit() != 0) {
                     final boolean keepAliveLimitReachedForAllPartitions = keepAliveInARow
@@ -142,6 +174,17 @@ public class EventStream {
         } catch (final KafkaException e) {
             LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
                     config.getConsumingAppId(), config.getEtName(), e);
+        } finally {
+            final String appName = config.getConsumingAppId();
+            kpiPublisher.publish(
+                    "nakadi.data.streamed",
+                    () -> new JSONObject()
+                            .put("api", "lola")
+                            .put("event_type", config.getEtName())
+                            .put("app", appName)
+                            .put("app_hashed", kpiPublisher.hash(appName))
+                            .put("number_of_events", kpiData.getAndResetNumberOfEventsSent())
+                            .put("bytes_streamed", kpiData.getAndResetBytesSent()));
         }
     }
 
@@ -156,6 +199,8 @@ public class EventStream {
         final int bytesWritten = writer.getWriter()
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
+        kpiData.addBytesSent(bytesWritten);
+        kpiData.addNumberOfEventsSent(currentBatch.size());
     }
 
 
