@@ -107,6 +107,14 @@ public class Storage {
     private Type type;
     private Object configuration;
 
+    public Storage() {
+    }
+
+    public Storage(final String id, final Type type) {
+        this.id = id;
+        this.type = type;
+    }
+
     public String getId() {
         return id;
     }

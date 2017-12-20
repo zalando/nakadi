@@ -434,7 +434,7 @@ public class KafkaTopicRepository implements TopicRepository {
             @Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
 
-        final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
+        final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
@@ -475,6 +475,12 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
+        // Validate, that topic for this cursor is available
+        for (final NakadiCursor c: cursors) {
+            if (c.getTimeline().isDeleted()) {
+                throw new InvalidCursorException(UNAVAILABLE, c);
+            }
+        }
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 

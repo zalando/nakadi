@@ -37,7 +37,8 @@ public interface FeatureToggleService {
         CHECK_OWNING_APPLICATION("check_owning_application"),
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),
         SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream"),
-        REMOTE_TOKENINFO("remote_tokeninfo");
+        REMOTE_TOKENINFO("remote_tokeninfo"),
+        KPI_COLLECTION("kpi_collection");
 
         private final String id;
 

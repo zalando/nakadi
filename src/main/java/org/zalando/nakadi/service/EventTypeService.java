@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -82,6 +83,8 @@ public class EventTypeService {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TransactionTemplate transactionTemplate;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String etLogEventType;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -95,7 +98,9 @@ public class EventTypeService {
                             final AuthorizationValidator authorizationValidator,
                             final TimelineSync timelineSync,
                             final TransactionTemplate transactionTemplate,
-                            final NakadiSettings nakadiSettings) {
+                            final NakadiSettings nakadiSettings,
+                            final NakadiKpiPublisher nakadiKpiPublisher,
+                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -108,6 +113,8 @@ public class EventTypeService {
         this.timelineSync = timelineSync;
         this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.etLogEventType = etLogEventType;
     }
 
     public List<EventType> list() {
@@ -136,6 +143,10 @@ public class EventTypeService {
             }
             throw e;
         }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventType.getName())
+                .put("status", "created")
+                .put("category", eventType.getCategory()));
     }
 
     private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
@@ -152,6 +163,7 @@ public class EventTypeService {
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
             NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
+        final EventCategory category;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -161,6 +173,7 @@ public class EventTypeService {
                 throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             final EventType eventType = eventTypeOpt.get();
+            category = eventType.getCategory();
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
@@ -170,9 +183,7 @@ public class EventTypeService {
                 throw new ConflictException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            topicsToDelete = transactionTemplate.execute(action -> {
-                return deleteEventType(eventTypeName);
-            });
+            topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -206,6 +217,10 @@ public class EventTypeService {
                 }
             }
         }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventTypeName)
+                .put("status", "deleted")
+                .put("category", category));
     }
 
     public void update(final String eventTypeName,
@@ -250,6 +265,10 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
+        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                .put("event_type", eventTypeName)
+                .put("status", "updated")
+                .put("category", eventTypeBase.getCategory()));
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) throws NakadiException {

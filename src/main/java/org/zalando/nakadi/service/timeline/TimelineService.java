@@ -44,6 +44,7 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.NakadiCursorComparator;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -209,13 +210,15 @@ public class TimelineService {
 
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException {
-        final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(clientId, this, timelineSync);
+        final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
+                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
         result.reassign(positions);
         return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
-        return new MultiTimelineEventConsumer(clientId, this, timelineSync);
+        return new MultiTimelineEventConsumer(
+                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

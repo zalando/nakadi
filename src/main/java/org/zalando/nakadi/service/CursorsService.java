@@ -20,8 +20,8 @@ import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -45,7 +45,7 @@ public class CursorsService {
 
     private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
-    private final EventTypeRepository eventTypeRepository;
+    private final EventTypeCache eventTypeCache;
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
     private final CursorConverter cursorConverter;
@@ -54,14 +54,14 @@ public class CursorsService {
     @Autowired
     public CursorsService(final TimelineService timelineService,
                           final SubscriptionDbRepository subscriptionRepository,
-                          final EventTypeRepository eventTypeRepository,
+                          final EventTypeCache eventTypeCache,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator) {
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
-        this.eventTypeRepository = eventTypeRepository;
+        this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
         this.cursorConverter = cursorConverter;
@@ -94,7 +94,7 @@ public class CursorsService {
         TimeLogger.addMeasure("writeToZK");
         return zkClient.commitOffsets(
                 cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                new SubscriptionCursorComparator());
+                new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
     }
 
     private void validateStreamId(final List<NakadiCursor> cursors, final String streamId,
@@ -210,10 +210,15 @@ public class CursorsService {
 
     private class SubscriptionCursorComparator implements Comparator<SubscriptionCursorWithoutToken> {
         private final Map<SubscriptionCursorWithoutToken, NakadiCursor> cached = new HashMap<>();
+        private final Comparator<NakadiCursor> comparator;
+
+        private SubscriptionCursorComparator(final Comparator<NakadiCursor> comparator) {
+            this.comparator = comparator;
+        }
 
         @Override
         public int compare(final SubscriptionCursorWithoutToken c1, final SubscriptionCursorWithoutToken c2) {
-            return convert(c1).compareTo(convert(c2));
+            return comparator.compare(convert(c1), convert(c2));
         }
 
         private NakadiCursor convert(final SubscriptionCursorWithoutToken value) {
