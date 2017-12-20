@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Nakadi collects event publishing KPI data 
+- Nakadi collects event streaming KPI data
 
 ## [2.4.1] - 2017-12-18
 
