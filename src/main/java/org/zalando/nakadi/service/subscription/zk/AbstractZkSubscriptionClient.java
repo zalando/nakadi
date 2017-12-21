@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -44,6 +45,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     protected static final String NODE_TOPOLOGY = "/topology";
+    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
 
     private final String subscriptionId;
     private final CuratorFramework curatorFramework;
@@ -85,7 +87,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
             }
 
-            lock.acquire();
+            final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
+            if (!acquired) {
+                throw new ServiceUnavailableException("Failed to acquire subscription lock within " +
+                        SECONDS_TO_WAIT_FOR_LOCK + " seconds");
+            }
             try {
                 function.run();
             } finally {
