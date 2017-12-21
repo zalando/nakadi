@@ -8,7 +8,6 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -237,19 +236,8 @@ class StreamingState extends State {
             }
         }
         if (lastKpiEventSent + getContext().getKpiCollectionFrequencyMs() < System.currentTimeMillis()) {
-            final String appName = getContext().getParameters().getConsumingAppId();
-            final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
-            final Subscription subscription = getContext().getSubscription();
-            subscription.getEventTypes().stream()
-                    .forEach(et -> {
-                        final long bytes = kpiDataPerEventType.get(et).getAndResetBytesSent();
-                        final long count = kpiDataPerEventType.get(et).getAndResetNumberOfEventsSent();
-                        if (count > 0) {
-                            publishKpi(appName, kpiPublisher, et, bytes, count);
-                        }
-                    });
+            getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
             lastKpiEventSent = System.currentTimeMillis();
-
         }
         if (wasCommitted && sentSomething) {
             this.lastCommitMillis = System.currentTimeMillis();
@@ -262,14 +250,18 @@ class StreamingState extends State {
         }
     }
 
-    private void publishKpi(final String appName, final NakadiKpiPublisher kpiPublisher, final String et,
-                            final long bytes, final long count) {
+    private void publishKpi(final String eventTypeName) {
+        final String appName = getContext().getParameters().getConsumingAppId();
+        final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
+        final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
+        final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
+
         kpiPublisher.publish(
                 getContext().getKpiDataStreamedEventType(),
                 () -> new JSONObject()
                         .put("api", "hila")
                         .put("subscription", getContext().getSubscription().getId())
-                        .put("event_type", et)
+                        .put("event_type", eventTypeName)
                         .put("app", appName)
                         .put("app_hashed", kpiPublisher.hash(appName))
                         .put("number_of_events", count)
@@ -309,15 +301,7 @@ class StreamingState extends State {
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
 
-        final String appName = getContext().getParameters().getConsumingAppId();
-        final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
-        final Subscription subscription = getContext().getSubscription();
-        subscription.getEventTypes().stream()
-                .forEach(et -> {
-                    final long bytes = kpiDataPerEventType.get(et).getAndResetBytesSent();
-                    final long count = kpiDataPerEventType.get(et).getAndResetNumberOfEventsSent();
-                    publishKpi(appName, kpiPublisher, et, bytes, count);
-                });
+        getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
 
         if (null != topologyChangeSubscription) {
             try {
