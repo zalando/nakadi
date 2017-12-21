@@ -51,7 +51,7 @@ public class TimelineCleanupJob {
         try {
             jobWrapper.runJobLocked(this::deleteTimelinesLocked);
         } catch (final RepositoryProblemException e) {
-            LOG.error("DB error occurred when trying to get expired timelines", e);
+            LOG.error("DB error occurred when trying to get expired timelines: {}", e.getMessage());
         }
     }
 
@@ -62,7 +62,7 @@ public class TimelineCleanupJob {
                 try {
                     Thread.sleep(deletionDelayMs);
                 } catch (InterruptedException e) {
-                    LOG.warn("Timeline deletion thread was interrupted", e);
+                    LOG.warn("Timeline deletion thread was interrupted: {}", e.getMessage());
                     Thread.currentThread().interrupt();
                     return;
                 }
@@ -78,7 +78,8 @@ public class TimelineCleanupJob {
             final TopicRepository topicRepository = timelineService.getTopicRepository(timeline);
             topicRepository.deleteTopic(timeline.getTopic());
         } catch (final TopicDeletionException e) {
-            LOG.error("Failed to delete topic {} for expired timeline {}", timeline.getTopic(), timeline.getId(), e);
+            LOG.error("Failed to delete topic {} for expired timeline {}: {}",
+                    timeline.getTopic(), timeline.getId(), e.getProblemMessage());
         }
     }
 
@@ -93,11 +94,11 @@ public class TimelineCleanupJob {
             eventTypeCache.updated(timeline.getEventType());
             cacheUpdated = true;
         } catch (final InconsistentStateException e) {
-            LOG.error("Failed to serialize timeline to DB when marking timeline as deleted", e);
+            LOG.error("Failed to serialize timeline to DB when marking timeline as deleted: {}", e.getMessage());
         } catch (final RepositoryProblemException e) {
-            LOG.error("DB failure when marking timeline as deleted", e);
+            LOG.error("DB failure when marking timeline as deleted: {}", e.getMessage());
         } catch (Exception e) {
-            LOG.error("ZK error occurred when updating ET cache", e);
+            LOG.error("ZK error occurred when updating ET cache: {}", e.getMessage());
         } finally {
             // revert timeline state in a case if cache wasn't updated successfully
             if (timelineUpdatedInDB && !cacheUpdated) {
@@ -105,7 +106,7 @@ public class TimelineCleanupJob {
                     timeline.setDeleted(false);
                     timelineDbRepository.updateTimelime(timeline);
                 } catch (final Exception e) {
-                    LOG.error("Failed to revert timeline state", e);
+                    LOG.error("Failed to revert timeline state: {}", e.getMessage());
                 }
             }
         }

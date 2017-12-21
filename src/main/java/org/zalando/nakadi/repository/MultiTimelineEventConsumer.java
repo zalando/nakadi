@@ -149,7 +149,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 if (comparator.compare(latest, firstItem) >= 0) {
                     electedTimeline = toCheck;
                 } else {
-                    LOG.info("Timeline {} is empty, skipping", toCheck);
+                    LOG.info("Timeline {} is empty, skipping.", toCheck);
                 }
             } else {
                 break;
@@ -239,7 +239,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             realConsumer.close();
         } catch (IOException ex) {
             LOG.error("Failed to stop one of consumers, but will not care about that, " +
-                    "because it is already doesn't matter", ex);
+                    "because it is already doesn't matter: {}", ex.getMessage());
         }
     }
 
@@ -300,7 +300,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
     void onTimelineChange(final String eventType) {
-        LOG.info("Received timeiline change notification for event type {}", eventType);
+        LOG.info("Received timeline change notification for event type {}", eventType);
         timelinesChanged.set(true);
     }
 

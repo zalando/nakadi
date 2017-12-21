@@ -44,7 +44,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler
     public ResponseEntity<Problem> handleThrowable(final Throwable throwable, final NativeWebRequest request) {
         final String errorTraceId = generateErrorTraceId();
-        LOG.error("InternalServerError (" + errorTraceId + "):", throwable);
+        LOG.error("InternalServerError ({}): {}", errorTraceId, throwable.getMessage());
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, "An internal error happened. Please report it. ("
                 + errorTraceId + ")", request);
     }
@@ -103,21 +103,21 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(RepositoryProblemException.class)
     public ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
                                                            final NativeWebRequest request) {
-        LOG.error("Repository problem occurred", exception);
+        LOG.error("Repository problem occurred: {}", exception.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler(MyNakadiRuntimeException1.class)
     public ResponseEntity<Problem> handleInternalError(final MyNakadiRuntimeException1 exception,
                                                        final NativeWebRequest request) {
-        LOG.error("Unexpected problem occurred", exception);
+        LOG.error("Unexpected problem occurred: {}", exception.getMessage());
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
     @ExceptionHandler(TimelineException.class)
     public ResponseEntity<Problem> handleTimelineException(final TimelineException exception,
                                                            final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.error(exception.getMessage());
         final Throwable cause = exception.getCause();
         if (cause instanceof NakadiException) {
             final NakadiException ne = (NakadiException) cause;
@@ -129,21 +129,21 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(TopicCreationException.class)
     public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
                                                                 final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.error(exception.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler(CursorConversionException.class)
     public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
                                                                    final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.error(exception.getMessage());
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
     public ResponseEntity<Problem> handleServiceTemporaryUnavailableException(
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.error(exception.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 

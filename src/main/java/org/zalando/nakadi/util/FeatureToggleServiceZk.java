@@ -39,7 +39,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
         try {
             return cache.get(feature);
         } catch (final ExecutionException e) {
-            LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
+            LOG.warn("Error occurred when checking if feature '{}' is toogled: {}", feature.getId(), e.getMessage());
             return false;
         }
     }

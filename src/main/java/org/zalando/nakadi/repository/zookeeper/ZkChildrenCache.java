@@ -53,7 +53,7 @@ public class ZkChildrenCache extends PathChildrenCache {
                             .withExceptionsThatForceRetry(ImmutableList.of(KeeperException.NoNodeException.class))
                             .withWaitBetweenEachTry(WAIT_BETWEEN_TRIES_MS));
         } catch (final Exception e) {
-            LOG.error("Zookeeper error when creating cache for children", e);
+            LOG.error("Zookeeper error when creating cache for children: {}", e.getMessage());
             throw new NakadiRuntimeException(e);
         }
     }

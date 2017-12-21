@@ -147,7 +147,7 @@ public class ClosedConnectionsCrutch {
         if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;
         }
-        LOG.debug("Listening for connection to close using crutch (" + address + ":" + port + ")");
+        LOG.debug("Listening for connection to close using crutch ({}:{})", address, port);
         synchronized (toAdd) {
             toAdd.computeIfAbsent(new ConnectionInfo(address, port), tmp -> new ArrayList<>()).add(onCloseListener);
         }
@@ -170,7 +170,7 @@ public class ClosedConnectionsCrutch {
                         .filter(key -> CLOSED_STATES.contains(currentConnections.getOrDefault(key,
                                 ConnectionState.TCP_CLOSE)))
                         .mapToLong(key -> {
-                            LOG.info("Notifying about connection close via crutch: " + key);
+                            LOG.info("Notifying about connection close via crutch: {}", key);
                             return listeners.remove(key).stream().filter(BooleanSupplier::getAsBoolean).count();
                         }).sum();
         if (closedCount > 0) {
@@ -184,7 +184,7 @@ public class ClosedConnectionsCrutch {
             try (FileInputStream in = new FileInputStream(f)) {
                 result.putAll(getCurrentConnections(in));
             } catch (final FileNotFoundException e) {
-                LOG.warn("Failed to find file " + f.getName() + ", skipping");
+                LOG.warn("Failed to find file {}, skipping", f.getName());
             }
         }
         return result;
@@ -222,7 +222,7 @@ public class ClosedConnectionsCrutch {
                             .map(address -> new ConnectionInfo(address, remotePort))
                             .forEach(info -> connectionToState.put(info, connectionState));
                 } catch (final DecoderException | RuntimeException ex) {
-                    LOG.error("Failed to parse line, skipping: " + line, ex);
+                    LOG.error("Failed to parse line '{}', skipping: {}", line, ex.getMessage());
                 }
             }
         }

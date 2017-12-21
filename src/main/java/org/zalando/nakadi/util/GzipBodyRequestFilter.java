@@ -123,7 +123,7 @@ public class GzipBodyRequestFilter implements Filter {
             try {
                 return inputStream.available() == 0;
             } catch (final IOException e) {
-                LOG.error("Error occurred when reading request input stream", e);
+                LOG.error("Error occurred when reading request input stream: {}", e.getMessage());
                 return false;
             }
         }

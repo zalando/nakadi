@@ -133,7 +133,7 @@ public class CursorOperationsService {
                 return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
             }
         } catch (final InvalidCursorException ex) {
-            LOG.warn("Can not shift cursor " + cursor, ex);
+            LOG.warn("Can not shift cursor {}: {}", cursor, ex.getMessage());
             // This exception should not happen, so that is why there is special treatment.
             throw new InvalidCursorOperation(CURSOR_FORMAT_EXCEPTION);
         }

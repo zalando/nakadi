@@ -84,7 +84,7 @@ public class EventsProcessor {
                 eventPublisher.publishInternal(jsonArray.toString(), etName, false);
                 LOG.trace("Published batch of {} to {}", eventsCount, etName);
             } catch (final Exception e) {
-                LOG.error("Error occurred while publishing events to {}, {}", etName, e.getMessage(), e);
+                LOG.error("Error occurred while publishing events to {}: {}", etName, e.getMessage());
             }
         } finally {
             executorService.submit(() -> sendEventBatch(etName));

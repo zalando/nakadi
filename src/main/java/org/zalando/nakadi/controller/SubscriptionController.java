@@ -90,21 +90,21 @@ public class SubscriptionController {
     @ExceptionHandler(NakadiException.class)
     public ResponseEntity<Problem> handleNakadiException(final NakadiException ex,
                                                          final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(ex.asProblem(), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
     public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException ex,
                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
     public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException ex,
                                                            final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(
                 Problem.valueOf(
                         SERVICE_UNAVAILABLE,
@@ -115,7 +115,7 @@ public class SubscriptionController {
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
     public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporarilyUnavailableException ex,
                                                                      final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage());
         return Responses.create(
                 Problem.valueOf(
                         SERVICE_UNAVAILABLE,

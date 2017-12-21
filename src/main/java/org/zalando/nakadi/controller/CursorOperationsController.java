@@ -136,7 +136,7 @@ public class CursorOperationsController {
     @ExceptionHandler(InvalidCursorOperation.class)
     public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
                                                     final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
+        LOG.debug("User provided invalid cursor for operation. Reason: {}", e.getReason());
         return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                 clientErrorMessage(e.getReason())), request);
     }
@@ -150,7 +150,7 @@ public class CursorOperationsController {
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
             default:
-                LOG.error("Unexpected invalid cursor operation reason " + reason);
+                LOG.error("Unexpected invalid cursor operation. Reason: {}", reason);
                 throw new MyNakadiRuntimeException1();
         }
     }

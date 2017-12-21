@@ -102,7 +102,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 LOG.info("Registering node in zk");
                 updateSelfVersionTo(0);
             } catch (final Exception e) {
-                LOG.error("Failed to initialize timeline synchronization", e);
+                LOG.error("Failed to initialize timeline synchronization: {}", e.getMessage());
                 throw new RuntimeException(e);
             }
         });
@@ -142,7 +142,7 @@ public class TimelineSyncImpl implements TimelineSync {
                         try {
                             listener.accept(unlocked);
                         } catch (final RuntimeException ex) {
-                            LOG.error("Failed to notify about event type {} unlock", unlocked, ex);
+                            LOG.error("Failed to notify about event type {} unlock: {}", unlocked, ex.getMessage());
                         }
                     }
                 }
@@ -154,7 +154,7 @@ public class TimelineSyncImpl implements TimelineSync {
             try {
                 updateSelfVersionTo(change.version);
             } catch (final Exception ex) {
-                LOG.error("Failed to update node version in zk. Will try to reprocess again", ex);
+                LOG.error("Failed to update node version in zk. Will try to reprocess again: {}", ex.getMessage());
                 return;
             }
             queuedChanges.poll();
@@ -214,7 +214,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 try {
                     lock.release();
                 } catch (final Exception ex) {
-                    LOG.error("Failed to release lock", ex);
+                    LOG.error("Failed to release lock: {}", ex.getMessage());
                     releaseException = ex;
                 }
             }
@@ -311,7 +311,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 try {
                     zooKeeperHolder.get().delete().forPath(etZkPath);
                 } catch (final Exception e) {
-                    LOG.error("Failed to delete node {}", etZkPath, e);
+                    LOG.error("Failed to delete node {}: {}", etZkPath, e.getMessage());
                 }
             }
         }

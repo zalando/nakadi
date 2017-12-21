@@ -67,7 +67,7 @@ public class StorageService {
                 watchDefaultStorage();
             }).forPath(ZK_TIMELINES_DEFAULT_STORAGE);
         } catch (final Exception e) {
-            LOG.warn("Error while creating watcher for default storage updates {}", e.getMessage(), e);
+            LOG.warn("Error while creating watcher for default storage updates: {}", e.getMessage());
         }
     }
 
@@ -76,7 +76,7 @@ public class StorageService {
         try {
             storages = storageDbRepository.listStorages();
         } catch (RepositoryProblemException e) {
-            LOG.error("DB error occurred when listing storages", e);
+            LOG.error("DB error occurred when listing storages: {}", e.getMessage());
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
         return Result.ok(storages);
@@ -87,7 +87,7 @@ public class StorageService {
         try {
             storage = storageDbRepository.getStorage(id);
         } catch (RepositoryProblemException e) {
-            LOG.error("DB error occurred when fetching storage", e);
+            LOG.error("DB error occurred when fetching storage: {}", e.getMessage());
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
         if (storage.isPresent()) {
@@ -129,7 +129,7 @@ public class StorageService {
         try {
             storageDbRepository.createStorage(storage);
         } catch (final RepositoryProblemException e) {
-            LOG.error("DB error occurred when creating storage", e);
+            LOG.error("DB error occurred when creating storage: {}", e.getMessage());
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         } catch (final DuplicatedStorageException e) {
             return Result.problem(Problem.valueOf(CONFLICT, e.getMessage()));
@@ -145,10 +145,10 @@ public class StorageService {
         } catch (final StorageIsUsedException e) {
             return Result.forbidden("Storage " + id + " is in use");
         } catch (final RepositoryProblemException e) {
-            LOG.error("DB error occurred when deleting storage", e);
+            LOG.error("DB error occurred when deleting storage: {}", e.getMessage());
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         } catch (final TransactionException e) {
-            LOG.error("Error with transaction handling when deleting storage", e);
+            LOG.error("Error with transaction handling when deleting storage: {}", e.getMessage());
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
                     "Transaction error occurred when deleting storage"));
         }
@@ -161,7 +161,7 @@ public class StorageService {
             try {
                 curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
             } catch (final Exception e) {
-                LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
+                LOG.error("Error while setting default storage in zk: {}", e.getMessage());
                 return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
                         "Error while setting default storage in zk"));
             }

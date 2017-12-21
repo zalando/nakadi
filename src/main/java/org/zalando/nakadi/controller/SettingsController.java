@@ -119,7 +119,7 @@ public class SettingsController {
     @ExceptionHandler(UnknownOperationException.class)
     public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
                                                                    final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.error(ex.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
                 "There was a problem processing your request.", request);
     }
@@ -127,7 +127,7 @@ public class SettingsController {
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.error(ex.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 

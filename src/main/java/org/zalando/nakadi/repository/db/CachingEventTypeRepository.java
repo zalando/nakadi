@@ -40,11 +40,12 @@ public class CachingEventTypeRepository implements EventTypeRepository {
             this.cache.created(eventTypeBase.getName());
             return eventType;
         } catch (Exception e) {
-            LOG.error("Failed to create new cache entry for event type '" + eventTypeBase.getName() + "'", e);
+            LOG.error("Failed to create new cache entry for event type '{}': {}",
+                    eventTypeBase.getName(), e.getMessage());
             try {
                 this.repository.removeEventType(eventTypeBase.getName());
             } catch (NoSuchEventTypeException e1) {
-                LOG.error("Failed to revert event type db persistence", e1);
+                LOG.error("Failed to revert event type db persistence: {}", e1.getMessage());
             }
             throw new InternalNakadiException("Failed to save event type", e);
         }
@@ -63,7 +64,7 @@ public class CachingEventTypeRepository implements EventTypeRepository {
         try {
             this.cache.updated(eventType.getName());
         } catch (Exception e) {
-            LOG.error("Failed to update cache for event type '" + eventType.getName() + "'", e);
+            LOG.error("Failed to update cache for event type '{}': {}", eventType.getName(), e.getMessage());
             this.repository.update(original);
             throw new InternalNakadiException("Failed to update event type", e);
         }
@@ -83,11 +84,11 @@ public class CachingEventTypeRepository implements EventTypeRepository {
         try {
             this.cache.removed(name);
         } catch (Exception e) {
-            LOG.error("Failed to remove entry from cache '" + name + "'");
+            LOG.error("Failed to remove entry from cache '{}'", name);
             try {
                 this.repository.saveEventType(original);
             } catch (DuplicatedEventTypeNameException e1) {
-                LOG.error("Failed to rollback db removal", e);
+                LOG.error("Failed to rollback db removal: {}", e.getMessage());
             }
             throw new InternalNakadiException("Failed to remove event type", e);
         }

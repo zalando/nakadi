@@ -91,7 +91,7 @@ public class VersionController {
         try (InputStream in = new FileInputStream(SCM_SOURCE_FILE)) {
             return objectMapper.readValue(in, ScmSource.class);
         } catch (IOException ex) {
-            LOG.warn("Failed to read scm-source.json file from " + SCM_SOURCE_FILE, ex);
+            LOG.warn("Failed to read scm-source.json file from {}: {}", SCM_SOURCE_FILE, ex.getMessage());
         }
         return null;
     }

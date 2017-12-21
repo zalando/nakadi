@@ -21,7 +21,7 @@ public class ZookeeperUtils {
             try {
                 lock.release();
             } catch (final Exception e) {
-                LOG.warn("Error occurred when releasing ZK lock", e);
+                LOG.warn("Error occurred when releasing ZK lock: {}", e.getMessage());
             }
         }
     }

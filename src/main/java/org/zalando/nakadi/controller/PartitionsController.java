@@ -105,7 +105,7 @@ public class PartitionsController {
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
         } catch (final NakadiException e) {
-            LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
+            LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE: {}", e.getProblemMessage());
             return create(e.asProblem(), request);
         }
     }
@@ -131,7 +131,7 @@ public class PartitionsController {
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
         } catch (final NakadiException e) {
-            LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
+            LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE: {}", e.getProblemMessage());
             return create(e.asProblem(), request);
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
@@ -142,13 +142,13 @@ public class PartitionsController {
     @ExceptionHandler(InvalidCursorOperation.class)
     public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
                                                     final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
+        LOG.debug("User provided invalid cursor for operation. Reason: {}", e.getReason());
         return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.error(ex.getMessage());
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }
 

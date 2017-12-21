@@ -115,7 +115,7 @@ public class EventTypeCache {
                     eventTypeName = it.next().getKey();
                     created(eventTypeName);
                 } catch (final Exception e) {
-                    LOG.error("Failed to create node for {}", eventTypeName, e);
+                    LOG.error("Failed to create node for {}: {}", eventTypeName, e.getMessage());
                     it.remove();
                 }
             }

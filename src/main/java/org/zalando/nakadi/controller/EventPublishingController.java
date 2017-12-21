@@ -95,13 +95,13 @@ public class EventPublishingController {
 
             return response(result);
         } catch (final JSONException e) {
-            LOG.debug("Problem parsing event", e);
+            LOG.debug("Problem parsing event: {}", e.getMessage());
             return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Event type not found.", e);
+            LOG.debug("Event type not found: {}", e.getProblemMessage());
             return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
-            LOG.debug("Failed to publish batch", e);
+            LOG.debug("Failed to publish batch: {}", e.getProblemMessage());
             return create(e.asProblem(), nativeWebRequest);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());

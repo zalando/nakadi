@@ -153,7 +153,8 @@ public class TimelineService {
         try {
             repository.deleteTopic(topic);
         } catch (final TopicDeletionException ex) {
-            LOG.error("Failed to delete topic while recovering from timeline creation failure", ex);
+            LOG.error("Failed to delete topic while recovering from timeline creation failure: {}",
+                    ex.getProblemMessage());
         }
     }
 
@@ -192,7 +193,7 @@ public class TimelineService {
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
         } catch (final NakadiException e) {
-            LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
+            LOG.error("Failed to get timeline for event type {}: {}", eventType.getName(), e.getProblemMessage());
             throw new TimelineException("Failed to get timeline", e);
         }
     }
@@ -245,7 +246,7 @@ public class TimelineService {
                 return null;
             });
         } catch (final TransactionException tx) {
-            LOG.error(tx.getMessage(), tx);
+            LOG.error(tx.getMessage());
             throw new TimelineException("Failed to create timeline in DB for: " + activeTimeline.getEventType(), tx);
         } finally {
             finishTimelineUpdate(activeTimeline.getEventType());

@@ -47,7 +47,7 @@ public class KafkaFactory {
             } else if (canCreate) {
                 activeProducer = createProducerInstance();
                 useCount.put(activeProducer, new AtomicInteger(1));
-                LOG.info("New producer instance created: " + activeProducer);
+                LOG.info("New producer instance created: {}", activeProducer);
                 return activeProducer;
             } else {
                 return null;
@@ -98,7 +98,7 @@ public class KafkaFactory {
                 try {
                     if (counter.get() == 0 && null != useCount.remove(producer)) {
                         LOG.info("Stopping producer instance - It was reported that instance should be refreshed " +
-                                "and it is not used anymore: " + producer);
+                                "and it is not used anymore: {}", producer);
                         producer.close();
                     }
                 } finally {
@@ -118,14 +118,14 @@ public class KafkaFactory {
      * @param producer Producer instance to terminate.
      */
     public void terminateProducer(final Producer<String, String> producer) {
-        LOG.info("Received signal to terminate producer " + producer);
+        LOG.info("Received signal to terminate producer: {}", producer);
         rwLock.writeLock().lock();
         try {
             if (producer == this.activeProducer) {
                 producerTerminations.inc();
                 this.activeProducer = null;
             } else {
-                LOG.info("Signal for producer termination already received: " + producer);
+                LOG.info("Signal for producer termination already received: {}", producer);
             }
         } finally {
             rwLock.writeLock().unlock();

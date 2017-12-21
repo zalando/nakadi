@@ -136,12 +136,12 @@ public class EventStream {
                 }
             }
         } catch (final IOException e) {
-            LOG.info("I/O error occurred when streaming events (possibly client closed connection)", e);
+            LOG.info("I/O error while streaming events (possibly client closed connection): {}", e.getMessage());
         } catch (final IllegalStateException e) {
-            LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
+            LOG.info("Error while streaming events (possibly server closed connection): {}", e.getMessage());
         } catch (final KafkaException e) {
-            LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
-                    config.getConsumingAppId(), config.getEtName(), e);
+            LOG.error("Error while polling events from kafka; consumer: {}, event-type: {}, message: {}",
+                    config.getConsumingAppId(), config.getEtName(), e.getMessage());
         }
     }
 

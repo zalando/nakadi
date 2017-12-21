@@ -43,7 +43,7 @@ public class BlacklistService {
                     TreeCache.newBuilder(zooKeeperHolder.get(), PATH_BLACKLIST).setCacheData(false).build();
             this.blacklistCache.start();
         } catch (final Exception e) {
-            LOG.error(e.getMessage(), e);
+            LOG.error(e.getMessage());
         }
     }
 
@@ -60,7 +60,7 @@ public class BlacklistService {
             }
             return blocked;
         } catch (final Exception e) {
-            LOG.error(e.getMessage(), e);
+            LOG.error(e.getMessage());
         }
         return false;
     }
@@ -78,7 +78,7 @@ public class BlacklistService {
             return isSubscriptionConsumptionBlocked(
                     subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
         } catch (final NakadiException e) {
-            LOG.error(e.getMessage(), e);
+            LOG.error(e.getMessage());
         }
         return false;
     }

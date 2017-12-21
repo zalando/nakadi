@@ -273,8 +273,8 @@ public class EventStreamController {
                     }
                 });
             } catch (final UnparseableCursorException e) {
-                LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
-                        e.getCursors(), e);
+                LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST: {}",
+                        e.getCursors(), e.getMessage());
                 writeProblemResponse(response, outputStream, BAD_REQUEST, e.getMessage());
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
@@ -282,14 +282,15 @@ public class EventStreamController {
                 LOG.debug("Connection creation failed due to exceeding max connection count");
                 writeProblemResponse(response, outputStream, e.asProblem());
             } catch (final NakadiException e) {
-                LOG.error("Error while trying to stream events.", e);
+                LOG.error("Error while trying to stream events: {}", e.getProblemMessage());
                 writeProblemResponse(response, outputStream, e.asProblem());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final AccessDeniedException e) {
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.explain());
             } catch (final Exception e) {
-                LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
+                LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR: {}",
+                        e.getMessage());
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } finally {
                 connectionReady.set(false);

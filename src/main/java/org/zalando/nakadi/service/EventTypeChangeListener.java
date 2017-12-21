@@ -42,7 +42,8 @@ public class EventTypeChangeListener {
         @Override
         public void close() throws IOException {
             if (closed) {
-                LOG.warn("Second attempt to close event type authorization listener " + authorizationChangeListener);
+                LOG.warn("Second attempt to close event type authorization listener {}",
+                        authorizationChangeListener.toString());
                 return;
             }
             closed = true;
@@ -69,7 +70,7 @@ public class EventTypeChangeListener {
                 try {
                     listener.authorizationChangeListener.accept(eventType);
                 } catch (RuntimeException ex) {
-                    LOG.error("Failed to notify listener " + listener, ex);
+                    LOG.error("Failed to notify listener {}: {}", listener, ex.getMessage());
                 }
             }
         }

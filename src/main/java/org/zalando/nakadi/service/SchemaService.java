@@ -56,7 +56,7 @@ public class SchemaService {
             final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
             return Result.ok(schema);
         } catch (final NoSuchSchemaException e) {
-            LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
+            LOG.debug("Could not find EventTypeSchema version {} for EventType {}", version, name);
             return Result.problem(e.asProblem());
         }
     }
