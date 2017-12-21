@@ -174,6 +174,11 @@ public class EventStream {
     }
 
     private void publishKpi(final String appName, final long count, final long bytes) {
+        final String appNameHashed = kpiPublisher.hash(appName);
+
+        LOG.info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} numberOfEvents={} bytesStreamed={}",
+                "lola", config.getEtName(), appName, appNameHashed, count, bytes);
+
         kpiPublisher.publish(
                 kpiDataStreamedEventType,
                 () -> new JSONObject()

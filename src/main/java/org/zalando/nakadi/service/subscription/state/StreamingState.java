@@ -255,6 +255,11 @@ class StreamingState extends State {
         final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
         final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
         final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
+        final String appNameHashed = kpiPublisher.hash(appName);
+
+        getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
+                        "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
+                        eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
 
         kpiPublisher.publish(
                 getContext().getKpiDataStreamedEventType(),
@@ -263,7 +268,7 @@ class StreamingState extends State {
                         .put("subscription", getContext().getSubscription().getId())
                         .put("event_type", eventTypeName)
                         .put("app", appName)
-                        .put("app_hashed", kpiPublisher.hash(appName))
+                        .put("app_hashed", appNameHashed)
                         .put("number_of_events", count)
                         .put("bytes_streamed", bytes));
     }
