@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.4.2] - 2017-12-21
+
 ### Added
 - Allow changing event type category from NONE to BUSINESS
 
