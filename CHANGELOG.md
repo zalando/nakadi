@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Added timeout for subscription locking
+
 ## [2.4.1] - 2017-12-18
 
 ### Fixed
