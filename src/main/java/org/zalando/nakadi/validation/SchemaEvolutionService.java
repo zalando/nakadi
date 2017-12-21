@@ -9,6 +9,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.SchemaChange;
@@ -87,13 +89,7 @@ public class SchemaEvolutionService {
     }
 
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws InvalidEventTypeException {
-        final Optional<SchemaEvolutionIncompatibility> incompatibility = schemaEvolutionConstraints.stream()
-                .map(c -> c.validate(original, eventType)).filter(Optional::isPresent).findFirst()
-                .orElse(Optional.empty());
-
-        if (incompatibility.isPresent()) {
-            throw new InvalidEventTypeException(incompatibility.get().getReason());
-        }
+        checkEvolutionIncompatibilities(original, eventType);
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
@@ -101,12 +97,50 @@ public class SchemaEvolutionService {
                 eventType.getSchema().getSchema(), changes, original.getCompatibilityMode());
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
-            validateCompatibilityModeMigration(original, eventType, changes);
+            validateCompatibilityModeMigration(changes);
         } else if (original.getCompatibilityMode() != CompatibilityMode.NONE) {
             validateCompatibleChanges(original, changes, changeLevel);
         }
 
-        return this.bumpVersion(original, eventType, changeLevel);
+        return bumpVersion(original, eventType, changeLevel);
+    }
+
+    private void checkEvolutionIncompatibilities(final EventType from, final EventTypeBase to)
+            throws InvalidEventTypeException {
+        final List<SchemaEvolutionIncompatibility> incompatibilities = schemaEvolutionConstraints.stream()
+                .map(c -> c.validate(from, to))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+        if (incompatibilities.isEmpty()) {
+            return;
+        }
+        // There is a special case of incompatibility - change of category from NONE to BUSINESS, with adding metadata.
+        // Let's check that it is the case.
+        // This solution is not scalable, but without huge refactoring it is the simplest one.
+        final boolean categoryChanged = incompatibilities.stream()
+                .anyMatch(v -> v instanceof SchemaEvolutionIncompatibility.CategoryIncompatibility);
+        if (categoryChanged) {
+            final boolean metadataChanged = incompatibilities.stream()
+                    .anyMatch(v -> v instanceof SchemaEvolutionIncompatibility.MetadataIncompatibility);
+            final int expectedIncompatibilities = 1 + (metadataChanged ? 1 : 0);
+            if (incompatibilities.size() == expectedIncompatibilities) {
+                // Now let's check, that it is really change from NONE to BUSINESS and some other conditions.
+                if (from.getCategory() == EventCategory.UNDEFINED && to.getCategory() == EventCategory.BUSINESS) {
+                    if (to.getEnrichmentStrategies().contains(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT)
+                            && to.getCompatibilityMode() != CompatibilityMode.COMPATIBLE) {
+                        // Finally, we are allowing this step.
+                        return;
+                    }
+                }
+            }
+            throw new InvalidEventTypeException("Category change is allowed only from 'undefined' to 'business'. " +
+                    "'enrichment_strategies' should be properly set as well");
+        }
+
+        throw new InvalidEventTypeException(incompatibilities.stream()
+                .map(SchemaEvolutionIncompatibility::getReason)
+                .collect(Collectors.joining("; ")));
     }
 
     private boolean isForwardToCompatibleUpgrade(final EventType original, final EventTypeBase eventType) {
@@ -114,8 +148,7 @@ public class SchemaEvolutionService {
                 && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE;
     }
 
-    private void validateCompatibilityModeMigration(final EventType original, final EventTypeBase eventType,
-                                                    final List<SchemaChange> changes) throws InvalidEventTypeException {
+    private void validateCompatibilityModeMigration(final List<SchemaChange> changes) throws InvalidEventTypeException {
         final List<SchemaChange> forbiddenChanges = changes.stream()
                 .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                 .collect(Collectors.toList());
