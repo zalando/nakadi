@@ -268,7 +268,7 @@ class StreamingState extends State {
                 getContext().getKpiDataStreamedEventType(),
                 () -> new JSONObject()
                         .put("api", "hila")
-                        .put("subscription", getContext().getSubscription())
+                        .put("subscription", getContext().getSubscription().getId())
                         .put("event_type", et)
                         .put("app", appName)
                         .put("app_hashed", kpiPublisher.hash(appName))
