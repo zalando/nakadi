@@ -130,9 +130,10 @@ public class EventPublishingController {
 
             nakadiKpiPublisher.publish(kpiBatchPublishedEventType, () -> new JSONObject()
                     .put("event_type", eventTypeName)
-                    .put("app", client.getClientId())
+                    .put("app", applicationName)
                     .put("app_hashed", nakadiKpiPublisher.hash(applicationName))
                     .put("number_of_events", eventCount)
+                    .put("ms_spent", msSpent)
                     .put("batch_size", totalSizeBytes));
         }
     }
