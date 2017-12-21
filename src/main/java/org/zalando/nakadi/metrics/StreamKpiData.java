@@ -1,24 +1,26 @@
 package org.zalando.nakadi.metrics;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 public class StreamKpiData {
-        private AtomicLong bytesSent = new AtomicLong(0);
-        private AtomicLong numberOfEventsSent = new AtomicLong(0);
+        private long bytesSent = 0;
+        private long numberOfEventsSent = 0;
 
         public long getAndResetBytesSent() {
-            return bytesSent.getAndSet(0);
+            final long tmp = bytesSent;
+            bytesSent = 0;
+            return tmp;
         }
 
         public long getAndResetNumberOfEventsSent() {
-            return numberOfEventsSent.getAndSet(0);
+            final long tmp = numberOfEventsSent;
+            numberOfEventsSent = 0;
+            return tmp;
         }
 
         public void addBytesSent(final long bytes) {
-            bytesSent.addAndGet(bytes);
+            bytesSent = bytesSent + bytes;
         }
 
         public void addNumberOfEventsSent(final long count) {
-            numberOfEventsSent.addAndGet(count);
+            numberOfEventsSent = numberOfEventsSent + count;
         }
 }
