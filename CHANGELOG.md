@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Allow changing event type category from NONE to BUSINESS
+
 ### Fixed
 - Added timeout for subscription locking
 
