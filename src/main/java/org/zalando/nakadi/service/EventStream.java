@@ -127,10 +127,7 @@ public class EventStream {
                     final long count = kpiData.getAndResetNumberOfEventsSent();
                     final long bytes = kpiData.getAndResetBytesSent();
 
-                    if (count > 0) {
-                        publishKpi(
-                                config.getConsumingAppId(), count, bytes);
-                    }
+                    publishKpi(config.getConsumingAppId(), count, bytes);
 
                     lastKpiEventSent = System.currentTimeMillis();
                 }
