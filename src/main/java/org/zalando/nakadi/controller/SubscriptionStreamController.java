@@ -27,6 +27,7 @@ import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -139,8 +140,11 @@ public class SubscriptionStreamController {
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response, final Client client)
             throws IOException {
+        final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
+            FlowIdUtils.push(flowId);
+
             if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
                 response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
                 return;
