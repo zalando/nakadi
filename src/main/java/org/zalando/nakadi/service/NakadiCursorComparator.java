@@ -36,7 +36,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         // Disclaimer: The reason of this method complexity is to avoid objects creation.
 
         // If c2 moved from -1, than it is definitely greater.
-        if (!StaticStorageWorkerFactory.get(c2.getTimeline()).isInitialOffset(c2.getOffset())) {
+        if (!c2.isInitial()) {
             return -1;
         }
 
@@ -50,8 +50,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         }
 
         while (first.getTimeline().getOrder() != c2.getTimeline().getOrder()) {
-            final boolean isFirstAtEndOfTimeline = StaticStorageWorkerFactory.get(first.getTimeline())
-                    .isLastOffsetForPartition(first.getTimeline(), first.getPartition(), first.getOffset());
+            final boolean isFirstAtEndOfTimeline = first.isLast();
             if (!isFirstAtEndOfTimeline) {
                 return -1;
             }

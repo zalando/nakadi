@@ -71,6 +71,10 @@ public abstract class NakadiCursor {
 
     public abstract NakadiCursor shiftWithinTimeline(long offset);
 
+    public abstract boolean isLast();
+
+    public abstract boolean isInitial();
+
     public KafkaCursor asKafkaCursor() throws InvalidCursorException {
         throw new UnsupportedOperationException("Cursor of class " + getClass() + " can not be converted to kafka one");
     }
@@ -136,6 +140,27 @@ public abstract class NakadiCursor {
         @Override
         public KafkaCursor asKafkaCursor() throws InvalidCursorException {
             return KafkaCursor.fromNakadiCursor(this);
+        }
+
+        @Override
+        public boolean isLast() {
+            final Timeline timeline = getTimeline();
+            if (null == timeline.getLatestPosition()) {
+                return false;
+            }
+            final int partition = KafkaCursor.toKafkaPartition(getPartition());
+
+            final long existingOffset = ((Timeline.KafkaStoragePosition) timeline.getLatestPosition())
+                    .getLastOffsetForPartition(partition);
+
+            final long offset = KafkaCursor.toKafkaOffset(getOffset());
+
+            return offset == existingOffset;
+        }
+
+        @Override
+        public boolean isInitial() {
+            return Long.parseLong(getOffset()) == -1; // Yes, it is always like that for kafka.
         }
 
         @Override

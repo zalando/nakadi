@@ -12,10 +12,6 @@ public class StaticStorageWorkerFactory {
     public interface StaticStorageWorker {
         long totalEventsInPartition(Timeline timeline, String partitionString);
 
-        boolean isLastOffsetForPartition(Timeline timeline, String partitionString, String offset);
-
-        boolean isInitialOffset(String offset);
-
         String getBeforeFirstOffset();
 
     }
@@ -41,24 +37,6 @@ public class StaticStorageWorkerFactory {
                 throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
             }
 
-        }
-
-        @Override
-        public boolean isLastOffsetForPartition(
-                final Timeline timeline, final String partitionString, final String offset) {
-            if (null == timeline.getLatestPosition()) {
-                return false;
-            }
-            final int partition = KafkaCursor.toKafkaPartition(partitionString);
-            final long existingOffset = ((Timeline.KafkaStoragePosition) timeline.getLatestPosition())
-                    .getLastOffsetForPartition(partition);
-            final long checkedOffset = KafkaCursor.toKafkaOffset(offset);
-            return existingOffset == checkedOffset;
-        }
-
-        @Override
-        public boolean isInitialOffset(final String offset) {
-            return Long.parseLong(offset) == -1; // Yes, it is always like that for kafka.
         }
 
         @Override
