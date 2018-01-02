@@ -199,8 +199,7 @@ public class EventStreamController {
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client)
-            throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
