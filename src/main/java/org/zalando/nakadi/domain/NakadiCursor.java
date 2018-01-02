@@ -79,7 +79,7 @@ public abstract class NakadiCursor {
         throw new UnsupportedOperationException("Cursor of class " + getClass() + " can not be converted to kafka one");
     }
 
-    public abstract void validate() throws InvalidCursorException;
+    public abstract void checkStorageAvailability() throws InvalidCursorException;
 
     @Override
     public boolean equals(final Object o) {
@@ -164,8 +164,12 @@ public abstract class NakadiCursor {
         }
 
         @Override
-        public void validate() throws InvalidCursorException {
+        public void checkStorageAvailability() throws InvalidCursorException {
             asKafkaCursor();
+            if (getTimeline().isDeleted()) {
+                throw new InvalidCursorException(CursorError.UNAVAILABLE, this);
+            }
+
         }
     }
 

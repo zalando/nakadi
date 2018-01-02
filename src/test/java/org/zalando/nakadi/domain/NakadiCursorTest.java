@@ -12,7 +12,7 @@ public class NakadiCursorTest {
 
     @Test
     public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        NakadiCursor.of(buildTimelineWithTopic("tmp"), "0", "23").validate();
+        NakadiCursor.of(buildTimelineWithTopic("tmp"), "0", "23").checkStorageAvailability();
     }
 
     @Test
@@ -23,7 +23,7 @@ public class NakadiCursorTest {
                 .entrySet()
                 .forEach(testCase -> {
                     try {
-                        testCase.getKey().validate();
+                        testCase.getKey().checkStorageAvailability();
                     } catch (final InvalidCursorException e) {
                         assertThat(e.getError(), equalTo(testCase.getValue()));
                     }

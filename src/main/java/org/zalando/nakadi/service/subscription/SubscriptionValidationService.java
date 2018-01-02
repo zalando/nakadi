@@ -71,7 +71,7 @@ public class SubscriptionValidationService {
             throw new TooManyPartitionsException(message);
         }
 
-        // validate initial cursors if needed
+        // checkStorageAvailability initial cursors if needed
         if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
             validateInitialCursors(subscription, allPartitions);
         }
