@@ -32,21 +32,6 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         }
     }
 
-    public boolean isOrdered(final NakadiCursor... cursors) {
-        NakadiCursor old = null;
-        for (int i = 0; i < cursors.length; ++i) {
-            final NakadiCursor current = cursors[i];
-            if (null == current) {
-                throw new IllegalArgumentException("Cursor can not be null");
-            }
-            if (null != old && compare(current, old) < 0) {
-                return false;
-            }
-            old = current;
-        }
-        return true;
-    }
-
     private int compareOrdered(final NakadiCursor c1, final NakadiCursor c2) {
         // Disclaimer: The reason of this method complexity is to avoid objects creation.
 
@@ -65,8 +50,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         }
 
         while (first.getTimeline().getOrder() != c2.getTimeline().getOrder()) {
-            final boolean isFirstAtEndOfTimeline = first.isLast();
-            if (!isFirstAtEndOfTimeline) {
+            if (!first.isLast()) {
                 return -1;
             }
             if (null == timelineIterator) {

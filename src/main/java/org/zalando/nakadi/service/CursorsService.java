@@ -7,7 +7,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -161,24 +160,8 @@ public class CursorsService {
         final Map<TopicRepository, List<NakadiCursor>> topicRepositories = cursors.stream().collect(
                 Collectors.groupingBy(
                         c -> timelineService.getTopicRepository(c.getTimeline())));
-
-        final NakadiCursorComparator comparator = new NakadiCursorComparator(eventTypeCache);
-
-        for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : topicRepositories.entrySet()) {
-            final List<PartitionStatistics> stats = entry.getKey().loadTopicStatistics(
-                    entry.getValue().stream().map(NakadiCursor::getTimeline).collect(Collectors.toSet()));
-
-            final Map<EventTypePartition, PartitionStatistics> statsMapped = stats.stream()
-                    .collect(Collectors.toMap(
-                            v -> v.getFirst().getEventTypePartition(),
-                            v -> v
-                    ));
-            for (final NakadiCursor toCheck : entry.getValue()) {
-                final PartitionStatistics etpStats = statsMapped.get(toCheck.getEventTypePartition());
-                if (!comparator.isOrdered(etpStats.getBeforeFirst(), toCheck, etpStats.getLast())) {
-                    throw new InvalidCursorException(CursorError.UNAVAILABLE, toCheck);
-                }
-            }
+        for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry: topicRepositories.entrySet()) {
+            entry.getKey().validateReadCursors(entry.getValue());
         }
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
