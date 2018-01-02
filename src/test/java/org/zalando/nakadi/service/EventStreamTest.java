@@ -70,6 +70,10 @@ public class EventStreamTest {
     private static CursorConverter cursorConverter;
     private static EventStreamWriterProvider writerProvider;
 
+    private final NakadiKpiPublisher kpiPublisher = mock(NakadiKpiPublisher.class);
+    private final String kpiEventType = "nakadi.data.streamed";
+    private final long kpiFrequencyMs = 100l;
+
     @BeforeClass
     public static void setupMocks() {
         final TimelineService timelineService = mock(TimelineService.class);
@@ -98,7 +102,7 @@ public class EventStreamTest {
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider);
+                BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true), () -> {
         }));
@@ -125,7 +129,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider);
+                BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen, () -> {
         }));
@@ -152,7 +156,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider);
+                BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         final AtomicBoolean triggerAuthChange = new AtomicBoolean(false);
         final AtomicBoolean accessDeniedTriggered = new AtomicBoolean(false);
         final Thread thread = new Thread(() -> {
@@ -194,7 +198,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider);
+                BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
         // if something goes wrong - the test should fail with a timeout
@@ -209,7 +213,8 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
-                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider);
+                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider, kpiPublisher,
+                kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
         // if something goes wrong - the test should fail with a timeout
@@ -226,7 +231,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider);
+                BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
         // if something goes wrong - the test should fail with a timeout
@@ -246,7 +251,7 @@ public class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER,
-                writerProvider);
+                writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
 
@@ -272,7 +277,7 @@ public class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class),
-                cursorConverter, BYTES_FLUSHED_METER, writerProvider);
+                cursorConverter, BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
 
@@ -309,7 +314,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, writerProvider);
+                        BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
 
@@ -353,7 +358,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, writerProvider);
+                        BYTES_FLUSHED_METER, writerProvider, kpiPublisher, kpiEventType, kpiFrequencyMs);
         eventStream.streamEvents(new AtomicBoolean(true), () -> {
         });
 

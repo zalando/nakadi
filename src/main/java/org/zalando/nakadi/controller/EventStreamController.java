@@ -51,6 +51,7 @@ import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
 
@@ -198,9 +199,12 @@ public class EventStreamController {
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client)
+            throws IOException {
+        final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
+            FlowIdUtils.push(flowId);
 
             if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,

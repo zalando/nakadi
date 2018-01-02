@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
 import com.google.common.base.Preconditions;
+import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -13,7 +14,9 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -50,7 +53,9 @@ class StreamingState extends State {
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
-    private Meter bytesSentMeter;
+    private Meter bytesSentMeterPerSubscription;
+    private Map<String, StreamKpiData> kpiDataPerEventType;
+    private long lastKpiEventSent;
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
     private Closeable cursorResetSubscription;
@@ -70,7 +75,11 @@ class StreamingState extends State {
                 this.getContext().getParameters().getConsumingAppId(),
                 this.getContext().getSubscription().getId()
         );
-        bytesSentMeter = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
+        bytesSentMeterPerSubscription = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
+
+        lastKpiEventSent = System.currentTimeMillis();
+        kpiDataPerEventType = this.getContext().getSubscription().getEventTypes().stream()
+                .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
@@ -226,6 +235,10 @@ class StreamingState extends State {
                 messagesAllowedToSend -= toSend.size();
             }
         }
+        if (lastKpiEventSent + getContext().getKpiCollectionFrequencyMs() < System.currentTimeMillis()) {
+            getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
+            lastKpiEventSent = System.currentTimeMillis();
+        }
         if (wasCommitted && sentSomething) {
             this.lastCommitMillis = System.currentTimeMillis();
         }
@@ -235,6 +248,29 @@ class StreamingState extends State {
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
+    }
+
+    private void publishKpi(final String eventTypeName) {
+        final String appName = getContext().getParameters().getConsumingAppId();
+        final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
+        final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
+        final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
+        final String appNameHashed = kpiPublisher.hash(appName);
+
+        getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
+                        "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
+                        eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
+
+        kpiPublisher.publish(
+                getContext().getKpiDataStreamedEventType(),
+                () -> new JSONObject()
+                        .put("api", "hila")
+                        .put("subscription", getContext().getSubscription().getId())
+                        .put("event_type", eventTypeName)
+                        .put("app", appName)
+                        .put("app_hashed", appNameHashed)
+                        .put("number_of_events", count)
+                        .put("bytes_streamed", bytes));
     }
 
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
@@ -251,7 +287,12 @@ class StreamingState extends State {
                     data,
                     metadata);
 
-            bytesSentMeter.mark(batchSize);
+            bytesSentMeterPerSubscription.mark(batchSize);
+
+            final StreamKpiData kpiData = kpiDataPerEventType.get(pk.getEventType());
+            kpiData.addBytesSent(batchSize);
+            kpiData.addNumberOfEventsSent(data.size());
+
             batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -264,6 +305,8 @@ class StreamingState extends State {
         uncommittedOffsets = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
+
+        getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
 
         if (null != topologyChangeSubscription) {
             try {

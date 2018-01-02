@@ -19,6 +19,7 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamWriterProvider;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -42,6 +43,10 @@ public class SubscriptionStreamerFactory {
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
     private final EventTypeCache eventTypeCache;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String kpiDataStreamedEventType;
+    private final long kpiCollectionFrequencyMs;
+
     @Autowired
     public SubscriptionStreamerFactory(
             final TimelineService timelineService,
@@ -53,7 +58,10 @@ public class SubscriptionStreamerFactory {
             final EventStreamWriterProvider eventStreamWriterProvider,
             final AuthorizationValidator authorizationValidator,
             final EventTypeChangeListener eventTypeChangeListener,
-            final EventTypeCache eventTypeCache) {
+            final EventTypeCache eventTypeCache,
+            final NakadiKpiPublisher nakadiKpiPublisher,
+            @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
+            @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -64,6 +72,9 @@ public class SubscriptionStreamerFactory {
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
         this.eventTypeCache = eventTypeCache;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.kpiDataStreamedEventType = kpiDataStreamedEventType;
+        this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
     }
 
     public SubscriptionStreamer build(
@@ -98,6 +109,9 @@ public class SubscriptionStreamerFactory {
                 .setAuthorizationValidator(authorizationValidator)
                 .setEventTypeChangeListener(eventTypeChangeListener)
                 .setCursorComparator(new NakadiCursorComparator(eventTypeCache))
+                .setKpiPublisher(nakadiKpiPublisher)
+                .setKpiDataStremedEventType(kpiDataStreamedEventType)
+                .setKpiCollectionFrequencyMs(kpiCollectionFrequencyMs)
                 .build();
     }
 
