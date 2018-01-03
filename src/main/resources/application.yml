@@ -111,6 +111,7 @@ nakadi:
     event-types:
       nakadiAccessLog: "nakadi.access.log"
       nakadiEventTypeLog: "nakadi.event.type.log"
+      nakadiSubscriptionLog: "nakadi.subscription.log"
       nakadiBatchPublished: "nakadi.batch.published"
       nakadiDataStreamed: "nakadi.data.streamed"
   hasher.salt: "salt"

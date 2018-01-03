@@ -5,7 +5,6 @@ import com.google.common.collect.Multimap;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -27,16 +26,12 @@ import org.zalando.nakadi.validation.SchemaEvolutionService;
 
 import java.util.ArrayList;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -45,6 +40,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 
 public class EventTypeServiceTest {
 
@@ -114,10 +110,10 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeCreatedTheKPIEventSubmitted() throws Exception {
+    public void whenEventTypeCreatedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
         eventTypeService.create(et);
-        checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
+        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "created")
@@ -125,13 +121,13 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeUpdatedTheKPIEventSubmitted() throws Exception {
+    public void whenEventTypeUpdatedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
 
         eventTypeService.update(et.getName(), et);
-        checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
+        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "updated")
@@ -139,22 +135,16 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeDeletedTheKPIEventSubmitted() throws Exception {
+    public void whenEventTypeDeletedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByNameO(et.getName())).thenReturn(Optional.of(et));
 
         eventTypeService.delete(et.getName());
-        checkKPIEventSubmitted(KPI_ET_LOG_EVENT_TYPE,
+        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "deleted")
                         .put("category", et.getCategory()));
     }
 
-    @SuppressWarnings("unchecked")
-    private void checkKPIEventSubmitted(final String eventType, final JSONObject expectedEvent) {
-        final ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
-        verify(nakadiKpiPublisher, times(1)).publish(eq(eventType), supplierCaptor.capture());
-        assertThat(expectedEvent.similar(supplierCaptor.getValue().get()), is(true));
-    }
 }
