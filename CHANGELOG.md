@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.1] - 2018-01-03
+
+### Added
+- Added publishing of subscription log events 
+
 ## [2.5.0] - 2017-12-22
 
 ### Added

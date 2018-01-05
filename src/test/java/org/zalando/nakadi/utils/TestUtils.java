@@ -8,6 +8,7 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -31,12 +33,18 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
@@ -223,5 +231,13 @@ public class TestUtils {
 
     public static String toTimelineOffset(final long offset) {
         return String.format("001-0001-%018d", offset);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void checkKPIEventSubmitted(final NakadiKpiPublisher nakadiKpiPublisher, final String eventType,
+                                              final JSONObject expectedEvent) {
+        final ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
+        verify(nakadiKpiPublisher, times(1)).publish(eq(eventType), supplierCaptor.capture());
+        assertThat(expectedEvent.similar(supplierCaptor.getValue().get()), is(true));
     }
 }
