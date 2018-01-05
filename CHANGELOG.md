@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Upgraded json-schema and org.json libraries
+- Upgrade json-schema and org.json libraries
+
+## [2.5.1] - 2018-01-03
+
+### Added
+- Added publishing of subscription log events 
+
+## [2.5.0] - 2017-12-22
+
+### Added
+- Nakadi collects event publishing KPI data 
+- Nakadi collects event streaming KPI data
 
 ## [2.4.2] - 2017-12-21
 

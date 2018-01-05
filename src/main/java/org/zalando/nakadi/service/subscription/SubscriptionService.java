@@ -1,9 +1,11 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -37,6 +39,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -71,6 +74,8 @@ public class SubscriptionService {
     private final SubscriptionValidationService subscriptionValidationService;
     private final CursorConverter converter;
     private final CursorOperationsService cursorOperationsService;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String subLogEventType;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -79,7 +84,9 @@ public class SubscriptionService {
                                final EventTypeRepository eventTypeRepository,
                                final SubscriptionValidationService subscriptionValidationService,
                                final CursorConverter converter,
-                               final CursorOperationsService cursorOperationsService) {
+                               final CursorOperationsService cursorOperationsService,
+                               final NakadiKpiPublisher nakadiKpiPublisher,
+                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -87,6 +94,8 @@ public class SubscriptionService {
         this.subscriptionValidationService = subscriptionValidationService;
         this.converter = converter;
         this.cursorOperationsService = cursorOperationsService;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.subLogEventType = subLogEventType;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -94,7 +103,13 @@ public class SubscriptionService {
             NoEventTypeException, InconsistentStateException, WrongInitialCursorsException {
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
-        return subscriptionRepository.createSubscription(subscriptionBase);
+        final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
+
+        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
+                .put("subscription_id", subscription.getId())
+                .put("status", "created"));
+
+        return subscription;
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
@@ -158,6 +173,10 @@ public class SubscriptionService {
             final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
                     subscription, "subscription." + subscriptionId + ".delete_subscription");
             zkSubscriptionClient.deleteSubscription();
+
+            nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
+                    .put("subscription_id", subscriptionId)
+                    .put("status", "deleted"));
 
             return Result.ok();
         } catch (final NoSuchSubscriptionException e) {

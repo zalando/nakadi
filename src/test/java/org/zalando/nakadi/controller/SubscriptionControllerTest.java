@@ -32,6 +32,7 @@ import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -81,6 +82,8 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 public class SubscriptionControllerTest {
 
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
+    private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
+    private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
@@ -90,8 +93,6 @@ public class SubscriptionControllerTest {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private final TimelineService timelineService;
-    private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
-    private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
     public SubscriptionControllerTest() throws Exception {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -111,9 +112,10 @@ public class SubscriptionControllerTest {
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
+        final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService);
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
