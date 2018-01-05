@@ -105,7 +105,9 @@ public class CursorsController {
             try {
                 TimeLogger.addMeasure("convertToNakadiCursors");
                 final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
-
+                if (cursors.isEmpty()) {
+                    throw new CursorsAreEmptyException();
+                }
                 TimeLogger.addMeasure("callService");
                 final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
@@ -136,7 +138,9 @@ public class CursorsController {
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
+        if (cursors.getItems().isEmpty()) {
+            throw new CursorsAreEmptyException();
+        }
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
             return noContent().build();
@@ -173,7 +177,7 @@ public class CursorsController {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(CursorUnavailableException.class)
+    @ExceptionHandler({CursorUnavailableException.class, CursorsAreEmptyException.class})
     public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
                                                                      final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
@@ -199,6 +203,12 @@ public class CursorsController {
                                                            final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
+    }
+
+    public static class CursorsAreEmptyException extends RuntimeException {
+        public CursorsAreEmptyException() {
+            super("Cursors are empty");
+        }
     }
 
 }

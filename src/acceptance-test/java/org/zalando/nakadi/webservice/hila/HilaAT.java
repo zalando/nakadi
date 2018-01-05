@@ -26,6 +26,7 @@ import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +39,7 @@ import static java.text.MessageFormat.format;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -420,7 +422,6 @@ public class HilaAT extends BaseAT {
         statusCode = given()
                 .body(MAPPER.writeValueAsString(new ItemsWrapper<>(resetCursors)))
                 .contentType(JSON)
-                .header("X-Nakadi-StreamId", client1.getSessionId())
                 .patch("/subscriptions/{id}/cursors", subscription.getId())
                 .getStatusCode();
         Assert.assertEquals(SC_NO_CONTENT, statusCode);
@@ -436,5 +437,15 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client2.getBatches(), hasSize(10)));
 
         Assert.assertEquals("001-0001-000000000000000005", client2.getBatches().get(0).getCursor().getOffset());
+    }
+
+    @Test
+    public void whenResetWithEmptyCursorsThen422() throws Exception {
+        given()
+                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(new ArrayList<SubscriptionCursor>())))
+                .contentType(JSON)
+                .patch("/subscriptions/{id}/cursors", subscription.getId())
+                .then()
+                .statusCode(SC_UNPROCESSABLE_ENTITY);
     }
 }

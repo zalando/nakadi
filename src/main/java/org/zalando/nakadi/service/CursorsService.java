@@ -74,9 +74,6 @@ public class CursorsService {
                                        final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
-        if (cursors.isEmpty()) {
-            throw new UnableProcessException("Cursors are absent");
-        }
         TimeLogger.addMeasure("getSubscription");
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
@@ -148,9 +145,6 @@ public class CursorsService {
             throws ServiceUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
-        if (cursors.isEmpty()) {
-            throw new UnableProcessException("Cursors are absent");
-        }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         validateCursorsBelongToSubscription(subscription, cursors);
         for (final NakadiCursor cursor : cursors) {
