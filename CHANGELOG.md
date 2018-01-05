@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Do not create connection to kafka if kafka services are not needed
+
 ## [2.5.1] - 2018-01-03
 
 ### Added
