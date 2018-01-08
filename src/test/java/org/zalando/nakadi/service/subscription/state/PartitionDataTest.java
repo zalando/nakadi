@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
@@ -16,11 +18,17 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PartitionDataTest {
 
     private static Timeline firstTimeline = mock(Timeline.class);
     private static final Comparator<NakadiCursor> COMP = Comparator.comparing(NakadiCursor::getOffset);
+
+    @BeforeClass
+    public static void initTimeline() {
+        when(firstTimeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
+    }
 
     private static NakadiCursor createCursor(final long offset) {
         return new KafkaCursor("x", 0, offset).toNakadiCursor(firstTimeline);
@@ -81,7 +89,7 @@ public class PartitionDataTest {
     }
 
     @Test
-    public void eventsShouldBeStreamedOnTimeout() throws InterruptedException {
+    public void eventsShouldBeStreamedOnTimeout() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         long currentTime = System.currentTimeMillis();
 

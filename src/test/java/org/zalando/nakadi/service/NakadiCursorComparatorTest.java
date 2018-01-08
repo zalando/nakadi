@@ -77,6 +77,6 @@ public class NakadiCursorComparatorTest {
     }
 
     private static NakadiCursor cursor(final Timeline timeline, final long offset) {
-        return new NakadiCursor(timeline, KafkaCursor.toNakadiPartition(0), KafkaCursor.toNakadiOffset(offset));
+        return NakadiCursor.of(timeline, KafkaCursor.toNakadiPartition(0), KafkaCursor.toNakadiOffset(offset));
     }
 }

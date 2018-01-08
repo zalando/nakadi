@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Do not create connection to kafka if kafka services are not needed
+
 ### Changed
 - Upgrade json-schema and org.json libraries
 

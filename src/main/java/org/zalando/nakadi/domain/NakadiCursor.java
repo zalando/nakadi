@@ -1,10 +1,13 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.base.Preconditions;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 import java.util.Objects;
 
-public class NakadiCursor {
+public abstract class NakadiCursor {
     public static final int VERSION_LENGTH = 3;
 
     /**
@@ -29,7 +32,7 @@ public class NakadiCursor {
     // NO BEGIN HERE - only real offset!
     private final String offset;
 
-    public NakadiCursor(
+    private NakadiCursor(
             final Timeline timeline,
             final String partition,
             final String offset) {
@@ -66,6 +69,18 @@ public class NakadiCursor {
         return new TopicPartition(timeline.getTopic(), partition);
     }
 
+    public abstract NakadiCursor shiftWithinTimeline(long offset);
+
+    public abstract boolean isLast();
+
+    public abstract boolean isInitial();
+
+    public KafkaCursor asKafkaCursor() throws InvalidCursorException {
+        throw new UnsupportedOperationException("Cursor of class " + getClass() + " can not be converted to kafka one");
+    }
+
+    public abstract void checkStorageAvailability() throws InvalidCursorException;
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -95,6 +110,67 @@ public class NakadiCursor {
         return "T(" + Timeline.debugString(timeline) + ")-" +
                 "P(" + partition + ")-" +
                 "O(" + offset + ")";
+    }
+
+
+    public static NakadiCursor of(final Timeline timeline, final String partition, final String offset) {
+        switch (timeline.getStorage().getType()) {
+            case KAFKA:
+                return new NakadiKafkaCursor(timeline, partition, offset);
+            default:
+                throw new MyNakadiRuntimeException1(
+                        "Cursor storage type " + timeline.getStorage().getType() + " not supported");
+        }
+    }
+
+    private static class NakadiKafkaCursor extends NakadiCursor {
+        NakadiKafkaCursor(final Timeline timeline, final String partition, final String offset) {
+            super(timeline, partition, offset);
+        }
+
+        @Override
+        public NakadiCursor shiftWithinTimeline(final long toAdd) {
+            return new NakadiKafkaCursor(
+                    getTimeline(),
+                    getPartition(),
+                    KafkaCursor.toNakadiOffset(KafkaCursor.toKafkaOffset(getOffset()) + toAdd)
+            );
+        }
+
+        @Override
+        public KafkaCursor asKafkaCursor() throws InvalidCursorException {
+            return KafkaCursor.fromNakadiCursor(this);
+        }
+
+        @Override
+        public boolean isLast() {
+            final Timeline timeline = getTimeline();
+            if (null == timeline.getLatestPosition()) {
+                return false;
+            }
+            final int partition = KafkaCursor.toKafkaPartition(getPartition());
+
+            final long existingOffset = ((Timeline.KafkaStoragePosition) timeline.getLatestPosition())
+                    .getLastOffsetForPartition(partition);
+
+            final long offset = KafkaCursor.toKafkaOffset(getOffset());
+
+            return offset == existingOffset;
+        }
+
+        @Override
+        public boolean isInitial() {
+            return Long.parseLong(getOffset()) == -1; // Yes, it is always like that for kafka.
+        }
+
+        @Override
+        public void checkStorageAvailability() throws InvalidCursorException {
+            asKafkaCursor();
+            if (getTimeline().isDeleted()) {
+                throw new InvalidCursorException(CursorError.UNAVAILABLE, this);
+            }
+
+        }
     }
 
 }

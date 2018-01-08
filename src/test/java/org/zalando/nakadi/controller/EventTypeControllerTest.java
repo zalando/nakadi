@@ -16,10 +16,10 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -27,7 +27,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
@@ -480,23 +479,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
-
-        final EventType eventType = buildDefaultEventType();
-        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
-                "Failed to delete Kafka topic for event type " + eventType.getName());
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        doThrow(new TopicDeletionException("dummy message", null)).when(timelineService)
-                .deleteAllTimelinesForEventType(eventType.getName());
-
-        deleteEventType(eventType.getName()).andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
     }
 
     @Test

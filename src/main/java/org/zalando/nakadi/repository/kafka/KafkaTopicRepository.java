@@ -452,22 +452,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     }
 
-    public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
-        return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
-    }
-
     @Override
-    public NakadiCursor createBeforeBeginCursor(final Timeline timeline, final String partition) {
-        return new KafkaCursor(timeline.getTopic(), KafkaCursor.toKafkaPartition(partition), -1)
-                .toNakadiCursor(timeline);
-    }
-
-    @Override
-    public NakadiCursor shiftWithinTimeline(final NakadiCursor current, final long stillToAdd)
-            throws InvalidCursorException {
-        return KafkaCursor.fromNakadiCursor(current).addOffset(stillToAdd).toNakadiCursor(current.getTimeline());
-    }
-
     public void validateReadCursors(final List<NakadiCursor> cursors)
             throws InvalidCursorException, ServiceUnavailableException {
         convertToKafkaCursors(cursors);
@@ -475,12 +460,6 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
-        // Validate, that topic for this cursor is available
-        for (final NakadiCursor c: cursors) {
-            if (c.getTimeline().isDeleted()) {
-                throw new InvalidCursorException(UNAVAILABLE, c);
-            }
-        }
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 
@@ -494,7 +473,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }
-            final KafkaCursor toCheck = KafkaCursor.fromNakadiCursor(position);
+            final KafkaCursor toCheck = position.asKafkaCursor();
 
             // Checking oldest position
             final KafkaCursor oldestCursor = KafkaCursor.fromNakadiCursor(partition.get().getBeforeFirst());
@@ -510,11 +489,6 @@ public class KafkaTopicRepository implements TopicRepository {
             }
         }
         return result;
-    }
-
-    @Override
-    public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        KafkaCursor.fromNakadiCursor(position);
     }
 
     @Override

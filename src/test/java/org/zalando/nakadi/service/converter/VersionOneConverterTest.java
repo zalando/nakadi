@@ -80,7 +80,8 @@ public class VersionOneConverterTest {
     public void testFormatOffset() {
         final Timeline timeline = mock(Timeline.class);
         when(timeline.getOrder()).thenReturn(15);
-        final NakadiCursor cursor = new NakadiCursor(timeline, "x", "012345");
+        when(timeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
+        final NakadiCursor cursor = NakadiCursor.of(timeline, "x", "012345");
 
         Assert.assertEquals(
                 "001-000f-012345", new VersionOneConverter(null).formatOffset(cursor));

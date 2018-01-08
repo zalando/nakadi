@@ -17,10 +17,12 @@ import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
+import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -87,6 +89,13 @@ public final class ExceptionHandling implements ProblemHandling {
     public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
                                                                   final NativeWebRequest request) {
         return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(CursorsAreEmptyException.class)
+    public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     @ExceptionHandler

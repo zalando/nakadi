@@ -15,10 +15,13 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Set;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Component
@@ -27,40 +30,57 @@ public class TopicRepositoryHolder {
     private static final Logger LOG = LoggerFactory.getLogger(TopicRepositoryHolder.class);
 
     private final Map<Storage.Type, TopicRepositoryCreator> repositoryCreators;
-    private final ReadWriteLock readWriteLock;
     private final Map<Storage, TopicRepository> storageTopicRepository;
+
+    private final Lock lock = new ReentrantLock();
+    private final Condition loadingListChanged = lock.newCondition();
+    private final Set<Storage> storagesBeingLoaded = new HashSet<>();
 
     @Autowired
     public TopicRepositoryHolder(@Qualifier("kafka") final TopicRepositoryCreator kafkaRepository) {
-        this.readWriteLock = new ReentrantReadWriteLock();
+
         this.storageTopicRepository = new HashMap<>();
         this.repositoryCreators = new HashMap<>();
         this.repositoryCreators.put(kafkaRepository.getSupportedStorageType(), kafkaRepository);
     }
 
     public TopicRepository getTopicRepository(final Storage storage) throws TopicRepositoryException {
-        readWriteLock.readLock().lock();
-        try {
-            final TopicRepository topicRepository = storageTopicRepository.get(storage);
-            if (topicRepository != null) {
-                return topicRepository;
-            }
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
-
-        readWriteLock.writeLock().lock();
+        lock.lock();
         try {
             TopicRepository topicRepository = storageTopicRepository.get(storage);
             if (topicRepository != null) {
                 return topicRepository;
             }
-
-            topicRepository = getTopicRepositoryCreator(storage.getType()).createTopicRepository(storage);
-            storageTopicRepository.put(storage, topicRepository);
-            return topicRepository;
+            while (storagesBeingLoaded.contains(storage)) {
+                loadingListChanged.await();
+            }
+            topicRepository = storageTopicRepository.get(storage);
+            if (null != topicRepository) {
+                return topicRepository;
+            }
+            storagesBeingLoaded.add(storage);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new TopicRepositoryException("Interrupted while waiting for topic repository creation", ex);
         } finally {
-            readWriteLock.writeLock().unlock();
+            lock.unlock();
+        }
+
+        TopicRepository created = null;
+        try {
+            created = getTopicRepositoryCreator(storage.getType()).createTopicRepository(storage);
+            return created;
+        } finally {
+            lock.lock();
+            try {
+                if (null != created) {
+                    storageTopicRepository.put(storage, created);
+                }
+                storagesBeingLoaded.remove(storage);
+                loadingListChanged.signalAll();
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
