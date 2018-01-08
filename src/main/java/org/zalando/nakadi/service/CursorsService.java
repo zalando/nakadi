@@ -17,7 +17,6 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -43,29 +42,29 @@ import java.util.stream.Stream;
 @Component
 public class CursorsService {
 
-    private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeCache eventTypeCache;
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
     private final CursorConverter cursorConverter;
     private final UUIDGenerator uuidGenerator;
+    private final TimelineService timelineService;
 
     @Autowired
-    public CursorsService(final TimelineService timelineService,
-                          final SubscriptionDbRepository subscriptionRepository,
+    public CursorsService(final SubscriptionDbRepository subscriptionRepository,
                           final EventTypeCache eventTypeCache,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
-                          final UUIDGenerator uuidGenerator) {
-        this.timelineService = timelineService;
+                          final UUIDGenerator uuidGenerator,
+                          final TimelineService timelineService) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
         this.cursorConverter = cursorConverter;
         this.uuidGenerator = uuidGenerator;
+        this.timelineService = timelineService;
     }
 
     /**
@@ -75,9 +74,6 @@ public class CursorsService {
                                        final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
-        if (cursors.isEmpty()) {
-            throw new UnableProcessException("Cursors are absent");
-        }
         TimeLogger.addMeasure("getSubscription");
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
@@ -99,8 +95,7 @@ public class CursorsService {
 
     private void validateStreamId(final List<NakadiCursor> cursors, final String streamId,
                                   final ZkSubscriptionClient subscriptionClient)
-            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
-            NoSuchEventTypeException, InternalNakadiException {
+            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException {
 
         if (!uuidGenerator.isUUID(streamId)) {
             throw new InvalidStreamIdException(
@@ -147,14 +142,21 @@ public class CursorsService {
     }
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, NoSuchSubscriptionException, CursorUnavailableException,
+            throws ServiceUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
-            InternalNakadiException, NoSuchEventTypeException {
-        if (cursors.isEmpty()) {
-            throw new UnableProcessException("Cursors are absent");
-        }
+            InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        validateSubscriptionResetCursors(subscription, cursors);
+        validateCursorsBelongToSubscription(subscription, cursors);
+        for (final NakadiCursor cursor : cursors) {
+            cursor.checkStorageAvailability();
+        }
+
+        final Map<TopicRepository, List<NakadiCursor>> topicRepositories = cursors.stream().collect(
+                Collectors.groupingBy(
+                        c -> timelineService.getTopicRepository(c.getTimeline())));
+        for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry: topicRepositories.entrySet()) {
+            entry.getKey().validateReadCursors(entry.getValue());
+        }
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".reset_cursors");
@@ -167,34 +169,16 @@ public class CursorsService {
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, UnableProcessException {
+            throws UnableProcessException {
         validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
             try {
-                timelineService.getTopicRepository(cursor.getTimeline()).validateCommitCursor(cursor);
+                cursor.checkStorageAvailability();
             } catch (final InvalidCursorException e) {
                 throw new UnableProcessException(e.getMessage(), e);
             }
         });
-    }
-
-    private void validateSubscriptionResetCursors(final Subscription subscription, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, CursorUnavailableException {
-        validateCursorsBelongToSubscription(subscription, cursors);
-
-        final Map<TopicRepository, List<NakadiCursor>> cursorsByRepo = cursors.stream()
-                .collect(Collectors.groupingBy(c -> timelineService.getTopicRepository(c.getTimeline())));
-
-        for (final Map.Entry<TopicRepository, List<NakadiCursor>> repoEntry : cursorsByRepo.entrySet()) {
-            final TopicRepository topicRepository = repoEntry.getKey();
-            final List<NakadiCursor> cursorsForRepo = repoEntry.getValue();
-            try {
-                topicRepository.validateReadCursors(cursorsForRepo);
-            } catch (final InvalidCursorException e) {
-                throw new CursorUnavailableException(e.getMessage(), e);
-            }
-        }
     }
 
     private void validateCursorsBelongToSubscription(final Subscription subscription, final List<NakadiCursor> cursors)

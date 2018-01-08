@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.CursorUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -105,7 +105,9 @@ public class CursorsController {
             try {
                 TimeLogger.addMeasure("convertToNakadiCursors");
                 final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
-
+                if (cursors.isEmpty()) {
+                    throw new CursorsAreEmptyException();
+                }
                 TimeLogger.addMeasure("callService");
                 final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
@@ -136,7 +138,9 @@ public class CursorsController {
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
+        if (cursors.getItems().isEmpty()) {
+            throw new CursorsAreEmptyException();
+        }
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
             return noContent().build();
@@ -166,13 +170,11 @@ public class CursorsController {
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({
-            UnableProcessException.class,
-            CursorUnavailableException.class})
+    @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
     @ExceptionHandler(RequestInProgressException.class)

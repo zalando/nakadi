@@ -36,7 +36,7 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         // Disclaimer: The reason of this method complexity is to avoid objects creation.
 
         // If c2 moved from -1, than it is definitely greater.
-        if (!StaticStorageWorkerFactory.get(c2.getTimeline().getStorage()).isInitialOffset(c2.getOffset())) {
+        if (!c2.isInitial()) {
             return -1;
         }
 
@@ -46,25 +46,19 @@ public class NakadiCursorComparator implements Comparator<NakadiCursor> {
         // Handle obsolete timeline information
         if (first.getTimeline().getLatestPosition() == null) {
             timelineIterator = createTimelinesIterator(first.getEventType(), first.getTimeline().getOrder());
-            first = new NakadiCursor(timelineIterator.next(), first.getPartition(), first.getOffset());
+            first = NakadiCursor.of(timelineIterator.next(), first.getPartition(), first.getOffset());
         }
 
         while (first.getTimeline().getOrder() != c2.getTimeline().getOrder()) {
-            final boolean isFirstAtEndOfTimeline = StaticStorageWorkerFactory.get(first.getTimeline().getStorage())
-                    .isLastOffsetForPartition(first.getTimeline(), first.getPartition(), first.getOffset());
-            if (!isFirstAtEndOfTimeline) {
+            if (!first.isLast()) {
                 return -1;
             }
             if (null == timelineIterator) {
                 timelineIterator = createTimelinesIterator(first.getEventType(), first.getTimeline().getOrder() + 1);
             }
             final Timeline nextTimeline = timelineIterator.next();
-            final String initialOffset = StaticStorageWorkerFactory.get(nextTimeline.getStorage())
-                    .getFirstOffsetInTimeline(first.getPartition());
-            first = new NakadiCursor(
-                    nextTimeline,
-                    first.getPartition(),
-                    initialOffset);
+            final String initialOffset = StaticStorageWorkerFactory.get(nextTimeline).getBeforeFirstOffset();
+            first = NakadiCursor.of(nextTimeline, first.getPartition(), initialOffset);
         }
         return first.getOffset().compareTo(c2.getOffset());
     }

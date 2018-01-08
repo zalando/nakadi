@@ -111,9 +111,9 @@ public class VersionZeroConverter implements VersionedConverter {
 
         final Timeline timeline = timelineService.getAllTimelinesOrdered(eventTypeStr).get(0);
         if (offset.startsWith("-")) {
-            return new NakadiCursor(timeline, cursor.getPartition(), cursor.getOffset());
+            return NakadiCursor.of(timeline, cursor.getPartition(), cursor.getOffset());
         } else {
-            return new NakadiCursor(
+            return NakadiCursor.of(
                     timeline,
                     cursor.getPartition(),
                     StringUtils.leftPad(cursor.getOffset(), VERSION_ZERO_MIN_OFFSET_LENGTH, '0'));

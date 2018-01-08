@@ -52,6 +52,7 @@ public interface TopicRepository {
     /**
      * Returns partitions statistics about requested partitions. The order and the amount of response items is exactly
      * the same as it was requested
+     *
      * @param partitions Partitions to query data for
      * @return List of statistics.
      * @throws ServiceUnavailableException In case when there was a problem communicating with storage
@@ -68,16 +69,8 @@ public interface TopicRepository {
     EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException;
 
-    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
-
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceUnavailableException;
 
-    void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
-
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
-
-    NakadiCursor createBeforeBeginCursor(Timeline timeline, String partition);
-
-    NakadiCursor shiftWithinTimeline(NakadiCursor current, long stillToAdd) throws InvalidCursorException;
 }

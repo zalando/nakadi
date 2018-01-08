@@ -12,15 +12,16 @@ public class StaticStorageWorkerFactory {
     public interface StaticStorageWorker {
         long totalEventsInPartition(Timeline timeline, String partitionString);
 
-        boolean isLastOffsetForPartition(Timeline timeline, String partitionString, String offset);
+        String getBeforeFirstOffset();
 
-        boolean isInitialOffset(String offset);
-
-        String getFirstOffsetInTimeline(String partition);
     }
 
     public static StaticStorageWorker get(final Storage storage) {
         return WORKER_MAP.get(storage.getType());
+    }
+
+    public static StaticStorageWorker get(final Timeline timeline) {
+        return get(timeline.getStorage());
     }
 
     private static class StaticKafkaStorageWorker implements StaticStorageWorker {
@@ -39,27 +40,10 @@ public class StaticStorageWorkerFactory {
         }
 
         @Override
-        public boolean isLastOffsetForPartition(
-                final Timeline timeline, final String partitionString, final String offset) {
-            if (null == timeline.getLatestPosition()) {
-                return false;
-            }
-            final int partition = KafkaCursor.toKafkaPartition(partitionString);
-            final long existingOffset = ((Timeline.KafkaStoragePosition) timeline.getLatestPosition())
-                    .getLastOffsetForPartition(partition);
-            final long checkedOffset = KafkaCursor.toKafkaOffset(offset);
-            return existingOffset == checkedOffset;
-        }
-
-        @Override
-        public boolean isInitialOffset(final String offset) {
-            return Long.parseLong(offset) == -1; // Yes, it is always like that for kafka.
-        }
-
-        @Override
-        public String getFirstOffsetInTimeline(final String partition) {
+        public String getBeforeFirstOffset() {
             return "-1"; // Yes, it is always like that for kafka.
         }
+
     }
 
     private static final EnumMap<Storage.Type, StaticStorageWorker> WORKER_MAP =

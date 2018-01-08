@@ -6,7 +6,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -49,18 +48,12 @@ public class CursorsServiceAT extends BaseAT {
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
     private static final String SUBSCRIPTIONS_PATH = "/nakadi/subscriptions";
 
-    private static final String NEW_OFFSET = "002_newOffset";
-    private static final String OLD_OFFSET = "001_oldOffset";
-    private static final String OLDEST_OFFSET = "000_oldestOffset";
+    private static final String NEW_OFFSET = "002";
+    private static final String OLD_OFFSET = "001";
+    private static final String OLDEST_OFFSET = "000";
 
-    private static final Answer<Integer> FAKE_OFFSET_COMPARATOR = invocation -> {
-        final NakadiCursor c1 = (NakadiCursor) invocation.getArguments()[0];
-        final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
-        return c1.getOffset().compareTo(c2.getOffset());
-    };
-
-    private static final String P1 = "p1";
-    private static final String P2 = "p2";
+    private static final String P1 = "0";
+    private static final String P2 = "1";
     private static final Date CREATED_AT = new Date();
 
     private CursorConverter cursorConverter;
@@ -92,7 +85,7 @@ public class CursorsServiceAT extends BaseAT {
         etName = randomValidEventTypeName();
         topic = randomUUID();
         cursorConverter = mock(CursorConverter.class);
-        testCursors = ImmutableList.of(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
+        testCursors = ImmutableList.of(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
 
         final EventType eventType = mock(EventType.class);
         when(eventType.getName()).thenReturn(etName);
@@ -101,7 +94,6 @@ public class CursorsServiceAT extends BaseAT {
         when(zkHolder.get()).thenReturn(CURATOR);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
-        when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         timeline = buildTimeline(etName, topic, CREATED_AT);
@@ -115,14 +107,14 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(zkHolder, MAPPER);
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
-        cursorsService = new CursorsService(timelineService, subscriptionRepo, null,
-                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator);
+        cursorsService = new CursorsService(subscriptionRepo, null,
+                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator, null);
 
         // Register cursors in converter
-        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
-        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, OLD_OFFSET));
-        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P2, NEW_OFFSET));
-        registerNakadiCursor(new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P2, OLD_OFFSET));
+        registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
+        registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, OLD_OFFSET));
+        registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P2, NEW_OFFSET));
+        registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P2, OLD_OFFSET));
         // bootstrap data in ZK
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P1), OLD_OFFSET.getBytes(UTF_8));
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P2), OLD_OFFSET.getBytes(UTF_8));
@@ -172,7 +164,7 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
-        final NakadiCursor cursor = new NakadiCursor(buildTimeline(etName, topic, CREATED_AT), P1, OLDEST_OFFSET);
+        final NakadiCursor cursor = NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, OLDEST_OFFSET);
         registerNakadiCursor(cursor);
         testCursors = ImmutableList.of(cursor);
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
@@ -183,8 +175,8 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenFirstCursorIsNotCommittedThenNextCursorsAreNotSkipped() throws Exception {
-        final NakadiCursor c1 = new NakadiCursor(timeline, P1, OLDEST_OFFSET);
-        final NakadiCursor c2 = new NakadiCursor(timeline, P2, NEW_OFFSET);
+        final NakadiCursor c1 = NakadiCursor.of(timeline, P1, OLDEST_OFFSET);
+        final NakadiCursor c2 = NakadiCursor.of(timeline, P2, NEW_OFFSET);
         testCursors = ImmutableList.of(c1, c2);
         testCursors.forEach(this::registerNakadiCursor);
 
@@ -209,19 +201,19 @@ public class CursorsServiceAT extends BaseAT {
                 });
         CURATOR.setData().forPath(offsetPath(P1), "000000000000000100".getBytes(UTF_8));
         CURATOR.setData().forPath(offsetPath(P2), "000000000000000800".getBytes(UTF_8));
-        registerNakadiCursor(new NakadiCursor(timeline, P1, "000000000000000100"));
-        registerNakadiCursor(new NakadiCursor(timeline, P2, "000000000000000800"));
+        registerNakadiCursor(NakadiCursor.of(timeline, P1, "000000000000000100"));
+        registerNakadiCursor(NakadiCursor.of(timeline, P2, "000000000000000800"));
         testCursors = ImmutableList.of(
-                new NakadiCursor(timeline, P1, "000000000000000105"),
-                new NakadiCursor(timeline, P1, "000000000000000106"),
-                new NakadiCursor(timeline, P1, "000000000000000102"),
-                new NakadiCursor(timeline, P1, "000000000000000096"),
-                new NakadiCursor(timeline, P1, "000000000000000130"),
-                new NakadiCursor(timeline, P2, "000000000000000800"),
-                new NakadiCursor(timeline, P2, "000000000000000820"),
-                new NakadiCursor(timeline, P1, "000000000000000120"),
-                new NakadiCursor(timeline, P1, "000000000000000121"),
-                new NakadiCursor(timeline, P2, "000000000000000825")
+                NakadiCursor.of(timeline, P1, "000000000000000105"),
+                NakadiCursor.of(timeline, P1, "000000000000000106"),
+                NakadiCursor.of(timeline, P1, "000000000000000102"),
+                NakadiCursor.of(timeline, P1, "000000000000000096"),
+                NakadiCursor.of(timeline, P1, "000000000000000130"),
+                NakadiCursor.of(timeline, P2, "000000000000000800"),
+                NakadiCursor.of(timeline, P2, "000000000000000820"),
+                NakadiCursor.of(timeline, P1, "000000000000000120"),
+                NakadiCursor.of(timeline, P1, "000000000000000121"),
+                NakadiCursor.of(timeline, P2, "000000000000000825")
         );
         testCursors.forEach(this::registerNakadiCursor);
 
