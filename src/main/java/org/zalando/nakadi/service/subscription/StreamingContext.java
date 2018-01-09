@@ -68,6 +68,8 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private final long kpiCollectionFrequencyMs;
 
+    private final long streamMemoryLimitBytes;
+
     private State currentState = new DummyState();
     private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
@@ -99,6 +101,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiPublisher = builder.kpiPublisher;
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
+        this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
     }
 
     public TimelineService getTimelineService() {
@@ -301,6 +304,10 @@ public class StreamingContext implements SubscriptionStreamer {
         return cursorComparator;
     }
 
+    public long getStreamMemoryLimitBytes() {
+        return streamMemoryLimitBytes;
+    }
+
     public static final class Builder {
         private SubscriptionOutput out;
         private StreamParameters parameters;
@@ -325,9 +332,15 @@ public class StreamingContext implements SubscriptionStreamer {
         private NakadiKpiPublisher kpiPublisher;
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
+        private long streamMemoryLimitBytes;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
+            return this;
+        }
+
+        public Builder setStreamMemoryLimitBytes(final long streamMemoryLimitBytes) {
+            this.streamMemoryLimitBytes = streamMemoryLimitBytes;
             return this;
         }
 

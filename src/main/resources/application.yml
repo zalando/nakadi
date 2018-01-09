@@ -87,6 +87,7 @@ nakadi:
   timeline.wait.timeoutMs: 40000
   subscription:
     maxPartitions: 100
+    maxStreamMemoryBytes: 50000000 # ~50 MB
   jobs:
     checkRunMs: 600000 # 10 min
     timelineCleanup:
