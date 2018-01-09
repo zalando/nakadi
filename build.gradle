@@ -42,7 +42,6 @@ if (project.hasProperty('dockerFile')) {
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
 }
 
 sourceSets {
@@ -159,7 +158,7 @@ dependencies {
     compile 'org.apache.curator:curator-recipes:2.12.0'
 
     // json
-    compile 'com.github.everit-org.json-schema:org.everit.json.schema:1.6.1'
+    compile 'org.everit.json:org.everit.json.schema:1.5.1'
     compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
         exclude module: "json"
     }
@@ -167,7 +166,7 @@ dependencies {
     compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.8'
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'com.grack:nanojson:1.2'
-    compile 'org.json:json:20171018'
+    compile 'org.json:json:20160810'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
