@@ -6,11 +6,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [2.5.3] - 2018-01-08
-
-### Changed
-- Upgrade json-schema and org.json libraries
-
 ## [2.5.2] - 2018-01-08
 
 ### Fixed

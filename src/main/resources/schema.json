@@ -1,6 +1,4 @@
 {
-    "id": "http://json-schema.org/draft-04/schema#",
-    "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "Core schema meta-schema",
     "definitions": {
         "schemaArray": {
@@ -13,7 +11,10 @@
             "minimum": 0
         },
         "positiveIntegerDefault0": {
-            "allOf": [ { "$ref": "#/definitions/positiveInteger" }, { "default": 0 } ]
+            "allOf": [
+                { "$ref": "#/definitions/positiveInteger" },
+                { "default": 0 }
+            ]
         },
         "simpleTypes": {
             "enum": [ "array", "boolean", "integer", "null", "number", "object", "string" ]
@@ -35,8 +36,8 @@
             "format": "uri"
         },
         "$ref": {
-          "type": "string",
-          "format": "uriref"
+            "type": "string",
+            "format": "uri"
         },
         "title": {
             "type": "string"
@@ -83,27 +84,16 @@
             "type": "boolean",
             "default": false
         },
+        "contains": { "$ref": "#" },
         "maxProperties": { "$ref": "#/definitions/positiveInteger" },
         "minProperties": { "$ref": "#/definitions/positiveIntegerDefault0" },
         "required": { "$ref": "#/definitions/stringArray" },
-        "additionalProperties": {
-            "anyOf": [
-                { "type": "boolean" },
-                { "$ref": "#" }
-            ],
-            "default": {}
-        },
         "definitions": {
             "type": "object",
             "additionalProperties": { "$ref": "#" },
             "default": {}
         },
         "properties": {
-            "type": "object",
-            "additionalProperties": { "$ref": "#" },
-            "default": {}
-        },
-        "patternProperties": {
             "type": "object",
             "additionalProperties": { "$ref": "#" },
             "default": {}
@@ -117,6 +107,7 @@
                 ]
             }
         },
+        "const": {},
         "enum": {
             "type": "array",
             "minItems": 1,
@@ -138,10 +129,10 @@
         "anyOf": { "$ref": "#/definitions/schemaArray" },
         "oneOf": { "$ref": "#/definitions/schemaArray" }
     },
+    "additionalProperties": false,
     "dependencies": {
         "exclusiveMaximum": [ "maximum" ],
         "exclusiveMinimum": [ "minimum" ]
     },
-    "default": {},
-    "additionalProperties": false
+    "default": {}
 }
