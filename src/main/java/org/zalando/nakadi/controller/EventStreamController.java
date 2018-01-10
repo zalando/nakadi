@@ -114,8 +114,7 @@ public class EventStreamController {
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
                                  final EventTypeChangeListener eventTypeChangeListener,
-                                 @Value("${nakadi.stream.maxStreamMemoryBytes}")
-                                     @Nullable final Long maxMemoryUsageBytes) {
+                                 @Value("${nakadi.stream.maxStreamMemoryBytes}") final Long maxMemoryUsageBytes) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
