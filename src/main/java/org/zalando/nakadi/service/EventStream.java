@@ -13,6 +13,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,23 @@ public class EventStream {
                         batchStartTimes.put(partition, currentTimeMillis());
                     }
                 }
+                // Dump some data that is exceeding memory limits
+                long memoryUsed = currentBatches.values().stream()
+                        .mapToLong(partition -> partition.stream().mapToLong(event -> event.length).sum()).sum();
+                while (isMemoryLimitReached(memoryUsed)) {
+                    final Map.Entry<String, List<byte[]>> heaviestPartition = currentBatches.entrySet().stream()
+                            .max(Comparator.comparing(
+                                    entry -> entry.getValue().stream().mapToLong(event -> event.length).sum()))
+                            .get();
+                    sendBatch(latestOffsets.get(heaviestPartition.getKey()), heaviestPartition.getValue());
+                    final long freed = heaviestPartition.getValue().stream().mapToLong(v -> v.length).sum();
+                    LOG.warn("Memory limit reached for event type {}: {} bytes. Freed: {} bytes",
+                            config.getEtName(), memoryUsed, freed);
+                    memoryUsed -= freed;
+                    // Init new batch for subscription
+                    heaviestPartition.getValue().clear();
+                    batchStartTimes.put(heaviestPartition.getKey(), currentTimeMillis());
+                }
 
                 if (lastKpiEventSent + kpiFrequencyMs < System.currentTimeMillis()) {
                     final long count = kpiData.getAndResetNumberOfEventsSent();
@@ -171,6 +189,10 @@ public class EventStream {
                     kpiData.getAndResetNumberOfEventsSent(),
                     kpiData.getAndResetBytesSent());
         }
+    }
+
+    private boolean isMemoryLimitReached(final long memoryUsed) {
+        return memoryUsed > config.getMaxMemoryUsageBytes();
     }
 
     private void publishKpi(final String appName, final long count, final long bytes) {

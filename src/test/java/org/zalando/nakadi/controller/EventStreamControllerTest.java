@@ -163,7 +163,7 @@ public class EventStreamControllerTest {
                 eventTypeRepository, timelineService, TestUtils.OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
-                eventTypeChangeListener);
+                eventTypeChangeListener, null);
 
         settings = mock(SecuritySettings.class);
         when(settings.getAuthMode()).thenReturn(OFF);
