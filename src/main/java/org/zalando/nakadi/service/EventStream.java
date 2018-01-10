@@ -77,6 +77,7 @@ public class EventStream {
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
             long lastKpiEventSent = System.currentTimeMillis();
+            long bytesInMemory = 0;
 
             while (connectionReady.get() &&
                     !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
@@ -100,6 +101,7 @@ public class EventStream {
                     // put message to batch
                     currentBatches.get(event.getPosition().getPartition()).add(event.getEvent());
                     messagesRead++;
+                    bytesInMemory += event.getEvent().length;
 
                     // if we read the message - reset keep alive counter for this partition
                     keepAliveInARow.put(event.getPosition().getPartition(), 0);
@@ -110,23 +112,22 @@ public class EventStream {
                     final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
                     if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
+                        final List<byte[]> eventsToSend = currentBatches.get(partition);
+                        sendBatch(latestOffsets.get(partition), eventsToSend);
 
-                        sendBatch(latestOffsets.get(partition), currentBatches.get(partition));
-
-                        // if we hit keep alive count limit - close the stream
-                        if (currentBatches.get(partition).size() == 0) {
+                        if (!eventsToSend.isEmpty()) {
+                            bytesInMemory -= eventsToSend.stream().mapToLong(v -> v.length).sum();
+                            eventsToSend.clear();
+                        } else {
+                            // if we hit keep alive count limit - close the stream
                             keepAliveInARow.put(partition, keepAliveInARow.get(partition) + 1);
                         }
 
-                        // init new batch for partition
-                        currentBatches.get(partition).clear();
                         batchStartTimes.put(partition, currentTimeMillis());
                     }
                 }
                 // Dump some data that is exceeding memory limits
-                long memoryUsed = currentBatches.values().stream()
-                        .mapToLong(partition -> partition.stream().mapToLong(event -> event.length).sum()).sum();
-                while (isMemoryLimitReached(memoryUsed)) {
+                while (isMemoryLimitReached(bytesInMemory)) {
                     final Map.Entry<String, List<byte[]>> heaviestPartition = currentBatches.entrySet().stream()
                             .max(Comparator.comparing(
                                     entry -> entry.getValue().stream().mapToLong(event -> event.length).sum()))
@@ -134,8 +135,8 @@ public class EventStream {
                     sendBatch(latestOffsets.get(heaviestPartition.getKey()), heaviestPartition.getValue());
                     final long freed = heaviestPartition.getValue().stream().mapToLong(v -> v.length).sum();
                     LOG.warn("Memory limit reached for event type {}: {} bytes. Freed: {} bytes",
-                            config.getEtName(), memoryUsed, freed);
-                    memoryUsed -= freed;
+                            config.getEtName(), bytesInMemory, freed);
+                    bytesInMemory -= freed;
                     // Init new batch for subscription
                     heaviestPartition.getValue().clear();
                     batchStartTimes.put(heaviestPartition.getKey(), currentTimeMillis());
