@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -462,7 +461,7 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenMemoryOverflowItIsUsed() throws IOException {
+    public void whenMemoryOverflowEventsDumped() throws IOException {
         // Create event type
         final EventType loadEt = EventTypeTestBuilder.builder()
                 .defaultStatistic(new EventTypeStatistics(PARTITIONS_NUM, PARTITIONS_NUM))
