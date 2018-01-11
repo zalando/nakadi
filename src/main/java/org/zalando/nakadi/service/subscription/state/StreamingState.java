@@ -256,11 +256,8 @@ class StreamingState extends State {
                     batchesSent == 0 ?
                             Optional.of("Stream started with memory overflow") :
                             Optional.of("Stream parameters are causing overflow"));
-            getLog().warn("Stream overflows memory ({} bytes before flush). Dumping from {}, {} bytes, {} events",
-                    memoryConsumed,
-                    heaviestPartition.getKey(),
-                    deltaSize,
-                    events.size());
+            getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+                    memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
             memoryConsumed -= deltaSize;
         }
 
