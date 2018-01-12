@@ -2667,6 +2667,8 @@ parameters:
       is reached, the messages are immediately flushed to the client and batch flush timer is reset.
 
       * If 0 or undefined, will assume 30 seconds.
+
+      * Value is treated as a recommendation. Nakadi may flush chunks with a smaller timeout.
     type: number
     format: int32
     required: false
