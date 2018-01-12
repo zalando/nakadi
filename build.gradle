@@ -159,7 +159,7 @@ dependencies {
     compile 'org.apache.curator:curator-recipes:2.12.0'
 
     // json
-    compile 'com.github.everit-org.json-schema:org.everit.json.schema:1.6.1'
+    compile 'com.github.everit-org.json-schema:org.everit.json.schema:86c29435e43e3e56924cf6ddf3013b5a381930b6'
     compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
         exclude module: "json"
     }
