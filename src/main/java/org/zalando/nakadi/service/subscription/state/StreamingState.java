@@ -27,6 +27,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -235,6 +236,31 @@ class StreamingState extends State {
                 messagesAllowedToSend -= toSend.size();
             }
         }
+
+        long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
+        while (memoryConsumed > getContext().getStreamMemoryLimitBytes()) {
+            // Select heaviest guy (and on previous step we figured out that we can not send anymore full batches,
+            // therefore we can take all the events from one partition.
+            final Map.Entry<EventTypePartition, PartitionData> heaviestPartition = offsets.entrySet().stream().max(
+                    Comparator.comparing(e -> e.getValue().getBytesInMemory())
+            ).get(); // There is always at least 1 item in list
+
+            long deltaSize = heaviestPartition.getValue().getBytesInMemory();
+            final List<ConsumedEvent> events = heaviestPartition.getValue().extractAll(currentTimeMillis);
+            deltaSize -= heaviestPartition.getValue().getBytesInMemory();
+
+            sentSomething = true;
+            flushData(
+                    heaviestPartition.getKey(),
+                    events,
+                    batchesSent == 0 ?
+                            Optional.of("Stream started with memory overflow") :
+                            Optional.of("Stream parameters are causing overflow"));
+            getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+                    memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
+            memoryConsumed -= deltaSize;
+        }
+
         if (lastKpiEventSent + getContext().getKpiCollectionFrequencyMs() < System.currentTimeMillis()) {
             getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
             lastKpiEventSent = System.currentTimeMillis();
@@ -259,7 +285,7 @@ class StreamingState extends State {
 
         getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
                         "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
-                        eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
+                eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
 
         kpiPublisher.publish(
                 getContext().getKpiDataStreamedEventType(),

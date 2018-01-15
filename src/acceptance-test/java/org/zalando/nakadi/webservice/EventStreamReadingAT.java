@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
+import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -15,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -23,7 +24,11 @@ import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
@@ -34,9 +39,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
 import static java.text.MessageFormat.format;
@@ -65,7 +70,7 @@ public class EventStreamReadingAT extends BaseAT {
     private List<Cursor> kafkaInitialNextOffsets;
 
     @BeforeClass
-    public static void setupClass() throws JsonProcessingException, NoSuchEventTypeException {
+    public static void setupClass() throws JsonProcessingException {
         eventType = EventTypeTestBuilder.builder()
                 .defaultStatistic(new EventTypeStatistics(PARTITIONS_NUM, PARTITIONS_NUM))
                 .build();
@@ -76,7 +81,7 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Before
-    public void setUp() throws InterruptedException, JsonProcessingException {
+    public void setUp() throws JsonProcessingException {
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(topicName);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(topicName);
@@ -86,7 +91,7 @@ public class EventStreamReadingAT extends BaseAT {
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenPushFewEventsAndReadThenGetEventsInStream()
-            throws ExecutionException, InterruptedException, JsonProcessingException {
+            throws ExecutionException, InterruptedException {
 
         // ARRANGE //
         // push events to one of the partitions
@@ -127,7 +132,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenAcceptEncodingGzipReceiveCompressedStream()
-            throws ExecutionException, InterruptedException, JsonProcessingException {
+            throws ExecutionException, InterruptedException {
 
         // ARRANGE //
         // push events to one of the partitions
@@ -152,7 +157,7 @@ public class EventStreamReadingAT extends BaseAT {
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenPushedAmountOfEventsMoreThanBatchSizeAndReadThenGetEventsInMultipleBatches()
-            throws ExecutionException, InterruptedException, JsonProcessingException {
+            throws ExecutionException, InterruptedException {
 
         // ARRANGE //
         // push events to one of the partitions so that they don't fit into one branch
@@ -203,8 +208,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
-    public void whenReadFromTheEndThenLatestOffsetsInStream()
-            throws ExecutionException, InterruptedException, JsonProcessingException {
+    public void whenReadFromTheEndThenLatestOffsetsInStream() {
 
         // ACT //
         // just stream without X-nakadi-cursors; that should make nakadi to read from the very end
@@ -237,8 +241,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
-    public void whenReachKeepAliveLimitThenStreamIsClosed()
-            throws ExecutionException, InterruptedException, JsonProcessingException {
+    public void whenReachKeepAliveLimitThenStreamIsClosed() {
         // ACT //
         final int keepAliveLimit = 3;
         final Response response = given()
@@ -362,8 +365,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Ignore
     @Test(timeout = 10000)
-    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException,
-            TimeoutException {
+    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException {
         final String etName = NakadiTestUtils.createEventType().getName();
 
         // try to create 8 consuming connections
@@ -456,6 +458,43 @@ public class EventStreamReadingAT extends BaseAT {
         } finally {
             SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         }
+    }
+
+    @Test(timeout = 10000)
+    public void whenMemoryOverflowEventsDumped() throws IOException {
+        // Create event type
+        final EventType loadEt = EventTypeTestBuilder.builder()
+                .defaultStatistic(new EventTypeStatistics(PARTITIONS_NUM, PARTITIONS_NUM))
+                .build();
+        NakadiTestUtils.createEventTypeInNakadi(loadEt);
+
+        // Publish events to event type, that are not fitting memory
+        final String evt = "{\"foo\":\"barbarbar\"}";
+        final int eventCount = 2 * (10000 / evt.length());
+        NakadiTestUtils.publishEvents(loadEt.getName(), eventCount, i -> evt);
+
+        // Configure streaming so it will:(more than 10s and batch_limit
+        // - definitely wait for more than test timeout (10s)
+        // - collect batch, which size is greater than events published to this event type
+        final String url = RestAssured.baseURI + ":" + RestAssured.port + createStreamEndpointUrl(loadEt.getName())
+                + "?batch_limit=" + (10 * eventCount)
+                + "&stream_limit=" + (10 * eventCount)
+                + "&batch_flush_timeout=11"
+                + "&stream_timeout=11";
+        final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        // Start from the begin.
+        connection.setRequestProperty("X-Nakadi-Cursors",
+                "[" + IntStream.range(0, PARTITIONS_NUM)
+                        .mapToObj(i -> "{\"partition\": \"" + i + "\",\"offset\":\"begin\"}")
+                        .collect(Collectors.joining(",")) + "]");
+        Assert.assertEquals(HttpServletResponse.SC_OK, connection.getResponseCode());
+
+        final InputStream inputStream = connection.getInputStream();
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+        final String line = reader.readLine();
+        Assert.assertNotNull(line);
+        // If we read at least one line, than it means, that we were able to read data before test timeout reached.
     }
 
 

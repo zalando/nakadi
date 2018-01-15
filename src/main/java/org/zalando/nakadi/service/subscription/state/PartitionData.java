@@ -28,12 +28,14 @@ class PartitionData {
     private NakadiCursor sentOffset;
     private long lastSendMillis;
     private int keepAliveInARow;
+    private long bytesInMemory;
 
     @VisibleForTesting
     PartitionData(final Comparator<NakadiCursor> comparator,
                   final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
                   final long currentTime) {
         this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
+        bytesInMemory = 0L;
     }
 
     PartitionData(
@@ -65,6 +67,15 @@ class PartitionData {
         }
     }
 
+    public List<ConsumedEvent> extractAll(final long currentTimeMillis) {
+        final List<ConsumedEvent> result = extract(nakadiEvents.size());
+        if (!result.isEmpty()) {
+            lastSendMillis = currentTimeMillis;
+        }
+        return result;
+    }
+
+
     NakadiCursor getSentOffset() {
         return sentOffset;
     }
@@ -77,10 +88,16 @@ class PartitionData {
         return lastSendMillis;
     }
 
+    long getBytesInMemory() {
+        return bytesInMemory;
+    }
+
     private List<ConsumedEvent> extract(final int count) {
         final List<ConsumedEvent> result = new ArrayList<>(count);
         for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
-            result.add(nakadiEvents.remove(0));
+            final ConsumedEvent event = nakadiEvents.remove(0);
+            bytesInMemory -= event.getEvent().length;
+            result.add(event);
         }
         if (!result.isEmpty()) {
             this.sentOffset = result.get(result.size() - 1).getPosition();
@@ -148,16 +165,19 @@ class PartitionData {
             sentOffset = commitOffset;
             allCursorsOrdered.clear();
             nakadiEvents.clear();
+            bytesInMemory = 0L;
             committed = 0;
         }
         while (!nakadiEvents.isEmpty() && comparator.compare(nakadiEvents.get(0).getPosition(), commitOffset) <= 0) {
-            nakadiEvents.remove(0);
+            final ConsumedEvent evt = nakadiEvents.remove(0);
+            bytesInMemory -= evt.getEvent().length;
         }
         return new CommitResult(seekKafka, committed);
     }
 
     void addEvent(final ConsumedEvent event) {
         nakadiEvents.add(event);
+        bytesInMemory += event.getEvent().length;
         allCursorsOrdered.add(event.getPosition());
     }
 

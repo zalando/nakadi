@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -97,6 +98,7 @@ public class EventStreamController {
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
+    private final Long maxMemoryUsageBytes;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -111,7 +113,8 @@ public class EventStreamController {
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
-                                 final EventTypeChangeListener eventTypeChangeListener) {
+                                 final EventTypeChangeListener eventTypeChangeListener,
+                                 @Value("${nakadi.stream.maxStreamMemoryBytes}") final Long maxMemoryUsageBytes) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -125,6 +128,7 @@ public class EventStreamController {
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
+        this.maxMemoryUsageBytes = maxMemoryUsageBytes;
     }
 
     @VisibleForTesting
@@ -235,6 +239,7 @@ public class EventStreamController {
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId())
                         .withCursors(getStreamingStart(eventType, cursorsStr))
+                        .withMaxMemoryUsageBytes(maxMemoryUsageBytes)
                         .build();
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
