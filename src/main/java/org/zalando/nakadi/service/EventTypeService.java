@@ -146,7 +146,16 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                 .put("event_type", eventType.getName())
                 .put("status", "created")
-                .put("category", eventType.getCategory()));
+                .put("category", eventType.getCategory())
+                .put("authz", identifyAuthzState(eventType))
+                .put("compatibility_mode", eventType.getCompatibilityMode()));
+    }
+
+    private String identifyAuthzState(final EventTypeBase eventType) {
+        if (eventType.getAuthorization() == null) {
+            return "disabled";
+        }
+        return "enabled";
     }
 
     private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
@@ -163,7 +172,7 @@ public class EventTypeService {
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
             NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
-        final EventCategory category;
+        final EventType eventType;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -172,8 +181,7 @@ public class EventTypeService {
             if (!eventTypeOpt.isPresent()) {
                 throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
-            final EventType eventType = eventTypeOpt.get();
-            category = eventType.getCategory();
+            eventType = eventTypeOpt.get();
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
@@ -220,7 +228,9 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                 .put("event_type", eventTypeName)
                 .put("status", "deleted")
-                .put("category", category));
+                .put("category", eventType.getCategory())
+                .put("authz", identifyAuthzState(eventType))
+                .put("compatibility_mode", eventType.getCompatibilityMode()));
     }
 
     public void update(final String eventTypeName,
@@ -268,7 +278,9 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                 .put("event_type", eventTypeName)
                 .put("status", "updated")
-                .put("category", eventTypeBase.getCategory()));
+                .put("category", eventTypeBase.getCategory())
+                .put("authz", identifyAuthzState(eventTypeBase))
+                .put("compatibility_mode", eventTypeBase.getCompatibilityMode()));
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) throws NakadiException {
