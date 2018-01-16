@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -46,10 +47,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -76,17 +75,16 @@ public class CursorsController {
     }
 
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
-    public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
-                                        final NativeWebRequest request) {
+    public ItemsWrapper<SubscriptionCursor> getCursors(@PathVariable("subscriptionId") final String subscriptionId) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
         try {
             final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId)
                     .stream()
                     .map(cursor -> cursor.withToken(cursorTokenService.generateToken()))
                     .collect(Collectors.toList());
-            return status(OK).body(new ItemsWrapper<>(cursors));
+            return new ItemsWrapper<>(cursors);
         } catch (final NakadiException e) {
-            return create(e.asProblem(), request);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -138,9 +136,6 @@ public class CursorsController {
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-        if (cursors.getItems().isEmpty()) {
-            throw new CursorsAreEmptyException();
-        }
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
             return noContent().build();

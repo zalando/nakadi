@@ -56,10 +56,9 @@ public class StartingState extends State {
      * 4. Switches to streaming state.
      */
     private void createSubscriptionLocked() {
-        // check that subscription initialized in zk.
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
-        if (!subscriptionJustInitialized){
+        if (!subscriptionJustInitialized) {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();
             if (sessions.length >= partitions.length) {

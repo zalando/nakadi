@@ -166,11 +166,13 @@ public class CursorsService {
         zkClient.runLocked(() -> StartingState.initializeSubscriptionLocked(
                 zkClient, subscription, timelineService, cursorConverter));
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
-        final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()) +
-                TimeUnit.SECONDS.toMillis(1);
-        zkClient.resetCursors(
-                cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                timeout);
+        if (!cursors.isEmpty()) {
+            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()) +
+                    TimeUnit.SECONDS.toMillis(1);
+            zkClient.resetCursors(
+                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
+                    timeout);
+        }
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)

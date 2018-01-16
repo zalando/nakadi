@@ -1123,6 +1123,10 @@ paths:
         During this operation the subscription's consumers will be disconnected. The request can hang up until
         subscription commit timeout. During that time requests to subscription streaming endpoint
         will be rejected with 409. The clients should reconnect once the request is finished with 204.
+        In case, when subscription was never streamed, and therefore does not have cursors initialized, this call
+        will first initialize starting offsets, and then perform actual patch.
+        In order to provide explicit cursor initialization functionality this method supports empty cursors list,
+        allowing to initialize subscription cursors without side effects.
       parameters:
         - name: subscription_id
           in: path
