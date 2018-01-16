@@ -132,6 +132,7 @@ public class EventPublishingController {
                     .put("event_type", eventTypeName)
                     .put("app", applicationName)
                     .put("app_hashed", nakadiKpiPublisher.hash(applicationName))
+                    .put("token_realm", client.getRealm())
                     .put("number_of_events", eventCount)
                     .put("ms_spent", msSpent)
                     .put("batch_size", totalSizeBytes));

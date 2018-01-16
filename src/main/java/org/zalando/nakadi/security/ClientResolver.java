@@ -15,9 +15,8 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.Principal;
-import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 
@@ -50,15 +49,25 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
             return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
         }
 
-        return clientId.map(client -> new NakadiClient(client, getScopes()))
+        return clientId.map(client -> new NakadiClient(client, getRealm()))
                 .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
 
-    private Set<String> getScopes() {
+    public String getRealm() {
+        String realmString = "";
+
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof OAuth2Authentication) {
-            return ((OAuth2Authentication) authentication).getOAuth2Request().getScope();
+        if (OAuth2Authentication.class.equals(authentication.getClass())) {
+            final Object details = ((OAuth2Authentication) authentication).getUserAuthentication().getDetails();
+            if (details instanceof Map) {
+                final Map<String, Object> map = (Map<String, Object>) details;
+                final Object realm = map.get("realm");
+                if (realm != null && realm instanceof String) {
+                    realmString = (String) realm;
+                }
+            }
         }
-        return Collections.emptySet();
+
+        return realmString;
     }
 }
