@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
@@ -73,7 +74,7 @@ class StreamingState extends State {
     @Override
     public void onEnter() {
         final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
-                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getParameters().getConsumingClient().getClientId(),
                 this.getContext().getSubscription().getId()
         );
         bytesSentMeterPerSubscription = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
@@ -277,15 +278,16 @@ class StreamingState extends State {
     }
 
     private void publishKpi(final String eventTypeName) {
-        final String appName = getContext().getParameters().getConsumingAppId();
+        final Client client = getContext().getParameters().getConsumingClient();
         final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
         final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
         final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
-        final String appNameHashed = kpiPublisher.hash(appName);
+        final String appNameHashed = kpiPublisher.hash(client.getClientId());
 
         getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
                         "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
-                eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
+                eventTypeName, client.getClientId(), appNameHashed, count, bytes,
+                getContext().getSubscription().getId());
 
         kpiPublisher.publish(
                 getContext().getKpiDataStreamedEventType(),
@@ -293,8 +295,9 @@ class StreamingState extends State {
                         .put("api", "hila")
                         .put("subscription", getContext().getSubscription().getId())
                         .put("event_type", eventTypeName)
-                        .put("app", appName)
+                        .put("app", client.getClientId())
                         .put("app_hashed", appNameHashed)
+                        .put("token_realm", client.getRealm())
                         .put("number_of_events", count)
                         .put("bytes_streamed", bytes));
     }

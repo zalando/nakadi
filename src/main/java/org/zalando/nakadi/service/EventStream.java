@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.security.Client;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -80,7 +81,8 @@ public class EventStream {
             long bytesInMemory = 0;
 
             while (connectionReady.get() &&
-                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
+                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingClient()
+                            .getClientId())) {
 
                 checkAuthorization.run();
 
@@ -146,7 +148,7 @@ public class EventStream {
                     final long count = kpiData.getAndResetNumberOfEventsSent();
                     final long bytes = kpiData.getAndResetBytesSent();
 
-                    publishKpi(config.getConsumingAppId(), count, bytes);
+                    publishKpi(config.getConsumingClient(), count, bytes);
 
                     lastKpiEventSent = System.currentTimeMillis();
                 }
@@ -183,10 +185,10 @@ public class EventStream {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
         } catch (final KafkaException e) {
             LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
-                    config.getConsumingAppId(), config.getEtName(), e);
+                    config.getConsumingClient().getClientId(), config.getEtName(), e);
         } finally {
             publishKpi(
-                    config.getConsumingAppId(),
+                    config.getConsumingClient(),
                     kpiData.getAndResetNumberOfEventsSent(),
                     kpiData.getAndResetBytesSent());
         }
@@ -196,19 +198,20 @@ public class EventStream {
         return memoryUsed > config.getMaxMemoryUsageBytes();
     }
 
-    private void publishKpi(final String appName, final long count, final long bytes) {
-        final String appNameHashed = kpiPublisher.hash(appName);
+    private void publishKpi(final Client client, final long count, final long bytes) {
+        final String appNameHashed = kpiPublisher.hash(client.getClientId());
 
         LOG.info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} numberOfEvents={} bytesStreamed={}",
-                "lola", config.getEtName(), appName, appNameHashed, count, bytes);
+                "lola", config.getEtName(), client.getClientId(), appNameHashed, count, bytes);
 
         kpiPublisher.publish(
                 kpiDataStreamedEventType,
                 () -> new JSONObject()
                         .put("api", "lola")
                         .put("event_type", config.getEtName())
-                        .put("app", appName)
-                        .put("app_hashed", kpiPublisher.hash(appName))
+                        .put("app", client.getClientId())
+                        .put("app_hashed", appNameHashed)
+                        .put("token_realm", client.getRealm())
                         .put("number_of_events", count)
                         .put("bytes_streamed", bytes));
     }
