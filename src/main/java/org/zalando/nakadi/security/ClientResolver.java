@@ -3,6 +3,7 @@ package org.zalando.nakadi.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -52,20 +53,18 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     }
 
     public String getRealm() {
-        String realmString = "";
-
-        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (OAuth2Authentication.class.equals(authentication.getClass())) {
-            final Object details = ((OAuth2Authentication) authentication).getUserAuthentication().getDetails();
-            if (details instanceof Map) {
-                final Map<String, Object> map = (Map<String, Object>) details;
-                final Object realm = map.get("realm");
-                if (realm != null && realm instanceof String) {
-                    realmString = (String) realm;
-                }
-            }
+        try {
+            return Optional.of(SecurityContextHolder.getContext())
+                    .map(SecurityContext::getAuthentication)
+                    .map(authentication -> (OAuth2Authentication) authentication)
+                    .map(OAuth2Authentication::getUserAuthentication)
+                    .map(Authentication::getDetails)
+                    .map(details -> (Map) details)
+                    .map(details -> details.get("realm"))
+                    .map(realm -> (String) realm)
+                    .orElse("");
+        } catch (final ClassCastException e) {
+            return "";
         }
-
-        return realmString;
     }
 }
