@@ -25,12 +25,10 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
-    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
         this.settings = settings;
-        this.featureToggleService = featureToggleService;
     }
 
     @Override
