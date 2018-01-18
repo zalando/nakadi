@@ -10,10 +10,8 @@ import org.everit.json.schema.Schema;
 import org.everit.json.schema.StringSchema;
 import org.zalando.nakadi.domain.SchemaChange;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Stack;
 
 import static org.zalando.nakadi.domain.SchemaChange.Type.DESCRIPTION_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ID_CHANGED;
@@ -23,76 +21,62 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
 
 public class SchemaDiff {
     public List<SchemaChange> collectChanges(final Schema original, final Schema update) {
-        final List<SchemaChange> changes = new ArrayList<>();
-        final Stack<String> jsonPath = new Stack<>();
+        final SchemaDiffState state = new SchemaDiffState();
 
-        recursiveCheck(original, update, jsonPath, changes);
+        recursiveCheck(original, update, state);
 
-        return changes;
+        return state.getChanges();
     }
 
     static void recursiveCheck(
             final Schema original,
             final Schema update,
-            final Stack<String> jsonPath,
-            final List<SchemaChange> changes) {
+            final SchemaDiffState state) {
 
         if (original == null && update == null) {
             return;
         }
 
         if (update == null) {
-            addChange(SCHEMA_REMOVED, jsonPath, changes);
+            state.addChange(SCHEMA_REMOVED);
             return;
         }
 
         if (!original.getClass().equals(update.getClass())) {
-            addChange(TYPE_CHANGED, jsonPath, changes);
+            state.addChange(TYPE_CHANGED);
             return;
         }
 
-        if (!Objects.equals(original.getId(), update.getId())) {
-            addChange(ID_CHANGED, jsonPath, changes);
-        }
+        state.analyzeSchema(original, () -> {
+            if (!Objects.equals(original.getId(), update.getId())) {
+                state.addChange(ID_CHANGED);
+            }
 
-        if (!Objects.equals(original.getTitle(), update.getTitle())) {
-            addChange(TITLE_CHANGED, jsonPath, changes);
-        }
+            if (!Objects.equals(original.getTitle(), update.getTitle())) {
+                state.addChange(TITLE_CHANGED);
+            }
 
-        if (!Objects.equals(original.getDescription(), update.getDescription())) {
-            addChange(DESCRIPTION_CHANGED, jsonPath, changes);
-        }
+            if (!Objects.equals(original.getDescription(), update.getDescription())) {
+                state.addChange(DESCRIPTION_CHANGED);
+            }
 
-        if (original instanceof StringSchema) {
-            StringSchemaDiff.recursiveCheck((StringSchema) original, (StringSchema) update, jsonPath, changes);
-        } else if (original instanceof NumberSchema) {
-            NumberSchemaDiff.recursiveCheck((NumberSchema) original, (NumberSchema) update, jsonPath, changes);
-        } else if (original instanceof EnumSchema) {
-            EnumSchemaDiff.recursiveCheck((EnumSchema) original, (EnumSchema) update, jsonPath, changes);
-        } else if (original instanceof CombinedSchema) {
-            CombinedSchemaDiff.recursiveCheck((CombinedSchema) original, (CombinedSchema) update, jsonPath, changes);
-        } else if (original instanceof ObjectSchema) {
-            ObjectSchemaDiff.recursiveCheck((ObjectSchema) original, (ObjectSchema) update, jsonPath, changes);
-        } else if (original instanceof ArraySchema) {
-            ArraySchemaDiff.recursiveCheck((ArraySchema) original, (ArraySchema) update, jsonPath, changes);
-        } else if (original instanceof ReferenceSchema) {
-            ReferenceSchemaDiff.recursiveCheck((ReferenceSchema) original, (ReferenceSchema) update, jsonPath, changes);
-        }
+            if (original instanceof StringSchema) {
+                StringSchemaDiff.recursiveCheck((StringSchema) original, (StringSchema) update, state);
+            } else if (original instanceof NumberSchema) {
+                NumberSchemaDiff.recursiveCheck((NumberSchema) original, (NumberSchema) update, state);
+            } else if (original instanceof EnumSchema) {
+                EnumSchemaDiff.recursiveCheck((EnumSchema) original, (EnumSchema) update, state);
+            } else if (original instanceof CombinedSchema) {
+                CombinedSchemaDiff.recursiveCheck((CombinedSchema) original, (CombinedSchema) update, state);
+            } else if (original instanceof ObjectSchema) {
+                ObjectSchemaDiff.recursiveCheck((ObjectSchema) original, (ObjectSchema) update, state);
+            } else if (original instanceof ArraySchema) {
+                ArraySchemaDiff.recursiveCheck((ArraySchema) original, (ArraySchema) update, state);
+            } else if (original instanceof ReferenceSchema) {
+                ReferenceSchemaDiff.recursiveCheck((ReferenceSchema) original, (ReferenceSchema) update, state);
+            }
+        });
     }
 
-    static void addChange(final SchemaChange.Type type, final Stack<String> jsonPath,
-                          final List<SchemaChange> changes) {
-        changes.add(new SchemaChange(type, jsonPathString(jsonPath)));
-    }
 
-    static void addChange(final String attribute, final SchemaChange.Type type, final Stack<String> jsonPath,
-                          final List<SchemaChange> changes) {
-        jsonPath.push(attribute);
-        addChange(type, jsonPath, changes);
-        jsonPath.pop();
-    }
-
-    private static String jsonPathString(final List<String> jsonPath) {
-        return "#/" + String.join("/", jsonPath);
-    }
 }
