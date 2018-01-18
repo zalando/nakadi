@@ -50,7 +50,6 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -327,13 +326,6 @@ public class SubscriptionControllerTest {
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
 
-        private Set<String> scopes = new HashSet<>();
-
-        public TestHandlerMethodArgumentResolver addScope(final Set<String> scopes) {
-            this.scopes = scopes;
-            return this;
-        }
-
         @Override
         public boolean supportsParameter(final MethodParameter parameter) {
             return true;
@@ -344,7 +336,7 @@ public class SubscriptionControllerTest {
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
                                       final WebDataBinderFactory binderFactory) throws Exception {
-            return new NakadiClient("nakadiClientId", scopes);
+            return new NakadiClient("nakadiClientId", "");
         }
     }
 }

@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -98,6 +99,7 @@ public class EventStreamTest {
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
@@ -126,6 +128,7 @@ public class EventStreamTest {
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
@@ -153,6 +156,7 @@ public class EventStreamTest {
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
@@ -195,6 +199,7 @@ public class EventStreamTest {
                 .withStreamTimeout(1)
                 .withBatchTimeout(1)
                 .withCursors(new ArrayList<>())
+                .withConsumingClient(mock(Client.class))
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
@@ -211,6 +216,7 @@ public class EventStreamTest {
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withStreamLimit(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
                 mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider, kpiPublisher,
@@ -228,6 +234,7 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
@@ -245,6 +252,7 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .withStreamTimeout(2)
+                .withConsumingClient(mock(Client.class))
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -271,6 +279,7 @@ public class EventStreamTest {
                 .withBatchLimit(5)
                 .withBatchTimeout(1)
                 .withStreamTimeout(1)
+                .withConsumingClient(mock(Client.class))
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -299,6 +308,7 @@ public class EventStreamTest {
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
                 .withBatchLimit(1)
                 .withStreamLimit(4)
+                .withConsumingClient(mock(Client.class))
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -344,6 +354,7 @@ public class EventStreamTest {
                 .withBatchLimit(2)
                 .withStreamLimit(6)
                 .withBatchTimeout(30)
+                .withConsumingClient(mock(Client.class))
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();

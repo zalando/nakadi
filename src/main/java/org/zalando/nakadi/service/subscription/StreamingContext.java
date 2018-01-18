@@ -250,7 +250,7 @@ public class StreamingContext implements SubscriptionStreamer {
     public boolean isSubscriptionConsumptionBlocked() {
         return blacklistService.isSubscriptionConsumptionBlocked(
                 subscription.getEventTypes(),
-                parameters.getConsumingAppId());
+                parameters.getConsumingClient().getClientId());
     }
 
     public CursorTokenService getCursorTokenService() {

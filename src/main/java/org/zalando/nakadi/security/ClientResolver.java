@@ -3,6 +3,7 @@ package org.zalando.nakadi.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -15,9 +16,8 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.Principal;
-import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 
@@ -26,12 +26,10 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
-    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
         this.settings = settings;
-        this.featureToggleService = featureToggleService;
     }
 
     @Override
@@ -50,15 +48,23 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
             return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
         }
 
-        return clientId.map(client -> new NakadiClient(client, getScopes()))
+        return clientId.map(client -> new NakadiClient(client, getRealm()))
                 .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
 
-    private Set<String> getScopes() {
-        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof OAuth2Authentication) {
-            return ((OAuth2Authentication) authentication).getOAuth2Request().getScope();
+    public String getRealm() {
+        try {
+            return Optional.of(SecurityContextHolder.getContext())
+                    .map(SecurityContext::getAuthentication)
+                    .map(authentication -> (OAuth2Authentication) authentication)
+                    .map(OAuth2Authentication::getUserAuthentication)
+                    .map(Authentication::getDetails)
+                    .map(details -> (Map) details)
+                    .map(details -> details.get("realm"))
+                    .map(realm -> (String) realm)
+                    .orElse("");
+        } catch (final ClassCastException e) {
+            return "";
         }
-        return Collections.emptySet();
     }
 }

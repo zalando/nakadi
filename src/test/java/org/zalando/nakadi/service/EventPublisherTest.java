@@ -446,7 +446,7 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(),
-                new NakadiClient(CLIENT_ID, null));
+                new NakadiClient(CLIENT_ID, ""));
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }

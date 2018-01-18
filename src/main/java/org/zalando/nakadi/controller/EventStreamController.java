@@ -237,7 +237,7 @@ public class EventStreamController {
                         .withStreamTimeout(streamTimeout)
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
-                        .withConsumingAppId(client.getClientId())
+                        .withConsumingClient(client)
                         .withCursors(getStreamingStart(eventType, cursorsStr))
                         .withMaxMemoryUsageBytes(maxMemoryUsageBytes)
                         .build();
