@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Allow to update event types with recursion in schemas
+
 ## [2.5.2] - 2018-01-08
 
 ### Fixed
