@@ -37,6 +37,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -123,6 +124,10 @@ public class EventTypeService {
 
     public void create(final EventTypeBase eventType) throws TopicCreationException, InternalNakadiException,
             NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
         enrichment.validate(eventType);
@@ -171,6 +176,10 @@ public class EventTypeService {
 
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
             NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         Closeable deletionCloser = null;
         final EventType eventType;
         Multimap<TopicRepository, String> topicsToDelete = null;
@@ -240,6 +249,10 @@ public class EventTypeService {
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());

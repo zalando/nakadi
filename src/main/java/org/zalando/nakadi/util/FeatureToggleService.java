@@ -38,7 +38,8 @@ public interface FeatureToggleService {
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),
         SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
-        KPI_COLLECTION("kpi_collection");
+        KPI_COLLECTION("kpi_collection"),
+        DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations");
 
         private final String id;
 
