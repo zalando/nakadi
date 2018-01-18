@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -19,14 +20,15 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +41,6 @@ import static java.text.MessageFormat.format;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
-import static org.apache.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -439,13 +440,81 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals("001-0001-000000000000000005", client2.getBatches().get(0).getCursor().getOffset());
     }
 
-    @Test
-    public void whenResetWithEmptyCursorsThen422() throws Exception {
+    @Test(timeout = 15000)
+    public void whenPatchThenCursorsAreInitializedToDefault() throws Exception {
+        final EventType et = createEventType();
+        publishEvents(et.getName(), 10, i -> "{\"foo\": \"bar\"}");
+        Thread.sleep(1000L);
+        final Subscription s = createSubscription(RandomSubscriptionBuilder.builder()
+                .withEventType(et.getName())
+                .withStartFrom(END)
+                .buildSubscriptionBase());
         given()
-                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(new ArrayList<SubscriptionCursor>())))
+                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(Collections.emptyList())))
                 .contentType(JSON)
-                .patch("/subscriptions/{id}/cursors", subscription.getId())
+                .patch("/subscriptions/{id}/cursors", s.getId())
                 .then()
-                .statusCode(SC_UNPROCESSABLE_ENTITY);
+                .statusCode(SC_NO_CONTENT);
+
+        final ItemsWrapper<SubscriptionCursor> subscriptionCursors = MAPPER.readValue(
+                given().get("/subscriptions/{id}/cursors", s.getId()).getBody().asString(),
+                new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
+                }
+        );
+        final List<EventTypePartitionView> etStats = MAPPER.readValue(
+                given().get("/event-types/{et}/partitions", et.getName()).getBody().asString(),
+                new TypeReference<List<EventTypePartitionView>>() {
+                }
+        );
+        Assert.assertEquals(subscriptionCursors.getItems().size(), etStats.size());
+        subscriptionCursors.getItems().forEach(sCursor -> {
+            final boolean offsetSame = etStats.stream()
+                    .anyMatch(ss -> ss.getPartitionId().equals(sCursor.getPartition()) &&
+                            ss.getNewestAvailableOffset().equals(sCursor.getOffset()));
+            // Check that after patch cursors are the same as END
+            Assert.assertTrue(offsetSame);
+        });
+    }
+
+    @Test(timeout = 15000)
+    public void whenPatchThenCursorsAreInitializedAndPatched() throws Exception {
+        final EventType et = createEventType();
+        publishEvents(et.getName(), 10, i -> "{\"foo\": \"bar\"}");
+        final List<EventTypePartitionView> etStats = MAPPER.readValue(
+                given().get("/event-types/{et}/partitions", et.getName()).getBody().asString(),
+                new TypeReference<List<EventTypePartitionView>>() {
+                }
+        );
+        final EventTypePartitionView begin = etStats.get(0);
+        final Subscription s = createSubscription(RandomSubscriptionBuilder.builder()
+                .withEventType(et.getName())
+                .withStartFrom(END)
+                .buildSubscriptionBase());
+        given()
+                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(Collections.singletonList(
+                        new SubscriptionCursorWithoutToken(
+                                et.getName(), begin.getPartitionId(), begin.getOldestAvailableOffset())
+                ))))
+                .contentType(JSON)
+                .patch("/subscriptions/{id}/cursors", s.getId())
+                .then()
+                .statusCode(SC_NO_CONTENT);
+
+        final ItemsWrapper<SubscriptionCursor> subscriptionCursors = MAPPER.readValue(
+                given().get("/subscriptions/{id}/cursors", s.getId()).getBody().asString(),
+                new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
+                }
+        );
+
+        Assert.assertEquals(subscriptionCursors.getItems().size(), etStats.size());
+
+        subscriptionCursors.getItems().forEach(item -> {
+            if (item.getPartition().equals(begin.getPartitionId())) {
+                Assert.assertEquals(begin.getOldestAvailableOffset(), item.getOffset());
+            } else {
+                Assert.assertEquals(begin.getNewestAvailableOffset(), item.getOffset());
+            }
+        });
+
     }
 }
