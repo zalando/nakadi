@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Allow to patch subscription cursors in case when they were not initialized
+
 ### Fixed
 - Allow to update event types with recursion in schemas
 
