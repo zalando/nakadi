@@ -2,6 +2,7 @@ package org.zalando.nakadi.validation.schema.diff;
 
 import org.everit.json.schema.ArraySchema;
 import org.everit.json.schema.CombinedSchema;
+import org.everit.json.schema.EmptySchema;
 import org.everit.json.schema.EnumSchema;
 import org.everit.json.schema.NumberSchema;
 import org.everit.json.schema.ObjectSchema;
@@ -29,25 +30,39 @@ public class SchemaDiff {
     }
 
     static void recursiveCheck(
-            final Schema original,
-            final Schema update,
+            final Schema originalIn,
+            final Schema updateIn,
             final SchemaDiffState state) {
 
-        if (original == null && update == null) {
+        if (originalIn == null && updateIn == null) {
             return;
         }
 
-        if (update == null) {
+        if (updateIn == null) {
             state.addChange(SCHEMA_REMOVED);
             return;
         }
 
-        if (!original.getClass().equals(update.getClass())) {
-            state.addChange(TYPE_CHANGED);
-            return;
+        final Schema original;
+        final Schema update;
+        if (!originalIn.getClass().equals(updateIn.getClass())) {
+            // Tricky part. EmptySchema is the same as an empty ObjectSchema.
+            if (originalIn instanceof EmptySchema && updateIn instanceof ObjectSchema) {
+                original = replaceWithEmptyObjectSchema(originalIn);
+                update = updateIn;
+            } else if (originalIn instanceof ObjectSchema && updateIn instanceof EmptySchema) {
+                original = originalIn;
+                update = replaceWithEmptyObjectSchema(updateIn);
+            } else {
+                state.addChange(TYPE_CHANGED);
+                return;
+            }
+        } else {
+            original = originalIn;
+            update = updateIn;
         }
 
-        state.analyzeSchema(original, () -> {
+        state.analyzeSchema(originalIn, () -> {
             if (!Objects.equals(original.getId(), update.getId())) {
                 state.addChange(ID_CHANGED);
             }
@@ -76,6 +91,14 @@ public class SchemaDiff {
                 ReferenceSchemaDiff.recursiveCheck((ReferenceSchema) original, (ReferenceSchema) update, state);
             }
         });
+    }
+
+    private static Schema replaceWithEmptyObjectSchema(Schema in) {
+        return ObjectSchema.builder()
+                .id(in.getId())
+                .title(in.getTitle())
+                .description(in.getDescription())
+                .build();
     }
 
 
