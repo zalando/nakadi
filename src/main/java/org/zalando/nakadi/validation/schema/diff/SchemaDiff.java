@@ -50,9 +50,6 @@ public class SchemaDiff {
             if (originalIn instanceof EmptySchema && updateIn instanceof ObjectSchema) {
                 original = replaceWithEmptyObjectSchema(originalIn);
                 update = updateIn;
-            } else if (originalIn instanceof ObjectSchema && updateIn instanceof EmptySchema) {
-                original = originalIn;
-                update = replaceWithEmptyObjectSchema(updateIn);
             } else {
                 state.addChange(TYPE_CHANGED);
                 return;
