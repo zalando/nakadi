@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.4] - 2018-01-18
+
 ### Added
 - Allow to patch subscription cursors in case when they were not initialized
 
