@@ -1,14 +1,14 @@
 package org.zalando.nakadi.util;
 
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.recipes.cache.TreeCache;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.io.IOException;
 
 public class FeatureToggleServiceZk implements FeatureToggleService {
 
@@ -16,16 +16,12 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     private static final String PREFIX = "/nakadi/feature_toggle";
 
     private final ZooKeeperHolder zkHolder;
-    private TreeCache featuresCache;
+    private PathChildrenCache featuresCache;
 
     public FeatureToggleServiceZk(final ZooKeeperHolder zkHolder) {
         this.zkHolder = zkHolder;
-    }
-
-    @PostConstruct
-    public void initIt() {
         try {
-            this.featuresCache = TreeCache.newBuilder(zkHolder.get(), PREFIX).setCacheData(false).build();
+            this.featuresCache = new PathChildrenCache(zkHolder.get(), PREFIX, false);
             this.featuresCache.start();
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
@@ -34,7 +30,11 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     @PreDestroy
     public void cleanUp() {
-        this.featuresCache.close();
+        try {
+            this.featuresCache.close();
+        } catch (IOException e) {
+            LOG.error("Could not close features cache", e);
+        }
     }
 
     public boolean isFeatureEnabled(final Feature feature) {
@@ -49,7 +49,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     public void setFeature(final FeatureWrapper feature) {
         try {
             final CuratorFramework curator = zkHolder.get();
-            String path = PREFIX + "/" + feature.getFeature().getId();
+            final String path = PREFIX + "/" + feature.getFeature().getId();
             if (feature.isEnabled()) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             } else {
