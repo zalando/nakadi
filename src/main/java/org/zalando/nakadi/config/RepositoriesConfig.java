@@ -14,12 +14,14 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.FeatureToggleServiceDefault;
 import org.zalando.nakadi.util.FeatureToggleServiceZk;
 import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
+
+import static org.zalando.nakadi.util.FeatureToggleService.Feature;
+import static org.zalando.nakadi.util.FeatureToggleService.FeatureWrapper;
 
 @Configuration
 @Profile("!test")
@@ -30,11 +32,22 @@ public class RepositoriesConfig {
     public FeatureToggleService featureToggleService(
             @Value("${nakadi.featureToggle.default}") final boolean forceDefault,
             final ZooKeeperHolder zooKeeperHolder) {
+        FeatureToggleService featureToggleService = new FeatureToggleServiceZk(zooKeeperHolder);
         if (forceDefault) {
-            return new FeatureToggleServiceDefault();
-        } else {
-            return new FeatureToggleServiceZk(zooKeeperHolder);
+            featureToggleService.setFeature(new FeatureWrapper(Feature.CHECK_OWNING_APPLICATION, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.CHECK_PARTITIONS_KEYS, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.CONNECTION_CLOSE_CRUTCH, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.DISABLE_DB_WRITE_OPERATIONS, false));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.DISABLE_EVENT_TYPE_CREATION, false));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.DISABLE_EVENT_TYPE_DELETION, false));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.DISABLE_SUBSCRIPTION_CREATION, false));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.HIGH_LEVEL_API, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.KPI_COLLECTION, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.LIMIT_CONSUMERS_NUMBER, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.REMOTE_TOKENINFO, true));
+            featureToggleService.setFeature(new FeatureWrapper(Feature.SEND_BATCH_VIA_OUTPUT_STREAM, true));
         }
+        return featureToggleService;
     }
 
     @Bean

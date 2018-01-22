@@ -13,7 +13,7 @@ import javax.annotation.PreDestroy;
 public class FeatureToggleServiceZk implements FeatureToggleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FeatureToggleService.class);
-    private static final String PREFIX = "/nakadi/feature_toggle/";
+    private static final String PREFIX = "/nakadi/feature_toggle";
 
     private final ZooKeeperHolder zkHolder;
     private TreeCache featuresCache;
@@ -23,7 +23,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     }
 
     @PostConstruct
-    public void init() {
+    public void initIt() {
         try {
             this.featuresCache = TreeCache.newBuilder(zkHolder.get(), PREFIX).setCacheData(false).build();
             this.featuresCache.start();
@@ -39,7 +39,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     public boolean isFeatureEnabled(final Feature feature) {
         try {
-            return featuresCache.getCurrentData(PREFIX + feature.getId()) != null;
+            return featuresCache.getCurrentData(PREFIX + "/" + feature.getId()) != null;
         } catch (final Exception e) {
             LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
             return false;
@@ -49,7 +49,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     public void setFeature(final FeatureWrapper feature) {
         try {
             final CuratorFramework curator = zkHolder.get();
-            final String path = PREFIX + feature.getFeature().getId();
+            String path = PREFIX + "/" + feature.getFeature().getId();
             if (feature.isEnabled()) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             } else {
