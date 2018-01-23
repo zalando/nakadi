@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
@@ -46,6 +44,7 @@ public class SubscriptionStreamerFactory {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String kpiDataStreamedEventType;
     private final long kpiCollectionFrequencyMs;
+    private final long streamMemoryLimitBytes;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -61,7 +60,8 @@ public class SubscriptionStreamerFactory {
             final EventTypeCache eventTypeCache,
             final NakadiKpiPublisher nakadiKpiPublisher,
             @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
-            @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs) {
+            @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs,
+            @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -75,6 +75,7 @@ public class SubscriptionStreamerFactory {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
         this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
+        this.streamMemoryLimitBytes = streamMemoryLimitBytes;
     }
 
     public SubscriptionStreamer build(
@@ -83,13 +84,13 @@ public class SubscriptionStreamerFactory {
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
             final BlacklistService blacklistService)
-            throws NoSuchSubscriptionException, ServiceUnavailableException,
-            InternalNakadiException, NoSuchEventTypeException {
+            throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1);
         final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
+                .setStreamMemoryLimitBytes(streamMemoryLimitBytes)
                 .setParameters(streamParameters)
                 .setSession(session)
                 .setTimer(executorService)

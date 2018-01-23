@@ -23,6 +23,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -154,18 +155,24 @@ public class CursorsService {
         final Map<TopicRepository, List<NakadiCursor>> topicRepositories = cursors.stream().collect(
                 Collectors.groupingBy(
                         c -> timelineService.getTopicRepository(c.getTimeline())));
-        for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry: topicRepositories.entrySet()) {
+        for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : topicRepositories.entrySet()) {
             entry.getKey().validateReadCursors(entry.getValue());
         }
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".reset_cursors");
+
+        // In case if subscription was never initialized - initialize it
+        zkClient.runLocked(() -> StartingState.initializeSubscriptionLocked(
+                zkClient, subscription, timelineService, cursorConverter));
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
-        final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()) +
-                TimeUnit.SECONDS.toMillis(1);
-        zkClient.resetCursors(
-                cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                timeout);
+        if (!cursors.isEmpty()) {
+            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()) +
+                    TimeUnit.SECONDS.toMillis(1);
+            zkClient.resetCursors(
+                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
+                    timeout);
+        }
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription, final List<NakadiCursor> cursors)

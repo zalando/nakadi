@@ -10,9 +10,11 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.security.Client;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -76,9 +78,11 @@ public class EventStream {
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
             long lastKpiEventSent = System.currentTimeMillis();
+            long bytesInMemory = 0;
 
             while (connectionReady.get() &&
-                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
+                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingClient()
+                            .getClientId())) {
 
                 checkAuthorization.run();
 
@@ -99,6 +103,7 @@ public class EventStream {
                     // put message to batch
                     currentBatches.get(event.getPosition().getPartition()).add(event.getEvent());
                     messagesRead++;
+                    bytesInMemory += event.getEvent().length;
 
                     // if we read the message - reset keep alive counter for this partition
                     keepAliveInARow.put(event.getPosition().getPartition(), 0);
@@ -109,25 +114,41 @@ public class EventStream {
                     final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
                     if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
+                        final List<byte[]> eventsToSend = currentBatches.get(partition);
+                        sendBatch(latestOffsets.get(partition), eventsToSend);
 
-                        sendBatch(latestOffsets.get(partition), currentBatches.get(partition));
-
-                        // if we hit keep alive count limit - close the stream
-                        if (currentBatches.get(partition).size() == 0) {
+                        if (!eventsToSend.isEmpty()) {
+                            bytesInMemory -= eventsToSend.stream().mapToLong(v -> v.length).sum();
+                            eventsToSend.clear();
+                        } else {
+                            // if we hit keep alive count limit - close the stream
                             keepAliveInARow.put(partition, keepAliveInARow.get(partition) + 1);
                         }
 
-                        // init new batch for partition
-                        currentBatches.get(partition).clear();
                         batchStartTimes.put(partition, currentTimeMillis());
                     }
+                }
+                // Dump some data that is exceeding memory limits
+                while (isMemoryLimitReached(bytesInMemory)) {
+                    final Map.Entry<String, List<byte[]>> heaviestPartition = currentBatches.entrySet().stream()
+                            .max(Comparator.comparing(
+                                    entry -> entry.getValue().stream().mapToLong(event -> event.length).sum()))
+                            .get();
+                    sendBatch(latestOffsets.get(heaviestPartition.getKey()), heaviestPartition.getValue());
+                    final long freed = heaviestPartition.getValue().stream().mapToLong(v -> v.length).sum();
+                    LOG.warn("Memory limit reached for event type {}: {} bytes. Freed: {} bytes, {} messages",
+                            config.getEtName(), bytesInMemory, freed, heaviestPartition.getValue().size());
+                    bytesInMemory -= freed;
+                    // Init new batch for subscription
+                    heaviestPartition.getValue().clear();
+                    batchStartTimes.put(heaviestPartition.getKey(), currentTimeMillis());
                 }
 
                 if (lastKpiEventSent + kpiFrequencyMs < System.currentTimeMillis()) {
                     final long count = kpiData.getAndResetNumberOfEventsSent();
                     final long bytes = kpiData.getAndResetBytesSent();
 
-                    publishKpi(config.getConsumingAppId(), count, bytes);
+                    publishKpi(config.getConsumingClient(), count, bytes);
 
                     lastKpiEventSent = System.currentTimeMillis();
                 }
@@ -164,28 +185,33 @@ public class EventStream {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
         } catch (final KafkaException e) {
             LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
-                    config.getConsumingAppId(), config.getEtName(), e);
+                    config.getConsumingClient().getClientId(), config.getEtName(), e);
         } finally {
             publishKpi(
-                    config.getConsumingAppId(),
+                    config.getConsumingClient(),
                     kpiData.getAndResetNumberOfEventsSent(),
                     kpiData.getAndResetBytesSent());
         }
     }
 
-    private void publishKpi(final String appName, final long count, final long bytes) {
-        final String appNameHashed = kpiPublisher.hash(appName);
+    private boolean isMemoryLimitReached(final long memoryUsed) {
+        return memoryUsed > config.getMaxMemoryUsageBytes();
+    }
+
+    private void publishKpi(final Client client, final long count, final long bytes) {
+        final String appNameHashed = kpiPublisher.hash(client.getClientId());
 
         LOG.info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} numberOfEvents={} bytesStreamed={}",
-                "lola", config.getEtName(), appName, appNameHashed, count, bytes);
+                "lola", config.getEtName(), client.getClientId(), appNameHashed, count, bytes);
 
         kpiPublisher.publish(
                 kpiDataStreamedEventType,
                 () -> new JSONObject()
                         .put("api", "lola")
                         .put("event_type", config.getEtName())
-                        .put("app", appName)
-                        .put("app_hashed", kpiPublisher.hash(appName))
+                        .put("app", client.getClientId())
+                        .put("app_hashed", appNameHashed)
+                        .put("token_realm", client.getRealm())
                         .put("number_of_events", count)
                         .put("bytes_streamed", bytes));
     }

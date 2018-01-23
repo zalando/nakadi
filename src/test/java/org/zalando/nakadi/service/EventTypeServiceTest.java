@@ -117,7 +117,9 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "created")
-                        .put("category", et.getCategory()));
+                        .put("category", et.getCategory())
+                        .put("authz", "disabled")
+                        .put("compatibility_mode", et.getCompatibilityMode()));
     }
 
     @Test
@@ -131,7 +133,9 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "updated")
-                        .put("category", et.getCategory()));
+                        .put("category", et.getCategory())
+                        .put("authz", "disabled")
+                        .put("compatibility_mode", et.getCompatibilityMode()));
     }
 
     @Test
@@ -144,7 +148,9 @@ public class EventTypeServiceTest {
                 new JSONObject()
                         .put("event_type", et.getName())
                         .put("status", "deleted")
-                        .put("category", et.getCategory()));
+                        .put("category", et.getCategory())
+                        .put("authz", "disabled")
+                        .put("compatibility_mode", et.getCompatibilityMode()));
     }
 
 }

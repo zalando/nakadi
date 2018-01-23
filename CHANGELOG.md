@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.4] - 2018-01-18
+
+### Added
+- Allow to patch subscription cursors in case when they were not initialized
+
+### Fixed
+- Allow to update event types with recursion in schemas
+
+### Changed
+- Distinguish between employee token and service token in KPI events
+
 ## [2.5.2] - 2018-01-08
 
 ### Fixed

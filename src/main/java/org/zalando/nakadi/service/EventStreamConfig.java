@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.security.Client;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -17,6 +18,7 @@ public class EventStreamConfig {
     private static final int STREAM_LIMIT_DEFAULT = 0;
     private static final int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
     private static final int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
+    private static final long DEF_MAX_MEMORY_USAGE_BYTES = 50 * 1024 * 1024;
     private static final Random RANDOM = new Random();
 
     private final List<NakadiCursor> cursors;
@@ -26,11 +28,13 @@ public class EventStreamConfig {
     private final int streamTimeout;
     private final int streamKeepAliveLimit;
     private final String etName;
-    private final String consumingAppId;
+    private final Client consumingClient;
+    private final long maxMemoryUsageBytes;
 
     private EventStreamConfig(final List<NakadiCursor> cursors, final int batchLimit,
                               final int streamLimit, final int batchTimeout, final int streamTimeout,
-                              final int streamKeepAliveLimit, final String etName, final String consumingAppId) {
+                              final int streamKeepAliveLimit, final String etName, final Client consumingClient,
+                              final long maxMemoryUsageBytes) {
         this.cursors = cursors;
         this.batchLimit = batchLimit;
         this.streamLimit = streamLimit;
@@ -38,7 +42,8 @@ public class EventStreamConfig {
         this.streamTimeout = streamTimeout;
         this.streamKeepAliveLimit = streamKeepAliveLimit;
         this.etName = etName;
-        this.consumingAppId = consumingAppId;
+        this.consumingClient= consumingClient;
+        this.maxMemoryUsageBytes = maxMemoryUsageBytes;
     }
 
     public List<NakadiCursor> getCursors() {
@@ -69,8 +74,12 @@ public class EventStreamConfig {
         return etName;
     }
 
-    public String getConsumingAppId() {
-        return consumingAppId;
+    public Client getConsumingClient() {
+        return consumingClient;
+    }
+
+    public long getMaxMemoryUsageBytes() {
+        return maxMemoryUsageBytes;
     }
 
     @Override
@@ -123,11 +132,19 @@ public class EventStreamConfig {
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
         private int streamTimeout = generateDefaultStreamTimeout();
         private int streamKeepAliveLimit = STREAM_KEEP_ALIVE_LIMIT_DEFAULT;
+        private long maxMemoryUsageBytes = DEF_MAX_MEMORY_USAGE_BYTES;
         private String etName;
-        private String consumingAppId;
+        private Client consumingClient;
 
         public Builder withCursors(final List<NakadiCursor> cursors) {
             this.cursors = cursors;
+            return this;
+        }
+
+        public Builder withMaxMemoryUsageBytes(@Nullable final Long maxMemoryUsageBytes) {
+            if (null != maxMemoryUsageBytes) {
+                this.maxMemoryUsageBytes = maxMemoryUsageBytes;
+            }
             return this;
         }
 
@@ -175,8 +192,8 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withConsumingAppId(final String consumingAppId) {
-            this.consumingAppId = consumingAppId;
+        public Builder withConsumingClient(final Client consumingClient) {
+            this.consumingClient = consumingClient;
             return this;
         }
 
@@ -190,7 +207,7 @@ public class EventStreamConfig {
                 throw new UnprocessableEntityException("batch_limit can't be lower than 1");
             }
             return new EventStreamConfig(cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                    streamKeepAliveLimit, etName, consumingAppId);
+                    streamKeepAliveLimit, etName, consumingClient, maxMemoryUsageBytes);
         }
     }
 

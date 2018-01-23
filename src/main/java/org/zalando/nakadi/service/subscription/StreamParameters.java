@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
 
 import javax.annotation.Nullable;
@@ -38,12 +39,12 @@ public class StreamParameters {
     // Applies to stream. Timeout without commits.
     public final long commitTimeoutMillis;
 
-    private final String consumingAppId;
+    private final Client consumingClient;
 
     private StreamParameters(
             final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
             @Nullable final Long streamTimeoutSeconds, @Nullable final Integer batchKeepAliveIterations,
-            final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId)
+            final int maxUncommittedMessages, final long commitTimeoutMillis, final Client consumingClient)
             throws UnprocessableEntityException {
         if (batchLimitEvents > 0) {
             this.batchLimitEvents = batchLimitEvents;
@@ -59,7 +60,7 @@ public class StreamParameters {
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
-        this.consumingAppId = consumingAppId;
+        this.consumingClient = consumingClient;
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
@@ -74,8 +75,8 @@ public class StreamParameters {
         return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
     }
 
-    public String getConsumingAppId() {
-        return consumingAppId;
+    public Client getConsumingClient() {
+        return consumingClient;
     }
 
     public static StreamParameters of(
@@ -86,7 +87,7 @@ public class StreamParameters {
             @Nullable final Integer batchKeepAliveIterations,
             final int maxUncommittedMessages,
             final long commitTimeoutSeconds,
-            final String consumingAppId) throws UnprocessableEntityException {
+            final Client client) throws UnprocessableEntityException {
         return new StreamParameters(
                 batchLimitEvents,
                 streamLimitEvents,
@@ -95,6 +96,6 @@ public class StreamParameters {
                 batchKeepAliveIterations,
                 maxUncommittedMessages,
                 TimeUnit.SECONDS.toMillis(commitTimeoutSeconds),
-                consumingAppId);
+                client);
     }
 }

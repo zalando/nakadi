@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
@@ -27,6 +28,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,7 +74,7 @@ class StreamingState extends State {
     @Override
     public void onEnter() {
         final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
-                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getParameters().getConsumingClient().getClientId(),
                 this.getContext().getSubscription().getId()
         );
         bytesSentMeterPerSubscription = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
@@ -235,6 +237,31 @@ class StreamingState extends State {
                 messagesAllowedToSend -= toSend.size();
             }
         }
+
+        long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
+        while (memoryConsumed > getContext().getStreamMemoryLimitBytes()) {
+            // Select heaviest guy (and on previous step we figured out that we can not send anymore full batches,
+            // therefore we can take all the events from one partition.
+            final Map.Entry<EventTypePartition, PartitionData> heaviestPartition = offsets.entrySet().stream().max(
+                    Comparator.comparing(e -> e.getValue().getBytesInMemory())
+            ).get(); // There is always at least 1 item in list
+
+            long deltaSize = heaviestPartition.getValue().getBytesInMemory();
+            final List<ConsumedEvent> events = heaviestPartition.getValue().extractAll(currentTimeMillis);
+            deltaSize -= heaviestPartition.getValue().getBytesInMemory();
+
+            sentSomething = true;
+            flushData(
+                    heaviestPartition.getKey(),
+                    events,
+                    batchesSent == 0 ?
+                            Optional.of("Stream started with memory overflow") :
+                            Optional.of("Stream parameters are causing overflow"));
+            getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+                    memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
+            memoryConsumed -= deltaSize;
+        }
+
         if (lastKpiEventSent + getContext().getKpiCollectionFrequencyMs() < System.currentTimeMillis()) {
             getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
             lastKpiEventSent = System.currentTimeMillis();
@@ -251,15 +278,16 @@ class StreamingState extends State {
     }
 
     private void publishKpi(final String eventTypeName) {
-        final String appName = getContext().getParameters().getConsumingAppId();
+        final Client client = getContext().getParameters().getConsumingClient();
         final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
         final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
         final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
-        final String appNameHashed = kpiPublisher.hash(appName);
+        final String appNameHashed = kpiPublisher.hash(client.getClientId());
 
         getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
                         "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
-                        eventTypeName, appName, appNameHashed, count, bytes, getContext().getSubscription().getId());
+                eventTypeName, client.getClientId(), appNameHashed, count, bytes,
+                getContext().getSubscription().getId());
 
         kpiPublisher.publish(
                 getContext().getKpiDataStreamedEventType(),
@@ -267,8 +295,9 @@ class StreamingState extends State {
                         .put("api", "hila")
                         .put("subscription", getContext().getSubscription().getId())
                         .put("event_type", eventTypeName)
-                        .put("app", appName)
+                        .put("app", client.getClientId())
                         .put("app_hashed", appNameHashed)
+                        .put("token_realm", client.getRealm())
                         .put("number_of_events", count)
                         .put("bytes_streamed", bytes));
     }

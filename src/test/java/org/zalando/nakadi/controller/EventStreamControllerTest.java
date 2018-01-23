@@ -163,7 +163,7 @@ public class EventStreamControllerTest {
                 eventTypeRepository, timelineService, TestUtils.OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
-                eventTypeChangeListener);
+                eventTypeChangeListener, null);
 
         settings = mock(SecuritySettings.class);
         when(settings.getAuthMode()).thenReturn(OFF);
@@ -467,7 +467,7 @@ public class EventStreamControllerTest {
     }
 
     private void writeStream() throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", null));
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", ""));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }

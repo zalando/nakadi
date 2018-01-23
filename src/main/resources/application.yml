@@ -51,6 +51,7 @@ nakadi:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute
     maxConnections: 5
+    maxStreamMemoryBytes: 50000000 # ~50 MB
   featureToggle.default: false
   kafka:
     request.timeout.ms: 30000
@@ -87,6 +88,7 @@ nakadi:
   timeline.wait.timeoutMs: 40000
   subscription:
     maxPartitions: 100
+    maxStreamMemoryBytes: 50000000 # ~50 MB
   jobs:
     checkRunMs: 600000 # 10 min
     timelineCleanup:
@@ -125,6 +127,7 @@ spring:
   profiles: acceptanceTest
 nakadi:
   stream:
+    maxStreamMemoryBytes: 10_000 # ~10 Kb
     default:
       commitTimeout: 5 # seconds
   subscription:
