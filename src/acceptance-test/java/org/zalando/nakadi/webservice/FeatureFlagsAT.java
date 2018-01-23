@@ -35,8 +35,8 @@ public class FeatureFlagsAT extends BaseAT {
 
     }
 
-    private void enableFeature(FeatureToggleService.Feature feature) {
-        JSONObject payload = new JSONObject();
+    private void enableFeature(final FeatureToggleService.Feature feature) {
+        final JSONObject payload = new JSONObject();
         payload.put("feature", feature.getId());
         payload.put("enabled", true);
         given()
@@ -48,8 +48,8 @@ public class FeatureFlagsAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
     }
 
-    private void disableFeature(FeatureToggleService.Feature feature) {
-        JSONObject payload = new JSONObject();
+    private void disableFeature(final FeatureToggleService.Feature feature) {
+        final JSONObject payload = new JSONObject();
         payload.put("feature", feature.getId());
         payload.put("enabled", false);
         given()
