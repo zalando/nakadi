@@ -43,7 +43,7 @@ public class FeatureFlagsAT extends BaseAT {
                 .header("accept", "application/json")
                 .contentType(JSON)
                 .body(payload.toString())
-                .put(ENDPOINT)
+                .post(ENDPOINT)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
     }
@@ -56,7 +56,7 @@ public class FeatureFlagsAT extends BaseAT {
                 .header("accept", "application/json")
                 .contentType(JSON)
                 .body(payload.toString())
-                .put(ENDPOINT)
+                .post(ENDPOINT)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
     }
