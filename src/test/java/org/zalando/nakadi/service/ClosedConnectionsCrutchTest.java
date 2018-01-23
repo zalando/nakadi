@@ -4,7 +4,6 @@ import com.codahale.metrics.MetricRegistry;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.io.IOException;
 import java.net.InetAddress;

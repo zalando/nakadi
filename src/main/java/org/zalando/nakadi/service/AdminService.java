@@ -11,7 +11,6 @@ import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
-import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.util.List;
 import java.util.function.Predicate;

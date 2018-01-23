@@ -9,7 +9,6 @@ import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
-import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -1,4 +1,4 @@
-package org.zalando.nakadi.util;
+package org.zalando.nakadi.service;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;

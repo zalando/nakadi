@@ -1,4 +1,4 @@
-package org.zalando.nakadi.util;
+package org.zalando.nakadi.service;
 
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
