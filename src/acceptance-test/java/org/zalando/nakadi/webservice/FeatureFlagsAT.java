@@ -45,7 +45,7 @@ public class FeatureFlagsAT extends BaseAT {
                 .body(payload.toString())
                 .post(ENDPOINT)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 
     private void disableFeature(final FeatureToggleService.Feature feature) {
@@ -58,6 +58,6 @@ public class FeatureFlagsAT extends BaseAT {
                 .body(payload.toString())
                 .post(ENDPOINT)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 }
