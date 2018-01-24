@@ -101,7 +101,7 @@ public class StorageService {
         }
     }
 
-    public Result<Void> createStorage(final JSONObject json) {
+    public Result<Void> createStorage(final JSONObject json) throws DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create storage: write operations on DB " +
                     "are blocked by feature flag.");
@@ -145,7 +145,7 @@ public class StorageService {
         return Result.ok();
     }
 
-    public Result<Void> deleteStorage(final String id) {
+    public Result<Void> deleteStorage(final String id) throws DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete storage: write operations on DB " +
                     "are blocked by feature flag.");

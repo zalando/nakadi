@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -44,6 +45,7 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 
 import javax.annotation.Nullable;
@@ -67,6 +69,7 @@ public class TimelineService {
     private final TransactionTemplate transactionTemplate;
     private final DefaultStorage defaultStorage;
     private final AdminService adminService;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -77,7 +80,7 @@ public class TimelineService {
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
-                           final AdminService adminService) {
+                           final AdminService adminService, final FeatureToggleService featureToggleService) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -87,11 +90,16 @@ public class TimelineService {
         this.transactionTemplate = transactionTemplate;
         this.defaultStorage = defaultStorage;
         this.adminService = adminService;
+        this.featureToggleService = featureToggleService;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
-            RepositoryProblemException {
+            RepositoryProblemException, DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create timeline: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
@@ -129,7 +137,12 @@ public class TimelineService {
             InconsistentStateException,
             RepositoryProblemException,
             DuplicatedTimelineException,
-            TimelineException {
+            TimelineException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create default timeline: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         final TopicRepository repository = topicRepositoryHolder.getTopicRepository(defaultStorage.getStorage());
         final String topic = repository.createTopic(partitionsCount, retentionTime);
 

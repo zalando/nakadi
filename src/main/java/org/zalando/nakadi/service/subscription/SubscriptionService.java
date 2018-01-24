@@ -25,6 +25,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -39,6 +40,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -75,6 +77,7 @@ public class SubscriptionService {
     private final CursorConverter converter;
     private final CursorOperationsService cursorOperationsService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final FeatureToggleService featureToggleService;
     private final String subLogEventType;
 
     @Autowired
@@ -86,6 +89,7 @@ public class SubscriptionService {
                                final CursorConverter converter,
                                final CursorOperationsService cursorOperationsService,
                                final NakadiKpiPublisher nakadiKpiPublisher,
+                               final FeatureToggleService featureToggleService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -95,12 +99,18 @@ public class SubscriptionService {
         this.converter = converter;
         this.cursorOperationsService = cursorOperationsService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.featureToggleService = featureToggleService;
         this.subLogEventType = subLogEventType;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException {
+            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
@@ -165,7 +175,11 @@ public class SubscriptionService {
         }
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId) {
+    public Result<Void> deleteSubscription(final String subscriptionId) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 

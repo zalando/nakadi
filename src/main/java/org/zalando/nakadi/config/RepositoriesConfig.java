@@ -39,10 +39,10 @@ public class RepositoriesConfig {
         if (forceDefault) {
             final Set<String> features = featuresConfig.getDefaultFeatures().keySet();
             for (final String feature: features) {
-                LOG.info("Setting feature {} to {}", feature, featuresConfig.getDefault(feature));
+                LOG.info("Setting feature {} to {}", feature, featuresConfig.getDefaultState(feature));
                 featureToggleService.setFeature(
                         new FeatureToggleService.FeatureWrapper(FeatureToggleService.Feature.valueOf(feature),
-                                featuresConfig.getDefault(feature)));
+                                featuresConfig.getDefaultState(feature)));
             }
         }
         return featureToggleService;

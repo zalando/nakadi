@@ -122,7 +122,8 @@ public class EventTypeService {
     }
 
     public void create(final EventTypeBase eventType) throws TopicCreationException, InternalNakadiException,
-            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException {
+            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException,
+            DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -174,7 +175,8 @@ public class EventTypeService {
     }
 
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
-            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
+            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
+            DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -247,7 +249,8 @@ public class EventTypeService {
             InconsistentStateException,
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
-            UnableProcessException {
+            UnableProcessException,
+            DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
                     "are blocked by feature flag.");

@@ -9,6 +9,8 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.PreDestroy;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class FeatureToggleServiceZk implements FeatureToggleService {
 
@@ -17,6 +19,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     private final ZooKeeperHolder zkHolder;
     private PathChildrenCache featuresCache;
+    private final Map<Feature, String> featurePaths;
 
     public FeatureToggleServiceZk(final ZooKeeperHolder zkHolder) {
         this.zkHolder = zkHolder;
@@ -26,20 +29,24 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
         }
+        featurePaths = new HashMap<>(Feature.values().length);
+        for (final Feature feature: Feature.values()) {
+            featurePaths.put(feature, PREFIX + "/" + feature.getId());
+        }
     }
 
     @PreDestroy
     public void cleanUp() {
         try {
             this.featuresCache.close();
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.error("Could not close features cache", e);
         }
     }
 
     public boolean isFeatureEnabled(final Feature feature) {
         try {
-            return featuresCache.getCurrentData(PREFIX + "/" + feature.getId()) != null;
+            return featuresCache.getCurrentData(getPath(feature)) != null;
         } catch (final Exception e) {
             LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
             return false;
@@ -49,7 +56,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     public void setFeature(final FeatureWrapper feature) {
         try {
             final CuratorFramework curator = zkHolder.get();
-            final String path = PREFIX + "/" + feature.getFeature().getId();
+            final String path = getPath(feature.getFeature());
             if (feature.isEnabled()) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             } else {
@@ -60,5 +67,9 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while accessing zk", e);
         }
+    }
+
+    private String getPath(final Feature feature) {
+        return featurePaths.get(feature);
     }
 }

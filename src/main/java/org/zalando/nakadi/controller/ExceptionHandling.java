@@ -160,7 +160,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(DbWriteOperationsBlockedException.class)
     public ResponseEntity<Problem> handleDbWriteOperationsBlockedException(
             final DbWriteOperationsBlockedException exception, final NativeWebRequest request) {
-        LOG.error(exception.getMessage());
+        LOG.warn(exception.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
                 "Database is currently in read-only mode", request);
     }

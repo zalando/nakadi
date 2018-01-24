@@ -99,6 +99,8 @@ public class SubscriptionControllerTest {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(false);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
@@ -115,7 +117,8 @@ public class SubscriptionControllerTest {
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService, nakadiKpiPublisher, "subscription_log_et");
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService,
+                "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());

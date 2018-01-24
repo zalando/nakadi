@@ -19,7 +19,7 @@ public class FeaturesConfig {
         return defaultFeatures;
     }
 
-    public boolean getDefault(final String featureName) {
+    public boolean getDefaultState(final String featureName) {
         return defaultFeatures.get(featureName);
     }
 }
