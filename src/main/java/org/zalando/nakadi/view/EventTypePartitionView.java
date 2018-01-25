@@ -11,6 +11,9 @@ public class EventTypePartitionView {
     private String oldestAvailableOffset;
     private String newestAvailableOffset;
 
+    public EventTypePartitionView() {
+    }
+
     public EventTypePartitionView(final String eventType, final String partitionId, final String oldestAvailableOffset,
                                   final String newestAvailableOffset) {
         this.eventType = eventType;

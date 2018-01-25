@@ -17,6 +17,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
@@ -71,6 +72,9 @@ public class StreamingStateTest {
         cursorConverter = mock(CursorConverter.class);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
 
+        final Client client = mock(Client.class);
+        when(client.getClientId()).thenReturn("consumingAppId");
+
         final StreamParameters spMock = StreamParameters.of(
                 1000,
                 100L,
@@ -79,7 +83,7 @@ public class StreamingStateTest {
                 100,
                 100,
                 100,
-                "consumingAppId"
+                client
         );
         when(contextMock.getParameters()).thenReturn(spMock);
 

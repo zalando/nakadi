@@ -11,4 +11,8 @@ public abstract class Client {
     public String getClientId() {
         return clientId;
     }
+
+    public String getRealm() {
+        return "";
+    }
 }

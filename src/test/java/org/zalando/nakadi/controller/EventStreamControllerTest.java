@@ -467,7 +467,7 @@ public class EventStreamControllerTest {
     }
 
     private void writeStream() throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", null));
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", ""));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }

@@ -167,7 +167,7 @@ public class SubscriptionStreamController {
 
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
-                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
+                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,

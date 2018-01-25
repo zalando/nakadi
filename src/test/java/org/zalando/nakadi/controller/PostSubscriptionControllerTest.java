@@ -26,9 +26,6 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -235,13 +232,6 @@ public class PostSubscriptionControllerTest {
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
 
-        private Set<String> scopes = new HashSet<>();
-
-        public TestHandlerMethodArgumentResolver addScope(final Set<String> scopes) {
-            this.scopes = scopes;
-            return this;
-        }
-
         @Override
         public boolean supportsParameter(final MethodParameter parameter) {
             return true;
@@ -252,7 +242,7 @@ public class PostSubscriptionControllerTest {
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
                                       final WebDataBinderFactory binderFactory) throws Exception {
-            return new NakadiClient("nakadiClientId", scopes);
+            return new NakadiClient("nakadiClientId", "");
         }
     }
 }

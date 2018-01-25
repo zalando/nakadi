@@ -1,13 +1,16 @@
 package org.zalando.nakadi.security;
 
-import java.util.Set;
-
 public class NakadiClient extends Client {
 
-    private final Set<String> scopes;
+    private final String realm;
 
-    public NakadiClient(final String clientId, final Set<String> scopes) {
+    public NakadiClient(final String clientId, final String realm) {
         super(clientId);
-        this.scopes = scopes;
+        this.realm = realm;
+    }
+
+    @Override
+    public String getRealm() {
+        return realm;
     }
 }
