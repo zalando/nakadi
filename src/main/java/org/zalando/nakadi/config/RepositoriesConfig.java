@@ -2,7 +2,7 @@ package org.zalando.nakadi.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -14,9 +14,9 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
-import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.FeatureToggleServiceZk;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -27,17 +27,17 @@ import java.util.Set;
 @Configuration
 @Profile("!test")
 @Import({KafkaConfig.class, ZookeeperConfig.class})
+@EnableConfigurationProperties(FeaturesConfig.class)
 public class RepositoriesConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(RepositoriesConfig.class);
 
     @Bean
     public FeatureToggleService featureToggleService(
-            @Value("${nakadi.featureToggle.default}") final boolean forceDefault,
             final ZooKeeperHolder zooKeeperHolder, final FeaturesConfig featuresConfig) {
         final FeatureToggleService featureToggleService = new FeatureToggleServiceZk(zooKeeperHolder);
-        if (forceDefault) {
-            final Set<String> features = featuresConfig.getDefaultFeatures().keySet();
+        if (featuresConfig.containsDefaults()) {
+            final Set<String> features = featuresConfig.getFeaturesWithDefaultState();
             for (final String feature: features) {
                 LOG.info("Setting feature {} to {}", feature, featuresConfig.getDefaultState(feature));
                 featureToggleService.setFeature(

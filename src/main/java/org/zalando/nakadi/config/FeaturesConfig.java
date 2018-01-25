@@ -19,7 +19,16 @@ public class FeaturesConfig {
         return defaultFeatures;
     }
 
+    public Set<String> getFeaturesWithDefaultState() {
+        return defaultFeatures.keySet();
+    }
+
     public boolean getDefaultState(final String featureName) {
         return defaultFeatures.get(featureName);
     }
+
+    public boolean containsDefaults() {
+        return !defaultFeatures.isEmpty();
+    }
+
 }

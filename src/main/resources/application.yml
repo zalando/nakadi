@@ -52,7 +52,6 @@ nakadi:
     default.commitTimeout: 60 # 1 minute
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
-  featureToggle.default: true
   features.defaultFeatures:
       CONNECTION_CLOSE_CRUTCH: true
       DISABLE_EVENT_TYPE_CREATION: false
