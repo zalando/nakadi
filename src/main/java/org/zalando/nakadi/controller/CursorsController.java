@@ -49,7 +49,6 @@ import java.util.stream.IntStream;
 
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
