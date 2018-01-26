@@ -1,4 +1,6 @@
-[ARUHA-XXX: Name of ticket](link to ticket)
+# One-line summary
+
+> Zalando ticket : ARUHA-XXX (only if appropriate)
 
 ## Description
 A few sentences describing the overall goals of the pull request's
