@@ -1233,7 +1233,7 @@ paths:
       description: |
         GET with body.
         Starts a new stream for reading events from this subscription. Using this endpoint it is possible to specify
-        which partitions of subscriptions to read in this stream. If at least one of these partitions is already
+        which partitions of subscription to read in this stream. If at least one of these partitions is already
         assigned to another stream - the request will fail. It is possible to specify only the partitions that belong
         to this subscription.
         The rest of behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
@@ -1245,8 +1245,9 @@ paths:
             properties:
               items:
                 description: |
-                  List of partitions to read from in this stream. If not specified or if `items` array is empty - Nakadi
-                  will automatically choose partitions to assign to this stream.
+                  List of partitions to read from in this stream.
+                  If not specified or if `items` array is empty - Nakadi will automatically choose partitions to assign
+                  to this stream.
                 type: array
                 items:
                   $ref: '#/definitions/EventTypePartition'
