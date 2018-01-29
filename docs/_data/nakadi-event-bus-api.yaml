@@ -2811,7 +2811,7 @@ parameters:
     name: max_uncommitted_events
     in: query
     description: |
-      The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
+      The maximum amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
       state and commit comes - the stream will resume. Minimal value is 1.
     type: integer
     format: int32
