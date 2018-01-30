@@ -1176,6 +1176,7 @@ paths:
         during autorebalance.
         The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
         a stream.
+        It is only possible to use this endpoint if subscription balance_mode is set to `auto`.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
         - $ref: '#/parameters/MaxUncommittedEvents'
@@ -1213,11 +1214,14 @@ paths:
             $ref: '#/definitions/Problem'
         '409':
           description: |
-            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            Conflict. There are several possible reasond for receiving this status code:
+
+            - There are no empty slots for this subscriptions. The amount of consumers for this subscription
             already equals the maximal value - the total amount of this subscription partitions.
 
-            This status code is also returned in the case of resetting subscription cursors request still in the
-            progress.
+            - Resetting of subscription cursors request is still in the progress.
+
+            - This endpoint was called for a subscription with balance_mode set to 'custom'.
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1236,6 +1240,7 @@ paths:
         which partitions of subscription to read in this stream. If at least one of these partitions is already
         assigned to another stream - the request will fail. It is possible to specify only the partitions that belong
         to this subscription.
+        It is only possible to use this endpoint if subscription balance_mode is set to `custom`.
         The rest of behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
       parameters:
         - name: partitions
@@ -1246,11 +1251,10 @@ paths:
               items:
                 description: |
                   List of partitions to read from in this stream.
-                  If not specified or if `items` array is empty - Nakadi will automatically choose partitions to assign
-                  to this stream.
                 type: array
                 items:
                   $ref: '#/definitions/EventTypePartition'
+                minItems: 1
             required:
               - items
         - $ref: '#/parameters/SubscriptionId'
@@ -1289,14 +1293,16 @@ paths:
             $ref: '#/definitions/Problem'
         '409':
           description: |
-            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            Conflict. There are several possible reasond for receiving this status code:
+            
+            - There are no empty slots for this subscriptions. The amount of consumers for this subscription
             already equals the maximal value - the total amount of this subscription partitions.
 
-            This status code is also returned in the case of resetting subscription cursors request still in the
-            progress.
+            - Resetting of subscription cursors request is still in the progress.
 
-            One more case to get this status code is requesting to read from partition that is already assigned to
-            another stream.
+            - This endpoint was called for a subscription with balance_mode set to 'auto'.
+
+            - It is requested to read from a partition that is already assigned to another stream.
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -2260,7 +2266,17 @@ definitions:
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
           Clients will get events starting from next offset positions.
+      balance_mode:
+        type: string
+        description: |
+          Partitions balance mode for this subscription:
 
+          - `auto` - Nakadi will automatically balance partitions among subscription connections. It will try to give
+          the equal number of partitions to each connection.
+
+          - `custom` - client will specify the partitions to read from when connecting to a subscription using endpoint
+          POST /subscriptions/{subscription_id}/events.
+        default: 'auto'
     required:
       - owning_application
       - event_types
