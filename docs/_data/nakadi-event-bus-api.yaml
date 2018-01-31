@@ -1241,6 +1241,9 @@ paths:
         assigned to another stream - the request will fail. It is possible to specify only the partitions that belong
         to this subscription.
         It is only possible to use this endpoint if subscription balance_mode is set to `custom`.
+        When using this endpoint and `custom` balance_mode - the balancing of partitions becomes user responsibility.
+        User should track that all partitions are consumed (if this is the case to consume all partitions) and also
+        react appropriately when the number of partitions of subscription's event-type changes due to repartitioning.
         The rest of behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
       parameters:
         - name: partitions
