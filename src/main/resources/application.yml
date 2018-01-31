@@ -155,3 +155,8 @@ spring:
 twintip:
   mapping: /api
   yaml: "file:api/nakadi-event-bus-api.yaml"
+
+---
+
+spring:
+  profiles: local

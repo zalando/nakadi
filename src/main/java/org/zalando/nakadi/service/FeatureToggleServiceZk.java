@@ -59,11 +59,13 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
             final String path = getPath(feature.getFeature());
             if (feature.isEnabled()) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
+                LOG.debug("Feature {} enabled", feature.getFeature().getId());
             } else {
                 curator.delete().forPath(path);
+                LOG.debug("Feature {} disabled", feature.getFeature().getId());
             }
         } catch (final KeeperException.NoNodeException nne) {
-            LOG.debug("Feature {} was disabled", feature.getFeature().getId());
+            LOG.debug("Feature {} was already disabled", feature.getFeature().getId());
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while accessing zk", e);
         }

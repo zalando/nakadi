@@ -32,8 +32,9 @@ public class RepositoriesConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(RepositoriesConfig.class);
 
+    @Profile({"acceptanceTest", "local"})
     @Bean
-    public FeatureToggleService featureToggleService(
+    public FeatureToggleService featureToggleServiceLocal(
             final ZooKeeperHolder zooKeeperHolder, final FeaturesConfig featuresConfig) {
         final FeatureToggleService featureToggleService = new FeatureToggleServiceZk(zooKeeperHolder);
         if (featuresConfig.containsDefaults()) {
@@ -46,6 +47,12 @@ public class RepositoriesConfig {
             }
         }
         return featureToggleService;
+    }
+
+    @Profile("default")
+    @Bean
+    public FeatureToggleService featureToggleService(final ZooKeeperHolder zooKeeperHolder) {
+        return new FeatureToggleServiceZk(zooKeeperHolder);
     }
 
     @Bean
