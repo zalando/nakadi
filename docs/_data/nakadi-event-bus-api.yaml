@@ -1216,7 +1216,7 @@ paths:
             Conflict. There are several possible reasons for receiving this status code:
 
             - There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximal value - the total amount of this subscription partitions.
+            already equals the maximum value - the total amount of this subscription partitions.
 
             - Resetting of subscription cursors request is still in the progress.
           schema:
@@ -1348,7 +1348,7 @@ paths:
             Conflict. There are several possible reasons for receiving this status code:
             
             - There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximal value - the total amount of this subscription partitions.
+            already equals the maximum value - the total amount of this subscription partitions.
 
             - Resetting of subscription cursors request is still in the progress.
 
