@@ -1216,9 +1216,9 @@ paths:
             Conflict. There are several possible reasons for receiving this status code:
 
             - There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximum value - the total amount of this subscription partitions.
+            already equals the maximum value - the total number of partitions in this subscription.
 
-            - Resetting of subscription cursors request is still in the progress.
+            - Request to reset subscription cursors is still in progress.
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1234,20 +1234,22 @@ paths:
       description: |
         GET with body.
         Starts a new stream for reading events from this subscription. Using this endpoint it is possible to specify
-        which partitions of subscription to read in this stream.
+        which partitions to read in this stream.
 
-        It is possible to specify partition that is already consumed by another stream, in this case there are two
-        possible outcomes. If the partition was assigned to another stream as a result of automatic assignment - it will
-        be possible to "steal" it. But if the partition is assigned to another stream because it was directly requested
-        by it - then it will not be possible to transfer this partition to current stream - such request will fail.
+        It is possible to specify a partition that is already consumed by another stream. In this case, there can be
+        two outcomes, depending on how the current assignment was obtained. (1) If the partition is already assigned to
+        another stream through automatic assignment, it will be possible to reassign it to new stream, and the request
+        will succeed. (2) If the partition is already assigned to another stream because of a request to stream from
+        this partition specifically, then it will not be possible to reasiign the partition to new stream, and the
+        request will fail.
 
-        It is possible to specify only the partitions that belong to this subscription.
+        It is only possible to specify partitions that belong to this subscription.
 
-        When using this endpoint the balancing of partitions becomes user responsibility. User should track that all
-        partitions are consumed (if this is the case to consume all partitions) and also react appropriately when the
-        number of partitions of subscription's event-type changes due to repartitioning.
+        When using this endpoint, the balancing of partitions is the user's responsibility. It is also the user's
+        responsibility to detect, and react to, changes in the number of partitions in the subscription (following the
+        re-partitioning of an event type). Using the GET /subscriptions/{subscription_id}/stats endpoint can be helpful.
 
-        The rest of behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
+        The rest of the behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
       parameters:
         - name: streamParameters
           in: body
@@ -1264,11 +1266,12 @@ paths:
                   $ref: '#/definitions/EventTypePartition'
               max_uncommitted_events:
                 description: |
-                  The maximum amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-                  state and commit comes - the stream will resume. Minimal value is 1.
+                  The maximum number of uncommitted events that Nakadi will stream before pausing the stream. When in
+                  paused state and commit comes - the stream will resume.
                 type: integer
                 format: int32
                 default: 10
+                minimum: 1
               batch_limit:
                 description: |
                   Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
@@ -1348,9 +1351,9 @@ paths:
             Conflict. There are several possible reasons for receiving this status code:
             
             - There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximum value - the total amount of this subscription partitions.
+            already equals the maximum value - the total number of partitions in this subscription.
 
-            - Resetting of subscription cursors request is still in the progress.
+            - Request to reset subscription cursors is still in progress.
 
             - It is requested to read from a partition that is already assigned to another stream by direct request.
           schema:
@@ -2685,8 +2688,8 @@ definitions:
             assign_type:
               type: string
               description: |
-                - `hard`: partition can't be transferred to another stream until the stream is closed;
-                - `soft`: partition can be transferred to another stream in a case of rabalance or if another stream
+                - `manual`: partition can't be transferred to another stream until the stream is closed;
+                - `auto`: partition can be transferred to another stream in a case of rabalance or if another stream
                   requests to read from this partition.
           required:
             - partition
@@ -2872,12 +2875,13 @@ parameters:
     name: max_uncommitted_events
     in: query
     description: |
-      The maximum amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-      state and commit comes - the stream will resume. Minimal value is 1.
+      The maximum number of uncommitted events that Nakadi will stream before pausing the stream. When in
+      paused state and commit comes - the stream will resume.
     type: integer
     format: int32
     required: false
     default: 10
+    minimum: 1
 
   BlacklistType:
     name: blacklist_type
