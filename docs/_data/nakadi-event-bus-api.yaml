@@ -2689,7 +2689,7 @@ definitions:
               type: string
               description: |
                 - `manual`: partition can't be transferred to another stream until the stream is closed;
-                - `auto`: partition can be transferred to another stream in a case of rabalance or if another stream
+                - `auto`: partition can be transferred to another stream in case of rebalance, or if another stream
                   requests to read from this partition.
           required:
             - partition
