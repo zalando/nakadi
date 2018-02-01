@@ -1176,7 +1176,6 @@ paths:
         during autorebalance.
         The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
         a stream.
-        It is only possible to use this endpoint if subscription balance_mode is set to `auto`.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
         - $ref: '#/parameters/MaxUncommittedEvents'
@@ -1237,36 +1236,88 @@ paths:
       description: |
         GET with body.
         Starts a new stream for reading events from this subscription. Using this endpoint it is possible to specify
-        which partitions of subscription to read in this stream. If at least one of these partitions is already
-        assigned to another stream - the request will fail. It is possible to specify only the partitions that belong
-        to this subscription.
-        It is only possible to use this endpoint if subscription balance_mode is set to `custom`.
-        When using this endpoint and `custom` balance_mode - the balancing of partitions becomes user responsibility.
-        User should track that all partitions are consumed (if this is the case to consume all partitions) and also
-        react appropriately when the number of partitions of subscription's event-type changes due to repartitioning.
+        which partitions of subscription to read in this stream.
+
+        It is possible to specify partition that is already consumed by another stream, in this case there are two
+        possible outcomes. If the partition was assigned to another stream as a result of automatic assignment - it will
+        be possible to "steal" it. But if the partition is assigned to another stream because it was directly requested
+        by it - then it will not be possible to transfer this partition to current stream - such request will fail.
+
+        It is possible to specify only the partitions that belong to this subscription.
+
+        When using this endpoint the balancing of partitions becomes user responsibility. User should track that all
+        partitions are consumed (if this is the case to consume all partitions) and also react appropriately when the
+        number of partitions of subscription's event-type changes due to repartitioning.
+
         The rest of behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
       parameters:
-        - name: partitions
+        - name: streamParameters
           in: body
           schema:
             type: object
             properties:
-              items:
+              partitions:
                 description: |
-                  List of partitions to read from in this stream.
+                  List of partitions to read from in this stream. If absent or empty - then the partitions will be
+                  automatically assigned by Nakadi in the same way as when using endpoint GET
+                  /subscriptions/{subscription_id}/events
                 type: array
                 items:
                   $ref: '#/definitions/EventTypePartition'
-                minItems: 1
-            required:
-              - items
+              max_uncommitted_events:
+                description: |
+                  The maximum amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
+                  state and commit comes - the stream will resume. Minimal value is 1.
+                type: integer
+                format: int32
+                default: 10
+              batch_limit:
+                description: |
+                  Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+                type: integer
+                format: int32
+                default: 1
+              stream_limit:
+                description: |
+                  Maximum number of `Event`s in this stream (over all partitions being streamed in this
+                  connection).
+
+                  * If 0 or undefined, will stream batches indefinitely.
+
+                  * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+                type: integer
+                format: int32
+                default: 0
+              batch_flush_timeout:
+                description: |
+                  Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+                  * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+                  is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+                  * If 0 or undefined, will assume 30 seconds.
+
+                  * Value is treated as a recommendation. Nakadi may flush chunks with a smaller timeout.
+                type: number
+                format: int32
+                default: 30
+              stream_timeout:
+                description: |
+                  Maximum time in seconds a stream will live before connection is closed by the server.
+                  If 0 or unspecified will stream for 1h ±10min.
+
+                  If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+                  to the client.
+
+                  Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+                  If the `stream_timeout` is greater than max value (4200 seconds) - Nakadi will treat this as not
+                  specifying `stream_timeout` (this is done due to backwards compatibility).
+                type: number
+                format: int32
+                default: 0
+                minimum: 0
+                maximum: 4200
         - $ref: '#/parameters/SubscriptionId'
-        - $ref: '#/parameters/MaxUncommittedEvents'
-        - $ref: '#/parameters/BatchLimit'
-        - $ref: '#/parameters/StreamLimit'
-        - $ref: '#/parameters/BatchFlushTimeout'
-        - $ref: '#/parameters/StreamTimeout'
-        - $ref: '#/parameters/StreamKeepAliveLimit'
         - name: X-Flow-Id
           in: header
           description: |
@@ -1303,9 +1354,7 @@ paths:
 
             - Resetting of subscription cursors request is still in the progress.
 
-            - This endpoint was called for a subscription with balance_mode set to 'auto'.
-
-            - It is requested to read from a partition that is already assigned to another stream.
+            - It is requested to read from a partition that is already assigned to another stream by direct request.
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -2269,17 +2318,6 @@ definitions:
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
           Clients will get events starting from next offset positions.
-      balance_mode:
-        type: string
-        description: |
-          Partitions balance mode for this subscription:
-
-          - `auto` - Nakadi will automatically balance partitions among subscription connections. It will try to give
-          the equal number of partitions to each connection.
-
-          - `custom` - client will specify the partitions to read from when connecting to a subscription using endpoint
-          POST /subscriptions/{subscription_id}/events.
-        default: 'auto'
     required:
       - owning_application
       - event_types
@@ -2646,6 +2684,12 @@ definitions:
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition
+            assign_type:
+              type: string
+              description: |
+                - `hard`: partition can't be transferred to another stream until the stream is closed;
+                - `soft`: partition can be transferred to another stream in a case of rabalance or if another stream
+                  requests to read from this partition.
           required:
             - partition
             - state
