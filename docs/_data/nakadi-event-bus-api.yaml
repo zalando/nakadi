@@ -1240,8 +1240,8 @@ paths:
         a stream.
 
         If you create a stream without specifying the partitions to read from - Nakadi will automatically assign
-        partitions to this new stream. By default Nakadi distributes partitions among clients trying to give the equal
-        amount of partitions to each client (the amount of data is not considered). This is default and the most common
+        partitions to this new stream. By default Nakadi distributes partitions among clients trying to give an equal
+        number of partitions to each client (the amount of data is not considered). This is default and the most common
         way to use streaming endpoint.
 
         It is also possible to directly request specific partitions to be delivered within the stream. If these
