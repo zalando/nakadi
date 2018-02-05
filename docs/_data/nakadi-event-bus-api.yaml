@@ -1233,23 +1233,32 @@ paths:
         - oauth2: ['nakadi.event_stream.read']
       description: |
         GET with body.
-        Starts a new stream for reading events from this subscription. Using this endpoint it is possible to specify
-        which partitions to read in this stream.
 
-        It is possible to specify a partition that is already consumed by another stream. In this case, there can be
-        two outcomes, depending on how the current assignment was obtained. (1) If the partition is already assigned to
-        another stream through automatic assignment, it will be possible to reassign it to new stream, and the request
-        will succeed. (2) If the partition is already assigned to another stream because of a request to stream from
-        this partition specifically, then it will not be possible to reasiign the partition to new stream, and the
-        request will fail.
+        Starts a new stream for reading events from this subscription. The minimal consumption unit is a partition, so
+        it is possible to start as many streams as the total number of partitions in event-types of this subscription.
+        The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+        a stream.
 
-        It is only possible to specify partitions that belong to this subscription.
+        If you create a stream without specifying the partitions to read from - Nakadi will automatically assign
+        partitions to this new stream. By default Nakadi distributes partitions among clients trying to give the equal
+        amount of partitions to each client (the amount of data is not considered). This is default and the most common
+        way to use streaming endpoint.
 
-        When using this endpoint, the balancing of partitions is the user's responsibility. It is also the user's
-        responsibility to detect, and react to, changes in the number of partitions in the subscription (following the
-        re-partitioning of an event type). Using the GET /subscriptions/{subscription_id}/stats endpoint can be helpful.
+        It is also possible to directly request specific partitions to be delivered within the stream. If these
+        partitions are already consumed by another stream of this subscription - Nakadi will trigger a rebalance that
+        will assign these partitions to the new stream. The request will fail if user directly requests partitions that
+        are already requested directly by another active stream of this subscription. The overall picture will be the
+        following: streams which directly requested specific partitions will consume from them; streams that didn't
+        specify which partitions to consume will consume partitions that left - Nakadi will autobalance free partitions
+        among these streams (balancing happens by number of partitions).
 
-        The rest of the behavior is identical to endpoint GET /subscriptions/{subscription_id}/events.
+        Specifying partitions to consume is not a trivial way to consume as it will require additional coordination
+        effort from the client application, that's why it should only be used if such way of consumption should be
+        implemented due to some specific requirements.
+
+        Also, when using streams with directly assigned partitions, it is the user's responsibility to detect, and react
+        to, changes in the number of partitions in the subscription (following the re-partitioning of an event type).
+        Using the GET /subscriptions/{subscription_id}/stats endpoint can be helpful.
       parameters:
         - name: streamParameters
           in: body
@@ -1259,8 +1268,7 @@ paths:
               partitions:
                 description: |
                   List of partitions to read from in this stream. If absent or empty - then the partitions will be
-                  automatically assigned by Nakadi in the same way as when using endpoint GET
-                  /subscriptions/{subscription_id}/events
+                  automatically assigned by Nakadi.
                 type: array
                 items:
                   $ref: '#/definitions/EventTypePartition'
@@ -2688,7 +2696,7 @@ definitions:
             assign_type:
               type: string
               description: |
-                - `manual`: partition can't be transferred to another stream until the stream is closed;
+                - `direct`: partition can't be transferred to another stream until the stream is closed;
                 - `auto`: partition can be transferred to another stream in case of rebalance, or if another stream
                   requests to read from this partition.
           required:
