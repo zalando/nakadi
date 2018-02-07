@@ -90,7 +90,7 @@ public class SchemaDiff {
         });
     }
 
-    private static Schema replaceWithEmptyObjectSchema(Schema in) {
+    private static Schema replaceWithEmptyObjectSchema(final Schema in) {
         return ObjectSchema.builder()
                 .id(in.getId())
                 .title(in.getTitle())
