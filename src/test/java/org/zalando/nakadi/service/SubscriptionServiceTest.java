@@ -25,6 +25,7 @@ public class SubscriptionServiceTest {
     private final SubscriptionDbRepository subscriptionRepository;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final SubscriptionService subscriptionService;
+    private final FeatureToggleService featureToggleService;
 
     public SubscriptionServiceTest() throws Exception {
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
@@ -37,10 +38,11 @@ public class SubscriptionServiceTest {
         final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
         nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         subscriptionRepository = mock(SubscriptionDbRepository.class);
+        featureToggleService = mock(FeatureToggleService.class);
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
-                cursorOperationsService, nakadiKpiPublisher, SUBSCRIPTION_LOG_ET);
+                cursorOperationsService, nakadiKpiPublisher, featureToggleService, SUBSCRIPTION_LOG_ET);
     }
 
     @Test

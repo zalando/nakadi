@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -154,6 +155,14 @@ public final class ExceptionHandling implements ProblemHandling {
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(DbWriteOperationsBlockedException.class)
+    public ResponseEntity<Problem> handleDbWriteOperationsBlockedException(
+            final DbWriteOperationsBlockedException exception, final NativeWebRequest request) {
+        LOG.warn(exception.getMessage());
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
+                "Database is currently in read-only mode", request);
     }
 
 }

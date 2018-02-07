@@ -263,6 +263,7 @@ task testInitNakadi(type: Exec) {
 }
 
 task initNakadi(type: Exec) {
+    environment "SPRING_PROFILES_ACTIVE", "local"
     commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
         println "Waiting for Nakadi to start up"

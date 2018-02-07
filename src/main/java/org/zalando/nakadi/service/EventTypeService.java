@@ -37,6 +37,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -50,7 +51,6 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -64,7 +64,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -122,7 +122,12 @@ public class EventTypeService {
     }
 
     public void create(final EventTypeBase eventType) throws TopicCreationException, InternalNakadiException,
-            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException {
+            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
         enrichment.validate(eventType);
@@ -170,7 +175,12 @@ public class EventTypeService {
     }
 
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
-            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
+            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         Closeable deletionCloser = null;
         final EventType eventType;
         Multimap<TopicRepository, String> topicsToDelete = null;
@@ -239,7 +249,12 @@ public class EventTypeService {
             InconsistentStateException,
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
-            UnableProcessException {
+            UnableProcessException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());

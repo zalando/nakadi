@@ -13,6 +13,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class TimelineCleanupJob {
     private final EventTypeCache eventTypeCache;
     private final TimelineDbRepository timelineDbRepository;
     private final TimelineService timelineService;
+    private final FeatureToggleService featureToggleService;
     private final ExclusiveJobWrapper jobWrapper;
     private final long deletionDelayMs;
 
@@ -34,6 +36,7 @@ public class TimelineCleanupJob {
     public TimelineCleanupJob(final EventTypeCache eventTypeCache,
                               final TimelineDbRepository timelineDbRepository,
                               final TimelineService timelineService,
+                              final FeatureToggleService featureToggleService,
                               final JobWrapperFactory jobWrapperFactory,
                               @Value("${nakadi.jobs.timelineCleanup.runPeriodMs}") final int periodMs,
                               @Value("${nakadi.jobs.timelineCleanup.deletionDelayMs}") final long deletionDelayMs) {
@@ -41,6 +44,7 @@ public class TimelineCleanupJob {
         this.timelineDbRepository = timelineDbRepository;
         this.timelineService = timelineService;
         this.jobWrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, periodMs);
+        this.featureToggleService = featureToggleService;
         this.deletionDelayMs = deletionDelayMs;
     }
 
@@ -48,6 +52,10 @@ public class TimelineCleanupJob {
             fixedDelayString = "${nakadi.jobs.checkRunMs}",
             initialDelayString = "${random.int(${nakadi.jobs.checkRunMs})}")
     public void cleanupTimelines() {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            LOG.warn("Skipping timelines cleanup because write operations to the DB are disabled");
+            return;
+        }
         try {
             jobWrapper.runJobLocked(this::deleteTimelinesLocked);
         } catch (final RepositoryProblemException e) {
