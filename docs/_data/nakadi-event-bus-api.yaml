@@ -2693,7 +2693,7 @@ definitions:
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition
-            assign_type:
+            assignment_type:
               type: string
               description: |
                 - `direct`: partition can't be transferred to another stream until the stream is closed;
