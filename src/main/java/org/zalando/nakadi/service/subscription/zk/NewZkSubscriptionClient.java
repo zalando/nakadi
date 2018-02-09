@@ -5,13 +5,19 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -138,10 +144,44 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public SubscriptionCursorWithoutToken getOffset(final EventTypePartition key) throws NakadiRuntimeException {
+    public Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(final EventTypePartition[] keys)
+            throws NakadiRuntimeException {
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> result = new HashMap<>();
         try {
-            final String offset = new String(getCurator().getData().forPath(getOffsetPath(key)), UTF_8);
-            return new SubscriptionCursorWithoutToken(key.getEventType(), key.getPartition(), offset);
+            final CountDownLatch latch = new CountDownLatch(keys.length);
+            for (int idx = 0; idx < keys.length; ++idx) {
+                final EventTypePartition etp = keys[idx];
+                getCurator().getData().inBackground(((client, event) -> {
+                    try {
+                        if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
+                            final SubscriptionCursorWithoutToken v = new SubscriptionCursorWithoutToken(
+                                    etp.getEventType(), etp.getPartition(), new String(event.getData(), UTF_8));
+                            synchronized (result) {
+                                result.put(etp, v);
+                            }
+                        } else {
+                            getLog().warn("Failed to get offset for etp {}, zk response code: {}",
+                                    etp, event.getResultCode());
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                })).forPath(getOffsetPath(etp));
+            }
+            if (latch.await(10, TimeUnit.SECONDS)) {
+                if (result.size() != keys.length) {
+                    throw new ServiceTemporarilyUnavailableException(
+                            "Failed to get offsets from zk, take a look in logs", null);
+                }
+                return result;
+            } else {
+                throw new MyNakadiRuntimeException1("Failed to wait until last offest is taken from zk");
+            }
+        } catch (MyNakadiRuntimeException1 e) {
+            throw e;
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new NakadiRuntimeException(e);
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }

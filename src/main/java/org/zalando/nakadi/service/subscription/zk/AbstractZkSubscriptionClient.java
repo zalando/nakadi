@@ -201,25 +201,29 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final CountDownLatch latch = new CountDownLatch(zkSessions.size());
             final Map<String, Session> resultSessions = new HashMap<>();
             for (final String sessionId : zkSessions) {
-                getCurator().getData()
-                        .inBackground((client, event) -> {
-                            try {
-                                if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
-                                    synchronized (resultSessions) {
-                                        resultSessions.put(
-                                                sessionId,
-                                                new Session(
-                                                        sessionId,
-                                                        Integer.parseInt(new String(event.getData(), UTF_8))));
-                                    }
-                                }
-                            } finally {
-                                latch.countDown();
+                getCurator().getData().inBackground((client, event) -> {
+                    try {
+                        if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
+                            final Integer data = Integer.parseInt(new String(event.getData(), UTF_8));
+                            synchronized (resultSessions) {
+                                resultSessions.put(sessionId, new Session(sessionId, data));
                             }
-                        })
-                        .forPath(getSubscriptionPath("/sessions/" + sessionId));
+                        } else {
+                            getLog().warn(
+                                    "Failed to get session {} information from zk. status code: {}",
+                                    sessionId,
+                                    event.getResultCode());
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                }).forPath(getSubscriptionPath("/sessions/" + sessionId));
             }
             if (latch.await(10, TimeUnit.SECONDS)) {
+                if (zkSessions.size() != resultSessions.size()) {
+                    throw new ServiceTemporarilyUnavailableException(
+                            "Failed to query information about some sessions, take a look on the logs", null);
+                }
                 return resultSessions.values().toArray(new Session[resultSessions.size()]);
             } else {
                 throw new ServiceTemporarilyUnavailableException(

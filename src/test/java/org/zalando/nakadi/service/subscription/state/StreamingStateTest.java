@@ -64,10 +64,8 @@ public class StreamingStateTest {
         when(metricRegistry.register(any(), any())).thenReturn(null);
         when(contextMock.getMetricRegistry()).thenReturn(metricRegistry);
 
-        final SubscriptionCursorWithoutToken cursor = mock(SubscriptionCursorWithoutToken.class);
         zkMock = mock(ZkSubscriptionClient.class);
         when(contextMock.getZkClient()).thenReturn(zkMock);
-        when(zkMock.getOffset(any())).thenReturn(cursor);
 
         cursorConverter = mock(CursorConverter.class);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);

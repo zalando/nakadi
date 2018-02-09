@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -100,13 +101,16 @@ public interface ZkSubscriptionClient {
             EventTypePartition key, Runnable commitListener);
 
     /**
-     * Returns current offset value for specified partition key. Offset includes timeline and version data.
-     * The value that is stored there is a view value, so it will look like 001-0001-00000000000000000001
+     * Returns committed offset values for specified partition keys.
+     * Offsets include timeline and version data.
+     * The value that is stored there is a view value, so it will look like
+     * 001-0001-00000000000000000001
      *
-     * @param key Key to get offset for
+     * @param keys Key to get offset for
      * @return commit offset
      */
-    SubscriptionCursorWithoutToken getOffset(EventTypePartition key) throws NakadiRuntimeException;
+    Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(EventTypePartition[] keys)
+            throws NakadiRuntimeException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);

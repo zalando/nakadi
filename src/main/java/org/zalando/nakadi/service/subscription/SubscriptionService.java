@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -317,8 +318,12 @@ public class SubscriptionService {
             final Partition[] partitions,
             final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
             NoSuchEventTypeException, ServiceUnavailableException {
-        final List<SubscriptionCursorWithoutToken> views = Stream.of(partitions).map(
-                partition -> client.getOffset(partition.getKey()))
+
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
+                Stream.of(partitions).map(Partition::getKey).toArray(EventTypePartition[]::new));
+
+        final List<SubscriptionCursorWithoutToken> views = Stream.of(partitions)
+                .map(partition -> committed.get(partition.getKey()))
                 .collect(Collectors.toList());
         return converter.convert(views);
     }

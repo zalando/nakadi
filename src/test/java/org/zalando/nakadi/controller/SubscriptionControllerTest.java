@@ -32,6 +32,7 @@ import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -40,7 +41,6 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -50,7 +50,9 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -236,8 +238,11 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
-        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
-                .thenReturn(currentOffset);
+        final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> offsets = new HashMap<>();
+        offsets.put(etp, currentOffset);
+        when(zkSubscriptionClient.getOffsets(new EventTypePartition[]{etp}))
+                .thenReturn(offsets);
         when(eventTypeRepository.findByName(TIMELINE.getEventType()))
                 .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(
@@ -338,7 +343,7 @@ public class SubscriptionControllerTest {
         public Object resolveArgument(final MethodParameter parameter,
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
-                                      final WebDataBinderFactory binderFactory) throws Exception {
+                                      final WebDataBinderFactory binderFactory) {
             return new NakadiClient("nakadiClientId", "");
         }
     }

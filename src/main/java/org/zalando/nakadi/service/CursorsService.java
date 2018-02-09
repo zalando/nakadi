@@ -137,8 +137,11 @@ public class CursorsService {
         } catch (final SubscriptionNotInitializedException ex) {
             partitions = new Partition[]{};
         }
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
+                Stream.of(partitions).map(Partition::getKey).toArray(EventTypePartition[]::new));
+
         for (final Partition p : partitions) {
-            cursorsListBuilder.add(zkSubscriptionClient.getOffset(p.getKey()));
+            cursorsListBuilder.add(positions.get(p.getKey()));
         }
         return cursorsListBuilder.build();
     }
