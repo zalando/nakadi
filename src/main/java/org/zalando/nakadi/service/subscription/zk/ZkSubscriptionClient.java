@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public interface ZkSubscriptionClient {
 
@@ -165,17 +166,22 @@ public interface ZkSubscriptionClient {
             throws OperationTimeoutException, ZookeeperException;
 
     class Topology {
+        @JsonProperty("partitions")
         private final Partition[] partitions;
         // Each topology is based on a list of sessions, that it was built for.
         // In case, when list of sessions wasn't changed, one should not actually perform rebalance, cause nothing have
         // changed.
+        @Nullable
+        @JsonProperty("sessions_hash")
         private final String sessionsHash;
-        private final int version;
+        @Nullable
+        @JsonProperty("version")
+        private final Integer version;
 
         public Topology(
                 @JsonProperty("partitions") final Partition[] partitions,
                 @Nullable @JsonProperty("sessions_hash") final String sessionsHash,
-                @JsonProperty("version") final int version) {
+                @Nullable @JsonProperty("version") final Integer version) {
             this.partitions = partitions;
             this.sessionsHash = sessionsHash;
             this.version = version;
@@ -200,7 +206,7 @@ public interface ZkSubscriptionClient {
                 }
                 resultPartitions[selectedIdx] = newValue;
             }
-            return new Topology(resultPartitions, newHash, version + 1);
+            return new Topology(resultPartitions, newHash, Optional.ofNullable(version).orElse(0) + 1);
         }
 
         @Override
@@ -210,6 +216,25 @@ public interface ZkSubscriptionClient {
                     ", sessionsHash=" + sessionsHash +
                     ", version=" + version +
                     '}';
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final Topology topology = (Topology) o;
+            return Objects.equals(version, topology.version) &&
+                    Arrays.equals(partitions, topology.partitions) &&
+                    Objects.equals(sessionsHash, topology.sessionsHash);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sessionsHash, version);
         }
 
         private static final ThreadLocal<MessageDigest> HASH_DIGEST = new ThreadLocal<>();

@@ -19,13 +19,13 @@ import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -186,7 +187,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final Session[] listSessions() {
         getLog().info("fetching sessions information");
-        final List<Session> sessions = new ArrayList<>();
         final List<String> zkSessions;
         try {
             zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
@@ -197,12 +197,39 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         }
 
         try {
+
+            final CountDownLatch latch = new CountDownLatch(zkSessions.size());
+            final Map<String, Session> resultSessions = new HashMap<>();
             for (final String sessionId : zkSessions) {
-                final int weight = Integer.parseInt(new String(getCurator().getData()
-                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
-                sessions.add(new Session(sessionId, weight));
+                getCurator().getData()
+                        .inBackground((client, event) -> {
+                            try {
+                                if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
+                                    synchronized (resultSessions) {
+                                        resultSessions.put(
+                                                sessionId,
+                                                new Session(
+                                                        sessionId,
+                                                        Integer.parseInt(new String(event.getData(), UTF_8))));
+                                    }
+                                }
+                            } finally {
+                                latch.countDown();
+                            }
+                        })
+                        .forPath(getSubscriptionPath("/sessions/" + sessionId));
             }
-            return sessions.toArray(new Session[sessions.size()]);
+            if (latch.await(10, TimeUnit.SECONDS)) {
+                return resultSessions.values().toArray(new Session[resultSessions.size()]);
+            } else {
+                throw new ServiceTemporarilyUnavailableException(
+                        "Failed to finish waiting for sessions list from zk", null);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new NakadiRuntimeException(e);
+        } catch (MyNakadiRuntimeException1 e) {
+            throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }

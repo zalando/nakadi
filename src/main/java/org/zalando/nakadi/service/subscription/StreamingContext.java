@@ -270,10 +270,13 @@ public class StreamingContext implements SubscriptionStreamer {
                 final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
 
                 if (!topology.isSameHash(newHash)) {
+                    log.info("Performing rebalance, hash changed: {}", newHash);
                     final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), topology.getPartitions());
                     if (changeset.length > 0) {
                         zkClient.updatePartitionsConfiguration(newHash, changeset);
                     }
+                } else {
+                    log.info("Skipping rebalance, because hash is the same: {}", newHash);
                 }
             });
         }
