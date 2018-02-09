@@ -43,6 +43,7 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
+import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
@@ -272,7 +273,7 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
         final List<NakadiCursor> committedPositions;
         try {
-            committedPositions = loadCommittedPositions(subscriptionNode, client);
+            committedPositions = loadCommittedPositions(subscriptionNode.getPartitions(), client);
         } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
                 ServiceUnavailableException e) {
             throw new ServiceTemporarilyUnavailableException(e);
@@ -313,10 +314,10 @@ public class SubscriptionService {
     }
 
     private List<NakadiCursor> loadCommittedPositions(
-            final ZkSubscriptionNode subscriptionNode,
+            final Partition[] partitions,
             final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
             NoSuchEventTypeException, ServiceUnavailableException {
-        final List<SubscriptionCursorWithoutToken> views = Stream.of(subscriptionNode.getPartitions()).map(
+        final List<SubscriptionCursorWithoutToken> views = Stream.of(partitions).map(
                 partition -> client.getOffset(partition.getKey()))
                 .collect(Collectors.toList());
         return converter.convert(views);

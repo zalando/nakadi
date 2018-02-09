@@ -81,15 +81,16 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 null,
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
-        final Topology topology = new Topology(partitions, 0);
+        final Topology topology = new Topology(partitions, "", 0);
         getLog().info("Generating topology {}", topology);
         return objectMapper.writeValueAsBytes(topology);
     }
 
     @Override
-    public void updatePartitionsConfiguration(final Partition[] partitions) throws NakadiRuntimeException,
+    public void updatePartitionsConfiguration(
+            final String newSessionsHash, final Partition[] partitions) throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
-        final Topology newTopology = readTopology().withUpdatedPartitions(partitions);
+        final Topology newTopology = getTopology().withUpdatedPartitions(newSessionsHash, partitions);
         try {
             getLog().info("Updating topology to {}", newTopology);
             getCurator().setData().forPath(
@@ -100,7 +101,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
-    private Topology readTopology() throws NakadiRuntimeException,
+    @Override
+    public Topology getTopology() throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
         try {
             return parseTopology(getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY)));
@@ -131,11 +133,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
 
-    @Override
-    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException {
-        return readTopology().getPartitions();
-    }
-
     protected String getOffsetPath(final EventTypePartition etp) {
         return getSubscriptionPath("/offsets/" + etp.getEventType() + "/" + etp.getPartition());
     }
@@ -154,7 +151,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
             throws NakadiRuntimeException, SubscriptionNotInitializedException {
         getLog().info("session " + sessionId + " releases partitions " + partitions);
-        final Topology topology = readTopology();
+        final Topology topology = getTopology();
 
         final List<Partition> changeSet = new ArrayList<>();
         for (final EventTypePartition etp : partitions) {
@@ -170,7 +167,10 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             }
         }
         if (!changeSet.isEmpty()) {
-            updatePartitionsConfiguration(changeSet.toArray(new Partition[changeSet.size()]));
+            // The list of sessions didn't change, therefore one should not update sessionsHash.
+            updatePartitionsConfiguration(
+                    topology.getSessionsHash(),
+                    changeSet.toArray(new Partition[changeSet.size()]));
         }
     }
 

@@ -94,7 +94,7 @@ public class StreamingStateTest {
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
         final ZkSubscription topologySubscription = mock(ZkSubscription.class);
         Mockito.when(topologySubscription.getData())
-                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, 1));
+                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, null, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();

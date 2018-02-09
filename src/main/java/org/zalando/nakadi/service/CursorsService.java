@@ -107,7 +107,8 @@ public class CursorsService {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);
         }
 
-        final Map<EventTypePartition, String> partitionSessions = Stream.of(subscriptionClient.listPartitions())
+        final Map<EventTypePartition, String> partitionSessions = Stream
+                .of(subscriptionClient.getTopology().getPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Partition::getSession));
         for (final NakadiCursor cursor : cursors) {
             final EventTypePartition etPartition = cursor.getEventTypePartition();
@@ -132,7 +133,7 @@ public class CursorsService {
 
         Partition[] partitions;
         try {
-            partitions = zkSubscriptionClient.listPartitions();
+            partitions = zkSubscriptionClient.getTopology().getPartitions();
         } catch (final SubscriptionNotInitializedException ex) {
             partitions = new Partition[]{};
         }

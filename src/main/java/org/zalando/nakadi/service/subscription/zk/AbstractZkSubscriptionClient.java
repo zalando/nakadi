@@ -129,10 +129,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         // First step - check that state node was already written
         try {
             final String state = new String(getCurator().getData().forPath(getSubscriptionPath("/state")), UTF_8);
-            if (!state.equals(STATE_INITIALIZED)) {
-                return false;
-            }
-            return true;
+            return state.equals(STATE_INITIALIZED);
         } catch (final KeeperException.NoNodeException ex) {
             return false;
         } catch (final Exception e) {
@@ -324,7 +321,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
+    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener) {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
         return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
                 getCurator(), listener, getSubscriptionPath("/sessions"));
@@ -344,7 +341,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
         try {
             runLocked(() -> {
-                subscriptionNode.setPartitions(listPartitions());
+                subscriptionNode.setPartitions(getTopology().getPartitions());
                 subscriptionNode.setSessions(listSessions());
             });
         } catch (final NakadiRuntimeException ex) {

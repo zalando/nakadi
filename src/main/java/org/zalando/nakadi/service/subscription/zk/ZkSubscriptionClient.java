@@ -1,21 +1,27 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public interface ZkSubscriptionClient {
 
@@ -54,7 +60,7 @@ public interface ZkSubscriptionClient {
     /**
      * Updates specified partitions in zk.
      */
-    void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException,
+    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
             SubscriptionNotInitializedException;
 
     /**
@@ -71,7 +77,7 @@ public interface ZkSubscriptionClient {
      *
      * @return list of partitions related to this subscription.
      */
-    Partition[] listPartitions() throws SubscriptionNotInitializedException, NakadiRuntimeException;
+    Topology getTopology() throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
      * Subscribes to changes of session list in /nakadi/subscriptions/{subscriptionId}/sessions.
@@ -160,12 +166,18 @@ public interface ZkSubscriptionClient {
 
     class Topology {
         private final Partition[] partitions;
+        // Each topology is based on a list of sessions, that it was built for.
+        // In case, when list of sessions wasn't changed, one should not actually perform rebalance, cause nothing have
+        // changed.
+        private final String sessionsHash;
         private final int version;
 
         public Topology(
                 @JsonProperty("partitions") final Partition[] partitions,
+                @Nullable @JsonProperty("sessions_hash") final String sessionsHash,
                 @JsonProperty("version") final int version) {
             this.partitions = partitions;
+            this.sessionsHash = sessionsHash;
             this.version = version;
         }
 
@@ -173,7 +185,7 @@ public interface ZkSubscriptionClient {
             return partitions;
         }
 
-        public Topology withUpdatedPartitions(final Partition[] partitions) {
+        public Topology withUpdatedPartitions(final String newHash, final Partition[] partitions) {
             final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
             for (final Partition newValue : partitions) {
                 int selectedIdx = -1;
@@ -188,15 +200,42 @@ public interface ZkSubscriptionClient {
                 }
                 resultPartitions[selectedIdx] = newValue;
             }
-            return new Topology(resultPartitions, version + 1);
+            return new Topology(resultPartitions, newHash, version + 1);
         }
 
         @Override
         public String toString() {
             return "Topology{" +
                     "partitions=" + Arrays.toString(partitions) +
+                    ", sessionsHash=" + sessionsHash +
                     ", version=" + version +
                     '}';
+        }
+
+        private static final ThreadLocal<MessageDigest> HASH_DIGEST = new ThreadLocal<>();
+
+        public static String calculateSessionsHash(final Collection<String> sessionIds)
+                throws ServiceTemporarilyUnavailableException {
+            if (HASH_DIGEST.get() == null) {
+                try {
+                    HASH_DIGEST.set(MessageDigest.getInstance("MD5"));
+                } catch (NoSuchAlgorithmException e) {
+                    throw new ServiceTemporarilyUnavailableException("hash algorithm not found", e);
+                }
+            }
+            final MessageDigest md = HASH_DIGEST.get();
+            md.reset();
+            sessionIds.stream().sorted().map(String::getBytes).forEach(md::update);
+            final byte[] digest = md.digest();
+            return Hex.encodeHexString(digest);
+        }
+
+        public boolean isSameHash(final String newHash) {
+            return Objects.equals(newHash, sessionsHash);
+        }
+
+        public String getSessionsHash() {
+            return sessionsHash;
         }
     }
 }

@@ -379,7 +379,7 @@ class StreamingState extends State {
 
     void recheckTopology() {
         // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
-        final Partition[] partitions = Stream.of(getZk().listPartitions())
+        final Partition[] partitions = Stream.of(getZk().getTopology().getPartitions())
                 .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
                 .toArray(Partition[]::new);
         if (refreshTopologyUnlocked(partitions)) {

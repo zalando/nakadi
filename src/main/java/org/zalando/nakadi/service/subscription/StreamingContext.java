@@ -264,11 +264,16 @@ public class StreamingContext implements SubscriptionStreamer {
     private void rebalance() {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
-            sessionListSubscription.getData();
+            final List<String> newSessions = sessionListSubscription.getData();
+            final String newHash = ZkSubscriptionClient.Topology.calculateSessionsHash(newSessions);
             zkClient.runLocked(() -> {
-                final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                if (changeset.length > 0) {
-                    zkClient.updatePartitionsConfiguration(changeset);
+                final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
+
+                if (!topology.isSameHash(newHash)) {
+                    final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), topology.getPartitions());
+                    if (changeset.length > 0) {
+                        zkClient.updatePartitionsConfiguration(newHash, changeset);
+                    }
                 }
             });
         }

@@ -60,7 +60,7 @@ public class StartingState extends State {
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         if (!subscriptionJustInitialized) {
             final Session[] sessions = getZk().listSessions();
-            final Partition[] partitions = getZk().listPartitions();
+            final Partition[] partitions = getZk().getTopology().getPartitions();
             if (sessions.length >= partitions.length) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
