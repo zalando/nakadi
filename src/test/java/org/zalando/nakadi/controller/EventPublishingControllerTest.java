@@ -24,8 +24,8 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
@@ -71,7 +71,7 @@ public class EventPublishingControllerTest {
     private BlacklistService blacklistService;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
@@ -196,7 +196,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any(Client.class));
+                .publish(any(), any());
 
         when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
 
@@ -216,7 +216,7 @@ public class EventPublishingControllerTest {
                         .put("app_hashed", "hashed-application-name")
                         .put("event_type", "my-topic")
                         .put("batch_size", 33)
-                        .put("number_of_events",3)).allowingExtraUnexpectedFields()));
+                        .put("number_of_events", 3)).allowingExtraUnexpectedFields()));
 
         assertThat(kpi.getInt("ms_spent"), is(notNullValue()));
     }
