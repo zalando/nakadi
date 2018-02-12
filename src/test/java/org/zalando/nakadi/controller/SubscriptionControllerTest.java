@@ -49,6 +49,7 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -233,7 +234,7 @@ public class SubscriptionControllerTest {
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
         final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
         zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
+        zkSubscriptionNode.setSessions(Arrays.asList(new Session("xz", 0)));
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
         final SubscriptionCursorWithoutToken currentOffset =
@@ -241,8 +242,7 @@ public class SubscriptionControllerTest {
         final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
         final Map<EventTypePartition, SubscriptionCursorWithoutToken> offsets = new HashMap<>();
         offsets.put(etp, currentOffset);
-        when(zkSubscriptionClient.getOffsets(new EventTypePartition[]{etp}))
-                .thenReturn(offsets);
+        when(zkSubscriptionClient.getOffsets(Collections.singleton(etp))).thenReturn(offsets);
         when(eventTypeRepository.findByName(TIMELINE.getEventType()))
                 .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(

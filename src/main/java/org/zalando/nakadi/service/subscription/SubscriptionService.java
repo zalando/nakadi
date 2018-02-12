@@ -317,10 +317,10 @@ public class SubscriptionService {
     private List<NakadiCursor> loadCommittedPositions(
             final Partition[] partitions,
             final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
-            NoSuchEventTypeException, ServiceUnavailableException {
+            NoSuchEventTypeException, ServiceUnavailableException, ServiceTemporarilyUnavailableException {
 
         final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
-                Stream.of(partitions).map(Partition::getKey).toArray(EventTypePartition[]::new));
+                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
 
         final List<SubscriptionCursorWithoutToken> views = Stream.of(partitions)
                 .map(partition -> committed.get(partition.getKey()))

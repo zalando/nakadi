@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -125,7 +126,7 @@ public class CursorsService {
     }
 
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId)
-            throws NakadiException {
+            throws NakadiException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".get_cursors");
@@ -138,7 +139,7 @@ public class CursorsService {
             partitions = new Partition[]{};
         }
         final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
-                Stream.of(partitions).map(Partition::getKey).toArray(EventTypePartition[]::new));
+                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
 
         for (final Partition p : partitions) {
             cursorsListBuilder.add(positions.get(p.getKey()));

@@ -434,7 +434,7 @@ class StreamingState extends State {
         if (!newAssignedPartitions.isEmpty()) {
             modified = true;
             final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = getZk().getOffsets(
-                    newAssignedPartitions.stream().map(Partition::getKey).toArray(EventTypePartition[]::new));
+                    newAssignedPartitions.stream().map(Partition::getKey).collect(Collectors.toList()));
             newAssignedPartitions.forEach(p -> this.addToStreaming(p, committed));
         }
         // 5. Check if something can be released right now

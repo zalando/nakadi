@@ -70,7 +70,8 @@ public interface ZkSubscriptionClient {
      *
      * @return List of existing sessions.
      */
-    Session[] listSessions() throws SubscriptionNotInitializedException;
+    Collection<Session> listSessions()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException;
 
     boolean isActiveSession(String streamId) throws ServiceUnavailableException;
 
@@ -87,7 +88,7 @@ public interface ZkSubscriptionClient {
      *
      * @param listener method to call on any change of client list.
      */
-    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws Exception;
+    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws NakadiRuntimeException;
 
     /**
      * Subscribe for topology changes.
@@ -109,7 +110,7 @@ public interface ZkSubscriptionClient {
      * @param keys Key to get offset for
      * @return commit offset
      */
-    Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(EventTypePartition[] keys)
+    Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(Collection<EventTypePartition> keys)
             throws NakadiRuntimeException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
@@ -241,19 +242,14 @@ public interface ZkSubscriptionClient {
             return Objects.hash(sessionsHash, version);
         }
 
-        private static final ThreadLocal<MessageDigest> HASH_DIGEST = new ThreadLocal<>();
-
         public static String calculateSessionsHash(final Collection<String> sessionIds)
                 throws ServiceTemporarilyUnavailableException {
-            if (HASH_DIGEST.get() == null) {
-                try {
-                    HASH_DIGEST.set(MessageDigest.getInstance("MD5"));
-                } catch (NoSuchAlgorithmException e) {
-                    throw new ServiceTemporarilyUnavailableException("hash algorithm not found", e);
-                }
+            final MessageDigest md;
+            try {
+                md = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                throw new ServiceTemporarilyUnavailableException("hash algorithm not found", e);
             }
-            final MessageDigest md = HASH_DIGEST.get();
-            md.reset();
             sessionIds.stream().sorted().map(String::getBytes).forEach(md::update);
             final byte[] digest = md.digest();
             return Hex.encodeHexString(digest);
