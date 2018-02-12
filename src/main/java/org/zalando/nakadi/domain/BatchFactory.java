@@ -46,7 +46,7 @@ public class BatchFactory {
 
         while (curPos < end) {
             final char curChar = data.charAt(curPos);
-            if (shouldBeSkipped(curChar)) {
+            if (!insideQuote && shouldBeSkipped(curChar)) {
                 skipPositions.add(curPos - from);
             }
             if (!escaped && curChar == '"') {
@@ -158,7 +158,7 @@ public class BatchFactory {
     }
 
     private static boolean shouldBeSkipped(final char c) {
-        return (c == '\r' || c == '\n');
+        return (c == '\r' || c == '\n' || c ==' ' || c == '\t');
     }
 
     private static boolean isEmptyCharacter(final char c) {
