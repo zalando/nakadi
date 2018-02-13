@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TimelineView;

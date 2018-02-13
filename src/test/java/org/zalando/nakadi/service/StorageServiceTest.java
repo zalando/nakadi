@@ -23,12 +23,16 @@ public class StorageServiceTest {
 
     private StorageService storageService;
     private StorageDbRepository storageDbRepository;
+    private FeatureToggleService featureToggleService;
 
     @Before
     public void setUp() {
+        featureToggleService = mock(FeatureToggleService.class);
         storageDbRepository = mock(StorageDbRepository.class);
         storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
-                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class));
+                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class), featureToggleService);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
     }
 
     @Test

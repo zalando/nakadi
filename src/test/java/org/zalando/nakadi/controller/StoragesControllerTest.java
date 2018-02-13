@@ -12,7 +12,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 

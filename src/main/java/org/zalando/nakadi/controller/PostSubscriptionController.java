@@ -27,7 +27,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -38,9 +38,9 @@ import javax.ws.rs.core.Response;
 
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 
 @RestController

@@ -5,7 +5,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiConfig;
-import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.MessageDigest;
 import java.util.function.Supplier;

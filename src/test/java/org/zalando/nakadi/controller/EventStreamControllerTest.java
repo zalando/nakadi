@@ -44,7 +44,7 @@ import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 

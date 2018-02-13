@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.web.client.RestTemplate;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.stups.oauth2.spring.authorization.DefaultUserRolesProvider;
 import org.zalando.stups.oauth2.spring.server.DefaultAuthenticationExtractor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;

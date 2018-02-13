@@ -26,7 +26,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;

@@ -33,7 +33,7 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.MoreStatus;
@@ -50,7 +50,7 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 @RestController
 public class SubscriptionStreamController {

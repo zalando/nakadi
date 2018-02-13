@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.AdminResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -22,14 +23,17 @@ public class AdminService {
 
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AuthorizationService authorizationService;
+    private final FeatureToggleService featureToggleService;
     private final NakadiSettings nakadiSettings;
 
     @Autowired
     public AdminService(final AuthorizationDbRepository authorizationDbRepository,
                         final AuthorizationService authorizationService,
+                        final FeatureToggleService featureToggleService,
                         final NakadiSettings nakadiSettings) {
         this.authorizationDbRepository = authorizationDbRepository;
         this.authorizationService = authorizationService;
+        this.featureToggleService = featureToggleService;
         this.nakadiSettings = nakadiSettings;
     }
 
@@ -37,7 +41,11 @@ public class AdminService {
         return addDefaultAdmin(authorizationDbRepository.listAdmins());
     }
 
-    public void updateAdmins(final List<Permission> newAdmins) {
+    public void updateAdmins(final List<Permission> newAdmins) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot update admins: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         validateAllAdmins(newAdmins);
         final List<Permission> currentAdmins = authorizationDbRepository.listAdmins();
         final List<Permission> add = removeDefaultAdmin(newAdmins.stream()
