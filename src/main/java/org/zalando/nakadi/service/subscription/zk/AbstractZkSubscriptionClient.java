@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.apache.curator.framework.CuratorFramework;
@@ -170,8 +171,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         getLog().info("Registering session " + session);
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
-            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath,
-                    String.valueOf(session.getWeight()).getBytes(UTF_8));
+            final byte[] sessionData = serializeSession(session);
+            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, sessionData);
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -201,9 +202,10 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
         try {
             for (final String sessionId : zkSessions) {
-                final int weight = Integer.parseInt(new String(getCurator().getData()
-                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
-                sessions.add(new Session(sessionId, weight));
+                final byte[] sessionData = getCurator().getData()
+                        .forPath(getSubscriptionPath("/sessions/" + sessionId));
+                final Session session = deserializeSession(sessionId, sessionData);
+                sessions.add(session);
             }
             return sessions.toArray(new Session[sessions.size()]);
         } catch (final Exception e) {
@@ -425,4 +427,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throws Exception;
 
     protected abstract String getOffsetPath(EventTypePartition etp);
+
+    protected abstract byte[] serializeSession(Session session) throws JsonProcessingException;
+
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData)
+            throws IOException;
 }

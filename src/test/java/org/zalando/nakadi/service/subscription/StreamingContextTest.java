@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -37,7 +38,7 @@ public class StreamingContextTest {
         return new StreamingContext.Builder()
                 .setOut(output)
                 .setParameters(null)
-                .setSession(Session.generate(1))
+                .setSession(Session.generate(1, ImmutableList.of()))
                 .setTimer(null)
                 .setZkClient(null)
                 .setRebalancer(null)

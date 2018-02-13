@@ -1,11 +1,14 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
@@ -130,6 +133,20 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 getSubscriptionPath(NODE_TOPOLOGY));
     }
 
+    protected byte[] serializeSession(final Session session) throws JsonProcessingException {
+        return objectMapper.writeValueAsBytes(session);
+    }
+
+    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData) throws IOException {
+        try {
+            // old version of session: zkNode data is session weight
+            final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
+            return new Session(sessionId, weight, ImmutableList.of());
+        } catch (final NumberFormatException nfe) {
+            // new version of session: zkNode data is session object as json
+            return objectMapper.readValue(sessionZkData, Session.class);
+        }
+    }
 
     @Override
     public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException {

@@ -35,6 +35,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.service.subscription.StreamParametersTest.createStreamParameters;
 
 public class StreamingStateTest {
 
@@ -75,7 +76,7 @@ public class StreamingStateTest {
         final Client client = mock(Client.class);
         when(client.getClientId()).thenReturn("consumingAppId");
 
-        final StreamParameters spMock = StreamParameters.of(
+        final StreamParameters spMock = createStreamParameters(
                 1000,
                 100L,
                 100,

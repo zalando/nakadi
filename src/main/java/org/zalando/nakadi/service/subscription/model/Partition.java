@@ -24,6 +24,21 @@ public class Partition {
         }
     }
 
+//    public enum AssignmentType {
+//        AUTO("auto"),
+//        DIRECT("direct");
+//
+//        private final String description;
+//
+//        AssignmentType(final String description) {
+//            this.description = description;
+//        }
+//
+//        public String getDescription() {
+//            return description;
+//        }
+//    }
+
     @JsonProperty("event_type")
     private String eventType;
     @JsonProperty("partition")
@@ -34,6 +49,8 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
+//    @JsonProperty("assignment_type")
+//    private State assignmentType;
 
     public Partition() {
     }
@@ -121,6 +138,14 @@ public class Partition {
     public String getNextSession() {
         return nextSession;
     }
+
+//    public State getAssignmentType() {
+//        return assignmentType;
+//    }
+//
+//    public void setAssignmentType(final State assignmentType) {
+//        this.assignmentType = assignmentType;
+//    }
 
     @Nullable
     @JsonIgnore

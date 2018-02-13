@@ -85,7 +85,7 @@ public class SubscriptionStreamerFactory {
             final AtomicBoolean connectionReady,
             final BlacklistService blacklistService)
             throws InternalNakadiException, NoSuchEventTypeException {
-        final Session session = Session.generate(1);
+        final Session session = Session.generate(1, streamParameters.getPartitions());
         final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();
         // Create streaming context
         return new StreamingContext.Builder()

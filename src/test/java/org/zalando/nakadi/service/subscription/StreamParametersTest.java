@@ -1,9 +1,12 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
+import org.zalando.nakadi.view.UserStreamParameters;
 
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -17,14 +20,14 @@ import static org.mockito.Mockito.mock;
 
 public class StreamParametersTest {
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = WrongStreamParametersException.class)
     public void whenBatchLimitLowerOrEqualToZeroTheException() throws Exception {
-        StreamParameters.of(0, null, 0, null, null, 0, 0, mock(Client.class));
+        createStreamParameters(0, null, 0, null, null, 0, 0, mock(Client.class));
     }
 
     @Test
     public void checkParamsAreTransformedCorrectly() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, null, 10, 60L, null, 1000, 20,
+        final StreamParameters streamParameters = createStreamParameters(1, null, 10, 60L, null, 1000, 20,
                 mock(Client.class));
 
         assertThat(streamParameters.batchLimitEvents, equalTo(1));
@@ -36,14 +39,15 @@ public class StreamParametersTest {
 
     @Test
     public void whenStreamTimeoutOmittedThenItIsGenerated() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, null, 0, null, null, 0, 0, mock(Client.class));
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, null, 0, 0,
+                mock(Client.class));
 
         checkStreamTimeoutIsGeneratedCorrectly(streamParameters);
     }
 
     @Test
     public void whenStreamTimeoutIsGreaterThanMaxThenItIsGenerated() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, null, 0,
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0,
                 EventStreamConfig.MAX_STREAM_TIMEOUT + 1L, null, 0, 0, mock(Client.class));
 
         checkStreamTimeoutIsGeneratedCorrectly(streamParameters);
@@ -51,7 +55,8 @@ public class StreamParametersTest {
 
     @Test
     public void checkIsStreamLimitReached() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, 150L, 0, null, null, 0, 0, mock(Client.class));
+        final StreamParameters streamParameters = createStreamParameters(1, 150L, 0, null, null, 0, 0,
+                mock(Client.class));
 
         assertThat(streamParameters.isStreamLimitReached(140), is(false));
         assertThat(streamParameters.isStreamLimitReached(151), is(true));
@@ -60,15 +65,16 @@ public class StreamParametersTest {
 
     @Test
     public void checkIsKeepAliveLimitReached() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, null, 0, null, 5, 0, 0, mock(Client.class));
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, 5, 0, 0, mock(Client.class));
 
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 6, 12)), is(true));
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 4, 12)), is(false));
     }
 
     @Test
-    public void checkgetMessagesAllowedToSend() throws Exception {
-        final StreamParameters streamParameters = StreamParameters.of(1, 200L, 0, null, null, 0, 0, mock(Client.class));
+    public void checkGetMessagesAllowedToSend() throws Exception {
+        final StreamParameters streamParameters = createStreamParameters(1, 200L, 0, null, null, 0, 0,
+                mock(Client.class));
 
         assertThat(streamParameters.getMessagesAllowedToSend(50, 190), equalTo(10L));
         assertThat(streamParameters.getMessagesAllowedToSend(50, 120), equalTo(50L));
@@ -79,5 +85,19 @@ public class StreamParametersTest {
                 TimeUnit.SECONDS.toMillis((long) EventStreamConfig.MAX_STREAM_TIMEOUT)));
         assertThat(streamParameters.streamTimeoutMillis, greaterThanOrEqualTo(
                 TimeUnit.SECONDS.toMillis((long) EventStreamConfig.MAX_STREAM_TIMEOUT - 1200)));
+    }
+
+    public static StreamParameters createStreamParameters(final int batchLimitEvents,
+                                                          final Long streamLimitEvents,
+                                                          final int batchTimeoutSeconds,
+                                                          final Long streamTimeoutSeconds,
+                                                          final Integer batchKeepAliveIterations,
+                                                          final int maxUncommittedMessages,
+                                                          final long commitTimeoutSeconds,
+                                                          final Client client) throws UnprocessableEntityException {
+        final UserStreamParameters userParams = new UserStreamParameters(batchLimitEvents, streamLimitEvents,
+                batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations, maxUncommittedMessages,
+                ImmutableList.of());
+        return StreamParameters.of(userParams, commitTimeoutSeconds, client);
     }
 }
