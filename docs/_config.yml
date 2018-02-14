@@ -5,6 +5,7 @@ url: ""
 collections:
   - documentation
   - api
+  - concepts
 
 # Build settings
 markdown: kramdown
