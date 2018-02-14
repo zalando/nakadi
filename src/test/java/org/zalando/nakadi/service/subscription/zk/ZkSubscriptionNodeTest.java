@@ -17,12 +17,12 @@ public class ZkSubscriptionNodeTest {
 
     @Before
     public void before() {
-        final Partition[] partitions = ImmutableList.of(
+        final List<Partition> partitions = ImmutableList.of(
                 new Partition("et1", "0", "stream1", null, Partition.State.ASSIGNED),
                 new Partition("et1", "1", "stream2", "stream4", Partition.State.REASSIGNING),
                 new Partition("et2", "0", "stream3", null, Partition.State.UNASSIGNED),
                 new Partition("et2", "1", null, null, null)
-        ).toArray(new Partition[4]);
+        );
 
         final List<Session> sessions = ImmutableList.of(
                 new Session("stream1", 1),

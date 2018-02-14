@@ -57,13 +57,13 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Component
 public class SubscriptionService {
@@ -244,7 +244,7 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(e);
         }
 
-        final ZkSubscriptionNode zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
+        final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
 
         return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, topicPartitions);
     }
@@ -267,18 +267,15 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> loadStats(
             final Collection<EventType> eventTypes,
-            final ZkSubscriptionNode subscriptionNode,
+            final Optional<ZkSubscriptionNode> subscriptionNode,
             final ZkSubscriptionClient client,
             final List<PartitionEndStatistics> stats)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
-        final List<NakadiCursor> committedPositions;
-        try {
-            committedPositions = loadCommittedPositions(subscriptionNode.getPartitions(), client);
-        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                ServiceUnavailableException e) {
-            throw new ServiceTemporarilyUnavailableException(e);
-        }
+
+        final Collection<NakadiCursor> committedPositions = subscriptionNode
+                .map(node -> loadCommittedPositions(node.getPartitions(), client))
+                .orElse(Collections.emptyList());
 
         for (final EventType eventType : eventTypes) {
             final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
@@ -300,13 +297,16 @@ public class SubscriptionService {
                         })
                         .orElse(null);
 
-                final String state = subscriptionNode.guessState(stat.getTimeline().getEventType(), stat.getPartition())
-                        .getDescription();
-                final String streamId = Optional.ofNullable(subscriptionNode.guessStream(
-                        stat.getTimeline().getEventType(), stat.getPartition())).orElse("");
+                final Partition.State state = subscriptionNode
+                        .map(node -> node.guessState(stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse(Partition.State.UNASSIGNED);
+
+                final String streamId = subscriptionNode
+                        .map(node -> node.guessStream(stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse("");
 
                 resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(), state, distance, streamId));
+                        lastPosition.getPartition(), state.getDescription(), distance, streamId));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
             result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
@@ -314,18 +314,19 @@ public class SubscriptionService {
         return result;
     }
 
-    private List<NakadiCursor> loadCommittedPositions(
-            final Partition[] partitions,
-            final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
-            NoSuchEventTypeException, ServiceUnavailableException, ServiceTemporarilyUnavailableException {
+    private Collection<NakadiCursor> loadCommittedPositions(
+            final Collection<Partition> partitions, final ZkSubscriptionClient client)
+            throws ServiceTemporarilyUnavailableException {
+        try {
 
-        final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
-                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
+                    partitions.stream().map(Partition::getKey).collect(Collectors.toList()));
 
-        final List<SubscriptionCursorWithoutToken> views = Stream.of(partitions)
-                .map(partition -> committed.get(partition.getKey()))
-                .collect(Collectors.toList());
-        return converter.convert(views);
+            return converter.convert(committed.values());
+        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                ServiceUnavailableException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
+        }
     }
 
 }

@@ -26,6 +26,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,6 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -84,7 +86,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final void runLocked(final Runnable function) {
+    public final <T> T runLocked(final Callable<T> function) {
         try {
             Exception releaseException = null;
             if (null == lock) {
@@ -96,8 +98,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 throw new ServiceUnavailableException("Failed to acquire subscription lock within " +
                         SECONDS_TO_WAIT_FOR_LOCK + " seconds");
             }
+            final T result;
             try {
-                function.run();
+                result = function.call();
             } finally {
                 try {
                     lock.release();
@@ -109,6 +112,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             if (releaseException != null) {
                 throw releaseException;
             }
+            return result;
         } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
             throw e;
         } catch (final Exception e) {
@@ -215,9 +219,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                     }
                 }).forPath(zkKey);
             }
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new ServiceTemporarilyUnavailableException("Failed to wait for zk response", ex);
         } catch (Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
@@ -380,28 +381,15 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException {
-        final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
-        try {
-            if (null == getCurator().checkExists().forPath(getSubscriptionPath(""))) {
-                return subscriptionNode;
-            }
-        } catch (final Exception e) {
-            // Zk communication failure
-            throw new NakadiRuntimeException(e);
+    public final Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException {
+        if (!isSubscriptionCreatedAndInitialized()) {
+            return Optional.empty();
         }
 
-        try {
-            runLocked(() -> {
-                subscriptionNode.setPartitions(getTopology().getPartitions());
-                subscriptionNode.setSessions(listSessions());
-            });
-        } catch (final NakadiRuntimeException ex) {
-            // this line intentionally left to have the same behavior as it was before
-            getLog().info("No data about provided subscription {} in ZK", getSubscriptionPath(""));
-        }
-
-        return subscriptionNode;
+        return Optional.of(runLocked(() -> new ZkSubscriptionNode(
+                Arrays.asList(getTopology().getPartitions()),
+                listSessions())));
     }
 
     private void forceCommitOffsets(final List<SubscriptionCursorWithoutToken> cursors) throws Exception {

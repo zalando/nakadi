@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 
 public interface ZkSubscriptionClient {
 
@@ -34,7 +35,15 @@ public interface ZkSubscriptionClient {
      *
      * @param function Function to call in context of runLocked.
      */
-    void runLocked(Runnable function);
+    <T> T runLocked(Callable<T> function);
+
+    default void runLocked(final Runnable function) {
+        runLocked((Callable<Void>) () -> {
+            function.run();
+            return null;
+        });
+    }
+
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
@@ -141,7 +150,7 @@ public interface ZkSubscriptionClient {
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
+    Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
 
     /**
      * Subscribes to cursor reset event.

@@ -50,6 +50,7 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -230,13 +231,12 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
-        final Partition[] partitions = {
-                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
-        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
-        zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(Arrays.asList(new Session("xz", 0)));
+        final Collection<Partition> partitions = Collections.singleton(
+                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
+        final ZkSubscriptionNode zkSubscriptionNode =
+                new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
         final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
@@ -272,7 +272,8 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(
+                Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
