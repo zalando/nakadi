@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
+import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.web.client.RestTemplate;
@@ -116,6 +117,10 @@ public class AuthenticationConfig {
                 } else {
                     return localService.loadAuthentication(accessToken);
                 }
+            } catch (OAuth2Exception e) {
+                throw e;
+            } catch (Exception e) {
+                throw new OAuth2Exception(e.getMessage(), e);
             } finally {
                 context.stop();
             }
