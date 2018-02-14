@@ -45,9 +45,6 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Autowired
     private ResourceServerTokenServices tokenServices;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Value("${nakadi.oauth2.scopes.uid}")
     private String uidScope;
 
