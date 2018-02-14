@@ -36,10 +36,6 @@ public final class ZkSubscriptionNode {
         return partitions;
     }
 
-    public Collection<Session> getSessions() {
-        return sessions;
-    }
-
     public Partition.State guessState(final String eventType, final String partition) {
         return getPartitionWithActiveSession(eventType, partition)
                 .map(Partition::getState)

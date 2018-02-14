@@ -276,10 +276,10 @@ public class StreamingContext implements SubscriptionStreamer {
                     final Collection<Session> newSessionsUnderLock = zkClient.listSessions();
 
                     // after taking the lock list of sessions may change, so we need to update hash to correct value.
-                    final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
-                            newSessionsUnderLock.stream().map(Session::getId).collect(Collectors.toList()));
                     final Partition[] changeset = rebalancer.apply(newSessionsUnderLock, topology.getPartitions());
                     if (changeset.length > 0) {
+                        final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
+                                newSessionsUnderLock.stream().map(Session::getId).collect(Collectors.toList()));
                         zkClient.updatePartitionsConfiguration(actualHash, changeset);
                     }
                 } else {
