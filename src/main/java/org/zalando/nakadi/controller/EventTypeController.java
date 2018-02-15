@@ -113,11 +113,7 @@ public class EventTypeController {
 
         eventTypeService.create(eventType);
 
-        final HttpHeaders headers = new HttpHeaders();
-        if (!nakadiSettings.getWarnAllDataAccessMessage().isEmpty()) {
-            headers.add(HttpHeaders.WARNING, nakadiSettings.getWarnAllDataAccessMessage());
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).headers(headers).build();
+        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders()).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
@@ -154,11 +150,8 @@ public class EventTypeController {
         }
 
         eventTypeService.update(name, eventType);
-        final HttpHeaders headers = new HttpHeaders();
-        if (!nakadiSettings.getWarnAllDataAccessMessage().isEmpty()) {
-            headers.add(HttpHeaders.WARNING, nakadiSettings.getWarnAllDataAccessMessage());
-        }
-        return ResponseEntity.status(HttpStatus.OK).headers(headers).build();
+
+        return ResponseEntity.status(HttpStatus.OK).headers(generateWarningHeaders()).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
@@ -168,6 +161,15 @@ public class EventTypeController {
             return Responses.create(result.getProblem(), request);
         }
         return status(HttpStatus.OK).body(result.getValue());
+    }
+
+    private HttpHeaders generateWarningHeaders() {
+        final HttpHeaders headers = new HttpHeaders();
+        if (!nakadiSettings.getWarnAllDataAccessMessage().isEmpty()) {
+            headers.add(HttpHeaders.WARNING,
+                    String.format("299 nakadi \"%s\"", nakadiSettings.getWarnAllDataAccessMessage()));
+        }
+        return headers;
     }
 
     @ExceptionHandler(EventTypeDeletionException.class)
