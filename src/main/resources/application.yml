@@ -60,6 +60,7 @@ nakadi:
     batch.size: 5242880
     linger.ms: 0
     enable.auto.commit: false
+    fetch.min.bytes: 1024 # bytes
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
