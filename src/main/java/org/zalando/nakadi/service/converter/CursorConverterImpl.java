@@ -15,6 +15,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,7 +49,7 @@ public class CursorConverterImpl implements CursorConverter {
     }
 
     @Override
-    public List<NakadiCursor> convert(final List<SubscriptionCursorWithoutToken> cursors)
+    public List<NakadiCursor> convert(final Collection<SubscriptionCursorWithoutToken> cursors)
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
             InvalidCursorException {
         final LinkedHashMap<SubscriptionCursorWithoutToken, AtomicReference<NakadiCursor>> orderingMap =
@@ -57,7 +58,7 @@ public class CursorConverterImpl implements CursorConverter {
 
         final Map<Version, List<SubscriptionCursorWithoutToken>> mappedByVersions = cursors.stream()
                 .collect(Collectors.groupingBy(c -> guessVersion(c.getOffset())));
-        for (final Map.Entry<Version, List<SubscriptionCursorWithoutToken>> entry: mappedByVersions.entrySet()) {
+        for (final Map.Entry<Version, List<SubscriptionCursorWithoutToken>> entry : mappedByVersions.entrySet()) {
             final List<NakadiCursor> result = converters.get(entry.getKey()).convertBatched(entry.getValue());
             IntStream.range(0, entry.getValue().size())
                     .forEach(idx -> orderingMap.get(entry.getValue().get(idx)).set(result.get(idx)));

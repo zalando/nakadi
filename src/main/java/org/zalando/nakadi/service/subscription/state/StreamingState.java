@@ -379,7 +379,7 @@ class StreamingState extends State {
 
     void recheckTopology() {
         // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
-        final Partition[] partitions = Stream.of(getZk().listPartitions())
+        final Partition[] partitions = Stream.of(getZk().getTopology().getPartitions())
                 .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
                 .toArray(Partition[]::new);
         if (refreshTopologyUnlocked(partitions)) {
@@ -433,7 +433,9 @@ class StreamingState extends State {
                 .collect(Collectors.toList());
         if (!newAssignedPartitions.isEmpty()) {
             modified = true;
-            newAssignedPartitions.forEach(this::addToStreaming);
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = getZk().getOffsets(
+                    newAssignedPartitions.stream().map(Partition::getKey).collect(Collectors.toList()));
+            newAssignedPartitions.forEach(p -> this.addToStreaming(p, committed));
         }
         // 5. Check if something can be released right now
         if (modified) {
@@ -564,8 +566,9 @@ class StreamingState extends State {
         }
     }
 
-    private void addToStreaming(final Partition partition) {
-        final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(partition.getKey()));
+    private void addToStreaming(final Partition partition,
+                                final Map<EventTypePartition, SubscriptionCursorWithoutToken> cursorMap) {
+        final NakadiCursor cursor = createNakadiCursor(cursorMap.get(partition.getKey()));
         getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
         final ZkSubscription<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),

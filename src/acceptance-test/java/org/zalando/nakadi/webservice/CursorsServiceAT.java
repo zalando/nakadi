@@ -272,7 +272,8 @@ public class CursorsServiceAT extends BaseAT {
 
     private void setPartitions(final Partition[] partitions) throws Exception {
         final String topologyPath = subscriptionPath() + "/topology";
-        final byte[] topologyData = MAPPER.writeValueAsBytes(new NewZkSubscriptionClient.Topology(partitions, 0));
+        final byte[] topologyData = MAPPER.writeValueAsBytes(
+                new NewZkSubscriptionClient.Topology(partitions, null, 0));
         if (null == CURATOR.checkExists().forPath(topologyPath)) {
             CURATOR.create().forPath(topologyPath, topologyData);
         } else {

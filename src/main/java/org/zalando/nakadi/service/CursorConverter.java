@@ -10,6 +10,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -31,7 +32,7 @@ public interface CursorConverter {
     NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
 
-    List<NakadiCursor> convert(List<SubscriptionCursorWithoutToken> cursor) throws
+    List<NakadiCursor> convert(Collection<SubscriptionCursorWithoutToken> cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
 
 
