@@ -66,6 +66,8 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
             }
         } catch (final KeeperException.NoNodeException nne) {
             LOG.debug("Feature {} was already disabled", feature.getFeature().getId());
+        } catch (final KeeperException.NodeExistsException nne) {
+            LOG.debug("Feature {} was already enabled", feature.getFeature().getId());
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while accessing zk", e);
         }

@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Objects;
 
 public class Partition {
     public enum State {
@@ -144,22 +145,17 @@ public class Partition {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
-        final Partition that = (Partition) o;
-        return eventType.equals(that.eventType)
-                && partition.equals(that.partition)
-                && (session != null ? session.equals(that.session) : that.session == null
-                && (nextSession != null ? nextSession.equals(that.nextSession) : that.nextSession == null
-                && state == that.state));
+        final Partition partition1 = (Partition) o;
+        return Objects.equals(eventType, partition1.eventType) &&
+                Objects.equals(partition, partition1.partition) &&
+                Objects.equals(session, partition1.session) &&
+                Objects.equals(nextSession, partition1.nextSession) &&
+                state == partition1.state;
     }
 
     @Override
     public int hashCode() {
-        int result = eventType.hashCode();
-        result = 31 * result + partition.hashCode();
-        result = 31 * result + (session != null ? session.hashCode() : 0);
-        result = 31 * result + (nextSession != null ? nextSession.hashCode() : 0);
-        result = 31 * result + state.hashCode();
-        return result;
+
+        return Objects.hash(eventType, partition);
     }
 }

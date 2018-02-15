@@ -20,13 +20,14 @@ import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -35,8 +36,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -47,6 +52,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     protected static final String NODE_TOPOLOGY = "/topology";
     public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
+    private static final int MAX_ZK_RESPONSE_SECONDS = 5;
 
     private final String subscriptionId;
     private final CuratorFramework curatorFramework;
@@ -81,7 +87,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final void runLocked(final Runnable function) {
+    public final <T> T runLocked(final Callable<T> function) {
         try {
             Exception releaseException = null;
             if (null == lock) {
@@ -93,8 +99,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 throw new ServiceUnavailableException("Failed to acquire subscription lock within " +
                         SECONDS_TO_WAIT_FOR_LOCK + " seconds");
             }
+            final T result;
             try {
-                function.run();
+                result = function.call();
             } finally {
                 try {
                     lock.release();
@@ -106,6 +113,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             if (releaseException != null) {
                 throw releaseException;
             }
+            return result;
         } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
             throw e;
         } catch (final Exception e) {
@@ -130,10 +138,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         // First step - check that state node was already written
         try {
             final String state = new String(getCurator().getData().forPath(getSubscriptionPath("/state")), UTF_8);
-            if (!state.equals(STATE_INITIALIZED)) {
-                return false;
-            }
-            return true;
+            return state.equals(STATE_INITIALIZED);
         } catch (final KeeperException.NoNodeException ex) {
             return false;
         } catch (final Exception e) {
@@ -187,10 +192,60 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         }
     }
 
+    protected <K, V> Map<K, V> loadDataAsync(final Collection<K> keys,
+                                             final Function<K, String> keyConverter,
+                                             final BiFunction<K, byte[], V> valueConverter)
+            throws ServiceTemporarilyUnavailableException, NakadiRuntimeException {
+        final Map<K, V> result = new HashMap<>();
+        final CountDownLatch latch = new CountDownLatch(keys.size());
+        try {
+            for (final K key : keys) {
+                final String zkKey = keyConverter.apply(key);
+                getCurator().getData().inBackground((client, event) -> {
+                    try {
+                        if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
+                            final V value = valueConverter.apply(key, event.getData());
+                            synchronized (result) {
+                                result.put(key, value);
+                            }
+                        } else {
+                            getLog().error(
+                                    "Failed to get {} data from zk. status code: {}",
+                                    zkKey, event.getResultCode());
+                        }
+                    } catch (RuntimeException ex) {
+                        getLog().error("Failed to memorize {} key value", key, ex);
+                    } finally {
+                        latch.countDown();
+                    }
+                }).forPath(zkKey);
+            }
+        } catch (Exception ex) {
+            throw new NakadiRuntimeException(ex);
+        }
+        try {
+            if (!latch.await(MAX_ZK_RESPONSE_SECONDS, TimeUnit.SECONDS)) {
+                throw new ServiceTemporarilyUnavailableException("Failed to wait for zk response", null);
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ServiceTemporarilyUnavailableException("Failed to wait for zk response", ex);
+        }
+        if (result.size() != keys.size()) {
+            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
+                    keys.stream()
+                            .filter(v -> !result.containsKey(v))
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(", "))
+                    + " to be in response", null);
+        }
+        return result;
+    }
+
     @Override
-    public final Session[] listSessions() {
+    public final Collection<Session> listSessions()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
         getLog().info("fetching sessions information");
-        final List<Session> sessions = new ArrayList<>();
         final List<String> zkSessions;
         try {
             zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
@@ -200,17 +255,21 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new NakadiRuntimeException(ex);
         }
 
-        try {
-            for (final String sessionId : zkSessions) {
-                final byte[] sessionData = getCurator().getData()
-                        .forPath(getSubscriptionPath("/sessions/" + sessionId));
-                final Session session = deserializeSession(sessionId, sessionData);
-                sessions.add(session);
-            }
-            return sessions.toArray(new Session[sessions.size()]);
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        }
+//        try {
+//            for (final String sessionId : zkSessions) {
+//                final int weight = Integer.parseInt(new String(getCurator().getData()
+//                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
+//                sessions.add(new Session(sessionId, weight));
+//            }
+//            return sessions.toArray(new Session[sessions.size()]);
+//        } catch (final Exception e) {
+//            throw new NakadiRuntimeException(e);
+//        }
+
+        return loadDataAsync(
+                zkSessions,
+                key -> getSubscriptionPath("/sessions/" + key),
+                (key, data) -> new Session(key, Integer.parseInt(new String(data, UTF_8)))).values();
     }
 
     @Override
@@ -326,35 +385,23 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener) throws Exception {
+    public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener)
+            throws NakadiRuntimeException {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
         return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
                 getCurator(), listener, getSubscriptionPath("/sessions"));
     }
 
     @Override
-    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException {
-        final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
-        try {
-            if (null == getCurator().checkExists().forPath(getSubscriptionPath(""))) {
-                return subscriptionNode;
-            }
-        } catch (final Exception e) {
-            // Zk communication failure
-            throw new NakadiRuntimeException(e);
+    public final Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException {
+        if (!isSubscriptionCreatedAndInitialized()) {
+            return Optional.empty();
         }
 
-        try {
-            runLocked(() -> {
-                subscriptionNode.setPartitions(listPartitions());
-                subscriptionNode.setSessions(listSessions());
-            });
-        } catch (final NakadiRuntimeException ex) {
-            // this line intentionally left to have the same behavior as it was before
-            getLog().info("No data about provided subscription {} in ZK", getSubscriptionPath(""));
-        }
-
-        return subscriptionNode;
+        return Optional.of(runLocked(() -> new ZkSubscriptionNode(
+                Arrays.asList(getTopology().getPartitions()),
+                listSessions())));
     }
 
     private void forceCommitOffsets(final List<SubscriptionCursorWithoutToken> cursors) throws Exception {
