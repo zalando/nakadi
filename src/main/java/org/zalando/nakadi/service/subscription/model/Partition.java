@@ -24,21 +24,6 @@ public class Partition {
         }
     }
 
-//    public enum AssignmentType {
-//        AUTO("auto"),
-//        DIRECT("direct");
-//
-//        private final String description;
-//
-//        AssignmentType(final String description) {
-//            this.description = description;
-//        }
-//
-//        public String getDescription() {
-//            return description;
-//        }
-//    }
-
     @JsonProperty("event_type")
     private String eventType;
     @JsonProperty("partition")
@@ -49,8 +34,6 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
-//    @JsonProperty("assignment_type")
-//    private State assignmentType;
 
     public Partition() {
     }
@@ -139,14 +122,6 @@ public class Partition {
         return nextSession;
     }
 
-//    public State getAssignmentType() {
-//        return assignmentType;
-//    }
-//
-//    public void setAssignmentType(final State assignmentType) {
-//        this.assignmentType = assignmentType;
-//    }
-
     @Nullable
     @JsonIgnore
     public String getSessionOrNextSession() {
@@ -159,5 +134,32 @@ public class Partition {
     @Override
     public String toString() {
         return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final Partition that = (Partition) o;
+        return eventType.equals(that.eventType)
+                && partition.equals(that.partition)
+                && (session != null ? session.equals(that.session) : that.session == null
+                && (nextSession != null ? nextSession.equals(that.nextSession) : that.nextSession == null
+                && state == that.state));
+    }
+
+    @Override
+    public int hashCode() {
+        int result = eventType.hashCode();
+        result = 31 * result + partition.hashCode();
+        result = 31 * result + (session != null ? session.hashCode() : 0);
+        result = 31 * result + (nextSession != null ? nextSession.hashCode() : 0);
+        result = 31 * result + state.hashCode();
+        return result;
     }
 }

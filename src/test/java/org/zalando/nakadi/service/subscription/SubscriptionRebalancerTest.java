@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -7,6 +8,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyArray;
 import static org.junit.Assert.assertArrayEquals;
@@ -45,6 +47,48 @@ public class SubscriptionRebalancerTest {
         assertArrayEquals(
                 new int[]{26, 25, 50},
                 SubscriptionRebalancer.splitByWeight(101, new int[]{1, 1, 2}));
+    }
+
+    @Test
+    public void directlyRequestedPartitionsAreCaptured() {
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
+                new Session[]{
+                        new Session("s1", 1),
+                        new Session("s2", 1),
+                        new Session("s3", 1, ImmutableList.of(
+                                new EventTypePartition("et1", "p1"),
+                                new EventTypePartition("et1", "p4")))},
+                new Partition[]{
+                        new Partition("et1", "p1", "s7", null, ASSIGNED),
+                        new Partition("et1", "p2", "s7", null, ASSIGNED),
+                        new Partition("et1", "p3", "s7", null, ASSIGNED),
+                        new Partition("et1", "p4", "s7", null, ASSIGNED)});
+
+        assertEquals(newHashSet(changeset), newHashSet(
+                new Partition("et1", "p1", "s3", null, ASSIGNED),
+                new Partition("et1", "p2", "s1", null, ASSIGNED),
+                new Partition("et1", "p3", "s2", null, ASSIGNED),
+                new Partition("et1", "p4", "s3", null, ASSIGNED)));
+    }
+
+    @Test
+    public void directlyRequestedPartitionsAreTransferred() {
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
+                new Session[]{
+                        new Session("s1", 1),
+                        new Session("s2", 1),
+                        new Session("s3", 1, ImmutableList.of(
+                                new EventTypePartition("et1", "p1"),
+                                new EventTypePartition("et1", "p4")))},
+                new Partition[]{
+                        new Partition("et1", "p1", "s1", null, ASSIGNED),
+                        new Partition("et1", "p2", "s1", null, ASSIGNED),
+                        new Partition("et1", "p3", "s2", null, ASSIGNED),
+                        new Partition("et1", "p4", "s2", null, ASSIGNED)});
+
+        assertEquals(newHashSet(changeset), newHashSet(
+                new Partition("et1", "p1", "s1", "s3", REASSIGNING),
+                new Partition("et1", "p4", "s2", "s3", REASSIGNING)));
     }
 
     @Test

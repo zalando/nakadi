@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.Lists;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,7 +23,7 @@ class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Parti
         final List<String> activeSessions = Stream.of(sessions)
                 .map(Session::getId)
                 .collect(Collectors.toList());
-        final List<Partition> partitionsLeft = Arrays.asList(currentPartitions);
+        final List<Partition> partitionsLeft = Lists.newArrayList(currentPartitions);
         final List<Partition> changedPartitions = new ArrayList<>();
 
         final List<Session> sessionsWithSpecifiedPartitions = Stream.of(sessions)
@@ -40,9 +40,9 @@ class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Parti
                         .findFirst()
                         .orElseThrow(() -> new RebalanceConflictException(
                                 "Two existing sessions request the same partition: " + requestedPartition));
-                partition.moveToSessionId(session.getId(), activeSessions);
                 partitionsLeft.remove(partition);
-                changedPartitions.add(partition);
+                final Partition movedPartition = partition.moveToSessionId(session.getId(), activeSessions);
+                changedPartitions.add(movedPartition);
             }
         }
 
@@ -71,9 +71,9 @@ class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Parti
                 activeSessionIds.stream().mapToInt(activeSessionWeights::get).toArray());
 
         // Stage 1. Select partitions that are not assigned to any EXISTING session.
-        final Set<Partition> toRebalance = Stream.of(currentPartitions)
+        final List<Partition> toRebalance = Stream.of(currentPartitions)
                 .filter(p -> p.mustBeRebalanced(activeSessionIds))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
 
         // State 2. Remove partitions from sessions that have too many of them.
         // 2.1. collect information per session.
