@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.AdminResource;
+import org.zalando.nakadi.domain.AllDataAccessResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -17,6 +18,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
+import static org.zalando.nakadi.domain.AllDataAccessResource.ALL_DATA_ACCESS_RESOURCE;
 
 @Service
 public class AdminService {
@@ -58,6 +60,13 @@ public class AdminService {
     public boolean isAdmin(final AuthorizationService.Operation operation) {
         final List<Permission> permissions = getAdmins();
         final Resource resource = new AdminResource(ADMIN_RESOURCE,
+                ResourceAuthorization.fromPermissionsList(permissions));
+        return authorizationService.isAuthorized(operation, resource);
+    }
+
+    public boolean hasAllDataAccess(final AuthorizationService.Operation operation) {
+        final List<Permission> permissions = authorizationDbRepository.listAllDataAccess();
+        final Resource resource = new AllDataAccessResource(ALL_DATA_ACCESS_RESOURCE,
                 ResourceAuthorization.fromPermissionsList(permissions));
         return authorizationService.isAuthorized(operation, resource);
     }

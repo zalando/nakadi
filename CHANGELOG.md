@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Applications with READ rights to all_data_access can read from all event types, regardless of the event types' 
+authorization policy
+
 ## [2.5.5] - 2018-01-23
 
 ### Changed

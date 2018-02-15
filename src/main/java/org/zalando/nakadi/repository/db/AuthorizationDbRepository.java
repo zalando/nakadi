@@ -15,6 +15,9 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 
 import java.util.List;
 
+import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
+import static org.zalando.nakadi.domain.AllDataAccessResource.ALL_DATA_ACCESS_RESOURCE;
+
 @DB
 @Repository
 public class AuthorizationDbRepository extends AbstractDbRepository {
@@ -29,15 +32,23 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
     }
 
     public List<Permission> listAdmins() throws RepositoryProblemException {
-        final List<Permission> admins;
+        return listAllFromResource(ADMIN_RESOURCE);
+    }
+
+    public List<Permission> listAllDataAccess() throws RepositoryProblemException {
+        return listAllFromResource(ALL_DATA_ACCESS_RESOURCE);
+    }
+
+    private List<Permission> listAllFromResource(final String resource) {
+        final List<Permission> permissions;
         try {
-            admins = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource='nakadi'",
-                    permissionRowMapper);
+            permissions = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource=?",
+                    new Object[] { resource }, permissionRowMapper);
         } catch (final DataAccessException e) {
-            throw new RepositoryProblemException("Error occurred when fetching administrators", e);
+            throw new RepositoryProblemException("Error occurred when fetching permissions for ", e);
         }
 
-        return admins;
+        return permissions;
     }
 
     public void deletePermission(final Permission permission) {
