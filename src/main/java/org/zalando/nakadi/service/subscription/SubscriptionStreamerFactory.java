@@ -95,7 +95,7 @@ public class SubscriptionStreamerFactory {
                 .setSession(session)
                 .setTimer(executorService)
                 .setZkClient(zkClientFactory.createClient(subscription, loggingPath))
-                .setRebalancer(new ExactWeightRebalancer())
+                .setRebalancer(new SubscriptionRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setLoggingPath(loggingPath)
                 .setConnectionReady(connectionReady)

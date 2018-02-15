@@ -21,7 +21,7 @@ public interface ZkSubscriptionClient {
 
     /**
      * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining runLocked,
+     * Lock is created as an ephemeral node, so it will be deleted if nakadi goes down. After obtaining runLocked,
      * provided function will be called under subscription runLocked
      *
      * @param function Function to call in context of runLocked.

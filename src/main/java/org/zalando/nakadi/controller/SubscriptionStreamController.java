@@ -24,16 +24,17 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.MoreStatus;
@@ -116,8 +117,10 @@ public class SubscriptionStreamController {
                     if (ex instanceof AccessDeniedException) {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
                                 ((AccessDeniedException) ex).explain()));
-                    }
-                    if (ex instanceof NakadiException) {
+                    } else if (ex instanceof SubscriptionPartitionConflictException) {
+                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.CONFLICT,
+                                ex.getMessage()));
+                    } else if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
                     } else {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,

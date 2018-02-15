@@ -16,40 +16,40 @@ import static org.junit.Assert.assertTrue;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.ASSIGNED;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.REASSIGNING;
 
-public class ExactWeightRebalancerTest {
+public class SubscriptionRebalancerTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void splitByWeightShouldAcceptOnlyCorrectData1() {
-        ExactWeightRebalancer.splitByWeight(1, new int[]{1, 1});
+        SubscriptionRebalancer.splitByWeight(1, new int[]{1, 1});
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void splitByWeightShouldAcceptOnlyCorrectData2() {
-        ExactWeightRebalancer.splitByWeight(2, new int[]{1, 0});
+        SubscriptionRebalancer.splitByWeight(2, new int[]{1, 0});
     }
 
     @Test
     public void splitByWeightMustCorrectlyWorkOnDifferentValues() {
         assertArrayEquals(
                 new int[]{1, 1},
-                ExactWeightRebalancer.splitByWeight(2, new int[]{1, 1}));
+                SubscriptionRebalancer.splitByWeight(2, new int[]{1, 1}));
         assertArrayEquals(
                 new int[]{2, 1},
-                ExactWeightRebalancer.splitByWeight(3, new int[]{1, 1}));
+                SubscriptionRebalancer.splitByWeight(3, new int[]{1, 1}));
         assertArrayEquals(
                 new int[]{1, 2},
-                ExactWeightRebalancer.splitByWeight(3, new int[]{1, 2}));
+                SubscriptionRebalancer.splitByWeight(3, new int[]{1, 2}));
         assertArrayEquals(
                 new int[]{34, 33, 33},
-                ExactWeightRebalancer.splitByWeight(100, new int[]{1, 1, 1}));
+                SubscriptionRebalancer.splitByWeight(100, new int[]{1, 1, 1}));
         assertArrayEquals(
                 new int[]{26, 25, 50},
-                ExactWeightRebalancer.splitByWeight(101, new int[]{1, 1, 2}));
+                SubscriptionRebalancer.splitByWeight(101, new int[]{1, 1, 2}));
     }
 
     @Test
     public void rebalanceShouldHaveEmptyChangesetForBalancedData() {
-        final ExactWeightRebalancer rebalancer = new ExactWeightRebalancer();
+        final SubscriptionRebalancer rebalancer = new SubscriptionRebalancer();
 
         // 1. Data contains only assigned
         final Session[] sessions = new Session[]{
@@ -84,7 +84,7 @@ public class ExactWeightRebalancerTest {
 
     @Test
     public void rebalanceShouldRemoveDeadSessions() {
-        final Partition[] changeset = new ExactWeightRebalancer().apply(
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1)},
                 new Partition[]{
                         new Partition("0", "0", "0", null, ASSIGNED),
@@ -106,7 +106,7 @@ public class ExactWeightRebalancerTest {
 
     @Test
     public void rebalanceShouldMoveToReassigningState() {
-        final Partition[] changeset = new ExactWeightRebalancer().apply(
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),
@@ -125,7 +125,7 @@ public class ExactWeightRebalancerTest {
 
     @Test
     public void rebalanceShouldTakeRebalancingPartitions() {
-        final Partition[] changeset = new ExactWeightRebalancer().apply(
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),

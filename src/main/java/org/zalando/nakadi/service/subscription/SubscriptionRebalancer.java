@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -13,9 +15,51 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
+class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
+
     @Override
     public Partition[] apply(final Session[] sessions, final Partition[] currentPartitions) {
+
+        final List<String> activeSessions = Stream.of(sessions)
+                .map(Session::getId)
+                .collect(Collectors.toList());
+        final List<Partition> partitionsLeft = Arrays.asList(currentPartitions);
+        final List<Partition> changedPartitions = new ArrayList<>();
+
+        final List<Session> sessionsWithSpecifiedPartitions = Stream.of(sessions)
+                .filter(s -> !s.getRequestedPartitions().isEmpty())
+                .collect(Collectors.toList());
+
+        // go through all sessions that directly requested partitions to stream
+        for (final Session session : sessionsWithSpecifiedPartitions) {
+            for (final EventTypePartition requestedPartition : session.getRequestedPartitions()) {
+
+                // find a partition that is requested and assign it to a session that requests it
+                final Partition partition = partitionsLeft.stream()
+                        .filter(p -> p.getKey().equals(requestedPartition))
+                        .findFirst()
+                        .orElseThrow(() -> new RebalanceConflictException(
+                                "Two existing sessions request the same partition: " + requestedPartition));
+                partition.moveToSessionId(session.getId(), activeSessions);
+                partitionsLeft.remove(partition);
+                changedPartitions.add(partition);
+            }
+        }
+
+        // for the rest of partitions/sessions perform a rebalance based on partitions count
+        final List<Session> autoBalanceSessions = Stream.of(sessions)
+                .filter(s -> s.getRequestedPartitions().isEmpty())
+                .collect(Collectors.toList());
+
+        final Partition[] partitionsChangedByAutoRebalance = rebalanceByWeight(
+                autoBalanceSessions.toArray(new Session[autoBalanceSessions.size()]),
+                partitionsLeft.toArray(new Partition[partitionsLeft.size()]));
+
+        changedPartitions.addAll(Arrays.asList(partitionsChangedByAutoRebalance));
+        return changedPartitions.toArray(new Partition[changedPartitions.size()]);
+    }
+
+    private Partition[] rebalanceByWeight(final Session[] sessions, final Partition[] currentPartitions) {
         final Map<String, Integer> activeSessionWeights = Stream.of(sessions)
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
@@ -44,8 +88,9 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
             while (toTake > 0) {
                 final List<Partition> candidates = partitions.get(sessionId);
                 final Partition toTakeItem = candidates.stream()
-                        .filter(p -> p.getState() == Partition.State.REASSIGNING).findAny().orElse(
-                        candidates.get(candidates.size() - 1));
+                        .filter(p -> p.getState() == Partition.State.REASSIGNING)
+                        .findAny()
+                        .orElse(candidates.get(candidates.size() - 1));
                 candidates.remove(toTakeItem);
                 toRebalance.add(toTakeItem);
                 toTake -= 1;
