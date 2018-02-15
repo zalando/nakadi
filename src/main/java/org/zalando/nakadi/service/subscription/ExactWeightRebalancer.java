@@ -5,6 +5,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,10 +14,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
+class ExactWeightRebalancer implements BiFunction<Collection<Session>, Partition[], Partition[]> {
     @Override
-    public Partition[] apply(final Session[] sessions, final Partition[] currentPartitions) {
-        final Map<String, Integer> activeSessionWeights = Stream.of(sessions)
+    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions) {
+        final Map<String, Integer> activeSessionWeights = sessions.stream()
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
         final List<String> activeSessionIds = activeSessionWeights.keySet().stream().sorted()
@@ -45,7 +46,7 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
                 final List<Partition> candidates = partitions.get(sessionId);
                 final Partition toTakeItem = candidates.stream()
                         .filter(p -> p.getState() == Partition.State.REASSIGNING).findAny().orElse(
-                        candidates.get(candidates.size() - 1));
+                                candidates.get(candidates.size() - 1));
                 candidates.remove(toTakeItem);
                 toRebalance.add(toTakeItem);
                 toTake -= 1;

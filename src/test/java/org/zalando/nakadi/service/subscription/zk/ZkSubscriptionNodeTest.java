@@ -6,6 +6,8 @@ import org.junit.Test;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import java.util.List;
+
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -15,19 +17,19 @@ public class ZkSubscriptionNodeTest {
 
     @Before
     public void before() {
-        final Partition[] partitions = ImmutableList.of(
+        final List<Partition> partitions = ImmutableList.of(
                 new Partition("et1", "0", "stream1", null, Partition.State.ASSIGNED),
                 new Partition("et1", "1", "stream2", "stream4", Partition.State.REASSIGNING),
                 new Partition("et2", "0", "stream3", null, Partition.State.UNASSIGNED),
                 new Partition("et2", "1", null, null, null)
-        ).toArray(new Partition[4]);
+        );
 
-        final Session[] sessions = ImmutableList.of(
+        final List<Session> sessions = ImmutableList.of(
                 new Session("stream1", 1),
                 new Session("stream2", 1),
                 new Session("stream3", 1),
                 new Session("stream4", 1)
-        ).toArray(new Session[4]);
+        );
 
         zkSubscriptionNode = new ZkSubscriptionNode(partitions, sessions);
     }

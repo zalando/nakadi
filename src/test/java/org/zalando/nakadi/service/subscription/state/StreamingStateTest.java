@@ -64,10 +64,8 @@ public class StreamingStateTest {
         when(metricRegistry.register(any(), any())).thenReturn(null);
         when(contextMock.getMetricRegistry()).thenReturn(metricRegistry);
 
-        final SubscriptionCursorWithoutToken cursor = mock(SubscriptionCursorWithoutToken.class);
         zkMock = mock(ZkSubscriptionClient.class);
         when(contextMock.getZkClient()).thenReturn(zkMock);
-        when(zkMock.getOffset(any())).thenReturn(cursor);
 
         cursorConverter = mock(CursorConverter.class);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
@@ -94,7 +92,7 @@ public class StreamingStateTest {
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
         final ZkSubscription topologySubscription = mock(ZkSubscription.class);
         Mockito.when(topologySubscription.getData())
-                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, 1));
+                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, null, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();

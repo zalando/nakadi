@@ -12,7 +12,6 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -50,7 +49,7 @@ public class StartingState extends State {
      * 1. Checks, that subscription node is present in zk. If not - creates it.
      * <p>
      * 2. If cursor reset is in progress it will switch to cleanup state.
-     * <p>
+     * <p>У
      * 3. Registers session.
      * <p>
      * 4. Switches to streaming state.
@@ -59,9 +58,8 @@ public class StartingState extends State {
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         if (!subscriptionJustInitialized) {
-            final Session[] sessions = getZk().listSessions();
-            final Partition[] partitions = getZk().listPartitions();
-            if (sessions.length >= partitions.length) {
+            final Partition[] partitions = getZk().getTopology().getPartitions();
+            if (getZk().listSessions().size() >= partitions.length) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
             }
