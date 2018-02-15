@@ -255,21 +255,16 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new NakadiRuntimeException(ex);
         }
 
-//        try {
-//            for (final String sessionId : zkSessions) {
-//                final int weight = Integer.parseInt(new String(getCurator().getData()
-//                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
-//                sessions.add(new Session(sessionId, weight));
-//            }
-//            return sessions.toArray(new Session[sessions.size()]);
-//        } catch (final Exception e) {
-//            throw new NakadiRuntimeException(e);
-//        }
-
         return loadDataAsync(
                 zkSessions,
                 key -> getSubscriptionPath("/sessions/" + key),
-                (key, data) -> new Session(key, Integer.parseInt(new String(data, UTF_8)))).values();
+                (key, data) -> {
+                    try {
+                        return deserializeSession(key, data);
+                    } catch (final IOException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                }).values();
     }
 
     @Override

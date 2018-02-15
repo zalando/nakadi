@@ -14,17 +14,18 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.groupingBy;
 
@@ -62,6 +63,7 @@ public class StartingState extends State {
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         if (!subscriptionJustInitialized) {
             // check if amount of streams <= the total amount of partitions
+            final Collection<Session> sessions = getZk().listSessions();
             final Partition[] partitions = getZk().getTopology().getPartitions();
             if (getZk().listSessions().size() >= partitions.length) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
@@ -70,7 +72,7 @@ public class StartingState extends State {
 
             // check if the requested partitions are not directly requested by another stream(s)
             final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
-            final List<EventTypePartition> conflictPartitions = Stream.of(sessions)
+            final List<EventTypePartition> conflictPartitions = sessions.stream()
                     .flatMap(s -> s.getRequestedPartitions().stream())
                     .filter(requestedPartitions::contains)
                     .collect(Collectors.toList());

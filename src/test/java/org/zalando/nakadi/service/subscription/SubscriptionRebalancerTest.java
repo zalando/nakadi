@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -52,12 +53,12 @@ public class SubscriptionRebalancerTest {
     @Test
     public void directlyRequestedPartitionsAreCaptured() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
-                new Session[]{
+                ImmutableList.of(
                         new Session("s1", 1),
                         new Session("s2", 1),
                         new Session("s3", 1, ImmutableList.of(
                                 new EventTypePartition("et1", "p1"),
-                                new EventTypePartition("et1", "p4")))},
+                                new EventTypePartition("et1", "p4")))),
                 new Partition[]{
                         new Partition("et1", "p1", "s7", null, ASSIGNED),
                         new Partition("et1", "p2", "s7", null, ASSIGNED),
@@ -74,12 +75,12 @@ public class SubscriptionRebalancerTest {
     @Test
     public void directlyRequestedPartitionsAreTransferred() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
-                new Session[]{
+                ImmutableList.of(
                         new Session("s1", 1),
                         new Session("s2", 1),
                         new Session("s3", 1, ImmutableList.of(
                                 new EventTypePartition("et1", "p1"),
-                                new EventTypePartition("et1", "p4")))},
+                                new EventTypePartition("et1", "p4")))),
                 new Partition[]{
                         new Partition("et1", "p1", "s1", null, ASSIGNED),
                         new Partition("et1", "p2", "s1", null, ASSIGNED),
@@ -96,9 +97,9 @@ public class SubscriptionRebalancerTest {
         final SubscriptionRebalancer rebalancer = new SubscriptionRebalancer();
 
         // 1. Data contains only assigned
-        final Session[] sessions = new Session[]{
+        final List<Session> sessions = ImmutableList.of(
                 new Session("0", 1),
-                new Session("1", 1)};
+                new Session("1", 1));
         assertThat(rebalancer.apply(sessions,
                 new Partition[]{
                         new Partition("0", "0", "0", null, ASSIGNED),
@@ -129,7 +130,7 @@ public class SubscriptionRebalancerTest {
     @Test
     public void rebalanceShouldRemoveDeadSessions() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1)},
+                ImmutableList.of(new Session("1", 1), new Session("2", 1)),
                 new Partition[]{
                         new Partition("0", "0", "0", null, ASSIGNED),
                         new Partition("0", "1", "0", "1", REASSIGNING),
@@ -151,7 +152,7 @@ public class SubscriptionRebalancerTest {
     @Test
     public void rebalanceShouldMoveToReassigningState() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
+                ImmutableList.of(new Session("1", 1), new Session("2", 1), new Session("3", 1)),
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),
                         new Partition("0", "1", "1", null, ASSIGNED),
@@ -170,7 +171,7 @@ public class SubscriptionRebalancerTest {
     @Test
     public void rebalanceShouldTakeRebalancingPartitions() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
+                ImmutableList.of(new Session("1", 1), new Session("2", 1), new Session("3", 1)),
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),
                         new Partition("0", "1", "1", null, ASSIGNED),

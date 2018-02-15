@@ -8,6 +8,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -15,18 +16,18 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
+class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partition[], Partition[]> {
 
     @Override
-    public Partition[] apply(final Session[] sessions, final Partition[] currentPartitions) {
+    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions) {
 
-        final List<String> activeSessions = Stream.of(sessions)
+        final List<String> activeSessions = sessions.stream()
                 .map(Session::getId)
                 .collect(Collectors.toList());
         final List<Partition> partitionsLeft = Lists.newArrayList(currentPartitions);
         final List<Partition> changedPartitions = new ArrayList<>();
 
-        final List<Session> sessionsWithSpecifiedPartitions = Stream.of(sessions)
+        final List<Session> sessionsWithSpecifiedPartitions = sessions.stream()
                 .filter(s -> !s.getRequestedPartitions().isEmpty())
                 .collect(Collectors.toList());
 
@@ -47,20 +48,20 @@ class SubscriptionRebalancer implements BiFunction<Session[], Partition[], Parti
         }
 
         // for the rest of partitions/sessions perform a rebalance based on partitions count
-        final List<Session> autoBalanceSessions = Stream.of(sessions)
+        final List<Session> autoBalanceSessions = sessions.stream()
                 .filter(s -> s.getRequestedPartitions().isEmpty())
                 .collect(Collectors.toList());
 
         final Partition[] partitionsChangedByAutoRebalance = rebalanceByWeight(
-                autoBalanceSessions.toArray(new Session[autoBalanceSessions.size()]),
+                autoBalanceSessions,
                 partitionsLeft.toArray(new Partition[partitionsLeft.size()]));
 
         changedPartitions.addAll(Arrays.asList(partitionsChangedByAutoRebalance));
         return changedPartitions.toArray(new Partition[changedPartitions.size()]);
     }
 
-    private Partition[] rebalanceByWeight(final Session[] sessions, final Partition[] currentPartitions) {
-        final Map<String, Integer> activeSessionWeights = Stream.of(sessions)
+    private Partition[] rebalanceByWeight(final Collection<Session> sessions, final Partition[] currentPartitions) {
+        final Map<String, Integer> activeSessionWeights = sessions.stream()
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
         final List<String> activeSessionIds = activeSessionWeights.keySet().stream().sorted()
