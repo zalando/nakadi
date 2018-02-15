@@ -30,4 +30,4 @@ To make it clear that archiving applications are able to read from all event typ
 ### List of tickets (to be created)
 
 - Add check for archiving applications when consumers connect (HiLA only as LoLA is being deprecated);
-- Add warning to response body when new event types are created and existing event types are updated.
+- Add warning to response headers when new event types are created and existing event types are updated.
