@@ -117,9 +117,9 @@ public class AuthenticationConfig {
                 } else {
                     return localService.loadAuthentication(accessToken);
                 }
-            } catch (OAuth2Exception e) {
+            } catch (final OAuth2Exception e) {
                 throw e;
-            } catch (Exception e) {
+            } catch (final RuntimeException e) {
                 throw new OAuth2Exception(e.getMessage(), e);
             } finally {
                 context.stop();
