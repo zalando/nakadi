@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.7] - 2018-02-15
+
+### Changed
+- Optimize subscription rebalance with inter-region zookeepers
+
+### Fixed
+- Server does not implement Problem JSON for auth errors
+
 ## [2.5.5] - 2018-01-23
 
 ### Changed
