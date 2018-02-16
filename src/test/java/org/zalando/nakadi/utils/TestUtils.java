@@ -7,6 +7,7 @@ import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -195,7 +196,7 @@ public class TestUtils {
     }
 
     public static BatchItem createBatchItem(final JSONObject event) {
-        return BatchFactory.from("[" + event.toString() + "]").get(0);
+        return BatchFactory.from(new JSONArray().put(event).toString()).get(0);
     }
 
     public static BatchItem createBatchItem(final String event) {

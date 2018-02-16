@@ -12,7 +12,7 @@ import java.util.Optional;
 public class BatchItem {
 
     public enum Injection {
-        METADATA("metadata"),;
+        METADATA("metadata");
         public final String name;
 
         Injection(final String name) {

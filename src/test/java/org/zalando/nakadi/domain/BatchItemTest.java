@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,7 +40,7 @@ public class BatchItemTest {
 
         event.put("metadata", sourceMetadata);
         event.put("foo", "Test data data data");
-        final BatchItem bi = BatchFactory.from("[" + event.toString(2) + "]").get(0);
+        final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString(2)).get(0);
 
         final JSONObject metadata = bi.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
