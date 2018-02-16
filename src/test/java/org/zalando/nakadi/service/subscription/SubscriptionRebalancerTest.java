@@ -18,6 +18,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.ASSIGNED;
 import static org.zalando.nakadi.service.subscription.model.Partition.State.REASSIGNING;
+import static org.zalando.nakadi.service.subscription.model.Partition.State.UNASSIGNED;
 
 public class SubscriptionRebalancerTest {
 
@@ -90,6 +91,23 @@ public class SubscriptionRebalancerTest {
         assertEquals(newHashSet(changeset), newHashSet(
                 new Partition("et1", "p1", "s1", "s3", REASSIGNING),
                 new Partition("et1", "p4", "s2", "s3", REASSIGNING)));
+    }
+
+    @Test
+    public void onlyDirectSessionsWorkFine() {
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
+                ImmutableList.of(
+                        new Session("s1", 1, ImmutableList.of(new EventTypePartition("et1", "p3"))),
+                        new Session("s2", 1, ImmutableList.of(new EventTypePartition("et1", "p2")))),
+                new Partition[]{
+                        new Partition("et1", "p1", null, null, UNASSIGNED),
+                        new Partition("et1", "p2", null, null, UNASSIGNED),
+                        new Partition("et1", "p3", null, null, UNASSIGNED),
+                        new Partition("et1", "p4", null, null, UNASSIGNED)});
+
+        assertEquals(newHashSet(changeset), newHashSet(
+                new Partition("et1", "p3", "s1", null, ASSIGNED),
+                new Partition("et1", "p2", "s2", null, ASSIGNED)));
     }
 
     @Test

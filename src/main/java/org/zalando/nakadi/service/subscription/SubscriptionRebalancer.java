@@ -56,11 +56,12 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
                 .filter(s -> s.getRequestedPartitions().isEmpty())
                 .collect(Collectors.toList());
 
-        final Partition[] partitionsChangedByAutoRebalance = rebalanceByWeight(
-                autoBalanceSessions,
-                partitionsLeft.toArray(new Partition[partitionsLeft.size()]));
-
-        changedPartitions.addAll(Arrays.asList(partitionsChangedByAutoRebalance));
+        if (!autoBalanceSessions.isEmpty() && !partitionsLeft.isEmpty()) {
+            final Partition[] partitionsChangedByAutoRebalance = rebalanceByWeight(
+                    autoBalanceSessions,
+                    partitionsLeft.toArray(new Partition[partitionsLeft.size()]));
+            changedPartitions.addAll(Arrays.asList(partitionsChangedByAutoRebalance));
+        }
         return changedPartitions.toArray(new Partition[changedPartitions.size()]);
     }
 
