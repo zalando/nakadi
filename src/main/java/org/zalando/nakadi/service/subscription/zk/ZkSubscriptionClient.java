@@ -1,21 +1,30 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 
 public interface ZkSubscriptionClient {
 
@@ -26,7 +35,15 @@ public interface ZkSubscriptionClient {
      *
      * @param function Function to call in context of runLocked.
      */
-    void runLocked(Runnable function);
+    <T> T runLocked(Callable<T> function);
+
+    default void runLocked(final Runnable function) {
+        runLocked((Callable<Void>) () -> {
+            function.run();
+            return null;
+        });
+    }
+
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
@@ -54,7 +71,7 @@ public interface ZkSubscriptionClient {
     /**
      * Updates specified partitions in zk.
      */
-    void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException,
+    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
             SubscriptionNotInitializedException;
 
     /**
@@ -62,7 +79,8 @@ public interface ZkSubscriptionClient {
      *
      * @return List of existing sessions.
      */
-    Session[] listSessions() throws SubscriptionNotInitializedException;
+    Collection<Session> listSessions()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException;
 
     boolean isActiveSession(String streamId) throws ServiceUnavailableException;
 
@@ -71,7 +89,7 @@ public interface ZkSubscriptionClient {
      *
      * @return list of partitions related to this subscription.
      */
-    Partition[] listPartitions() throws SubscriptionNotInitializedException, NakadiRuntimeException;
+    Topology getTopology() throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
      * Subscribes to changes of session list in /nakadi/subscriptions/{subscriptionId}/sessions.
@@ -79,7 +97,7 @@ public interface ZkSubscriptionClient {
      *
      * @param listener method to call on any change of client list.
      */
-    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws Exception;
+    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws NakadiRuntimeException;
 
     /**
      * Subscribe for topology changes.
@@ -93,13 +111,16 @@ public interface ZkSubscriptionClient {
             EventTypePartition key, Runnable commitListener);
 
     /**
-     * Returns current offset value for specified partition key. Offset includes timeline and version data.
-     * The value that is stored there is a view value, so it will look like 001-0001-00000000000000000001
+     * Returns committed offset values for specified partition keys.
+     * Offsets include timeline and version data.
+     * The value that is stored there is a view value, so it will look like
+     * 001-0001-00000000000000000001
      *
-     * @param key Key to get offset for
+     * @param keys Key to get offset for
      * @return commit offset
      */
-    SubscriptionCursorWithoutToken getOffset(EventTypePartition key) throws NakadiRuntimeException;
+    Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(Collection<EventTypePartition> keys)
+            throws NakadiRuntimeException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);
@@ -129,7 +150,7 @@ public interface ZkSubscriptionClient {
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
+    Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
 
     /**
      * Subscribes to cursor reset event.
@@ -159,13 +180,24 @@ public interface ZkSubscriptionClient {
             throws OperationTimeoutException, ZookeeperException;
 
     class Topology {
+        @JsonProperty("partitions")
         private final Partition[] partitions;
-        private final int version;
+        // Each topology is based on a list of sessions, that it was built for.
+        // In case, when list of sessions wasn't changed, one should not actually perform rebalance, cause nothing have
+        // changed.
+        @Nullable
+        @JsonProperty("sessions_hash")
+        private final String sessionsHash;
+        @Nullable
+        @JsonProperty("version")
+        private final Integer version;
 
         public Topology(
                 @JsonProperty("partitions") final Partition[] partitions,
-                @JsonProperty("version") final int version) {
+                @Nullable @JsonProperty("sessions_hash") final String sessionsHash,
+                @Nullable @JsonProperty("version") final Integer version) {
             this.partitions = partitions;
+            this.sessionsHash = sessionsHash;
             this.version = version;
         }
 
@@ -173,7 +205,7 @@ public interface ZkSubscriptionClient {
             return partitions;
         }
 
-        public Topology withUpdatedPartitions(final Partition[] partitions) {
+        public Topology withUpdatedPartitions(final String newHash, final Partition[] partitions) {
             final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
             for (final Partition newValue : partitions) {
                 int selectedIdx = -1;
@@ -188,15 +220,56 @@ public interface ZkSubscriptionClient {
                 }
                 resultPartitions[selectedIdx] = newValue;
             }
-            return new Topology(resultPartitions, version + 1);
+            return new Topology(resultPartitions, newHash, Optional.ofNullable(version).orElse(0) + 1);
         }
 
         @Override
         public String toString() {
             return "Topology{" +
                     "partitions=" + Arrays.toString(partitions) +
+                    ", sessionsHash=" + sessionsHash +
                     ", version=" + version +
                     '}';
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final Topology topology = (Topology) o;
+            return Objects.equals(version, topology.version) &&
+                    Arrays.equals(partitions, topology.partitions) &&
+                    Objects.equals(sessionsHash, topology.sessionsHash);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sessionsHash, version);
+        }
+
+        public static String calculateSessionsHash(final Collection<String> sessionIds)
+                throws ServiceTemporarilyUnavailableException {
+            final MessageDigest md;
+            try {
+                md = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                throw new ServiceTemporarilyUnavailableException("hash algorithm not found", e);
+            }
+            sessionIds.stream().sorted().map(String::getBytes).forEach(md::update);
+            final byte[] digest = md.digest();
+            return Hex.encodeHexString(digest);
+        }
+
+        public boolean isSameHash(final String newHash) {
+            return Objects.equals(newHash, sessionsHash);
+        }
+
+        public String getSessionsHash() {
+            return sessionsHash;
         }
     }
 }

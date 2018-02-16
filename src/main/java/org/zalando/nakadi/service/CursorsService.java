@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -107,7 +108,8 @@ public class CursorsService {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);
         }
 
-        final Map<EventTypePartition, String> partitionSessions = Stream.of(subscriptionClient.listPartitions())
+        final Map<EventTypePartition, String> partitionSessions = Stream
+                .of(subscriptionClient.getTopology().getPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Partition::getSession));
         for (final NakadiCursor cursor : cursors) {
             final EventTypePartition etPartition = cursor.getEventTypePartition();
@@ -124,7 +126,7 @@ public class CursorsService {
     }
 
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId)
-            throws NakadiException {
+            throws NakadiException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, "subscription." + subscriptionId + ".get_cursors");
@@ -132,12 +134,15 @@ public class CursorsService {
 
         Partition[] partitions;
         try {
-            partitions = zkSubscriptionClient.listPartitions();
+            partitions = zkSubscriptionClient.getTopology().getPartitions();
         } catch (final SubscriptionNotInitializedException ex) {
             partitions = new Partition[]{};
         }
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
+                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+
         for (final Partition p : partitions) {
-            cursorsListBuilder.add(zkSubscriptionClient.getOffset(p.getKey()));
+            cursorsListBuilder.add(positions.get(p.getKey()));
         }
         return cursorsListBuilder.build();
     }
