@@ -6,7 +6,6 @@ import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.domain.EventTypePartition;
 
 import javax.annotation.Nullable;
-import javax.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,11 +19,10 @@ public class UserStreamParameters {
 
     private final Optional<Long> streamTimeout;
 
-    private final Optional<Integer> batchKeepAliveLimit;
+    private final Optional<Integer> streamKeepAliveLimit;
 
-    private final Optional<Integer> maxUncommittedEvent;
+    private final Optional<Integer> maxUncommittedEvents;
 
-    @Valid
     private final List<EventTypePartition> partitions;
 
     @JsonCreator
@@ -39,8 +37,8 @@ public class UserStreamParameters {
         this.streamLimit = Optional.ofNullable(streamLimit);
         this.batchFlushTimeout = Optional.ofNullable(batchFlushTimeout);
         this.streamTimeout = Optional.ofNullable(streamTimeout);
-        this.batchKeepAliveLimit = Optional.ofNullable(streamKeepAliveLimit);
-        this.maxUncommittedEvent = Optional.ofNullable(maxUncommittedEvents);
+        this.streamKeepAliveLimit = Optional.ofNullable(streamKeepAliveLimit);
+        this.maxUncommittedEvents = Optional.ofNullable(maxUncommittedEvents);
         this.partitions = partitions == null ? ImmutableList.of() : partitions;
     }
 
@@ -60,12 +58,12 @@ public class UserStreamParameters {
         return streamTimeout;
     }
 
-    public Optional<Integer> getBatchKeepAliveLimit() {
-        return batchKeepAliveLimit;
+    public Optional<Integer> getStreamKeepAliveLimit() {
+        return streamKeepAliveLimit;
     }
 
-    public Optional<Integer> getMaxUncommittedEvent() {
-        return maxUncommittedEvent;
+    public Optional<Integer> getMaxUncommittedEvents() {
+        return maxUncommittedEvents;
     }
 
     public List<EventTypePartition> getPartitions() {

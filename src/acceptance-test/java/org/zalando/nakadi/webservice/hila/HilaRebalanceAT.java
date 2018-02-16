@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.google.common.collect.ImmutableSet;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
@@ -90,7 +91,7 @@ public class HilaRebalanceAT extends BaseAT {
                 x -> "blah_" + x,
                 x -> String.valueOf(x % 8));
 
-        // wait till all event arrive
+        // wait till all events arrive
         waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
         waitFor(() -> assertThat(clientA.getBatches(), hasSize(60)));
 
@@ -126,6 +127,72 @@ public class HilaRebalanceAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
+    public void whenDirectlyRequestPartitionsTheyAssignedCorrectly() throws IOException {
+        // publish 2 events to each partition
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 16, x -> "blah" + x, x -> String.valueOf(x % 8));
+
+        // start a stream requesting to read from partitions 5, 6
+        final TestStreamingClient client = new TestStreamingClient(URL, subscription.getId(), "", Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"5\"}" +
+                        "]}"));
+        client.start();
+
+        // wait till we receive 4 batches (2 per partition)
+        waitFor(() -> assertThat(client.getBatches(), hasSize(4)));
+
+        // check that all batches are from partitions 5, 6
+        checkAllEventsAreFromPartitions(client, ImmutableSet.of("5", "6"));
+    }
+
+
+    @Test(timeout = 15000)
+    public void whenMixedStreamsThenPartitionsAssignedCorrectly() throws IOException, InterruptedException {
+
+        // start 2 streams not specifying partitions directly
+        final TestStreamingClient autoClient1 = new TestStreamingClient(URL, subscription.getId(), "");
+        autoClient1.start();
+        final TestStreamingClient autoClient2 = new TestStreamingClient(URL, subscription.getId(), "");
+        autoClient2.start();
+
+        // start a stream requesting to read from partition 6
+        final TestStreamingClient directClient1 = new TestStreamingClient(URL, subscription.getId(), "",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}" +
+                        "]}"));
+        directClient1.start();
+
+        // start a stream requesting to read from partition 7
+        final TestStreamingClient directClient2 = new TestStreamingClient(URL, subscription.getId(), "",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"7\"}" +
+                        "]}"));
+        directClient2.start();
+
+        // wait for rebalance to finish
+        Thread.sleep(1000);
+
+        // publish 2 events to each partition
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 16, x -> "blah" + x, x -> String.valueOf(x % 8));
+
+        // we should receive 2 batches for streams that directly requested 1 partition
+        waitFor(() -> assertThat(directClient1.getBatches(), hasSize(2)));
+        checkAllEventsAreFromPartitions(directClient1, ImmutableSet.of("6"));
+
+        waitFor(() -> assertThat(directClient2.getBatches(), hasSize(2)));
+        checkAllEventsAreFromPartitions(directClient2, ImmutableSet.of("7"));
+
+        // we should receive 6 batches for streams that use auto balance (they read 3 partitions each)
+        waitFor(() -> assertThat(autoClient1.getBatches(), hasSize(6)));
+        waitFor(() -> assertThat(autoClient2.getBatches(), hasSize(6)));
+    }
+
+    @Test(timeout = 15000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 2, x -> "blah" + x, x -> String.valueOf(x % 8));
@@ -157,6 +224,14 @@ public class HilaRebalanceAT extends BaseAT {
         } else {
             throw new IllegalStateException();
         }
+    }
+
+    private void checkAllEventsAreFromPartitions(final TestStreamingClient clientA, final Set<String> partitions) {
+        final List<StreamBatch> batches = clientA.getBatches();
+        final long batchesFromCorrectPartitions = batches.stream()
+                .filter(b -> partitions.contains(b.getCursor().getPartition()))
+                .count();
+        assertThat(batchesFromCorrectPartitions, is((long) batches.size()));
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {

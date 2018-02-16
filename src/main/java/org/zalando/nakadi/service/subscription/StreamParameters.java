@@ -62,9 +62,9 @@ public class StreamParameters {
                         .filter(timeout -> timeout > 0 && timeout <= EventStreamConfig.MAX_STREAM_TIMEOUT)
                         .orElse((long) EventStreamConfig.generateDefaultStreamTimeout()));
 
-        this.maxUncommittedMessages = userParameters.getMaxUncommittedEvent().orElse(10);
+        this.maxUncommittedMessages = userParameters.getMaxUncommittedEvents().orElse(10);
 
-        this.batchKeepAliveIterations = userParameters.getBatchKeepAliveLimit();
+        this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit();
         this.partitions = userParameters.getPartitions();
 
         this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeoutMillis);
