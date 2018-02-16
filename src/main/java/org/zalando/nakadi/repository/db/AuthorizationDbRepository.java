@@ -39,13 +39,14 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
         return listAllFromResource(ALL_DATA_ACCESS_RESOURCE);
     }
 
-    private List<Permission> listAllFromResource(final String resource) {
+    private List<Permission> listAllFromResource(final String resource) throws RepositoryProblemException {
         final List<Permission> permissions;
         try {
             permissions = jdbcTemplate.query("SELECT * FROM zn_data.authorization WHERE az_resource=?",
                     new Object[] { resource }, permissionRowMapper);
         } catch (final DataAccessException e) {
-            throw new RepositoryProblemException("Error occurred when fetching permissions for ", e);
+            throw new RepositoryProblemException(
+                    String.format("Error occurred when fetching permissions for resource %s", resource), e);
         }
 
         return permissions;
