@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Before;
+import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -31,6 +32,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
@@ -93,7 +95,7 @@ public class EventTypeControllerTestCase {
 
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
-                NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "");
+                NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "I am warning you");
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
