@@ -2,10 +2,12 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Charsets;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.MessageDigest;
@@ -16,17 +18,21 @@ public class NakadiKpiPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiPublisher.class);
 
+    private final ThreadLocal<MessageDigest> messageDigestThreadLocal;
     private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
-    private final MessageDigest sha256MessageDigest;
 
     @Autowired
     protected NakadiKpiPublisher(final FeatureToggleService featureToggleService,
                                  final EventsProcessor eventsProcessor,
-                                 final MessageDigest sha256MessageDigest) {
+                                 @Value("${nakadi.hasher.salt}") final String salt) {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
-        this.sha256MessageDigest = sha256MessageDigest;
+        messageDigestThreadLocal = ThreadLocal.withInitial(() -> {
+            final MessageDigest sha256Digest = DigestUtils.getSha256Digest();
+            sha256Digest.update(salt.getBytes());
+            return sha256Digest;
+        });
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
@@ -43,7 +49,8 @@ public class NakadiKpiPublisher {
     }
 
     public String hash(final String value) {
-        return Hex.encodeHexString(sha256MessageDigest.digest(value.getBytes(Charsets.UTF_8)));
+        final MessageDigest messageDigest = messageDigestThreadLocal.get();
+        return Hex.encodeHexString(messageDigest.digest(value.getBytes(Charsets.UTF_8)));
     }
 
 }
