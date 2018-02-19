@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.intersection;
 import static java.util.stream.Collectors.toList;
@@ -161,16 +162,14 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient directClient1 = new TestStreamingClient(URL, subscription.getId(), "",
                 Optional.empty(),
                 Optional.of("{\"partitions\":[" +
-                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}" +
-                        "]}"));
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}]}"));
         directClient1.start();
 
         // start a stream requesting to read from partition 7
         final TestStreamingClient directClient2 = new TestStreamingClient(URL, subscription.getId(), "",
                 Optional.empty(),
                 Optional.of("{\"partitions\":[" +
-                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"7\"}" +
-                        "]}"));
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"7\"}]}"));
         directClient2.start();
 
         // wait for rebalance to finish
@@ -190,6 +189,45 @@ public class HilaRebalanceAT extends BaseAT {
         // we should receive 6 batches for streams that use auto balance (they read 3 partitions each)
         waitFor(() -> assertThat(autoClient1.getBatches(), hasSize(6)));
         waitFor(() -> assertThat(autoClient2.getBatches(), hasSize(6)));
+    }
+
+    @Test(timeout = 15000)
+    public void checkDirectAssignmentCorrectlyCapturesAndReleasesPartition() throws IOException, InterruptedException {
+        // launch two clients: one using auto-rebalance, second one directly reading from partition 6
+        final TestStreamingClient autoClient = new TestStreamingClient(URL, subscription.getId(),
+                "max_uncommitted_events=100");
+        autoClient.start();
+        final TestStreamingClient directClient = new TestStreamingClient(URL, subscription.getId(), "",
+                Optional.empty(),
+                Optional.of("{\"stream_limit\":1,\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}]}"));
+        directClient.start();
+
+        // wait for rebalance to finish and send 1 event to each partition
+        Thread.sleep(1000);
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 8, x -> "blah" + x, x -> String.valueOf(x % 8));
+
+        waitFor(() -> assertThat(autoClient.getBatches(), hasSize(7)));
+        checkAllEventsAreFromPartitions(autoClient, ImmutableSet.of("0", "1", "2", "3", "4", "5", "7"));
+        waitFor(() -> assertThat(directClient.getBatches(), hasSize(1)));
+        checkAllEventsAreFromPartitions(directClient, ImmutableSet.of("6"));
+
+        // commit cursors and wait for stream to be closed (because of reaching stream_limit)
+        commitCursors(
+                subscription.getId(),
+                directClient.getBatches().stream().map(StreamBatch::getCursor).collect(Collectors.toList()),
+                directClient.getSessionId());
+        waitFor(() -> assertThat(directClient.isRunning(), is(false)));
+
+
+        // send 1 event to each partition
+        publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 8, x -> "blah" + x, x -> String.valueOf(x % 8));
+
+        // the client with auto-balancing should now get all 8 new events
+        waitFor(() -> assertThat(autoClient.getBatches(), hasSize(7 + 8)));
+        checkAllEventsAreFromPartitions(autoClient, ImmutableSet.of("0", "1", "2", "3", "4", "5", "6", "7"));
     }
 
     @Test(timeout = 15000)
@@ -251,11 +289,17 @@ public class HilaRebalanceAT extends BaseAT {
     }
 
     private void checkAllEventsAreFromPartitions(final TestStreamingClient clientA, final Set<String> partitions) {
+        // check that all batches belong to the specified set of partitions
         final List<StreamBatch> batches = clientA.getBatches();
         final long batchesFromCorrectPartitions = batches.stream()
                 .filter(b -> partitions.contains(b.getCursor().getPartition()))
                 .count();
         assertThat(batchesFromCorrectPartitions, is((long) batches.size()));
+        // check that all partitions are present in batches
+        final long partitionsWithNoBatch = partitions.stream()
+                .filter(p -> !batches.stream().anyMatch(b -> b.getCursor().getPartition().equals(p)))
+                .count();
+        assertThat(partitionsWithNoBatch, is(0L));
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
