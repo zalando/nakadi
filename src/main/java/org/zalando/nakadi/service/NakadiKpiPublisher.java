@@ -30,7 +30,7 @@ public class NakadiKpiPublisher {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.salt = salt.getBytes(Charsets.UTF_8);
-        this.messageDigestThreadLocal = ThreadLocal.withInitial(() -> DigestUtils.getSha256Digest());
+        this.messageDigestThreadLocal = ThreadLocal.withInitial(DigestUtils::getSha256Digest);
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
