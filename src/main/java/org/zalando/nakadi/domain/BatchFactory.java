@@ -67,13 +67,15 @@ public class BatchFactory {
                 } else if (curChar == '}') {
                     --nestingLevel;
                     if (nestingLevel == 1 && injectionPointStart != -1) {
-                        toAdd = extractInjection(from, injectionPointStart, curPos, data);
+                        toAdd = extractInjection(from, injectionPointStart, curPos+1, data);
+                        injectionPointStart = -1;
                     }
                     if (nestingLevel == 0) {
                         break;
                     }
                 } else if (nestingLevel == 1 && curChar == ',' && injectionPointStart != -1) {
                     toAdd = extractInjection(from, injectionPointStart, curPos, data);
+                    injectionPointStart = -1;
                 }
                 if (null != toAdd) {
                     injections[toAdd.injection.ordinal()] = toAdd;

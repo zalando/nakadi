@@ -31,7 +31,7 @@ public class BatchItemTest {
     }
 
     @Test
-    public void testBatchItemReplacementsWithMetadata() {
+    public void testBatchItemReplacementsWithMetadata1() {
         final JSONObject event = new JSONObject();
         final JSONObject sourceMetadata = new JSONObject();
         sourceMetadata.put("eid", UUID.randomUUID().toString());
@@ -40,7 +40,7 @@ public class BatchItemTest {
 
         event.put("metadata", sourceMetadata);
         event.put("foo", "Test data data data");
-        final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString(2)).get(0);
+        final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
 
         final JSONObject metadata = bi.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
@@ -49,6 +49,29 @@ public class BatchItemTest {
         final JSONObject result = restoreJsonObject(bi);
         Assert.assertEquals("test2", result.getJSONObject("metadata").getString("test_test_test"));
         Assert.assertEquals("Test data data data", result.getString("foo"));
+    }
+
+    @Test
+    public void testBatchItemReplacementsWithMetadata2() {
+        final JSONObject event = new JSONObject();
+        final JSONObject sourceMetadata = new JSONObject();
+        sourceMetadata.put("eid", UUID.randomUUID().toString());
+        sourceMetadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
+        sourceMetadata.put("partition", "0");
+
+        event.put("metadata", sourceMetadata);
+        final JSONObject other = new JSONObject();
+        other.put("body", "Test data data data");
+        event.put("foo", other);
+        final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
+
+        final JSONObject metadata = bi.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
+        metadata.put("test_test_test", "test2");
+        bi.inject(BatchItem.Injection.METADATA, metadata.toString());
+
+        final JSONObject result = restoreJsonObject(bi);
+        Assert.assertEquals("test2", result.getJSONObject("metadata").getString("test_test_test"));
+        Assert.assertEquals("Test data data data", result.getJSONObject("foo").getString("body"));
     }
 
     @Test
