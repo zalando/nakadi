@@ -88,7 +88,7 @@ public class EventPublisherTest {
         Mockito.when(ts.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
-        Mockito.when(ts.getActiveTimeline(any())).thenReturn(timeline);
+        Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
                 authzValidator);

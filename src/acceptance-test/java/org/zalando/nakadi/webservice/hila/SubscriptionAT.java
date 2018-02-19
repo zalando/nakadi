@@ -32,6 +32,8 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.List;
@@ -386,6 +388,47 @@ public class SubscriptionAT extends BaseAT {
             Assert.assertNull(partition.getUnconsumedEvents());
             Assert.assertEquals(partition.getState(), "unassigned");
         }
+    }
+
+    @Test
+    public void whenStreamDuplicatePartitionsThenUnprocessableEntity() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+
+        final String body = "{\"partitions\":[" +
+                "{\"event_type\":\"et1\",\"partition\":\"0\"}," +
+                "{\"event_type\":\"et1\",\"partition\":\"0\"}]}";
+        given().body(body)
+                .contentType(JSON)
+                .when()
+                .post("/subscriptions/{sid}/events", s.getId())
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body(JSON_HELPER.matchesObject(Problem.valueOf(
+                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Duplicated partition specified")));
+    }
+
+    @Test
+    public void whenStreamWrongPartitionsThenUnprocessableEntity() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+
+        final String body = "{\"partitions\":[" +
+                "{\"event_type\":\"" + et + "\",\"partition\":\"0\"}," +
+                "{\"event_type\":\"dummy-et-123\",\"partition\":\"0\"}," +
+                "{\"event_type\":\"dummy-et-123\",\"partition\":\"1\"}]}";
+        given().body(body)
+                .contentType(JSON)
+                .when()
+                .post("/subscriptions/{sid}/events", s.getId())
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body(JSON_HELPER.matchesObject(Problem.valueOf(
+                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Wrong partitions specified - some partitions don't belong to subscription: " +
+                                "EventTypePartition{eventType='dummy-et-123', partition='0'}, " +
+                                "EventTypePartition{eventType='dummy-et-123', partition='1'}")));
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {

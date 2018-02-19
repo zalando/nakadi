@@ -191,9 +191,8 @@ public class TimelineService {
         return eventTypeCache.getTimelinesOrdered(eventType);
     }
 
-    public Timeline getActiveTimeline(final EventTypeBase eventType) throws TimelineException {
+    public Timeline getActiveTimeline(final String eventTypeName) throws TimelineException {
         try {
-            final String eventTypeName = eventType.getName();
             final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeName);
             final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
             while (rIterator.hasPrevious()) {
@@ -205,9 +204,13 @@ public class TimelineService {
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
         } catch (final NakadiException e) {
-            LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
+            LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }
+    }
+
+    public Timeline getActiveTimeline(final EventTypeBase eventType) throws TimelineException {
+        return getActiveTimeline(eventType.getName());
     }
 
     public TopicRepository getTopicRepository(final Storage storage) {

@@ -7,6 +7,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -16,11 +17,13 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -57,13 +60,8 @@ public class SubscriptionValidationService {
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
         checkEventTypesExist(eventTypesOrNone);
 
-        final List<EventType> eventTypes = eventTypesOrNone.values().stream()
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-
         // check that maximum number of partitions is not exceeded
-        final List<EventTypePartition> allPartitions = getAllPartitions(eventTypes);
+        final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
         if (allPartitions.size() > maxSubscriptionPartitions) {
             final String message = String.format(
                     "total partition count for subscription is %d, but the maximum partition count is %d",
@@ -74,6 +72,26 @@ public class SubscriptionValidationService {
         // checkStorageAvailability initial cursors if needed
         if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
             validateInitialCursors(subscription, allPartitions);
+        }
+    }
+
+    public void validatePartitionsToStream(final Subscription subscription, final List<EventTypePartition> partitions) {
+        // check for duplicated partitions
+        final long uniquePartitions = partitions.stream().distinct().count();
+        if (uniquePartitions < partitions.size()) {
+            throw new WrongStreamParametersException("Duplicated partition specified");
+        }
+        // check that partitions belong to subscription
+        final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
+        final List<EventTypePartition> wrongPartitions = partitions.stream()
+                .filter(p -> !allPartitions.contains(p))
+                .collect(Collectors.toList());
+        if (!wrongPartitions.isEmpty()) {
+            final String wrongPartitionsDesc = wrongPartitions.stream()
+                    .map(EventTypePartition::toString)
+                    .collect(Collectors.joining(", "));
+            throw new WrongStreamParametersException("Wrong partitions specified - some partitions don't belong to " +
+                    "subscription: " + wrongPartitionsDesc);
         }
     }
 
@@ -116,7 +134,7 @@ public class SubscriptionValidationService {
         }
     }
 
-    private List<EventTypePartition> getAllPartitions(final List<EventType> eventTypes) {
+    private List<EventTypePartition> getAllPartitions(final Collection<String> eventTypes) {
         return eventTypes.stream()
                 .map(timelineService::getActiveTimeline)
                 .flatMap(timeline -> timelineService.getTopicRepository(timeline)

@@ -35,6 +35,7 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
+import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.MoreStatus;
@@ -66,6 +67,7 @@ public class SubscriptionStreamController {
     private final BlacklistService blacklistService;
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionValidationService subscriptionValidationService;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -75,7 +77,8 @@ public class SubscriptionStreamController {
                                         final NakadiSettings nakadiSettings,
                                         final BlacklistService blacklistService,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
-                                        final SubscriptionDbRepository subscriptionDbRepository) {
+                                        final SubscriptionDbRepository subscriptionDbRepository,
+                                        final SubscriptionValidationService subscriptionValidationService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -84,6 +87,7 @@ public class SubscriptionStreamController {
         this.blacklistService = blacklistService;
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionValidationService = subscriptionValidationService;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -119,6 +123,9 @@ public class SubscriptionStreamController {
                                 ((AccessDeniedException) ex).explain()));
                     } else if (ex instanceof SubscriptionPartitionConflictException) {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.CONFLICT,
+                                ex.getMessage()));
+                    } else if (ex instanceof WrongStreamParametersException) {
+                        writeProblemResponse(response, out, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                                 ex.getMessage()));
                     } else if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
@@ -210,6 +217,8 @@ public class SubscriptionStreamController {
                 }
 
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+                subscriptionValidationService.validatePartitionsToStream(subscription,
+                        streamParameters.getPartitions());
 
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService);
