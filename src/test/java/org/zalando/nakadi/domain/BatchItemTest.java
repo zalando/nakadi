@@ -31,6 +31,56 @@ public class BatchItemTest {
     }
 
     @Test
+    public void testAmountOfBrackets1() {
+        Assert.assertEquals(
+                "{}",
+                BatchFactory.from("[{}]").get(0).dumpEventToString());
+    }
+
+    @Test
+    public void testAmountOfBrackets2() {
+        Assert.assertEquals(
+                "{\"m\":{\"x\":\"y\"}}",
+                BatchFactory.from("[{\"m\":{\"x\":\"y\"}}]").get(0).dumpEventToString());
+    }
+
+    @Test
+    public void testAmountOfBrackets3() {
+        final BatchItem bi = BatchFactory.from("[{\"metadata\":{\"x\":\"y\"}}]").get(0);
+        bi.inject(BatchItem.Injection.METADATA, "\"xxx\"");
+        Assert.assertEquals(
+                "{\"metadata\":\"xxx\"}",
+                bi.dumpEventToString());
+    }
+
+    @Test
+    public void testAmountOfBrackets4() {
+        final BatchItem bi = BatchFactory.from("[{\"metadata\":{\"x\":\"y\"}}]").get(0);
+        bi.inject(BatchItem.Injection.METADATA, "{\"z\":\"Z\"}");
+        Assert.assertEquals(
+                "{\"metadata\":{\"z\":\"Z\"}}",
+                bi.dumpEventToString());
+    }
+
+    @Test
+    public void testAmountOfBrackets5() {
+        final BatchItem bi = BatchFactory.from("[{\"metadata\":{\"x\":\"y\"}, \"d\":{}}]").get(0);
+        bi.inject(BatchItem.Injection.METADATA, "\"xxx\"");
+        Assert.assertEquals(
+                "{\"metadata\":\"xxx\",\"d\":{}}",
+                bi.dumpEventToString());
+    }
+
+    @Test
+    public void testAmountOfBrackets6() {
+        final BatchItem bi = BatchFactory.from("[{\"metadata\":{\"x\":\"y\"}, \"d\":{}}]").get(0);
+        bi.inject(BatchItem.Injection.METADATA, "{\"z\":\"Z\"}");
+        Assert.assertEquals(
+                "{\"metadata\":{\"z\":\"Z\"},\"d\":{}}",
+                bi.dumpEventToString());
+    }
+
+    @Test
     public void testBatchItemReplacementsWithMetadata1() {
         final JSONObject event = new JSONObject();
         final JSONObject sourceMetadata = new JSONObject();
