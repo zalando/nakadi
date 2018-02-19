@@ -21,6 +21,7 @@ public class NakadiKpiPublisher {
     private final ThreadLocal<MessageDigest> messageDigestThreadLocal;
     private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
+    private final byte[] salt;
 
     @Autowired
     protected NakadiKpiPublisher(final FeatureToggleService featureToggleService,
@@ -28,9 +29,9 @@ public class NakadiKpiPublisher {
                                  @Value("${nakadi.hasher.salt}") final String salt) {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
-        messageDigestThreadLocal = ThreadLocal.withInitial(() -> {
+        this.salt = salt.getBytes(Charsets.UTF_8);
+        this.messageDigestThreadLocal = ThreadLocal.withInitial(() -> {
             final MessageDigest sha256Digest = DigestUtils.getSha256Digest();
-            sha256Digest.update(salt.getBytes());
             return sha256Digest;
         });
     }
@@ -50,6 +51,8 @@ public class NakadiKpiPublisher {
 
     public String hash(final String value) {
         final MessageDigest messageDigest = messageDigestThreadLocal.get();
+        messageDigest.reset();
+        messageDigest.update(salt);
         return Hex.encodeHexString(messageDigest.digest(value.getBytes(Charsets.UTF_8)));
     }
 
