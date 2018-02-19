@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice.hila;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -147,7 +148,6 @@ public class HilaRebalanceAT extends BaseAT {
         checkAllEventsAreFromPartitions(client, ImmutableSet.of("5", "6"));
     }
 
-
     @Test(timeout = 15000)
     public void whenMixedStreamsThenPartitionsAssignedCorrectly() throws IOException, InterruptedException {
 
@@ -190,6 +190,30 @@ public class HilaRebalanceAT extends BaseAT {
         // we should receive 6 batches for streams that use auto balance (they read 3 partitions each)
         waitFor(() -> assertThat(autoClient1.getBatches(), hasSize(6)));
         waitFor(() -> assertThat(autoClient2.getBatches(), hasSize(6)));
+    }
+
+    @Test(timeout = 15000)
+    public void whenTwoStreamsDirectlyRequestOnePartitionThenConflict() throws IOException, InterruptedException {
+
+        // first stream wants to read partition 6
+        final TestStreamingClient client1 = new TestStreamingClient(URL, subscription.getId(), "", Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}" +
+                        "]}"));
+        client1.start();
+        waitFor(() -> assertThat(client1.getResponseCode(), is(HttpStatus.OK.value())));
+
+        // second stream wants to read partitions 5 and 6
+        final TestStreamingClient client2 = new TestStreamingClient(URL, subscription.getId(), "", Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"5\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}" +
+                        "]}"));
+        client2.start();
+
+        // check that second client was disconnected and received status code 409
+        waitFor(() -> assertThat(client2.isRunning(), is(false)));
+        assertThat(client2.getResponseCode(), is(HttpStatus.CONFLICT.value()));
     }
 
     @Test(timeout = 15000)
