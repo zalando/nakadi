@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Allow to select partitions to read from a subscription
+
 ## [2.5.5] - 2018-01-23
 
 ### Changed
