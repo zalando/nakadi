@@ -1,5 +1,9 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -14,6 +18,8 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -23,10 +29,13 @@ import static org.zalando.nakadi.domain.AllDataAccessResource.ALL_DATA_ACCESS_RE
 @Service
 public class AdminService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(AdminService.class);
+
     private final AuthorizationDbRepository authorizationDbRepository;
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
     private final NakadiSettings nakadiSettings;
+    private Cache<String, List<Permission>> resourceCache;
 
     @Autowired
     public AdminService(final AuthorizationDbRepository authorizationDbRepository,
@@ -37,6 +46,7 @@ public class AdminService {
         this.authorizationService = authorizationService;
         this.featureToggleService = featureToggleService;
         this.nakadiSettings = nakadiSettings;
+        this.resourceCache = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
     }
 
     public List<Permission> getAdmins() {
@@ -65,10 +75,16 @@ public class AdminService {
     }
 
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) {
-        final List<Permission> permissions = authorizationDbRepository.listAllDataAccess();
-        final Resource resource = new AllDataAccessResource(ALL_DATA_ACCESS_RESOURCE,
-                ResourceAuthorization.fromPermissionsList(permissions));
-        return authorizationService.isAuthorized(operation, resource);
+        try {
+            final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
+                    () -> authorizationDbRepository.listAllDataAccess());
+            final Resource resource = new AllDataAccessResource(ALL_DATA_ACCESS_RESOURCE,
+                    ResourceAuthorization.fromPermissionsList(permissions));
+            return authorizationService.isAuthorized(operation, resource);
+        } catch (ExecutionException e) {
+            LOG.error("Could not determine whether this application has all data access", e);
+            return false;
+        }
     }
 
     private List<Permission> addDefaultAdmin(final List<Permission> permissions) {
