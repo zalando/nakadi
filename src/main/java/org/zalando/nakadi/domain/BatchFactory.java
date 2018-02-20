@@ -8,26 +8,16 @@ import java.util.function.Consumer;
 
 public class BatchFactory {
 
-    private static int navigateToObjectStart(final boolean isFirst, final int from, final int end, final String data) {
+    private static int navigateToObjectStart(final int from, final int end, final String data) {
         int curPos = from;
-        boolean commaPresent = false;
         char currentChar;
         while (curPos < end && (currentChar = data.charAt(curPos)) != '{') {
-            if (currentChar == ',') {
-                if (isFirst) {
-                    throw new JSONException("Comma is not allowed at position " + curPos);
-                } else {
-                    commaPresent = true;
-                }
-            } else if (!isEmptyCharacter(currentChar)) {
+            if (currentChar != ',' && !isEmptyCharacter(currentChar)) {
                 throw new JSONException("Illegal character at position " + curPos);
             }
             ++curPos;
         }
         final boolean found = curPos != end;
-        if (found && !isFirst && !commaPresent) {
-            throw new JSONException("Comma is not found at position " + curPos);
-        }
         return found ? curPos : -1;
     }
 
@@ -67,7 +57,7 @@ public class BatchFactory {
                 } else if (curChar == '}') {
                     --nestingLevel;
                     if (nestingLevel == 1 && injectionPointStart != -1) {
-                        toAdd = extractInjection(from, injectionPointStart, curPos+1, data);
+                        toAdd = extractInjection(from, injectionPointStart, curPos + 1, data);
                         injectionPointStart = -1;
                     }
                     if (nestingLevel == 0) {
@@ -126,7 +116,7 @@ public class BatchFactory {
         int objectStart = locateOpenSquareBracket(events) + 1;
         final int arrayEnd = locateClosingSquareBracket(objectStart, events);
 
-        while (-1 != (objectStart = navigateToObjectStart(batch.isEmpty(), objectStart, arrayEnd, events))) {
+        while (-1 != (objectStart = navigateToObjectStart(objectStart, arrayEnd, events))) {
             final int objectEnd = navigateToObjectEnd(objectStart, arrayEnd, events, batch::add);
             if (objectEnd == -1) {
                 throw new JSONException("Unclosed object staring at " + objectStart + " found.");
@@ -160,7 +150,7 @@ public class BatchFactory {
     }
 
     private static boolean shouldBeSkipped(final char c) {
-        return (c == '\r' || c == '\n' || c ==' ' || c == '\t');
+        return (c == '\r' || c == '\n' || c == ' ' || c == '\t');
     }
 
     private static boolean isEmptyCharacter(final char c) {
