@@ -416,8 +416,8 @@ public class SubscriptionAT extends BaseAT {
 
         final String body = "{\"partitions\":[" +
                 "{\"event_type\":\"" + et + "\",\"partition\":\"0\"}," +
-                "{\"event_type\":\"dummy-et-123\",\"partition\":\"0\"}," +
-                "{\"event_type\":\"dummy-et-123\",\"partition\":\"1\"}]}";
+                "{\"event_type\":\"" + et + "\",\"partition\":\"1\"}," +
+                "{\"event_type\":\"dummy-et-123\",\"partition\":\"0\"}]}";
         given().body(body)
                 .contentType(JSON)
                 .when()
@@ -427,8 +427,8 @@ public class SubscriptionAT extends BaseAT {
                 .body(JSON_HELPER.matchesObject(Problem.valueOf(
                         MoreStatus.UNPROCESSABLE_ENTITY,
                         "Wrong partitions specified - some partitions don't belong to subscription: " +
-                                "EventTypePartition{eventType='dummy-et-123', partition='0'}, " +
-                                "EventTypePartition{eventType='dummy-et-123', partition='1'}")));
+                                "EventTypePartition{eventType='" + et + "', partition='1'}, " +
+                                "EventTypePartition{eventType='dummy-et-123', partition='0'}")));
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
