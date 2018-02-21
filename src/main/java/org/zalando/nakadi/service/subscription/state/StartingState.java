@@ -66,7 +66,7 @@ public class StartingState extends State {
             final Collection<Session> sessions = getZk().listSessions();
             final Partition[] partitions = getZk().getTopology().getPartitions();
             final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
-            if (getZk().listSessions().size() >= partitions.length && requestedPartitions.isEmpty()) {
+            if (sessions.size() >= partitions.length && requestedPartitions.isEmpty()) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
             }
