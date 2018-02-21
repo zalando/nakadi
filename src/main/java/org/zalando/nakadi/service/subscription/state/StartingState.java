@@ -65,13 +65,13 @@ public class StartingState extends State {
             // check if amount of streams <= the total amount of partitions
             final Collection<Session> sessions = getZk().listSessions();
             final Partition[] partitions = getZk().getTopology().getPartitions();
-            if (getZk().listSessions().size() >= partitions.length) {
+            final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
+            if (getZk().listSessions().size() >= partitions.length && requestedPartitions.isEmpty()) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
             }
 
             // check if the requested partitions are not directly requested by another stream(s)
-            final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
             final List<EventTypePartition> conflictPartitions = sessions.stream()
                     .flatMap(s -> s.getRequestedPartitions().stream())
                     .filter(requestedPartitions::contains)
