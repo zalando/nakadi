@@ -22,7 +22,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
@@ -154,8 +153,7 @@ public class SubscriptionStreamController {
             @Valid @RequestBody final UserStreamParameters userParameters,
             final HttpServletRequest request,
             final HttpServletResponse response,
-            final Client client)
-            throws UnprocessableEntityException {
+            final Client client) {
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
@@ -174,8 +172,7 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client)
-            throws IOException, UnprocessableEntityException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimeout,
                 streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of());
