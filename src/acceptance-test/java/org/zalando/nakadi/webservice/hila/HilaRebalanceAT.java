@@ -1,12 +1,16 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableSet;
+import com.jayway.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -19,6 +23,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.intersection;
+import static com.jayway.restassured.RestAssured.when;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
@@ -83,8 +88,8 @@ public class HilaRebalanceAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=20&max_uncommitted_events=100")
                 .start();
 
-        // wait for rebalance process to start
-        Thread.sleep(1000);
+        // wait for rebalance process to finish
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), is(2)));
 
         // write 5 more events to each partition
         publishBusinessEventWithUserDefinedPartition(
@@ -117,8 +122,8 @@ public class HilaRebalanceAT extends BaseAT {
         commitCursors(subscription.getId(), lastCursorsB, clientB.getSessionId());
         waitFor(() -> assertThat(clientB.isRunning(), is(false)));
 
-        // wait for rebalance process to start
-        Thread.sleep(1000);
+        // wait for rebalance process to finish
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), is(1)));
 
         // write 5 more events to each partition
         publishBusinessEventWithUserDefinedPartition(
@@ -173,7 +178,7 @@ public class HilaRebalanceAT extends BaseAT {
         directClient2.start();
 
         // wait for rebalance to finish
-        Thread.sleep(1000);
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), is(4)));
 
         // publish 2 events to each partition
         publishBusinessEventWithUserDefinedPartition(
@@ -204,7 +209,7 @@ public class HilaRebalanceAT extends BaseAT {
         directClient.start();
 
         // wait for rebalance to finish and send 1 event to each partition
-        Thread.sleep(1000);
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), is(2)));
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 8, x -> "blah" + x, x -> String.valueOf(x % 8));
 
@@ -314,6 +319,27 @@ public class HilaRebalanceAT extends BaseAT {
                 .map(batch -> batch.getCursor().getPartition())
                 .distinct()
                 .collect(toSet());
+    }
+
+    private int getNumberOfAssignedStreams(final String sid) {
+        final Response response = when().get("/subscriptions/{sid}/stats", sid).thenReturn();
+        final ItemsWrapper<SubscriptionEventTypeStats> statsItems;
+        try {
+            statsItems = MAPPER.readValue(
+                    response.print(),
+                    new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
+                    });
+        } catch (final IOException e) {
+            throw new AssertionError("Failed to get stats", e);
+        }
+        final long assignedUniqueStreamsCount = statsItems.getItems()
+                .stream()
+                .flatMap(stat -> stat.getPartitions().stream())
+                .filter(p -> "assigned".equals(p.getState()))
+                .map(SubscriptionEventTypeStats.Partition::getStreamId)
+                .distinct()
+                .count();
+        return (int) assignedUniqueStreamsCount;
     }
 
 }
