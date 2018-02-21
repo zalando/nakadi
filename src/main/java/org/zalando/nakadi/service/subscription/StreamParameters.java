@@ -52,21 +52,15 @@ public class StreamParameters {
         if (batchLimitEvents <= 0) {
             throw new WrongStreamParametersException("batch_limit can't be lower than 1");
         }
-
         this.streamLimitEvents = userParameters.getStreamLimit().filter(v -> v != 0);
-
         this.batchTimeoutMillis = TimeUnit.SECONDS.toMillis(userParameters.getBatchFlushTimeout().orElse(30));
-
         this.streamTimeoutMillis = TimeUnit.SECONDS.toMillis(
                 userParameters.getStreamTimeout()
                         .filter(timeout -> timeout > 0 && timeout <= EventStreamConfig.MAX_STREAM_TIMEOUT)
                         .orElse((long) EventStreamConfig.generateDefaultStreamTimeout()));
-
         this.maxUncommittedMessages = userParameters.getMaxUncommittedEvents().orElse(10);
-
         this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit();
         this.partitions = userParameters.getPartitions();
-
         this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeoutMillis);
         this.consumingClient = consumingClient;
     }
