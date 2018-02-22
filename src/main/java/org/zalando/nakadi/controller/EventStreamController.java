@@ -257,6 +257,8 @@ public class EventStreamController {
                 final String kafkaQuotaClientId = getKafkaQuotaClientId(eventTypeName, client);
 
                 response.setStatus(HttpStatus.OK.value());
+                response.setHeader("Warning", "299 - nakadi - the Low-level API is deprecated and will " +
+                        "be removed from a future release. Please consider migrating to the Subscriptions API.");
                 response.setContentType("application/x-json-stream");
                 final EventConsumer eventConsumer = timelineService.createEventConsumer(
                         kafkaQuotaClientId, streamConfig.getCursors());

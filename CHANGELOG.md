@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Low-level API marked as deprecated
+
 ## [2.5.7] - 2018-02-15
 
 ### Changed
