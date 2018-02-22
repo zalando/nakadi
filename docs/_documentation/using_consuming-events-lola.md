@@ -5,6 +5,8 @@ position: 8
 
 ## Consuming Events with the Low-level API
 
+**The Low-level API is deprecated, and will be removed from a future version of Nakadi. Please consider using the High-level API instead.**
+
 ### Connecting to a Stream
 
 A consumer can open the stream for an Event Type via the `/events` sub-resource. For example to connect to the `order_received` stream send a GET request to its stream as follows:

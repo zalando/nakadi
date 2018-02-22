@@ -47,10 +47,7 @@ info:
     Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the
     streaming API for submission and reception of Events.
 
-    A low level **Unmanaged API** is available, providing full control and responsibility of
-    position tracking and partition resolution (and therefore ordering) to the Clients.
-
-    In the **High Level API** the consumption of Events proceeds via the establishment
+    In the **Subscriptions API** (High Level API), the consumption of Events proceeds via the establishment
     of a named **Subscription** to an EventType. Subscriptions are persistent relationships from an
     Application (which might have several instances) and the stream of one or more EventType's,
     whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in
@@ -73,7 +70,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.9.1'
+  version: '0.10.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -407,12 +404,15 @@ paths:
             $ref: '#/definitions/Problem'
 
     get:
+      deprecated: true
       tags:
         - stream-api
         - unmanaged-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
+        **The Low Level API is deprecated. It will be removed in a future version.**
+
         Starts a stream delivery for the specified partitions of the given EventType.
 
         The event stream is formatted as a sequence of `EventStreamBatch`es separated by `\n`. Each
