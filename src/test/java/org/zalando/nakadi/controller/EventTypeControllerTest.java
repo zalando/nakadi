@@ -66,6 +66,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -113,6 +114,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
             eventType.setName(etName);
             postEventType(eventType).andExpect(status().isCreated()).andExpect(content().string(""));
         }
+    }
+
+    @Test
+    public void whenPostEventTypeThenWarning() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        postEventType(eventType).andExpect(status().isCreated()).andExpect(
+                header().string("Warning","299 nakadi \"I am warning you\""));
     }
 
     @Test
@@ -204,6 +212,24 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTthenWarning() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setPartitionStrategy(PartitionStrategy.RANDOM_STRATEGY);
+        postEventType(eventType).andExpect(status().isCreated());
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .partitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY)
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, eventType.getName()).andExpect(
+                header().string("Warning","299 nakadi \"I am warning you\""));
     }
 
     @Test
