@@ -18,12 +18,14 @@ public class EventTypeValidator {
     }
 
     public Optional<ValidationError> validate(final JSONObject event) {
-        return validators
-                .stream()
-                .map(validator -> validator.accepts(event))
-                .filter(Optional::isPresent)
-                .findFirst()
-                .orElse(Optional.empty());
+        for (final EventValidator ev : validators) {
+            Optional<ValidationError> result = ev.accepts(event);
+            if (result.isPresent()) {
+                return result;
+            }
+        }
+
+        return Optional.empty();
     }
 
     public EventTypeValidator withConfiguration(final ValidationStrategyConfiguration vsc) {

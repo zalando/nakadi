@@ -3,7 +3,6 @@ package org.zalando.nakadi.domain;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class BatchItem {
@@ -15,7 +14,7 @@ public class BatchItem {
 
     public BatchItem(final String event) {
         this.event = new JSONObject(event);
-        this.eventSize = event.getBytes(StandardCharsets.UTF_8).length;
+        this.eventSize = event.length();
         this.response = new BatchItemResponse();
 
         Optional.ofNullable(this.event.optJSONObject("metadata"))

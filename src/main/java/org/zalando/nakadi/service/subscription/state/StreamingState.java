@@ -186,10 +186,11 @@ class StreamingState extends State {
             addTask(this::streamToOutput);
         }
 
-        // Yep, no timeout. All waits are in kafka.
-        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
-        // when this state will be changed to any other state.
-        addTask(this::pollDataFromKafka);
+        scheduleTask(this::pollDataFromKafka, getIntervalBetweenPolls(), TimeUnit.MILLISECONDS);
+    }
+
+    private long getIntervalBetweenPolls() {
+        return 100;
     }
 
     private void rememberEvent(final ConsumedEvent event) {
