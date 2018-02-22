@@ -54,6 +54,7 @@ public class EventTypeBase {
     @Valid
     private ResourceAuthorization authorization;
 
+    @NotNull
     private CompatibilityMode compatibilityMode;
 
     public EventTypeBase() {
