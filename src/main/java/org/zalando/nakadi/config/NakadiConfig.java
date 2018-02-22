@@ -1,16 +1,13 @@
 package org.zalando.nakadi.config;
 
 import com.google.common.base.Charsets;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
@@ -24,7 +21,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.StorageService;
 
-import java.security.MessageDigest;
 import java.util.Optional;
 
 @Configuration
@@ -97,11 +93,4 @@ public class NakadiConfig {
         return environment.getProperty("nakadi.timelines.storage.default");
     }
 
-    @Bean
-    @Scope("prototype")
-    public MessageDigest sha256MessageDigest(@Value("${nakadi.hasher.salt}") final String salt) {
-        final MessageDigest sha256Digest = DigestUtils.getSha256Digest();
-        sha256Digest.update(salt.getBytes());
-        return sha256Digest;
-    }
 }
