@@ -15,7 +15,8 @@ public class JettyConfig {
             @Value("${server.port:8080}") final String port,
             @Value("${jetty.threadPool.maxThreads:200}") final String maxThreads,
             @Value("${jetty.threadPool.minThreads:8}") final String minThreads,
-            @Value("${jetty.threadPool.idleTimeout:60000}") final String idleTimeout) {
+            @Value("${jetty.threadPool.idleTimeout:60000}") final String idleTimeout,
+            @Value("${jetty.gzip.handler.inflateBufferSize:5120}") final Integer inflateBufferSize) {
         final JettyEmbeddedServletContainerFactory factory =
                 new JettyEmbeddedServletContainerFactory(Integer.valueOf(port));
         factory.addServerCustomizers((JettyServerCustomizer) server -> {
@@ -25,6 +26,7 @@ public class JettyConfig {
             threadPool.setIdleTimeout(Integer.valueOf(idleTimeout));
 
             final GzipHandler gzipHandler = new GzipHandler();
+            gzipHandler.setInflateBufferSize(inflateBufferSize);
             gzipHandler.setHandler(server.getHandler());
             gzipHandler.setSyncFlush(true);
             server.setHandler(gzipHandler);

@@ -32,6 +32,7 @@ public class RFC3339DateTimeValidatorTest {
                 "1996-10-15T16:39:57z", // the RFC requires uppercase Z or lowercase z
                 "1996-10-15T16:39:57.123456789Z", // valid up to 9 milliseconds digits
                 "1996-10-15T16:39:57.12Z", // yes, it' valid, just 2 milliseconds digits
+                "2317-05-19T00:10:10.-00:59"
         };
 
         for (final String invalid : invalidDateTimes) {

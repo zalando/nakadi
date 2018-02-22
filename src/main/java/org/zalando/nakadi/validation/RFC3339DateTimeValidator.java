@@ -2,40 +2,30 @@ package org.zalando.nakadi.validation;
 
 import org.everit.json.schema.FormatValidator;
 
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-
 public class RFC3339DateTimeValidator implements FormatValidator {
 
-    private final String errorMessage = "must be a valid date-time";
-
-    // Valid offsets are either Z or hh:mm. The format hh:mm:ss is not valid
-    // Pattern is used to catch situations that are not covered by {@link OffsetDateTime#parse(CharSequence)}
-    private final String dateTimeOffsetPattern = "^.*[Tt]\\d{2}:\\d{2}:\\d{2}.*([zZ]|([+-]\\d{2}:\\d{2}))$";
-    private final Pattern pattern = Pattern.compile(dateTimeOffsetPattern);
-    private final Optional<String> error = Optional.of(errorMessage);
+    private static final String DATE_TIME_OFFSET_PATTERN =
+            "^\\d{4}-([0][1-9]|[1][0-2])-[0-3]\\d{1}[Tt][0-2]\\d{1}:[0-5]\\d{1}:[0-5]\\d{1}.?\\d{0,9}([zZ]|([+-]\\d{2}:\\d{2}))$";
+    private static final Pattern PATTERN = Pattern.compile(DATE_TIME_OFFSET_PATTERN);
+    private static final Optional<String> MUST_BE_A_VALID_DATE_TIME = Optional.of("must be a valid date-time");
 
     @Override
     public Optional<String> validate(final String dateTime) {
         try {
-            OffsetDateTime.parse(dateTime, ISO_OFFSET_DATE_TIME);
-
-            // Unfortunately, ISO_OFFSET_DATE_TIME accepts offsets with seconds, which is not RFC3339 compliant. So
-            // we need to do some further checks using a regex in order to be sure that it adhere to the given format.
-            final Matcher matcher = pattern.matcher(dateTime);
+            final Matcher matcher = PATTERN.matcher(dateTime);
             if (matcher.matches()) {
                 return Optional.empty();
             } else {
-                return error;
+                return MUST_BE_A_VALID_DATE_TIME;
             }
 
         } catch (final DateTimeParseException e) {
-            return error;
+            return MUST_BE_A_VALID_DATE_TIME;
         }
     }
 }

@@ -8,4 +8,7 @@ ADD api/nakadi-event-bus-api.yaml nakadi-event-bus-api.yaml
 
 EXPOSE 8080
 
-ENTRYPOINT exec java -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar
+ENTRYPOINT exec java \
+-Djava.security.egd=file:/dev/./urandom \
+-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector \
+-jar nakadi.jar

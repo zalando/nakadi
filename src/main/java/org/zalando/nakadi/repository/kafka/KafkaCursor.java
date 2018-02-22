@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -10,6 +11,7 @@ import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 
 public class KafkaCursor implements Comparable<KafkaCursor> {
+    private static final int NAKADI_OFFSET_LENGTH = 18;
     private final String topic;
     private final int partition;
     private final long offset;
@@ -20,30 +22,8 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
         this.offset = offset;
     }
 
-    public String getTopic() {
-        return topic;
-    }
-
-    public int getPartition() {
-        return partition;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public KafkaCursor addOffset(final long toAdd) {
-        return new KafkaCursor(topic, partition, offset + toAdd);
-    }
-
-    public NakadiCursor toNakadiCursor(final Timeline timeline) {
-        return NakadiCursor.of(timeline,
-                toNakadiPartition(partition),
-                toNakadiOffset(offset));
-    }
-
     public static String toNakadiOffset(final long offset) {
-        return offset >= 0 ? String.format("%018d", offset) : String.valueOf(offset);
+        return offset >= 0 ? StringUtils.leftPad(String.valueOf(offset), NAKADI_OFFSET_LENGTH, '0') : String.valueOf(offset);
     }
 
     public static String toNakadiPartition(final int partition) {
@@ -70,6 +50,28 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
 
     public static long toKafkaOffset(final String offset) {
         return Long.parseLong(offset);
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public int getPartition() {
+        return partition;
+    }
+
+    public long getOffset() {
+        return offset;
+    }
+
+    public KafkaCursor addOffset(final long toAdd) {
+        return new KafkaCursor(topic, partition, offset + toAdd);
+    }
+
+    public NakadiCursor toNakadiCursor(final Timeline timeline) {
+        return NakadiCursor.of(timeline,
+                toNakadiPartition(partition),
+                toNakadiOffset(offset));
     }
 
     @Override

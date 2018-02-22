@@ -20,7 +20,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
-import org.zalando.nakadi.util.GzipBodyRequestFilter;
 
 import javax.servlet.Filter;
 import java.util.List;
@@ -51,12 +50,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
         return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
-    }
-
-    @Bean
-    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
-        return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean
