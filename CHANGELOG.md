@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Provides optional warning header when creating or updating event types. The purpose is to warn users of the archival of all events.
+- Applications with READ rights to all_data_access can read from all event types, regardless of the event types' 
+authorization policy
 
 ### Changed
 - Low-level API marked as deprecated
