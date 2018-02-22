@@ -151,7 +151,7 @@ public class EventTypeController {
 
         eventTypeService.update(name, eventType);
 
-        return ResponseEntity.status(HttpStatus.OK).headers(generateWarningHeaders()).build();
+        return status(HttpStatus.OK).headers(generateWarningHeaders()).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
