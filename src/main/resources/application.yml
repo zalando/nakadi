@@ -36,6 +36,7 @@ nakadi:
   admin.default:
     dataType: service
     value: stups_nakadi
+  authz.warnAllDataAccessMessage: ""
   topic:
     min:
       retentionMs: 86400000 # 1 days

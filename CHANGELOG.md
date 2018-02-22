@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Provides optional warning header when creating or updating event types. The purpose is to warn users of the archival of all events.
+
 ### Changed
 - Low-level API marked as deprecated
 
