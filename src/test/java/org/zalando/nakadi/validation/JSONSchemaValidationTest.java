@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.utils.IsOptional.isAbsent;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
@@ -105,6 +106,26 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
+    public void requirePatternMatchingToBeFast() {
+        String pattern = "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String value = "aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(patternSchema(pattern)).build();
+        et.setCategory(EventCategory.UNDEFINED);
+
+        long startTime = System.currentTimeMillis();
+
+        final JSONObject event = undefinedEvent(value);
+
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        assertThat(error, isAbsent());
+        assertThat(duration, lessThan(100L));
+    }
+
+    @Test
     public void acceptsDefinitionsOnDataChangeEvents() throws Exception {
         final JSONObject schema = new JSONObject(readFile("product-json-schema.json"));
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
@@ -131,10 +152,33 @@ public class JSONSchemaValidationTest {
         return schema;
     }
 
+    private JSONObject patternSchema(String pattern) {
+        final JSONObject schema = new JSONObject();
+        final JSONObject string = new JSONObject();
+        string.put("type", "string");
+        string.put("pattern", pattern);
+
+        final JSONObject properties = new JSONObject();
+        properties.put("foo", string);
+
+        schema.put("type", "object");
+        schema.put("required", Arrays.asList(new String[]{"foo"}));
+        schema.put("properties", properties);
+
+        return schema;
+    }
+
     private JSONObject businessEvent() {
         final JSONObject event = new JSONObject();
         event.put("foo", "bar");
         event.put("metadata", metadata());
+
+        return event;
+    }
+
+    private JSONObject undefinedEvent(String foo) {
+        final JSONObject event = new JSONObject();
+        event.put("foo", foo);
 
         return event;
     }
