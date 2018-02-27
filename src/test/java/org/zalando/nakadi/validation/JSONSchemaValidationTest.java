@@ -107,19 +107,15 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requirePatternMatchingToBeFast() {
-        String pattern = "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        String value = "aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(patternSchema(pattern)).build();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(patternSchema()).build();
         et.setCategory(EventCategory.UNDEFINED);
 
-        long startTime = System.currentTimeMillis();
+        final long startTime = System.currentTimeMillis();
 
-        final JSONObject event = undefinedEvent(value);
-
+        final JSONObject event = undefinedEvent();
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        long duration = System.currentTimeMillis() - startTime;
+        final long duration = System.currentTimeMillis() - startTime;
 
         assertThat(error, isAbsent());
         assertThat(duration, lessThan(100L));
@@ -152,11 +148,11 @@ public class JSONSchemaValidationTest {
         return schema;
     }
 
-    private JSONObject patternSchema(String pattern) {
+    private JSONObject patternSchema() {
         final JSONObject schema = new JSONObject();
         final JSONObject string = new JSONObject();
         string.put("type", "string");
-        string.put("pattern", pattern);
+        string.put("pattern", "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         final JSONObject properties = new JSONObject();
         properties.put("foo", string);
@@ -176,9 +172,9 @@ public class JSONSchemaValidationTest {
         return event;
     }
 
-    private JSONObject undefinedEvent(String foo) {
+    private JSONObject undefinedEvent() {
         final JSONObject event = new JSONObject();
-        event.put("foo", foo);
+        event.put("foo", "aaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         return event;
     }
