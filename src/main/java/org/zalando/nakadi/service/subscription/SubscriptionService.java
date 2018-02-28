@@ -305,8 +305,13 @@ public class SubscriptionService {
                         .map(node -> node.guessStream(stat.getTimeline().getEventType(), stat.getPartition()))
                         .orElse("");
 
+                final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType = subscriptionNode
+                        .map(node -> node.getPartitionAssignmentType(
+                                stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse(null);
+
                 resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(), state.getDescription(), distance, streamId));
+                        lastPosition.getPartition(), state.getDescription(), distance, streamId, assignmentType));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
             result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));

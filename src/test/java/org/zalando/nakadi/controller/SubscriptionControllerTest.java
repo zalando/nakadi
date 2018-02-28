@@ -77,6 +77,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
@@ -259,7 +260,8 @@ public class SubscriptionControllerTest {
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         TIMELINE.getEventType(),
-                        Collections.singletonList(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
+                        Collections.singletonList(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz", AUTO)))
                 );
 
         getSubscriptionStats(subscription.getId())

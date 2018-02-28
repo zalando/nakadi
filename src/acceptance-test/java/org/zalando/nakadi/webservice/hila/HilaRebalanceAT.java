@@ -1,16 +1,12 @@
 package org.zalando.nakadi.webservice.hila;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableSet;
-import com.jayway.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -23,7 +19,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.intersection;
-import static com.jayway.restassured.RestAssured.when;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
@@ -36,6 +31,7 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 
 public class HilaRebalanceAT extends BaseAT {
@@ -319,27 +315,6 @@ public class HilaRebalanceAT extends BaseAT {
                 .map(batch -> batch.getCursor().getPartition())
                 .distinct()
                 .collect(toSet());
-    }
-
-    private int getNumberOfAssignedStreams(final String sid) {
-        final Response response = when().get("/subscriptions/{sid}/stats", sid).thenReturn();
-        final ItemsWrapper<SubscriptionEventTypeStats> statsItems;
-        try {
-            statsItems = MAPPER.readValue(
-                    response.print(),
-                    new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
-                    });
-        } catch (final IOException e) {
-            throw new AssertionError("Failed to get stats", e);
-        }
-        final long assignedUniqueStreamsCount = statsItems.getItems()
-                .stream()
-                .flatMap(stat -> stat.getPartitions().stream())
-                .filter(p -> "assigned".equals(p.getState()))
-                .map(SubscriptionEventTypeStats.Partition::getStreamId)
-                .distinct()
-                .count();
-        return (int) assignedUniqueStreamsCount;
     }
 
 }

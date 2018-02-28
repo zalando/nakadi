@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -10,6 +11,8 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 
 public class ZkSubscriptionNodeTest {
 
@@ -25,7 +28,7 @@ public class ZkSubscriptionNodeTest {
         );
 
         final List<Session> sessions = ImmutableList.of(
-                new Session("stream1", 1),
+                new Session("stream1", 1, ImmutableList.of(new EventTypePartition("et1", "0"))),
                 new Session("stream2", 1),
                 new Session("stream3", 1),
                 new Session("stream4", 1)
@@ -48,5 +51,13 @@ public class ZkSubscriptionNodeTest {
         assertThat(zkSubscriptionNode.guessState("et1", "1"), equalTo(Partition.State.REASSIGNING));
         assertThat(zkSubscriptionNode.guessState("et2", "0"), equalTo(Partition.State.UNASSIGNED));
         assertThat(zkSubscriptionNode.guessState("et2", "1"), equalTo(Partition.State.UNASSIGNED));
+    }
+
+    @Test
+    public void whenGetPartitionAssignmentTypeThenOk() {
+        assertThat(zkSubscriptionNode.getPartitionAssignmentType("et1", "0"), equalTo(DIRECT));
+        assertThat(zkSubscriptionNode.getPartitionAssignmentType("et1", "1"), equalTo(AUTO));
+        assertThat(zkSubscriptionNode.getPartitionAssignmentType("et2", "0"), equalTo(AUTO));
+        assertThat(zkSubscriptionNode.getPartitionAssignmentType("et2", "1"), equalTo(null));
     }
 }
