@@ -137,18 +137,28 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 getSubscriptionPath(NODE_TOPOLOGY));
     }
 
-    protected byte[] serializeSession(final Session session) throws JsonProcessingException {
-        return objectMapper.writeValueAsBytes(session);
+    protected byte[] serializeSession(final Session session)
+            throws NakadiRuntimeException {
+        try {
+            return objectMapper.writeValueAsBytes(session);
+        } catch (final JsonProcessingException e) {
+            throw new NakadiRuntimeException(e);
+        }
     }
 
-    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData) throws IOException {
+    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData)
+            throws NakadiRuntimeException {
         try {
             // old version of session: zkNode data is session weight
             final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
             return new Session(sessionId, weight, ImmutableList.of());
         } catch (final NumberFormatException nfe) {
             // new version of session: zkNode data is session object as json
-            return objectMapper.readValue(sessionZkData, Session.class);
+            try {
+                return objectMapper.readValue(sessionZkData, Session.class);
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(e);
+            }
         }
     }
 

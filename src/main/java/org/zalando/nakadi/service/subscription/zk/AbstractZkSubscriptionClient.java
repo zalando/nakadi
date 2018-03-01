@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.apache.curator.framework.CuratorFramework;
@@ -258,13 +257,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return loadDataAsync(
                 zkSessions,
                 key -> getSubscriptionPath("/sessions/" + key),
-                (key, data) -> {
-                    try {
-                        return deserializeSession(key, data);
-                    } catch (final IOException e) {
-                        throw new NakadiRuntimeException(e);
-                    }
-                }).values();
+                this::deserializeSession
+        ).values();
     }
 
     @Override
@@ -470,8 +464,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     protected abstract String getOffsetPath(EventTypePartition etp);
 
-    protected abstract byte[] serializeSession(Session session) throws JsonProcessingException;
+    protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
 
-    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData)
-            throws IOException;
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
 }

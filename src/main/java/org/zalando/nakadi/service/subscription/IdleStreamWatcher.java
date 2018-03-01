@@ -4,8 +4,8 @@ public class IdleStreamWatcher {
 
     private final long idleCloseTimeout;
 
-    private volatile long idleStartMillis;
-    private volatile boolean isIdle;
+    private long idleStartMillis;
+    private boolean isIdle;
 
     public IdleStreamWatcher(final long idleCloseTimeout) {
         this.idleCloseTimeout = idleCloseTimeout;
@@ -15,7 +15,7 @@ public class IdleStreamWatcher {
         return idleCloseTimeout;
     }
 
-    public synchronized boolean idleStart() {
+    public boolean idleStart() {
         if (!isIdle) {
             isIdle = true;
             idleStartMillis = System.currentTimeMillis();
@@ -25,11 +25,11 @@ public class IdleStreamWatcher {
         }
     }
 
-    public synchronized void idleEnd() {
+    public void idleEnd() {
         isIdle = false;
     }
 
-    public synchronized boolean isIdleForToolLong() {
+    public boolean isIdleForToolLong() {
         final long currentMillis = System.currentTimeMillis();
         return isIdle && currentMillis >= idleStartMillis + idleCloseTimeout;
     }
