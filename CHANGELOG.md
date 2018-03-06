@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Updated json-schema validation library, now using [RE2/J](https://github.com/google/re2j) for regex pattern matching
+
 ## [2.5.8] - 2018-02-22
 
 ### Added
