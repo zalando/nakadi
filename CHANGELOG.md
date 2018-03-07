@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Added support of future format of session in ZK
 
+## [2.5.9] - 2018-03-06
+
+### Changed
+- Updated json-schema validation library, now using [RE2/J](https://github.com/google/re2j) for regex pattern matching
+
 ## [2.5.8] - 2018-02-22
 
 ### Added
