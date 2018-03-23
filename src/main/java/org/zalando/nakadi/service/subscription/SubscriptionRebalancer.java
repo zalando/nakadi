@@ -41,13 +41,13 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
                         .findFirst()
                         .orElseThrow(() -> new RebalanceConflictException(
                                 "Two existing sessions request the same partition: " + requestedPartition));
-                // if that partition is already assigned to this session - do nothing
-                if (session.getId().equals(partition.getSession())) {
-                    continue;
-                }
                 partitionsLeft.remove(partition);
-                final Partition movedPartition = partition.moveToSessionId(session.getId(), activeSessions);
-                changedPartitions.add(movedPartition);
+
+                // if this partition is not assigned to this session - move it
+                if (!session.getId().equals(partition.getSession())) {
+                    final Partition movedPartition = partition.moveToSessionId(session.getId(), activeSessions);
+                    changedPartitions.add(movedPartition);
+                }
             }
         }
 

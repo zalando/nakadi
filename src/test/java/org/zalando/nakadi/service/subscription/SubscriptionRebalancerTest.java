@@ -74,6 +74,20 @@ public class SubscriptionRebalancerTest {
     }
 
     @Test
+    public void directlyAssignedPartitionsAreNotTransferred() {
+        final Partition[] changeset = new SubscriptionRebalancer().apply(
+                ImmutableList.of(
+                        new Session("s1", 1, ImmutableList.of(new EventTypePartition("et1", "p1"))),
+                        new Session("s2", 1)),
+                new Partition[]{
+                        new Partition("et1", "p1", "s1", null, ASSIGNED),
+                        new Partition("et1", "p2", null, null, UNASSIGNED)});
+
+        assertEquals(newHashSet(changeset), newHashSet(
+                new Partition("et1", "p2", "s2", null, ASSIGNED)));
+    }
+
+    @Test
     public void directlyRequestedPartitionsAreTransferred() {
         final Partition[] changeset = new SubscriptionRebalancer().apply(
                 ImmutableList.of(
