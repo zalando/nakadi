@@ -70,7 +70,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.10.0'
+  version: '0.10.1'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -1178,15 +1178,7 @@ paths:
         a stream.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
-        - name: max_uncommitted_events
-          in: query
-          description: |
-            The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-            state and commit comes - the stream will resume. Minimal value is 1.
-          type: integer
-          format: int32
-          required: false
-          default: 10
+        - $ref: '#/parameters/MaxUncommittedEvents'
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
         - $ref: '#/parameters/BatchFlushTimeout'
@@ -1221,15 +1213,165 @@ paths:
             $ref: '#/definitions/Problem'
         '409':
           description: |
-            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximal value - the total amount of this subscription partitions.
+            Conflict. There are several possible reasons for receiving this status code:
 
-            This status code is also returned in the case of resetting subscription cursors request still in the
-            progress.
+            - There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximum value - the total number of partitions in this subscription.
+
+            - Request to reset subscription cursors is still in progress.
           schema:
             $ref: '#/definitions/Problem'
         '403':
           description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+
+    post:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        GET with body.
+
+        Starts a new stream for reading events from this subscription. The minimal consumption unit is a partition, so
+        it is possible to start as many streams as the total number of partitions in event-types of this subscription.
+        The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+        a stream.
+
+        If you create a stream without specifying the partitions to read from - Nakadi will automatically assign
+        partitions to this new stream. By default Nakadi distributes partitions among clients trying to give an equal
+        number of partitions to each client (the amount of data is not considered). This is default and the most common
+        way to use streaming endpoint.
+
+        It is also possible to directly request specific partitions to be delivered within the stream. If these
+        partitions are already consumed by another stream of this subscription - Nakadi will trigger a rebalance that
+        will assign these partitions to the new stream. The request will fail if user directly requests partitions that
+        are already requested directly by another active stream of this subscription. The overall picture will be the
+        following: streams which directly requested specific partitions will consume from them; streams that didn't
+        specify which partitions to consume will consume partitions that left - Nakadi will autobalance free partitions
+        among these streams (balancing happens by number of partitions).
+
+        Specifying partitions to consume is not a trivial way to consume as it will require additional coordination
+        effort from the client application, that's why it should only be used if such way of consumption should be
+        implemented due to some specific requirements.
+
+        Also, when using streams with directly assigned partitions, it is the user's responsibility to detect, and react
+        to, changes in the number of partitions in the subscription (following the re-partitioning of an event type).
+        Using the GET /subscriptions/{subscription_id}/stats endpoint can be helpful.
+      parameters:
+        - name: streamParameters
+          in: body
+          schema:
+            type: object
+            properties:
+              partitions:
+                description: |
+                  List of partitions to read from in this stream. If absent or empty - then the partitions will be
+                  automatically assigned by Nakadi.
+                type: array
+                items:
+                  $ref: '#/definitions/EventTypePartition'
+              max_uncommitted_events:
+                description: |
+                  The maximum number of uncommitted events that Nakadi will stream before pausing the stream. When in
+                  paused state and commit comes - the stream will resume.
+                type: integer
+                format: int32
+                default: 10
+                minimum: 1
+              batch_limit:
+                description: |
+                  Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+                type: integer
+                format: int32
+                default: 1
+              stream_limit:
+                description: |
+                  Maximum number of `Event`s in this stream (over all partitions being streamed in this
+                  connection).
+
+                  * If 0 or undefined, will stream batches indefinitely.
+
+                  * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+                type: integer
+                format: int32
+                default: 0
+              batch_flush_timeout:
+                description: |
+                  Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+                  * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+                  is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+                  * If 0 or undefined, will assume 30 seconds.
+
+                  * Value is treated as a recommendation. Nakadi may flush chunks with a smaller timeout.
+                type: number
+                format: int32
+                default: 30
+              stream_timeout:
+                description: |
+                  Maximum time in seconds a stream will live before connection is closed by the server.
+                  If 0 or unspecified will stream for 1h ±10min.
+
+                  If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+                  to the client.
+
+                  Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+                  If the `stream_timeout` is greater than max value (4200 seconds) - Nakadi will treat this as not
+                  specifying `stream_timeout` (this is done due to backwards compatibility).
+                type: number
+                format: int32
+                default: 0
+                minimum: 0
+                maximum: 4200
+        - $ref: '#/parameters/SubscriptionId'
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: |
+            Ok. Stream started.
+            Stream format is a continuous series of `SubscriptionEventStreamBatch`s separated by `\n`
+          schema:
+            $ref: '#/definitions/SubscriptionEventStreamBatch'
+          headers:
+            X-Nakadi-StreamId:
+              description: |
+                the id of this stream generated by Nakadi. Must be used for committing events that were read by client
+                from this stream.
+              type: string
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: |
+            Conflict. There are several possible reasons for receiving this status code:
+
+            - There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximum value - the total number of partitions in this subscription.
+
+            - Request to reset subscription cursors is still in progress.
+
+            - It is requested to read from a partition that is already assigned to another stream by direct request.
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: At least one of specified partitions doesn't belong to this subscription.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -2185,7 +2327,6 @@ definitions:
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
           Clients will get events starting from next offset positions.
-
     required:
       - owning_application
       - event_types
@@ -2452,6 +2593,20 @@ definitions:
       - readers
       - writers
 
+  EventTypePartition:
+    type: object
+    description: represents event-type:partition pair.
+    properties:
+      event_type:
+        type: string
+        description: event-type name.
+      partition:
+        type: string
+        description: partition of the event-type.
+    required:
+      - event_type
+      - partition
+
   AdminAuthorization:
       type: object
       description: |
@@ -2538,6 +2693,12 @@ definitions:
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition
+            assignment_type:
+              type: string
+              description: |
+                - `direct`: partition can't be transferred to another stream until the stream is closed;
+                - `auto`: partition can be transferred to another stream in case of rebalance, or if another stream
+                  requests to read from this partition.
           required:
             - partition
             - state
@@ -2717,6 +2878,18 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  MaxUncommittedEvents:
+    name: max_uncommitted_events
+    in: query
+    description: |
+      The maximum number of uncommitted events that Nakadi will stream before pausing the stream. When in
+      paused state and commit comes - the stream will resume.
+    type: integer
+    format: int32
+    required: false
+    default: 10
+    minimum: 1
 
   BlacklistType:
     name: blacklist_type
