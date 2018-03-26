@@ -273,6 +273,34 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(clientB.getBatches(), hasSize(2)), 10000);
     }
 
+    @Test(timeout = 15000)
+    public void whenNoFreeSlotsForAutoClientThenConflict() throws IOException, InterruptedException {
+        // direct client reads all but one partition
+        final TestStreamingClient directClient = new TestStreamingClient(URL, subscription.getId(), "",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"1\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"2\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"3\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"4\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"5\"}," +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"6\"}" +
+                        "]}"));
+        directClient.start();
+        waitFor(() -> assertThat(directClient.getResponseCode(), is(HttpStatus.OK.value())));
+
+        // first auto-balance client reads remaining partition
+        final TestStreamingClient autoClient1 = new TestStreamingClient(URL, subscription.getId(), "");
+        autoClient1.start();
+        waitFor(() -> assertThat(autoClient1.getResponseCode(), is(HttpStatus.OK.value())));
+
+        // second auto-balance client has nothing to read - should get 409 (Conflict) status code
+        final TestStreamingClient autoClient2 = new TestStreamingClient(URL, subscription.getId(), "");
+        autoClient2.start();
+        waitFor(() -> assertThat(autoClient2.getResponseCode(), is(HttpStatus.CONFLICT.value())));
+    }
+
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
                                                                 final Set<String> partitions) {
         if (!client.getBatches().isEmpty()) {

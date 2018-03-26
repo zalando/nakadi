@@ -62,13 +62,23 @@ public class StartingState extends State {
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         if (!subscriptionJustInitialized) {
-            // check if amount of streams <= the total amount of partitions
+            // check if there are streaming slots available
             final Collection<Session> sessions = getZk().listSessions();
             final Partition[] partitions = getZk().getTopology().getPartitions();
             final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
-            if (sessions.size() >= partitions.length && requestedPartitions.isEmpty()) {
-                switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
-                return;
+            if (requestedPartitions.isEmpty()) {
+                final long directlyRequestedPartitionsCount = sessions.stream()
+                        .flatMap(s -> s.getRequestedPartitions().stream())
+                        .distinct()
+                        .count();
+                final long autoSlotsCount = partitions.length - directlyRequestedPartitionsCount;
+                final long autoBalanceSessionsCount = sessions.stream()
+                        .filter(s -> s.getRequestedPartitions().isEmpty())
+                        .count();
+                if (autoBalanceSessionsCount >= autoSlotsCount) {
+                    switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
+                    return;
+                }
             }
 
             // check if the requested partitions are not directly requested by another stream(s)
