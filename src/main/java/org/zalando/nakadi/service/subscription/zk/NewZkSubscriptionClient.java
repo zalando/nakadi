@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -135,6 +137,30 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 getSubscriptionPath(NODE_TOPOLOGY));
     }
 
+    protected byte[] serializeSession(final Session session)
+            throws NakadiRuntimeException {
+        try {
+            return objectMapper.writeValueAsBytes(session);
+        } catch (final JsonProcessingException e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
+    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData)
+            throws NakadiRuntimeException {
+        try {
+            // old version of session: zkNode data is session weight
+            final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
+            return new Session(sessionId, weight, ImmutableList.of());
+        } catch (final NumberFormatException nfe) {
+            // new version of session: zkNode data is session object as json
+            try {
+                return objectMapper.readValue(sessionZkData, Session.class);
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(e);
+            }
+        }
+    }
 
     protected String getOffsetPath(final EventTypePartition etp) {
         return getSubscriptionPath("/offsets/" + etp.getEventType() + "/" + etp.getPartition());
@@ -146,17 +172,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             throws NakadiRuntimeException, ServiceTemporarilyUnavailableException {
         return loadDataAsync(keys, this::getOffsetPath, (etp, value) ->
                 new SubscriptionCursorWithoutToken(etp.getEventType(), etp.getPartition(), new String(value, UTF_8)));
-    }
-
-    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData) throws IOException {
-        try {
-            // old version of session: zkNode data is session weight
-            final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
-            return new Session(sessionId, weight);
-        } catch (final NumberFormatException nfe) {
-            // new version of session: zkNode data is session object as json
-            return objectMapper.readValue(sessionZkData, Session.class);
-        }
     }
 
     @Override

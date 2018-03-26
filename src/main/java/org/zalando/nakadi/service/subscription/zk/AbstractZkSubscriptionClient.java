@@ -175,8 +175,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         getLog().info("Registering session " + session);
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
-            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath,
-                    String.valueOf(session.getWeight()).getBytes(UTF_8));
+            final byte[] sessionData = serializeSession(session);
+            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, sessionData);
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -257,13 +257,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return loadDataAsync(
                 zkSessions,
                 key -> getSubscriptionPath("/sessions/" + key),
-                (key, data) -> {
-                    try {
-                        return deserializeSession(key, data);
-                    } catch (final IOException e) {
-                        throw new NakadiRuntimeException(e);
-                    }
-                }).values();
+                this::deserializeSession
+        ).values();
     }
 
     @Override
@@ -469,5 +464,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     protected abstract String getOffsetPath(EventTypePartition etp);
 
-    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws IOException;
+    protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
+
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
 }

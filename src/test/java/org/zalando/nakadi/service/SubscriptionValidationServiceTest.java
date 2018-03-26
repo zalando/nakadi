@@ -78,7 +78,7 @@ public class SubscriptionValidationServiceTest {
             final Timeline timeline = mock(Timeline.class);
             when(timeline.getTopic()).thenReturn(topicForET(et.getName()));
             when(timeline.getEventType()).thenReturn(et.getName());
-            when(timelineService.getActiveTimeline(eq(et))).thenReturn(timeline);
+            when(timelineService.getActiveTimeline(eq(et.getName()))).thenReturn(timeline);
         }
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);

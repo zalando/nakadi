@@ -1,11 +1,15 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Optional;
+
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 
 public final class ZkSubscriptionNode {
 
@@ -38,6 +42,17 @@ public final class ZkSubscriptionNode {
     public String guessStream(final String eventType, final String partition) {
         return getPartitionWithActiveSession(eventType, partition)
                 .map(Partition::getSession)
+                .orElse(null);
+    }
+
+    @Nullable
+    public SubscriptionEventTypeStats.Partition.AssignmentType getPartitionAssignmentType(final String eventType,
+                                                                                          final String partition) {
+        return partitions.stream()
+                .filter(p -> p.getPartition().equals(partition) && p.getEventType().equals(eventType))
+                .flatMap(p -> sessions.stream().filter(s -> s.getId().equalsIgnoreCase(p.getSession())))
+                .findAny()
+                .map(s -> s.getRequestedPartitions().isEmpty() ? AUTO : DIRECT)
                 .orElse(null);
     }
 

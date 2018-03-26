@@ -11,6 +11,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -76,6 +77,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
@@ -110,7 +112,7 @@ public class SubscriptionControllerTest {
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
         timelineService = mock(TimelineService.class);
-        when(timelineService.getActiveTimeline(any())).thenReturn(TIMELINE);
+        when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
@@ -258,7 +260,8 @@ public class SubscriptionControllerTest {
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         TIMELINE.getEventType(),
-                        Collections.singletonList(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
+                        Collections.singletonList(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz", AUTO)))
                 );
 
         getSubscriptionStats(subscription.getId())

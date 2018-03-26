@@ -306,7 +306,7 @@ public class EventStreamControllerTest {
         final List<PartitionStatistics> tps2 = ImmutableList.of(
                 new KafkaPartitionStatistics(timeline, 0, 0, 87),
                 new KafkaPartitionStatistics(timeline, 1, 0, 34));
-        when(timelineService.getActiveTimeline(any())).thenReturn(timeline);
+        when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
         when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(timeline))))
                 .thenReturn(tps2);
 
