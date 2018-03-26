@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.ConflictException;
@@ -37,8 +39,8 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -49,9 +51,9 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 
 import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -64,18 +66,21 @@ public class EventTypeController {
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final ApplicationService applicationService;
     private final AdminService adminService;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
                                final EventTypeOptionsValidator eventTypeOptionsValidator,
                                final ApplicationService applicationService,
-                               final AdminService adminService) {
+                               final AdminService adminService,
+                               final NakadiSettings nakadiSettings) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.applicationService = applicationService;
         this.adminService = adminService;
+        this.nakadiSettings = nakadiSettings;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -108,7 +113,7 @@ public class EventTypeController {
 
         eventTypeService.create(eventType);
 
-        return status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders()).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
@@ -145,7 +150,8 @@ public class EventTypeController {
         }
 
         eventTypeService.update(name, eventType);
-        return status(HttpStatus.OK).build();
+
+        return status(HttpStatus.OK).headers(generateWarningHeaders()).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
@@ -155,6 +161,15 @@ public class EventTypeController {
             return Responses.create(result.getProblem(), request);
         }
         return status(HttpStatus.OK).body(result.getValue());
+    }
+
+    private HttpHeaders generateWarningHeaders() {
+        final HttpHeaders headers = new HttpHeaders();
+        if (!nakadiSettings.getWarnAllDataAccessMessage().isEmpty()) {
+            headers.add(HttpHeaders.WARNING,
+                    String.format("299 nakadi \"%s\"", nakadiSettings.getWarnAllDataAccessMessage()));
+        }
+        return headers;
     }
 
     @ExceptionHandler(EventTypeDeletionException.class)

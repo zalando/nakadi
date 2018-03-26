@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -25,6 +26,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -39,8 +41,10 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
+import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
@@ -53,13 +57,13 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Component
 public class SubscriptionService {
@@ -75,6 +79,7 @@ public class SubscriptionService {
     private final CursorConverter converter;
     private final CursorOperationsService cursorOperationsService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final FeatureToggleService featureToggleService;
     private final String subLogEventType;
 
     @Autowired
@@ -86,6 +91,7 @@ public class SubscriptionService {
                                final CursorConverter converter,
                                final CursorOperationsService cursorOperationsService,
                                final NakadiKpiPublisher nakadiKpiPublisher,
+                               final FeatureToggleService featureToggleService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -95,12 +101,18 @@ public class SubscriptionService {
         this.converter = converter;
         this.cursorOperationsService = cursorOperationsService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.featureToggleService = featureToggleService;
         this.subLogEventType = subLogEventType;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException {
+            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
@@ -165,7 +177,11 @@ public class SubscriptionService {
         }
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId) {
+    public Result<Void> deleteSubscription(final String subscriptionId) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
@@ -228,7 +244,7 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(e);
         }
 
-        final ZkSubscriptionNode zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
+        final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
 
         return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, topicPartitions);
     }
@@ -251,18 +267,15 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> loadStats(
             final Collection<EventType> eventTypes,
-            final ZkSubscriptionNode subscriptionNode,
+            final Optional<ZkSubscriptionNode> subscriptionNode,
             final ZkSubscriptionClient client,
             final List<PartitionEndStatistics> stats)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
-        final List<NakadiCursor> committedPositions;
-        try {
-            committedPositions = loadCommittedPositions(subscriptionNode, client);
-        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                ServiceUnavailableException e) {
-            throw new ServiceTemporarilyUnavailableException(e);
-        }
+
+        final Collection<NakadiCursor> committedPositions = subscriptionNode
+                .map(node -> loadCommittedPositions(node.getPartitions(), client))
+                .orElse(Collections.emptyList());
 
         for (final EventType eventType : eventTypes) {
             final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
@@ -284,13 +297,16 @@ public class SubscriptionService {
                         })
                         .orElse(null);
 
-                final String state = subscriptionNode.guessState(stat.getTimeline().getEventType(), stat.getPartition())
-                        .getDescription();
-                final String streamId = Optional.ofNullable(subscriptionNode.guessStream(
-                        stat.getTimeline().getEventType(), stat.getPartition())).orElse("");
+                final Partition.State state = subscriptionNode
+                        .map(node -> node.guessState(stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse(Partition.State.UNASSIGNED);
+
+                final String streamId = subscriptionNode
+                        .map(node -> node.guessStream(stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse("");
 
                 resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(), state, distance, streamId));
+                        lastPosition.getPartition(), state.getDescription(), distance, streamId));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
             result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
@@ -298,14 +314,19 @@ public class SubscriptionService {
         return result;
     }
 
-    private List<NakadiCursor> loadCommittedPositions(
-            final ZkSubscriptionNode subscriptionNode,
-            final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
-            NoSuchEventTypeException, ServiceUnavailableException {
-        final List<SubscriptionCursorWithoutToken> views = Stream.of(subscriptionNode.getPartitions()).map(
-                partition -> client.getOffset(partition.getKey()))
-                .collect(Collectors.toList());
-        return converter.convert(views);
+    private Collection<NakadiCursor> loadCommittedPositions(
+            final Collection<Partition> partitions, final ZkSubscriptionClient client)
+            throws ServiceTemporarilyUnavailableException {
+        try {
+
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
+                    partitions.stream().map(Partition::getKey).collect(Collectors.toList()));
+
+            return converter.convert(committed.values());
+        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                ServiceUnavailableException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
+        }
     }
 
 }

@@ -5,6 +5,8 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -52,9 +54,7 @@ public class ExactWeightRebalancerTest {
         final ExactWeightRebalancer rebalancer = new ExactWeightRebalancer();
 
         // 1. Data contains only assigned
-        final Session[] sessions = new Session[]{
-                new Session("0", 1),
-                new Session("1", 1)};
+        final List<Session> sessions = Arrays.asList(new Session("0", 1), new Session("1", 1));
         assertThat(rebalancer.apply(sessions,
                 new Partition[]{
                         new Partition("0", "0", "0", null, ASSIGNED),
@@ -85,7 +85,7 @@ public class ExactWeightRebalancerTest {
     @Test
     public void rebalanceShouldRemoveDeadSessions() {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1)},
+                Arrays.asList(new Session("1", 1), new Session("2", 1)),
                 new Partition[]{
                         new Partition("0", "0", "0", null, ASSIGNED),
                         new Partition("0", "1", "0", "1", REASSIGNING),
@@ -107,7 +107,7 @@ public class ExactWeightRebalancerTest {
     @Test
     public void rebalanceShouldMoveToReassigningState() {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
+                Arrays.asList(new Session("1", 1), new Session("2", 1), new Session("3", 1)),
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),
                         new Partition("0", "1", "1", null, ASSIGNED),
@@ -126,7 +126,7 @@ public class ExactWeightRebalancerTest {
     @Test
     public void rebalanceShouldTakeRebalancingPartitions() {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
-                new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
+                Arrays.asList(new Session("1", 1), new Session("2", 1), new Session("3", 1)),
                 new Partition[]{
                         new Partition("0", "0", "1", null, ASSIGNED),
                         new Partition("0", "1", "1", null, ASSIGNED),

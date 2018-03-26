@@ -1,12 +1,17 @@
 package org.zalando.nakadi.service.subscription.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.UUID;
 
 public class Session {
     private final String id;
     private final int weight;
 
-    public Session(final String id, final int weight) {
+    @JsonCreator
+    public Session(@JsonProperty("id") final String id,
+                   @JsonProperty("weight") final int weight) {
         this.id = id;
         this.weight = weight;
     }

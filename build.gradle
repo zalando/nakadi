@@ -159,7 +159,9 @@ dependencies {
     compile 'org.apache.curator:curator-recipes:2.12.0'
 
     // json
-    compile 'com.github.everit-org.json-schema:org.everit.json.schema:86c29435e43e3e56924cf6ddf3013b5a381930b6'
+    compile ('com.github.everit-org.json-schema:org.everit.json.schema:6cb8ae440b0bc34030d7bea85ac609d980d741fb') {
+        exclude module: "json"
+    }
     compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
         exclude module: "json"
     }
@@ -263,6 +265,7 @@ task testInitNakadi(type: Exec) {
 }
 
 task initNakadi(type: Exec) {
+    environment "SPRING_PROFILES_ACTIVE", "local"
     commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
         println "Waiting for Nakadi to start up"

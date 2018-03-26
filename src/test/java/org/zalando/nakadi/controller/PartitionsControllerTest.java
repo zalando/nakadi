@@ -25,9 +25,9 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
@@ -42,6 +42,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -183,6 +184,18 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void whenAllDataAccessGetPartitionsThenOk() throws Exception {
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+
+        doNothing().when(authorizationValidator).authorizeStreamRead(any());
+
+        mockMvc.perform(get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
+                .andExpect(status().isOk());
+
+        Mockito.verify(authorizationValidator, Mockito.times(1)).authorizeStreamRead(any());
     }
 
     @Test

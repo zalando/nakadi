@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -41,16 +42,19 @@ public class StorageService {
     private final StorageDbRepository storageDbRepository;
     private final DefaultStorage defaultStorage;
     private final CuratorFramework curator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
                           final StorageDbRepository storageDbRepository,
                           @Qualifier("default_storage") final DefaultStorage defaultStorage,
-                          final ZooKeeperHolder zooKeeperHolder) {
+                          final ZooKeeperHolder zooKeeperHolder,
+                          final FeatureToggleService featureToggleService) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
         this.defaultStorage = defaultStorage;
         this.curator = zooKeeperHolder.get();
+        this.featureToggleService = featureToggleService;
     }
 
     @PostConstruct
@@ -97,7 +101,11 @@ public class StorageService {
         }
     }
 
-    public Result<Void> createStorage(final JSONObject json) {
+    public Result<Void> createStorage(final JSONObject json) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create storage: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         final String type;
         final String id;
         final JSONObject configuration;
@@ -137,7 +145,11 @@ public class StorageService {
         return Result.ok();
     }
 
-    public Result<Void> deleteStorage(final String id) {
+    public Result<Void> deleteStorage(final String id) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete storage: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         try {
             storageDbRepository.deleteStorage(id);
         } catch (final NoStorageException e) {

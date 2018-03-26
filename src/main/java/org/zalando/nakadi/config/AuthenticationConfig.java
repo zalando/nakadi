@@ -14,11 +14,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
+import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.web.client.RestTemplate;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.stups.oauth2.spring.authorization.DefaultUserRolesProvider;
 import org.zalando.stups.oauth2.spring.server.DefaultAuthenticationExtractor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
@@ -116,6 +117,10 @@ public class AuthenticationConfig {
                 } else {
                     return localService.loadAuthentication(accessToken);
                 }
+            } catch (final OAuth2Exception e) {
+                throw e;
+            } catch (final RuntimeException e) {
+                throw new OAuth2Exception(e.getMessage(), e);
             } finally {
                 context.stop();
             }

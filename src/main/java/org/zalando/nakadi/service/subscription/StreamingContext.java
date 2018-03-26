@@ -29,6 +29,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -37,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -54,7 +56,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BlacklistService blacklistService;
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
-    private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
+    private final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
     private final String loggingPath;
     private final CursorConverter cursorConverter;
     private final Subscription subscription;
@@ -212,7 +214,7 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
-    public void registerSession() throws Exception {
+    public void registerSession() throws NakadiRuntimeException {
         log.info("Registering session {}", session);
         // Install rebalance hook on client list change.
         sessionListSubscription = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
@@ -264,11 +266,24 @@ public class StreamingContext implements SubscriptionStreamer {
     private void rebalance() {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
-            sessionListSubscription.getData();
+            final List<String> newSessions = sessionListSubscription.getData();
+            final String sessionsHash = ZkSubscriptionClient.Topology.calculateSessionsHash(newSessions);
             zkClient.runLocked(() -> {
-                final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                if (changeset.length > 0) {
-                    zkClient.updatePartitionsConfiguration(changeset);
+                final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
+
+                if (!topology.isSameHash(sessionsHash)) {
+                    log.info("Performing rebalance, hash changed: {}", sessionsHash);
+                    final Collection<Session> newSessionsUnderLock = zkClient.listSessions();
+
+                    // after taking the lock list of sessions may change, so we need to update hash to correct value.
+                    final Partition[] changeset = rebalancer.apply(newSessionsUnderLock, topology.getPartitions());
+                    if (changeset.length > 0) {
+                        final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
+                                newSessionsUnderLock.stream().map(Session::getId).collect(Collectors.toList()));
+                        zkClient.updatePartitionsConfiguration(actualHash, changeset);
+                    }
+                } else {
+                    log.info("Skipping rebalance, because hash is the same: {}", sessionsHash);
                 }
             });
         }
@@ -314,7 +329,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private Session session;
         private ScheduledExecutorService timer;
         private ZkSubscriptionClient zkClient;
-        private BiFunction<Session[], Partition[], Partition[]> rebalancer;
+        private BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
         private String loggingPath;
         private AtomicBoolean connectionReady;
@@ -369,7 +384,7 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setRebalancer(final BiFunction<Session[], Partition[], Partition[]> rebalancer) {
+        public Builder setRebalancer(final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer) {
             this.rebalancer = rebalancer;
             return this;
         }

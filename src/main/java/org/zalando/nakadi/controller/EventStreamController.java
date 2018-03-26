@@ -51,7 +51,7 @@ import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
@@ -77,7 +77,7 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
 public class EventStreamController {
@@ -257,6 +257,8 @@ public class EventStreamController {
                 final String kafkaQuotaClientId = getKafkaQuotaClientId(eventTypeName, client);
 
                 response.setStatus(HttpStatus.OK.value());
+                response.setHeader("Warning", "299 - nakadi - the Low-level API is deprecated and will " +
+                        "be removed from a future release. Please consider migrating to the Subscriptions API.");
                 response.setContentType("application/x-json-stream");
                 final EventConsumer eventConsumer = timelineService.createEventConsumer(
                         kafkaQuotaClientId, streamConfig.getCursors());

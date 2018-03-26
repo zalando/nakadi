@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.10] - 2018-03-26
+
+### Added
+- Added support of future format of session in ZK
+
+## [2.5.9] - 2018-03-06
+
+### Changed
+- Updated json-schema validation library, now using [RE2/J](https://github.com/google/re2j) for regex pattern matching
+
+## [2.5.8] - 2018-02-22
+
+### Added
+- Provides optional warning header when creating or updating event types. The purpose is to warn users of the archival of all events.
+- Applications with READ rights to all_data_access can read from all event types, regardless of the event types' 
+authorization policy
+
+### Changed
+- Low-level API marked as deprecated
+
+## [2.5.7] - 2018-02-15
+
+### Changed
+- Optimize subscription rebalance with inter-region zookeepers
+
+### Fixed
+- Server does not implement Problem JSON for auth errors
+
 ## [2.5.5] - 2018-01-23
 
 ### Changed

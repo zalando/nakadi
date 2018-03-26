@@ -32,6 +32,7 @@ import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -40,7 +41,6 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -49,8 +49,12 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -98,6 +102,8 @@ public class SubscriptionControllerTest {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(false);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
@@ -114,7 +120,8 @@ public class SubscriptionControllerTest {
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService, nakadiKpiPublisher, "subscription_log_et");
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService,
+                "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
@@ -224,17 +231,18 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
-        final Partition[] partitions = {
-                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
-        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
-        zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
+        final Collection<Partition> partitions = Collections.singleton(
+                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
+        final ZkSubscriptionNode zkSubscriptionNode =
+                new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
-        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
-                .thenReturn(currentOffset);
+        final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> offsets = new HashMap<>();
+        offsets.put(etp, currentOffset);
+        when(zkSubscriptionClient.getOffsets(Collections.singleton(etp))).thenReturn(offsets);
         when(eventTypeRepository.findByName(TIMELINE.getEventType()))
                 .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(
@@ -264,7 +272,8 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(
+                Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
@@ -335,7 +344,7 @@ public class SubscriptionControllerTest {
         public Object resolveArgument(final MethodParameter parameter,
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
-                                      final WebDataBinderFactory binderFactory) throws Exception {
+                                      final WebDataBinderFactory binderFactory) {
             return new NakadiClient("nakadiClientId", "");
         }
     }

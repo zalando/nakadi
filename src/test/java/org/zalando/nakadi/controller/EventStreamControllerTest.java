@@ -25,6 +25,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -34,6 +35,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -42,9 +44,9 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
@@ -116,6 +118,8 @@ public class EventStreamControllerTest {
     private Timeline timeline;
     private AuthorizationValidator authorizationValidator;
     private EventTypeChangeListener eventTypeChangeListener;
+    private AdminService adminService;
+    private AuthorizationService authorizationService;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -124,6 +128,8 @@ public class EventStreamControllerTest {
 
         eventTypeRepository = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
+        adminService = mock(AdminService.class);
+        authorizationService = mock(AuthorizationService.class);
         when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
         eventTypeCache = mock(EventTypeCache.class);
@@ -464,6 +470,24 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
         assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
+    }
+
+    @Test
+    public void testAccessAllowedForAllDataAccess() throws Exception {
+        doNothing().when(authorizationValidator).authorizeStreamRead(any());
+
+        prepareScopeRead();
+        final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
+        final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
+
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
+                .thenReturn(mock(EventStream.class));
+
+        writeStream();
+
+        assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
+        assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
+        verify(authorizationValidator, times(1)).authorizeStreamRead(any());
     }
 
     private void writeStream() throws Exception {

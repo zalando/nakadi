@@ -54,13 +54,16 @@ public class AdminServiceTest {
     private final AuthorizationService authorizationService;
     private final NakadiSettings nakadiSettings;
     private final List<Permission> adminList;
+    private final FeatureToggleService featureToggleService;
 
 
     public AdminServiceTest() {
         this.authorizationDbRepository = mock(AuthorizationDbRepository.class);
         this.authorizationService = mock(AuthorizationService.class);
         this.nakadiSettings = mock(NakadiSettings.class);
-        this.adminService = new AdminService(authorizationDbRepository, authorizationService, nakadiSettings);
+        this.featureToggleService = mock(FeatureToggleService.class);
+        this.adminService = new AdminService(authorizationDbRepository, authorizationService,
+                featureToggleService, nakadiSettings);
         this.adminList = new ArrayList<>(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
@@ -69,6 +72,8 @@ public class AdminServiceTest {
             defaultAdminPermissions.add(new Permission("nakadi", operation, defaultAdmin));
         }
         when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
     }
 
     @Test
