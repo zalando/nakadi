@@ -5,9 +5,9 @@ import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -154,7 +154,8 @@ public class AuthorizationValidator {
 
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
-            if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)) {
+            if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
+                    && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
             }
         } catch (final PluginException e) {

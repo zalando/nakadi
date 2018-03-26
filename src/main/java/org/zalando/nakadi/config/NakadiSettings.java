@@ -21,6 +21,7 @@ public class NakadiSettings {
     private final long eventMaxBytes;
     private final int maxSubscriptionPartitions;
     private final AuthorizationAttribute defaultAdmin;
+    private final String warnAllDataAccessMessage;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -35,7 +36,8 @@ public class NakadiSettings {
                           @Value("${nakadi.event.max.bytes}") final long eventMaxBytes,
                           @Value("${nakadi.subscription.maxPartitions}") final int maxSubscriptionPartitions,
                           @Value("${nakadi.admin.default.dataType}") final String defaultAdminDataType,
-                          @Value("${nakadi.admin.default.value}") final String defaultAdminValue) {
+                          @Value("${nakadi.admin.default.value}") final String defaultAdminValue,
+                          @Value("${nakadi.authz.warnAllDataAccessMessage}") final String warnAllDataAccessMessage) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -48,6 +50,7 @@ public class NakadiSettings {
         this.timelineWaitTimeoutMs = timelineWaitTimeoutMs;
         this.maxSubscriptionPartitions = maxSubscriptionPartitions;
         this.defaultAdmin = new ResourceAuthorizationAttribute(defaultAdminDataType, defaultAdminValue);
+        this.warnAllDataAccessMessage = warnAllDataAccessMessage;
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -96,5 +99,9 @@ public class NakadiSettings {
 
     public AuthorizationAttribute getDefaultAdmin() {
         return defaultAdmin;
+    }
+
+    public String getWarnAllDataAccessMessage() {
+        return warnAllDataAccessMessage;
     }
 }
