@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
@@ -145,6 +146,17 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             throws NakadiRuntimeException, ServiceTemporarilyUnavailableException {
         return loadDataAsync(keys, this::getOffsetPath, (etp, value) ->
                 new SubscriptionCursorWithoutToken(etp.getEventType(), etp.getPartition(), new String(value, UTF_8)));
+    }
+
+    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData) throws IOException {
+        try {
+            // old version of session: zkNode data is session weight
+            final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
+            return new Session(sessionId, weight);
+        } catch (final NumberFormatException nfe) {
+            // new version of session: zkNode data is session object as json
+            return objectMapper.readValue(sessionZkData, Session.class);
+        }
     }
 
     @Override

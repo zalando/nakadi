@@ -257,7 +257,13 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return loadDataAsync(
                 zkSessions,
                 key -> getSubscriptionPath("/sessions/" + key),
-                (key, data) -> new Session(key, Integer.parseInt(new String(data, UTF_8)))).values();
+                (key, data) -> {
+                    try {
+                        return deserializeSession(key, data);
+                    } catch (final IOException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                }).values();
     }
 
     @Override
@@ -462,4 +468,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throws Exception;
 
     protected abstract String getOffsetPath(EventTypePartition etp);
+
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws IOException;
 }

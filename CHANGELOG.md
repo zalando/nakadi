@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.10] - 2018-03-26
+
+### Added
+- Added support of future format of session in ZK
+
 ## [2.5.9] - 2018-03-06
 
 ### Changed
