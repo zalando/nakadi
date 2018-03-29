@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
@@ -113,7 +114,7 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming", ex);
+            LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
             if (!headersSent) {
                 headersSent = true;
                 try {
@@ -125,6 +126,9 @@ public class SubscriptionStreamController {
                                 ex.getMessage()));
                     } else if (ex instanceof WrongStreamParametersException) {
                         writeProblemResponse(response, out, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                                ex.getMessage()));
+                    } else if (ex instanceof NoSuchSubscriptionException) {
+                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.NOT_FOUND,
                                 ex.getMessage()));
                     } else if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());

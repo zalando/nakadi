@@ -169,7 +169,7 @@ public class SubscriptionService {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId);
             return Result.problem(e.asProblem());
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);

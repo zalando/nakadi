@@ -87,7 +87,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (final EmptyResultDataAccessException e) {
-            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
+            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
         } catch (final DataAccessException e) {
             LOG.error("Database error when getting subscription", e);
             throw new ServiceUnavailableException("Error occurred when running database request");
