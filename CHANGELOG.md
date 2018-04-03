@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.1] - 2018-04-03
+
+### Fixed
+- Do not log a complete stack trace when a user makes a request for a non-existing subscription
+
 ## [2.6.0] - 2018-03-26
 
 ### Added
