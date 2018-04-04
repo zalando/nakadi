@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.zalando.nakadi.webservice.hila.StreamBatch;
 
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -43,11 +45,13 @@ public class TestStreamingClient implements Runnable {
     private HttpURLConnection connection;
     private String sessionId;
     private Optional<String> token;
+    private final Optional<String> bodyParams;
     private volatile int responseCode;
     private Consumer<List<StreamBatch>> batchesListener;
     private final CountDownLatch started = new CountDownLatch(1);
 
-    public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
+    public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params,
+                               final Optional<String> token, final Optional<String> bodyParams) {
         this.baseUrl = baseUrl;
         this.subscriptionId = subscriptionId;
         this.params = params;
@@ -56,12 +60,17 @@ public class TestStreamingClient implements Runnable {
         this.sessionId = SESSION_ID_UNKNOWN;
         this.token = Optional.empty();
         this.headers = new ConcurrentHashMap<>();
+        this.token = token;
+        this.bodyParams = bodyParams;
+    }
+
+    public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
+        this(baseUrl, subscriptionId, params, Optional.empty(), Optional.empty());
     }
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params,
                                final Optional<String> token) {
-        this(baseUrl, subscriptionId, params);
-        this.token = token;
+        this(baseUrl, subscriptionId, params, token, Optional.empty());
     }
 
     public static TestStreamingClient create(final String baseUrl, final String subscriptionId, final String params) {
@@ -79,6 +88,17 @@ public class TestStreamingClient implements Runnable {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
             connection = (HttpURLConnection) new URL(url).openConnection();
             token.ifPresent(token -> connection.setRequestProperty("Authorization", "Bearer " + token));
+
+            if (bodyParams.isPresent()) {
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", "application/json");
+                try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
+                    wr.write(bodyParams.get().getBytes(Charsets.UTF_8));
+                    wr.flush();
+                }
+            }
+
             responseCode = connection.getResponseCode();
             connection.getHeaderFields().entrySet().stream()
                     .filter(entry -> entry.getKey() != null)

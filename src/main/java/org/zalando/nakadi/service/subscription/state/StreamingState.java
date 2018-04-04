@@ -18,6 +18,7 @@ import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -61,6 +62,7 @@ class StreamingState extends State {
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
     private Closeable cursorResetSubscription;
+    private IdleStreamWatcher idleStreamWatcher;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -82,6 +84,8 @@ class StreamingState extends State {
         lastKpiEventSent = System.currentTimeMillis();
         kpiDataPerEventType = this.getContext().getSubscription().getEventTypes().stream()
                 .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
+
+        idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
@@ -375,6 +379,7 @@ class StreamingState extends State {
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .toArray(Partition[]::new);
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
+        trackIdleness(topology);
     }
 
     void recheckTopology() {
@@ -640,4 +645,27 @@ class StreamingState extends State {
             }
         }
     }
+
+    /**
+     * If stream doesn't have any partitions - start timer that will close this session
+     * in commitTimeout*2 if it doesn't get any partitions during that time
+     * @param topology the new topology
+     */
+    private void trackIdleness(final ZkSubscriptionClient.Topology topology) {
+        final boolean hasAnyAssignment = Stream.of(topology.getPartitions())
+                .anyMatch(p -> getSessionId().equals(p.getSession()) || getSessionId().equals(p.getNextSession()));
+        if (hasAnyAssignment) {
+            idleStreamWatcher.idleEnd();
+        } else {
+            final boolean justSwitchedToIdle = idleStreamWatcher.idleStart();
+            if (justSwitchedToIdle) {
+                scheduleTask(() -> {
+                    if (idleStreamWatcher.isIdleForToolLong()) {
+                        shutdownGracefully("There are no available partitions to read");
+                    }
+                }, idleStreamWatcher.getIdleCloseTimeout(), TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
 }

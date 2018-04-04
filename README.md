@@ -51,7 +51,7 @@ The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)
     * REST abstraction over Kafka-like queues.
     * CRUD for event types.
     * Event batch publishing.
-    * Low-level interface.
+    * Low-level interface (**deprecated**).
         * manual client side partition management is needed
         * no support of commits
     * High-level interface (Subscription API).

@@ -169,7 +169,7 @@ public class SubscriptionService {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId);
             return Result.problem(e.asProblem());
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
@@ -305,8 +305,13 @@ public class SubscriptionService {
                         .map(node -> node.guessStream(stat.getTimeline().getEventType(), stat.getPartition()))
                         .orElse("");
 
+                final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType = subscriptionNode
+                        .map(node -> node.getPartitionAssignmentType(
+                                stat.getTimeline().getEventType(), stat.getPartition()))
+                        .orElse(null);
+
                 resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(), state.getDescription(), distance, streamId));
+                        lastPosition.getPartition(), state.getDescription(), distance, streamId, assignmentType));
             }
             resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
             result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));

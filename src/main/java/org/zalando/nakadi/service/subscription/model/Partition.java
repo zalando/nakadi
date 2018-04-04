@@ -125,7 +125,7 @@ public class Partition {
 
     @Nullable
     @JsonIgnore
-    public String getSessionOrNextSession() {
+    public String getEffectiveSession() {
         if (state == State.REASSIGNING) {
             return nextSession;
         }

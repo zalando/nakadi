@@ -97,7 +97,7 @@ public class CursorsServiceAT extends BaseAT {
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         timeline = buildTimeline(etName, topic, CREATED_AT);
-        when(timelineService.getActiveTimeline(any())).thenReturn(timeline);
+        when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getId()).thenReturn(sid);
