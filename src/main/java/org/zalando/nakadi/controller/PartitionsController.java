@@ -22,9 +22,9 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
@@ -154,7 +154,7 @@ public class PartitionsController {
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceUnavailableException {
+            ServiceTemporarilyUnavailableException {
         final Cursor consumedCursor = new Cursor(partition, consumedOffset);
         final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
         return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
@@ -165,7 +165,7 @@ public class PartitionsController {
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final Optional<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                 .loadPartitionStatistics(timelines.get(0), partition);

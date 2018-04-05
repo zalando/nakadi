@@ -15,7 +15,6 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -74,7 +73,7 @@ public class CursorsService {
      **/
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
                                        final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
+            throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         TimeLogger.addMeasure("getSubscription");
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
@@ -97,7 +96,7 @@ public class CursorsService {
 
     private void validateStreamId(final List<NakadiCursor> cursors, final String streamId,
                                   final ZkSubscriptionClient subscriptionClient)
-            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException {
+            throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException {
 
         if (!uuidGenerator.isUUID(streamId)) {
             throw new InvalidStreamIdException(
@@ -148,7 +147,7 @@ public class CursorsService {
     }
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, NoSuchSubscriptionException,
+            throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);

@@ -2,6 +2,8 @@ package org.zalando.nakadi.domain;
 
 import org.joda.time.DateTime;
 
+import java.util.List;
+
 public class Subscription extends SubscriptionBase {
 
     public Subscription() {
@@ -18,6 +20,8 @@ public class Subscription extends SubscriptionBase {
 
     private DateTime createdAt;
 
+    private List<SubscriptionEventTypeStats> stats;
+
     public String getId() {
         return id;
     }
@@ -32,6 +36,14 @@ public class Subscription extends SubscriptionBase {
 
     public void setCreatedAt(final DateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<SubscriptionEventTypeStats> getStats() {
+        return stats;
+    }
+
+    public void setStats(final List<SubscriptionEventTypeStats> stats) {
+        this.stats = stats;
     }
 
     @Override

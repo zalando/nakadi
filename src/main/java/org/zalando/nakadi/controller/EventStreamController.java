@@ -31,7 +31,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -50,8 +49,8 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
@@ -76,6 +75,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
@@ -133,7 +133,7 @@ public class EventStreamController {
 
     @VisibleForTesting
     List<NakadiCursor> getStreamingStart(final EventType eventType, final String cursorsStr)
-            throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException,
+            throws UnparseableCursorException, ServiceTemporarilyUnavailableException, InvalidCursorException,
             InternalNakadiException, NoSuchEventTypeException {
         List<Cursor> cursors = null;
         if (cursorsStr != null) {
@@ -288,6 +288,9 @@ public class EventStreamController {
             } catch (final NoConnectionSlotsException e) {
                 LOG.debug("Connection creation failed due to exceeding max connection count");
                 writeProblemResponse(response, outputStream, e.asProblem());
+            } catch (final ServiceTemporarilyUnavailableException e) {
+                LOG.error("Error while trying to stream events.", e);
+                writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getMessage());
             } catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, e.asProblem());

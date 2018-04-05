@@ -964,6 +964,11 @@ paths:
           required: false
           default: 0
           minimum: 0
+        - name: show_status
+          in: query
+          description: show light subscription stats
+          type: boolean
+          default: false
       responses:
         '200':
           description: OK
@@ -2327,6 +2332,13 @@ definitions:
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
           Clients will get events starting from next offset positions.
+      stats:
+        type: array
+        description: |
+          Light subscription stats. This data is only available when querying the subscriptions endpoint for
+          light stats.
+        items:
+          $ref: '#/definitions/SubscriptionEventTypeLightStats'
     required:
       - owning_application
       - event_types
@@ -2705,6 +2717,45 @@ definitions:
     required:
       - event_type
       - partitions
+
+  SubscriptionEventTypeLightStats:
+      type: object
+      description: light statistics of one event-type within a context of subscription
+      properties:
+        event_type:
+          type: string
+          description: event-type name
+        partitions:
+          type: array
+          description: statistics of partitions of this event-type
+          items:
+            type: object
+            description: statistics of partition within a subscription context
+            properties:
+              partition:
+                type: string
+              state:
+                type: string
+                description: |
+                  The state of this partition in current subscription. Currently following values are possible:
+                  - `unassigned`: the partition is currently not assigned to any client;
+                  - `reassigning`: the partition is currently reasssigning from one client to another;
+                  - `assigned`: the partition is assigned to a client.
+              stream_id:
+                type: string
+                description: the id of the stream that consumes data from this partition
+              assignment_type:
+                type: string
+                description: |
+                  - `direct`: partition can't be transferred to another stream until the stream is closed;
+                  - `auto`: partition can be transferred to another stream in case of rebalance, or if another stream
+                    requests to read from this partition.
+            required:
+              - partition
+              - state
+      required:
+        - event_type
+        - partitions
 
   BatchItemResponse:
     description: |
