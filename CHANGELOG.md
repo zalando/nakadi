@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Changed the way how nakadi parses events, eliminating the need of json serialization during publish
+
 ## [2.6.1] - 2018-04-03
 
 ### Fixed

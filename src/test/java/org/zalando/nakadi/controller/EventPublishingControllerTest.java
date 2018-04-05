@@ -21,12 +21,11 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
@@ -72,7 +71,7 @@ public class EventPublishingControllerTest {
     private BlacklistService blacklistService;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
@@ -103,7 +102,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -115,14 +114,14 @@ public class EventPublishingControllerTest {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
     }
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        when(publisher.publish(any(), any())).thenThrow(new EventTypeTimeoutException(""));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -136,7 +135,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -150,7 +149,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -162,7 +161,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -177,7 +176,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any(Client.class));
+                .publish(any(), any());
 
         postBatch(TOPIC, EVENT_BATCH);
         postBatch(TOPIC, EVENT_BATCH);
@@ -197,7 +196,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any(Client.class));
+                .publish(any(), any());
 
         when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
 
@@ -217,7 +216,7 @@ public class EventPublishingControllerTest {
                         .put("app_hashed", "hashed-application-name")
                         .put("event_type", "my-topic")
                         .put("batch_size", 33)
-                        .put("number_of_events",3)).allowingExtraUnexpectedFields()));
+                        .put("number_of_events", 3)).allowingExtraUnexpectedFields()));
 
         assertThat(kpi.getInt("ms_spent"), is(notNullValue()));
     }
