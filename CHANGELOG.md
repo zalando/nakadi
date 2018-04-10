@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.3] = 2018-04-10
+
+### Fixed
+- Do not log a complete stack trace when a user tries to publish to a non-existing event type
+
 ## [2.6.2] - 2018-04-05
 
 ### Changed

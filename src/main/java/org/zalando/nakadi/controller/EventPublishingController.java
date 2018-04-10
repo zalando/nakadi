@@ -108,7 +108,7 @@ public class EventPublishingController {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Event type not found.", e);
+            LOG.debug("Event type not found.", e.getMessage());
             return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
             LOG.debug("Failed to publish batch", e);

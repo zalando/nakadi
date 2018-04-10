@@ -61,7 +61,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
         } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.", e);
+            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
         }
     }
 

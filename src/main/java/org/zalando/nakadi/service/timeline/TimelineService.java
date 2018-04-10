@@ -126,7 +126,7 @@ public class TimelineService {
         } catch (final TopicCreationException | ServiceUnavailableException | InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
         }
     }
 
@@ -324,7 +324,7 @@ public class TimelineService {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
         } catch (final InternalNakadiException e) {
             throw new TimelineException("Could not get event type: " + eventTypeName, e);
         }
