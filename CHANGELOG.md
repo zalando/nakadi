@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Added flushing of collected events when reaching stream_timeout in subscription API
+
 ## [2.6.3] - 2018-04-10
 
 ### Fixed
