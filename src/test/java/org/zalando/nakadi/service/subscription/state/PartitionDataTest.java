@@ -133,4 +133,24 @@ public class PartitionDataTest {
         assertNotNull(eventsToStream);
         assertEquals(99, eventsToStream.size());
     }
+
+    @Test
+    public void eventsShouldBeStreamedOnStreamTimeout() {
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        for (int i = 0; i < 10; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i)));
+        }
+        assertEquals(10, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
+    }
+
+    @Test
+    public void noEmptyBatchShouldBeStreamedOnStreamTimeoutWhenNoEvents() {
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        for (int i = 0; i < 10; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i)));
+        }
+        assertNull(pd.takeEventsToStream(currentTimeMillis(), 0, timeout, true));
+    }
 }
