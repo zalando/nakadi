@@ -95,9 +95,10 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         scheduleTask(() -> {
+                    streamToOutput(true);
                     final String debugMessage = "Stream timeout reached";
-                    this.sendMetadata(debugMessage);
-                    this.shutdownGracefully(debugMessage);
+                    sendMetadata(debugMessage);
+                    shutdownGracefully(debugMessage);
                 }, getParameters().streamTimeoutMillis,
                 TimeUnit.MILLISECONDS);
 
@@ -221,6 +222,10 @@ class StreamingState extends State {
     }
 
     private void streamToOutput() {
+        streamToOutput(false);
+    }
+
+    private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         final boolean wasCommitted = isEverythingCommitted();
@@ -231,7 +236,8 @@ class StreamingState extends State {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
-                    getParameters().batchTimeoutMillis))) {
+                    getParameters().batchTimeoutMillis,
+                    streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
@@ -649,6 +655,7 @@ class StreamingState extends State {
     /**
      * If stream doesn't have any partitions - start timer that will close this session
      * in commitTimeout*2 if it doesn't get any partitions during that time
+     *
      * @param topology the new topology
      */
     private void trackIdleness(final ZkSubscriptionClient.Topology topology) {

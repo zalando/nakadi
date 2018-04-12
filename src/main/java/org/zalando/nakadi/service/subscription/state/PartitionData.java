@@ -56,12 +56,16 @@ class PartitionData {
 
     @Nullable
     List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final int batchSize,
-                                           final long batchTimeoutMillis) {
+                                           final long batchTimeoutMillis, final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
         if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
             return extract(batchSize);
+        } else if (streamTimeoutReached) {
+            lastSendMillis = currentTimeMillis;
+            final List<ConsumedEvent> extractedEvents = extract(batchSize);
+            return extractedEvents.isEmpty() ? null : extractedEvents;
         } else {
             return null;
         }

@@ -101,6 +101,23 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(SC_NO_CONTENT, statusCode);
     }
 
+    @Test(timeout = 10000)
+    public void whenStreamTimeoutReachedThenEventsFlushed() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(),
+                        "batch_flush_timeout=600&batch_limit=1000&stream_timeout=2&max_uncommitted_events=3")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        publishEvents(eventType.getName(), 4, x -> "{\"foo\":\"bar\"}");
+
+        // when stream_timeout is reached we should get 2 batches:
+        // first one containing 3 events, second one with debug message
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
+        assertThat(client.getBatches().get(0).getEvents(), hasSize(3));
+        assertThat(client.getBatches().get(1).getEvents(), hasSize(0));
+    }
+
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
