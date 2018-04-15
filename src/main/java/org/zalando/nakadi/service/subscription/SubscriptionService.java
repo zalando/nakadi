@@ -236,7 +236,8 @@ public class SubscriptionService {
     private ZkSubscriptionClient createZkSubscriptionClient(final Subscription subscription)
             throws ServiceTemporarilyUnavailableException {
         try {
-            return subscriptionClientFactory.createClient(subscription, "subscription." + subscription.getId() + ".stats");
+            return subscriptionClientFactory.createClient(subscription,
+                    "subscription." + subscription.getId() + ".stats");
         } catch (final InternalNakadiException | NoSuchEventTypeException e) {
             throw new ServiceTemporarilyUnavailableException(e);
         }
