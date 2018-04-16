@@ -2689,6 +2689,7 @@ definitions:
           properties:
             partition:
               type: string
+              description: the partition id
             state:
               type: string
               description: |
@@ -2734,6 +2735,7 @@ definitions:
             properties:
               partition:
                 type: string
+                description: The partition id
               state:
                 type: string
                 description: |
