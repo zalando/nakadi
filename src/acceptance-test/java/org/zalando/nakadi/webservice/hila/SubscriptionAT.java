@@ -386,7 +386,7 @@ public class SubscriptionAT extends BaseAT {
             Assert.assertNotNull(partition.getPartition());
             Assert.assertEquals("", partition.getStreamId());
             Assert.assertNull(partition.getUnconsumedEvents());
-            Assert.assertEquals(partition.getState(), "unassigned");
+            Assert.assertEquals("unassigned", partition.getState());
         }
     }
 

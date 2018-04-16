@@ -156,10 +156,13 @@ public class SubscriptionService {
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
+            final PaginationWrapper<Subscription> paginationWrapper =
+                    new PaginationWrapper<>(subscriptions, paginationLinks);
             if (showStatus) {
-                subscriptions.forEach(s -> s.setStats(createSubscriptionStat(s, false)));
+                final List<Subscription> items = paginationWrapper.getItems();
+                items.forEach(s -> s.setStats(createSubscriptionStat(s, false)));
             }
-            return Result.ok(new PaginationWrapper<>(subscriptions, paginationLinks));
+            return Result.ok(paginationWrapper);
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
