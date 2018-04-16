@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.PartitionBaseStatistics;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -229,11 +230,15 @@ public class SubscriptionService {
                                                                     final boolean includeDistance)
             throws InconsistentStateException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
-        final List<PartitionEndStatistics> topicPartitions = loadPartitionEndStatistics(eventTypes);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-        return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, topicPartitions, includeDistance);
+        if (includeDistance) {
+            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient);
+        }
+        else {
+            return loadLightStats(eventTypes, zkSubscriptionNode);
+        }
     }
 
     private ZkSubscriptionClient createZkSubscriptionClient(final Subscription subscription)
@@ -258,9 +263,7 @@ public class SubscriptionService {
             throws ServiceTemporarilyUnavailableException {
         final List<PartitionEndStatistics> topicPartitions = new ArrayList<>();
 
-        final Map<TopicRepository, List<Timeline>> timelinesByRepo = eventTypes.stream()
-                .map(timelineService::getActiveTimeline)
-                .collect(Collectors.groupingBy(timelineService::getTopicRepository));
+        final Map<TopicRepository, List<Timeline>> timelinesByRepo = getTimelinesByRepository(eventTypes);
 
         for (final Map.Entry<TopicRepository, List<Timeline>> repoEntry : timelinesByRepo.entrySet()) {
             final TopicRepository topicRepository = repoEntry.getKey();
@@ -270,42 +273,80 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
+    private Map<TopicRepository, List<Timeline>> getTimelinesByRepository(final Collection<EventType> eventTypes) {
+        return eventTypes.stream()
+                .map(timelineService::getActiveTimeline)
+                .collect(Collectors.groupingBy(timelineService::getTopicRepository));
+    }
+
+    private List<String> getPartitionsList(final EventType eventType) {
+        final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
+        return timelineService.getTopicRepository(activeTimeline).listPartitionNames(activeTimeline.getTopic());
+    }
+
     private List<SubscriptionEventTypeStats> loadStats(
             final Collection<EventType> eventTypes,
             final Optional<ZkSubscriptionNode> subscriptionNode,
-            final ZkSubscriptionClient client,
-            final List<PartitionEndStatistics> stats,
-            final boolean includeDistance)
+            final ZkSubscriptionClient client)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
-
-        Collection<NakadiCursor> committedPositions = null;
-        if (includeDistance) {
-            committedPositions = getCommittedPositions(subscriptionNode, client);
-        }
-
+        final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
+        final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
         for (final EventType eventType : eventTypes) {
-            final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
-            for (final PartitionEndStatistics stat : stats) {
-                final NakadiCursor lastPosition = stat.getLast();
-                if (!lastPosition.getEventType().equals(eventType.getName())) {
-                    continue;
-                }
-                Long distance = null;
-                if (includeDistance) {
-                    distance = computeDistance(committedPositions, lastPosition);
-                }
-                final Partition.State state = getState(subscriptionNode, stat);
-                final String streamId = getStreamId(subscriptionNode, stat);
-                final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType =
-                        getAssignmentType(subscriptionNode, stat);
-                resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                        lastPosition.getPartition(), state.getDescription(), distance, streamId, assignmentType));
-            }
-            resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
-            result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
+            final List<PartitionBaseStatistics> statsForEventType = stats.stream()
+                    .filter(s -> s.getTimeline().getEventType().equals(eventType.getName()))
+                    .collect(Collectors.toList());
+            result.add(getEventTypeStats(subscriptionNode, eventType.getName(), statsForEventType,
+                    committedPositions));
         }
         return result;
+    }
+
+    private List<SubscriptionEventTypeStats> loadLightStats(final Collection<EventType> eventTypes,
+                                                            final Optional<ZkSubscriptionNode> subscriptionNode)
+            throws ServiceTemporarilyUnavailableException {
+        final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
+        for (final EventType eventType : eventTypes) {
+            result.add(getEventTypeLightStats(subscriptionNode, eventType));
+        }
+        return result;
+    }
+
+    private SubscriptionEventTypeStats getEventTypeStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                         final String eventTypeName,
+                                                         final List<? extends PartitionBaseStatistics> stats,
+                                                         final Collection<NakadiCursor> committedPositions) {
+        final List<SubscriptionEventTypeStats.Partition> resultPartitions =
+                new ArrayList<>(stats.size());
+        for (final PartitionBaseStatistics stat : stats) {
+            final String partition = stat.getPartition();
+            final NakadiCursor lastPosition = ((PartitionEndStatistics) stat).getLast();
+            final Long distance = computeDistance(committedPositions, lastPosition);
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance));
+        }
+        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
+        return new SubscriptionEventTypeStats(eventTypeName, resultPartitions);
+    }
+
+    private SubscriptionEventTypeStats getEventTypeLightStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                              final EventType eventType) {
+        final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
+        for (final String partition: getPartitionsList(eventType)) {
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
+        }
+        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
+        return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
+    }
+
+    private SubscriptionEventTypeStats.Partition getPartitionStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                                   final String eventTypeName, final String partition,
+                                                                   final Long distance) {
+        final Partition.State state = getState(subscriptionNode, eventTypeName, partition);
+        final String streamId = getStreamId(subscriptionNode, eventTypeName, partition);
+        final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType =
+                getAssignmentType(subscriptionNode, eventTypeName, partition);
+        return new SubscriptionEventTypeStats.Partition(partition, state.getDescription(),
+                distance, streamId, assignmentType);
     }
 
     private Collection<NakadiCursor> getCommittedPositions(final Optional<ZkSubscriptionNode> subscriptionNode,
@@ -315,24 +356,24 @@ public class SubscriptionService {
                 .orElse(Collections.emptyList());
     }
 
+    private Partition.State getState(final Optional<ZkSubscriptionNode> subscriptionNode, final String eventType,
+                                     final String partition) {
+        return subscriptionNode.map(node -> node.guessState(eventType, partition))
+                .orElse(Partition.State.UNASSIGNED);
+    }
+
     private SubscriptionEventTypeStats.Partition.AssignmentType getAssignmentType(
-            final Optional<ZkSubscriptionNode> subscriptionNode, final PartitionEndStatistics stat) {
+            final Optional<ZkSubscriptionNode> subscriptionNode, final String eventType, final String partition) {
         return subscriptionNode
-                .map(node -> node.getPartitionAssignmentType(
-                        stat.getTimeline().getEventType(), stat.getPartition()))
+                .map(node -> node.getPartitionAssignmentType(eventType, partition))
                 .orElse(null);
     }
 
-    private String getStreamId(final Optional<ZkSubscriptionNode> subscriptionNode, final PartitionEndStatistics stat) {
+    private String getStreamId(final Optional<ZkSubscriptionNode> subscriptionNode,
+                               final String eventType, final String partition) {
         return subscriptionNode
-                .map(node -> node.guessStream(stat.getTimeline().getEventType(), stat.getPartition()))
+                .map(node -> node.guessStream(eventType, partition))
                 .orElse("");
-    }
-
-    private Partition.State getState(final Optional<ZkSubscriptionNode> subscriptionNode,
-                                     final PartitionEndStatistics stat) {
-        return subscriptionNode.map(node -> node.guessState(stat.getTimeline().getEventType(), stat.getPartition()))
-                .orElse(Partition.State.UNASSIGNED);
     }
 
     private Long computeDistance(final Collection<NakadiCursor> committedPositions, final NakadiCursor lastPosition) {
