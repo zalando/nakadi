@@ -235,8 +235,7 @@ public class SubscriptionService {
 
         if (includeDistance) {
             return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient);
-        }
-        else {
+        } else {
             return loadLightStats(eventTypes, zkSubscriptionNode);
         }
     }
