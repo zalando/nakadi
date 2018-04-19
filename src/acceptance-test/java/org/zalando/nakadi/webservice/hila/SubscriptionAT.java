@@ -396,7 +396,10 @@ public class SubscriptionAT extends BaseAT {
     public void whenLightStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventType(et);
-        final Response response = when().get("/subscriptions?show_status=true").thenReturn();
+        final String owningApplication = s.getOwningApplication();
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
         final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
                 new TypeReference<ItemsWrapper<Subscription>>(){});
         for (final Subscription subscription: subsItems.getItems()) {
@@ -414,6 +417,7 @@ public class SubscriptionAT extends BaseAT {
     public void whenLightStatsOnActiveSubscriptionThenCorrectRespones() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventTypeFromBegin(et);
+        final String owningApplication = s.getOwningApplication();
 
         publishEvents(et, 15, i -> "{\"foo\":\"bar\"}");
 
@@ -422,14 +426,17 @@ public class SubscriptionAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
 
-        final Response response = when().get("/subscriptions?show_status=true").thenReturn();
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
         final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
                 new TypeReference<ItemsWrapper<Subscription>>(){});
         for (final Subscription subscription: subsItems.getItems()) {
             if (subscription.getId().equals(s.getId())) {
                 Assert.assertNotNull(subscription.getStats());
                 Assert.assertEquals("assigned", subscription.getStats().get(0).getPartitions().get(0).getState());
-                Assert.assertNotEquals("", subscription.getStats().get(0).getPartitions().get(0).getStreamId());
+                Assert.assertEquals(client.getSessionId(),
+                        subscription.getStats().get(0).getPartitions().get(0).getStreamId());
                 Assert.assertEquals(SubscriptionEventTypeStats.Partition.AssignmentType.AUTO,
                         subscription.getStats().get(0).getPartitions().get(0).getAssignmentType());
                 return;
