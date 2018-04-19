@@ -59,7 +59,9 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventTypeFromBegin;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class SubscriptionAT extends BaseAT {
@@ -368,7 +370,7 @@ public class SubscriptionAT extends BaseAT {
     }
 
     @Test
-    public void whenStatsOnNotInitializedSubscriptionThanCorrectResponse() throws IOException {
+    public void whenStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventType(et);
         final Response response = when().get("/subscriptions/{sid}/stats", s.getId())
@@ -388,6 +390,52 @@ public class SubscriptionAT extends BaseAT {
             Assert.assertNull(partition.getUnconsumedEvents());
             Assert.assertEquals("unassigned", partition.getState());
         }
+    }
+
+    @Test
+    public void whenLightStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+        final Response response = when().get("/subscriptions?show_status=true").thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStats());
+                Assert.assertEquals("unassigned", subscription.getStats().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals("", subscription.getStats().get(0).getPartitions().get(0).getStreamId());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
+    }
+
+    @Test
+    public void whenLightStatsOnActiveSubscriptionThenCorrectRespones() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventTypeFromBegin(et);
+
+        publishEvents(et, 15, i -> "{\"foo\":\"bar\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, s.getId(), "max_uncommitted_events=20")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+
+        final Response response = when().get("/subscriptions?show_status=true").thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStats());
+                Assert.assertEquals("assigned", subscription.getStats().get(0).getPartitions().get(0).getState());
+                Assert.assertNotEquals("", subscription.getStats().get(0).getPartitions().get(0).getStreamId());
+                Assert.assertEquals(SubscriptionEventTypeStats.Partition.AssignmentType.AUTO,
+                        subscription.getStats().get(0).getPartitions().get(0).getAssignmentType());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
     }
 
     @Test
