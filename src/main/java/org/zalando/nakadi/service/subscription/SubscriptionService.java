@@ -156,7 +156,7 @@ public class SubscriptionService {
             final List<Subscription> subscriptions =
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                    owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
+                    owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
             final PaginationWrapper<Subscription> paginationWrapper =
                     new PaginationWrapper<>(subscriptions, paginationLinks);
             if (showStatus) {

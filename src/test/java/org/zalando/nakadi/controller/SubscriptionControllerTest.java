@@ -294,7 +294,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit);
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
         return mockMvcBuilder.build().perform(get(url));
     }
 

@@ -1,7 +1,9 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.joda.time.DateTime;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class Subscription extends SubscriptionBase {
@@ -20,6 +22,7 @@ public class Subscription extends SubscriptionBase {
 
     private DateTime createdAt;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<SubscriptionEventTypeStats> stats;
 
     public String getId() {
@@ -38,6 +41,7 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
+    @Nullable
     public List<SubscriptionEventTypeStats> getStats() {
         return stats;
     }
