@@ -77,8 +77,8 @@ public class EventPublishingController {
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
             }
 
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    request, eventTypeMetrics, client);
+            final ResponseEntity response = postEventInternal(
+                    eventTypeName, eventsAsString, request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final RuntimeException ex) {
@@ -95,7 +95,7 @@ public class EventPublishingController {
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
-            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName);
 
             final int eventCount = result.getResponses().size();
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
@@ -108,7 +108,7 @@ public class EventPublishingController {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Event type not found.", e);
+            LOG.debug("Event type not found.", e.getMessage());
             return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
             LOG.debug("Failed to publish batch", e);
