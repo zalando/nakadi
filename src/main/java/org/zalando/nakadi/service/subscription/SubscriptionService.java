@@ -161,7 +161,7 @@ public class SubscriptionService {
                     new PaginationWrapper<>(subscriptions, paginationLinks);
             if (showStatus) {
                 final List<Subscription> items = paginationWrapper.getItems();
-                items.forEach(s -> s.setStats(createSubscriptionStat(s, false)));
+                items.forEach(s -> s.setStatus(createSubscriptionStat(s, false)));
             }
             return Result.ok(paginationWrapper);
         } catch (final ServiceTemporarilyUnavailableException e) {

@@ -23,7 +23,7 @@ public class Subscription extends SubscriptionBase {
     private DateTime createdAt;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<SubscriptionEventTypeStats> stats;
+    private List<SubscriptionEventTypeStats> status;
 
     public String getId() {
         return id;
@@ -42,12 +42,12 @@ public class Subscription extends SubscriptionBase {
     }
 
     @Nullable
-    public List<SubscriptionEventTypeStats> getStats() {
-        return stats;
+    public List<SubscriptionEventTypeStats> getStatus() {
+        return status;
     }
 
-    public void setStats(final List<SubscriptionEventTypeStats> stats) {
-        this.stats = stats;
+    public void setStatus(final List<SubscriptionEventTypeStats> status) {
+        this.status = status;
     }
 
     @Override

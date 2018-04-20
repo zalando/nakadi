@@ -404,9 +404,9 @@ public class SubscriptionAT extends BaseAT {
                 new TypeReference<ItemsWrapper<Subscription>>(){});
         for (final Subscription subscription: subsItems.getItems()) {
             if (subscription.getId().equals(s.getId())) {
-                Assert.assertNotNull(subscription.getStats());
-                Assert.assertEquals("unassigned", subscription.getStats().get(0).getPartitions().get(0).getState());
-                Assert.assertEquals("", subscription.getStats().get(0).getPartitions().get(0).getStreamId());
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("unassigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals("", subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
                 return;
             }
         }
@@ -433,12 +433,12 @@ public class SubscriptionAT extends BaseAT {
                 new TypeReference<ItemsWrapper<Subscription>>(){});
         for (final Subscription subscription: subsItems.getItems()) {
             if (subscription.getId().equals(s.getId())) {
-                Assert.assertNotNull(subscription.getStats());
-                Assert.assertEquals("assigned", subscription.getStats().get(0).getPartitions().get(0).getState());
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("assigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
                 Assert.assertEquals(client.getSessionId(),
-                        subscription.getStats().get(0).getPartitions().get(0).getStreamId());
+                        subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
                 Assert.assertEquals(SubscriptionEventTypeStats.Partition.AssignmentType.AUTO,
-                        subscription.getStats().get(0).getPartitions().get(0).getAssignmentType());
+                        subscription.getStatus().get(0).getPartitions().get(0).getAssignmentType());
                 return;
             }
         }
