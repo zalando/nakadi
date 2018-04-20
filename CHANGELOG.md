@@ -6,8 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.4] - 2018-04-20
+
 ### Added
-- Add optional light stats to the /subscriptions endpoint
+- Add optional status to the /subscriptions endpoint
 
 ## [2.6.3] - 2018-04-10
 
