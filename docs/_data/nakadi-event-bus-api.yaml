@@ -966,7 +966,7 @@ paths:
           minimum: 0
         - name: show_status
           in: query
-          description: show light subscription stats
+          description: show subscription status
           type: boolean
           default: false
       responses:
@@ -2335,10 +2335,10 @@ definitions:
       stats:
         type: array
         description: |
-          Light subscription stats. This data is only available when querying the subscriptions endpoint for
-          light stats.
+          Subscription status. This data is only available when querying the subscriptions endpoint for
+          status.
         items:
-          $ref: '#/definitions/SubscriptionEventTypeLightStats'
+          $ref: '#/definitions/SubscriptionEventTypeStatus'
     required:
       - owning_application
       - event_types
@@ -2719,19 +2719,19 @@ definitions:
       - event_type
       - partitions
 
-  SubscriptionEventTypeLightStats:
+  SubscriptionEventTypeStatus:
       type: object
-      description: light statistics of one event-type within a context of subscription
+      description: Status of one event-type within a context of subscription
       properties:
         event_type:
           type: string
           description: event-type name
         partitions:
           type: array
-          description: statistics of partitions of this event-type
+          description: status of partitions of this event-type
           items:
             type: object
-            description: statistics of partition within a subscription context
+            description: status of partition within a subscription context
             properties:
               partition:
                 type: string
