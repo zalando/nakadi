@@ -133,14 +133,19 @@ public class CursorsService {
             }
         } catch (final NullPointerException npe) {
             LOG.info("[NPE AGAIN!] Topology: {}", topology);
-            Arrays.stream(topology.getPartitions())
-                    .forEach(p -> {
-                        if (p != null) {
-                            LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition: {} Key: {}", p, p.getKey());
-                        } else {
-                            LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition is null");
-                        }
-                    });
+            if (topology.getPartitions() == null) {
+                LOG.info("[NPE AGAIN!] topology.getPartitions() is null");
+            } else {
+                Arrays.stream(topology.getPartitions())
+                        .forEach(p -> {
+                            if (p != null) {
+                                LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition: {} Key: {}", p, p.getKey());
+                            } else {
+                                LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition is null");
+                            }
+                        });
+            }
+            throw npe;
         }
     }
 
