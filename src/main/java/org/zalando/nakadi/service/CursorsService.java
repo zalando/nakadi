@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -33,6 +35,7 @@ import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +54,8 @@ public class CursorsService {
     private final CursorConverter cursorConverter;
     private final UUIDGenerator uuidGenerator;
     private final TimelineService timelineService;
+
+    private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -108,20 +113,39 @@ public class CursorsService {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);
         }
 
-        final Map<EventTypePartition, String> partitionSessions = Stream
-                .of(subscriptionClient.getTopology().getPartitions())
-                .collect(Collectors.toMap(Partition::getKey, Partition::getSession));
-        for (final NakadiCursor cursor : cursors) {
-            final EventTypePartition etPartition = cursor.getEventTypePartition();
-            final String partitionSession = partitionSessions.get(etPartition);
-            if (partitionSession == null) {
-                throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, cursor);
-            }
+        final ZkSubscriptionClient.Topology topology = subscriptionClient.getTopology();
+        try {
+            final Map<EventTypePartition, String> partitionSessions = Stream
+                    .of(topology.getPartitions())
+                    .collect(Collectors.toMap(Partition::getKey, Partition::getSession));
 
-            if (!streamId.equals(partitionSession)) {
-                throw new InvalidStreamIdException("Cursor " + cursor + " cannot be committed with stream id "
-                        + streamId, streamId);
+            for (final NakadiCursor cursor : cursors) {
+                final EventTypePartition etPartition = cursor.getEventTypePartition();
+                final String partitionSession = partitionSessions.get(etPartition);
+                if (partitionSession == null) {
+                    throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, cursor);
+                }
+
+                if (!streamId.equals(partitionSession)) {
+                    throw new InvalidStreamIdException("Cursor " + cursor + " cannot be committed with stream id "
+                            + streamId, streamId);
+                }
             }
+        } catch (final NullPointerException npe) {
+            LOG.info("[NPE AGAIN!] Topology: {}", topology);
+            if (topology.getPartitions() == null) {
+                LOG.info("[NPE AGAIN!] topology.getPartitions() is null");
+            } else {
+                Arrays.stream(topology.getPartitions())
+                        .forEach(p -> {
+                            if (p != null) {
+                                LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition: {} Key: {}", p, p.getKey());
+                            } else {
+                                LOG.info("[NPE AGAIN!] [CHECK KEYS FOR NULL] Partition is null");
+                            }
+                        });
+            }
+            throw npe;
         }
     }
 
