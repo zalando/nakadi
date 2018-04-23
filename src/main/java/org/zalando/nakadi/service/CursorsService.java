@@ -110,6 +110,7 @@ public class CursorsService {
 
         final Map<EventTypePartition, String> partitionSessions = Stream
                 .of(subscriptionClient.getTopology().getPartitions())
+                .filter(p -> p.getSession() != null)
                 .collect(Collectors.toMap(Partition::getKey, Partition::getSession));
         for (final NakadiCursor cursor : cursors) {
             final EventTypePartition etPartition = cursor.getEventTypePartition();
