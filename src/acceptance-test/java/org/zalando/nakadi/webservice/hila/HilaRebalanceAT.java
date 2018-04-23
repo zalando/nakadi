@@ -322,7 +322,7 @@ public class HilaRebalanceAT extends BaseAT {
         final int commitStatusCode = commitCursors(subscription.getId(),
                 ImmutableList.of(client.getBatches().get(0).getCursor()), client.getSessionId());
 
-        // check that we get 200
+        // check that we get 204
         assertThat(commitStatusCode, is(HttpStatus.NO_CONTENT.value()));
     }
 
