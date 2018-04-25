@@ -59,7 +59,9 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventTypeFromBegin;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class SubscriptionAT extends BaseAT {
@@ -368,7 +370,7 @@ public class SubscriptionAT extends BaseAT {
     }
 
     @Test
-    public void whenStatsOnNotInitializedSubscriptionThanCorrectResponse() throws IOException {
+    public void whenStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventType(et);
         final Response response = when().get("/subscriptions/{sid}/stats", s.getId())
@@ -386,8 +388,61 @@ public class SubscriptionAT extends BaseAT {
             Assert.assertNotNull(partition.getPartition());
             Assert.assertEquals("", partition.getStreamId());
             Assert.assertNull(partition.getUnconsumedEvents());
-            Assert.assertEquals(partition.getState(), "unassigned");
+            Assert.assertEquals("unassigned", partition.getState());
         }
+    }
+
+    @Test
+    public void whenLightStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+        final String owningApplication = s.getOwningApplication();
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("unassigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals("", subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
+    }
+
+    @Test
+    public void whenLightStatsOnActiveSubscriptionThenCorrectRespones() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventTypeFromBegin(et);
+        final String owningApplication = s.getOwningApplication();
+
+        publishEvents(et, 15, i -> "{\"foo\":\"bar\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, s.getId(), "max_uncommitted_events=20")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("assigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals(client.getSessionId(),
+                        subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
+                Assert.assertEquals(SubscriptionEventTypeStats.Partition.AssignmentType.AUTO,
+                        subscription.getStatus().get(0).getPartitions().get(0).getAssignmentType());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
     }
 
     @Test

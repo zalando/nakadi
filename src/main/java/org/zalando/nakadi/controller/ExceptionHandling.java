@@ -151,7 +151,7 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporaryUnavailableException(
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);

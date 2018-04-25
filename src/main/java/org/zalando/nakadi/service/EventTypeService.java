@@ -211,7 +211,7 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type " + eventTypeName
                     + " is currently in maintenance, please repeat request");
-        } catch (final NakadiException e) {
+        } catch (final NakadiException | ServiceTemporarilyUnavailableException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         } finally {

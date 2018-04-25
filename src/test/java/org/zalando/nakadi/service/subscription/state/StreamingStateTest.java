@@ -14,7 +14,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
@@ -115,7 +115,7 @@ public class StreamingStateTest {
 
     @Test
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed()
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
             InvalidCursorException {
         final ZkSubscription<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscription.class);
 

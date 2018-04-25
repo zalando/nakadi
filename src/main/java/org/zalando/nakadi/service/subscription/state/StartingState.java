@@ -9,8 +9,8 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -169,7 +169,7 @@ public class StartingState extends State {
                         try {
                             return timelineService.getTopicRepository(timelines.get(0))
                                     .loadTopicStatistics(timelines).stream();
-                        } catch (final ServiceUnavailableException e) {
+                        } catch (final ServiceTemporarilyUnavailableException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })
@@ -208,7 +208,7 @@ public class StartingState extends State {
                         try {
                             return timelineService.getTopicRepository(timelines.get(0))
                                     .loadTopicEndStatistics(timelines).stream();
-                        } catch (final ServiceUnavailableException e) {
+                        } catch (final ServiceTemporarilyUnavailableException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })

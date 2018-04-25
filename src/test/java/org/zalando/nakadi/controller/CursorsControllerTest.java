@@ -16,8 +16,8 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
@@ -152,7 +152,7 @@ public class CursorsControllerTest {
     @Test
     public void whenServiceUnavailableExceptionThenServiceUnavailable() throws Exception {
         when(cursorsService.commitCursors(any(), any(), any()))
-                .thenThrow(new ServiceUnavailableException("dummy-message"));
+                .thenThrow(new ServiceTemporarilyUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
         checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);

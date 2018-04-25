@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.4] - 2018-04-25
+
+### Added
+- Add optional status to the /subscriptions endpoint
+
 ### Fixed
 - Fixed commit for subscriptions that use direct assignment of partitions
 

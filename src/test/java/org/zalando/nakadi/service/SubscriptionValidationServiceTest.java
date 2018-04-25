@@ -12,10 +12,10 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -192,7 +192,7 @@ public class SubscriptionValidationServiceTest {
         ));
         final NakadiCursor cursor = mockCursorWithTimeline();
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
-        doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
+        doThrow(new ServiceTemporarilyUnavailableException("")).when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
