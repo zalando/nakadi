@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Fixed commit for subscriptions that use direct assignment of partitions
+- Fixed OutOfMemoryError when using huge values for batch_limit and max_uncommitted_events
+
 
 ## [2.6.3] - 2018-04-10
 
