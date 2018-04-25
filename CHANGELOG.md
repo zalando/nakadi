@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed commit for subscriptions that use direct assignment of partitions
+
 ## [2.6.3] - 2018-04-10
 
 ### Fixed
