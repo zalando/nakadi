@@ -12,9 +12,9 @@ import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -112,7 +112,8 @@ public class CursorOperationsService {
         }
     }
 
-    private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline) throws ServiceUnavailableException {
+    private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline)
+            throws ServiceTemporarilyUnavailableException {
         return timelineService.getTopicRepository(timeline).loadTopicStatistics(Collections.singletonList(timeline));
     }
 

@@ -185,6 +185,14 @@ public class NakadiTestUtils {
         return createSubscription(subscriptionBase);
     }
 
+    public static Subscription createSubscriptionForEventTypeFromBegin(final String eventType) throws IOException {
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType)
+                .withStartFrom(SubscriptionBase.InitialPosition.BEGIN)
+                .buildSubscriptionBase();
+        return createSubscription(subscriptionBase);
+    }
+
     public static Subscription createSubscription(final SubscriptionBase subscription) throws IOException {
         return createSubscription(given(), subscription);
     }

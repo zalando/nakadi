@@ -23,8 +23,8 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -375,7 +375,8 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNakadiExceptionIsThrownThenServiceUnavailable() throws NakadiException, IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(ServiceUnavailableException.class);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME))
+                .thenThrow(ServiceTemporarilyUnavailableException.class);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 

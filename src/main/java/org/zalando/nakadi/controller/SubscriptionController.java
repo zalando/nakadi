@@ -52,13 +52,15 @@ public class SubscriptionController {
     public ResponseEntity<?> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
             @Nullable @RequestParam(value = "event_type", required = false) final Set<String> eventTypes,
+            @RequestParam(value = "show_status", required = false, defaultValue = "false") final boolean showStatus,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return WebResult.wrap(() ->
-                subscriptionService.listSubscriptions(owningApplication, eventTypes, limit, offset), request);
+                subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
+                request);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
@@ -84,7 +86,7 @@ public class SubscriptionController {
             throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return subscriptionService.getSubscriptionStat(subscriptionId);
+        return subscriptionService.getSubscriptionStat(subscriptionId, true);
     }
 
     @ExceptionHandler(NakadiException.class)
@@ -113,7 +115,7 @@ public class SubscriptionController {
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporarilyUnavailableException ex,
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailable(final ServiceTemporarilyUnavailableException ex,
                                                                      final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(
