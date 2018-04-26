@@ -97,7 +97,7 @@ class PartitionData {
     }
 
     private List<ConsumedEvent> extract(final int count) {
-        final List<ConsumedEvent> result = new ArrayList<>(count);
+        final List<ConsumedEvent> result = new ArrayList<>();
         for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
             final ConsumedEvent event = nakadiEvents.remove(0);
             bytesInMemory -= event.getEvent().length;

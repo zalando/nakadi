@@ -1,6 +1,8 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -299,6 +301,29 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient autoClient2 = new TestStreamingClient(URL, subscription.getId(), "");
         autoClient2.start();
         waitFor(() -> assertThat(autoClient2.getResponseCode(), is(HttpStatus.CONFLICT.value())));
+    }
+
+    @Test(timeout = 10000)
+    public void testCommitWhenDirectAssignment() throws Exception {
+        // connect with 1 stream directly requesting one partition
+        final TestStreamingClient client = new TestStreamingClient(URL, subscription.getId(), "batch_flush_timeout=1",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        client.start();
+        // wait for rebalance to finish
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), Matchers.is(1)));
+        // publish 1 event
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(), 1, x -> "blah", x -> "0");
+        // wait for event to come
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
+        // commit cursor
+        final int commitStatusCode = commitCursors(subscription.getId(),
+                ImmutableList.of(client.getBatches().get(0).getCursor()), client.getSessionId());
+
+        // check that we get 204
+        assertThat(commitStatusCode, is(HttpStatus.NO_CONTENT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,

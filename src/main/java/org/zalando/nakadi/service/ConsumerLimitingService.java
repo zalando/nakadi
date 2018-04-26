@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZkChildrenCache;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
@@ -60,7 +60,7 @@ public class ConsumerLimitingService {
     @SuppressWarnings("unchecked")
     public List<ConnectionSlot> acquireConnectionSlots(final String client, final String eventType,
                                                        final List<String> partitions)
-            throws NoConnectionSlotsException, ServiceUnavailableException {
+            throws NoConnectionSlotsException, ServiceTemporarilyUnavailableException {
 
         final List<String> partitionsWithNoFreeSlots = getPartitionsWithNoFreeSlots(client, eventType, partitions);
         if (partitionsWithNoFreeSlots.size() == 0) {
@@ -86,7 +86,7 @@ public class ConsumerLimitingService {
             } catch (final Exception e) {
                 // in a case of failure release slots for partitions that already acquired slots
                 slots.forEach(this::releaseConnectionSlot);
-                throw new ServiceUnavailableException("Error communicating with zookeeper", e);
+                throw new ServiceTemporarilyUnavailableException("Error communicating with zookeeper", e);
             }
         } else {
             throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots, client);

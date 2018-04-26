@@ -12,7 +12,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -561,7 +561,7 @@ class StreamingState extends State {
                     try {
                         return getContext().getTimelineService().getTopicRepository(timelines.get(0))
                                 .loadTopicStatistics(timelines).stream();
-                    } catch (final ServiceUnavailableException e) {
+                    } catch (final ServiceTemporarilyUnavailableException e) {
                         throw new NakadiRuntimeException(e);
                     }
                 })

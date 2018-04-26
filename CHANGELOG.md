@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Changed
+## [2.6.4] - 2018-04-26
+
+### Added
+- Add optional status to the /subscriptions endpoint
+
+### Fixed
+- Fixed commit for subscriptions that use direct assignment of partitions
+- Fixed OutOfMemoryError when using huge values for batch_limit and max_uncommitted_events
 - Added flushing of collected events when reaching stream_timeout in subscription API
 
 ## [2.6.3] - 2018-04-10

@@ -11,7 +11,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
@@ -130,7 +130,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             final NakadiCursor cursor,
             final Consumer<NakadiCursor> cursorReplacer,
             final Consumer<NakadiCursor> lastTimelinePosition)
-            throws ServiceUnavailableException {
+            throws ServiceTemporarilyUnavailableException {
         final List<Timeline> eventTimelines = eventTypeTimelines.get(cursor.getEventType());
         final ListIterator<Timeline> itTimeline = eventTimelines.listIterator(eventTimelines.size());
         // select last timeline, and then move back until position was found.
@@ -168,11 +168,11 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
 
     private NakadiCursor getBeforeFirstCursor(
             final TopicRepository topicRepository, final Timeline electedTimeline, final String partition)
-            throws ServiceUnavailableException {
+            throws ServiceTemporarilyUnavailableException {
         final Optional<PartitionStatistics> statistics =
                 topicRepository.loadPartitionStatistics(electedTimeline, partition);
         return statistics
-                .orElseThrow(() -> new ServiceUnavailableException(
+                .orElseThrow(() -> new ServiceTemporarilyUnavailableException(
                         "It is expected that partition statistics exists for timeline " + electedTimeline +
                                 " and partition " + partition + ", but it wasn't found")).getBeforeFirst();
     }
