@@ -14,7 +14,7 @@ The URI for a stream is a nested resource and based on the event type's name - f
 This example posts two events to the `order_received` stream:
 
 ```sh
-curl -v -XPOST -H "Content-Type: application/json" https://localhost:8080/event-types/order_received/events -d '[
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types/order_received/events -d '[
   {
     "order_number": "24873243241",
     "metadata": {

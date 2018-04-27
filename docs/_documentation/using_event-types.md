@@ -161,7 +161,7 @@ An event type can be created by posting to the `/event-types` resource.
 This example shows a `business` category event type called `order_received`:
 
 ```sh
-curl -v -XPOST -H "Content-Type: application/json" https://localhost:8080/event-types -d '{
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types -d '{
   "name": "order_received",
   "owning_application": "acme-order-service",
   "category": "business",

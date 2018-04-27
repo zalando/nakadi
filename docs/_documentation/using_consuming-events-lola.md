@@ -12,7 +12,7 @@ position: 8
 A consumer can open the stream for an Event Type via the `/events` sub-resource. For example to connect to the `order_received` stream send a GET request to its stream as follows:
 
 ```sh
-curl -v https://localhost:8080/event-types/order_received/events 
+curl -v http://localhost:8080/event-types/order_received/events 
 ```
 
 The stream accepts various parameters from the consumer, which you can read about in the ["API Reference"](#nakadi-event-bus-api).
@@ -23,7 +23,7 @@ In this section we'll just describe the response format, along with how cursors 
 The HTTP response on the wire will look something like this (the newline is show as `\n` for clarity):
 
 ```sh
-curl -v https://localhost:8080/event-types/order_received/events 
+curl -v http://localhost:8080/event-types/order_received/events 
     
 
 HTTP/1.1 200 OK
@@ -61,7 +61,7 @@ The `events` array contains a list of events that were published in the order th
 By default the `/events` resource will return data from all partitions of an event type stream and will do so from the end (or "tail") of the stream. To select only particular partitions and a position in the stream to start, you can supply an `X-Nakadi-Cursors` header in the request:
 
 ```sh
-curl -v https://localhost:8080/event-types/order_received/events \
+curl -v http://localhost:8080/event-types/order_received/events \
   -H 'X-Nakadi-Cursors: [{"partition": "0", "offset":"12"}]'
 ```
 
@@ -70,7 +70,7 @@ The `X-Nakadi-Cursors` header value is a JSON array of _cursors_. Each cursor in
 The `offset` value of the cursor allows you select where in the stream partition you want to consume from. This can be any known offset value, or the dedicated value `begin` which will start the stream from the beginning. For example, to read from partition `0` from the beginning:
 
 ```sh
-curl -v https://localhost:8080/event-types/order_received/events \
+curl -v http://localhost:8080/event-types/order_received/events \
   -H 'X-Nakadi-Cursors:[{"partition": "0", "offset":"begin"}]'
 ```
 
@@ -80,7 +80,7 @@ curl -v https://localhost:8080/event-types/order_received/events \
 If there are no events to be delivered the server will keep a streaming connection open by periodically sending a batch with no events but which contains a `cursor` pointing to the current offset. For example:
 
 ```sh
-curl -v https://localhost:8080/event-types/order_received/events 
+curl -v http://localhost:8080/event-types/order_received/events 
       
 
 HTTP/1.1 200 OK
