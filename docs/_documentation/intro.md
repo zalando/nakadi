@@ -107,7 +107,7 @@ like
 An event type can be created by posting to the `event-types` resource.
 
 ```sh
-curl -v -XPOST https://localhost:8080/event-types -H "Content-type: application/json" -d '{
+curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/json" -d '{
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "undefined",
@@ -124,7 +124,7 @@ curl -v -XPOST https://localhost:8080/event-types -H "Content-type: application/
 Events for an event type can be published by posting to its "events" collection:
 
 ```sh
-curl -v -XPOST https://localhost:8080/event-types/order.ORDER_RECEIVED/events -H "Content-type: application/json" -d '[
+curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events -H "Content-type: application/json" -d '[
   {
     "order_number": "24873243241",
     "metadata": {
@@ -149,7 +149,7 @@ HTTP/1.1 200 OK
 You can open a stream for an Event Type via the `events` sub-resource:
 
 ```sh
-curl -v https://localhost:8080/event-types/order.ORDER_RECEIVED/events 
+curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events 
     
 
 HTTP/1.1 200 OK
