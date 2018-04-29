@@ -7,7 +7,7 @@ import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.IllegalClientIdException;
+import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.problem.Problem;
 
 public class ExceptionHandlingTest {
