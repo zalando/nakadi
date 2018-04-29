@@ -19,7 +19,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.ConflictException;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -28,6 +27,7 @@ import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -224,7 +224,7 @@ public class EventTypeController {
     public ResponseEntity<Problem> duplicatedEventTypeNameException(final DuplicatedEventTypeNameException exception,
                                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(exception.asProblem(), request);
+        return Responses.create(Problem.valueOf(Response.Status.CONFLICT, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InvalidEventTypeException.class)
