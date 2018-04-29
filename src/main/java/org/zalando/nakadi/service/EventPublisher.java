@@ -18,11 +18,11 @@ import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -186,7 +186,7 @@ public class EventPublisher {
         final Optional<ValidationError> validationError = validator.validate(event);
 
         if (validationError.isPresent()) {
-            throw new EventValidationException(validationError.get());
+            throw new EventValidationException(validationError.get().getMessage());
         }
     }
 
