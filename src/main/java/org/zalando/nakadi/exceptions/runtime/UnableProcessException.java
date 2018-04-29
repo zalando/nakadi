@@ -1,6 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
-public class UnableProcessException extends RuntimeException {
+public class UnableProcessException extends MyNakadiRuntimeException1 {
 
     public UnableProcessException(final String message) {
         super(message);
