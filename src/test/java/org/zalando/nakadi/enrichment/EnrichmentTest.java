@@ -6,7 +6,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
