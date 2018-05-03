@@ -12,7 +12,7 @@ Nakadi does not ship with a client, but there are some open source clients avail
 | Nakadi Java     | Java               | <https://github.com/dehora/nakadi-java>             |
 | Fahrschein      | Java               | <https://github.com/zalando-nakadi/fahrschein>      |
 | Nakadion        | Rust               | <https://crates.io/crates/nakadion>                 |
-| nakadi-client   | Haskell            | <http://nakadi-client.haskell.silverratio.net>      |
+| nakadi-client   | Haskell            | <https://nakadi-client.haskell.silverratio.net>     |
 | go-nakadi       | Go                 | <https://github.com/stoewer/go-nakadi>              |
 | nakacli         | CLI                | <https://github.com/amrhassan/nakacli>              |
 
