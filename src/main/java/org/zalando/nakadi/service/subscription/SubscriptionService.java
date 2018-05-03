@@ -139,7 +139,9 @@ public class SubscriptionService {
 
     public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
                                     final boolean showStatus, final int limit, final int offset) {
-        TimeLogger.startMeasure("[LIST_SUBSCRIPTIONS]", "Get subscriptions from DB");
+        if (showStatus) {
+            TimeLogger.startMeasure("LIGHT_STATS", "Get subscriptions from DB");
+        }
 
         if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
@@ -345,9 +347,13 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         TimeLogger.addMeasure("Get partitions list for ET: " + eventType.getName());
-        final List<String> partitionsList = getPartitionsList(eventType);
+        final List<String> partitionsList = subscriptionNode.map(
+                node -> node.getPartitions().stream()
+                        .map(Partition::getPartition)
+                        .collect(Collectors.toList()))
+                .orElse(getPartitionsList(eventType));
 
-        for (final String partition: partitionsList) {
+        for (final String partition : partitionsList) {
             TimeLogger.addMeasure("Get partition stats for partition: " + eventType.getName() + ":" + partition);
             resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
         }
