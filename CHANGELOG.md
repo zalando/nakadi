@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Improved performance of listing subscriptions with their status
+
 ## [2.6.4] - 2018-04-26
 
 ### Added
