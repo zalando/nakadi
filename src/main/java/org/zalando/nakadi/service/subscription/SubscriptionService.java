@@ -355,7 +355,7 @@ public class SubscriptionService {
                 })
                 .orElseGet(() -> {
                     TimeLogger.addMeasure("Get partitions list from Kafka for ET: " + eventType.getName());
-                    return getPartitionsList(eventType)
+                    return getPartitionsList(eventType);
                 });
 
         for (final String partition : partitionsList) {
