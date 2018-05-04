@@ -346,12 +346,17 @@ public class SubscriptionService {
                                                               final EventType eventType) {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
-        TimeLogger.addMeasure("Get partitions list for ET: " + eventType.getName());
         final List<String> partitionsList = subscriptionNode.map(
-                node -> node.getPartitions().stream()
-                        .map(Partition::getPartition)
-                        .collect(Collectors.toList()))
-                .orElse(getPartitionsList(eventType));
+                node -> {
+                    TimeLogger.addMeasure("Get partitions list from ZK for ET: " + eventType.getName());
+                    return node.getPartitions().stream()
+                            .map(Partition::getPartition)
+                            .collect(Collectors.toList());
+                })
+                .orElseGet(() -> {
+                    TimeLogger.addMeasure("Get partitions list from Kafka for ET: " + eventType.getName());
+                    return getPartitionsList(eventType)
+                });
 
         for (final String partition : partitionsList) {
             TimeLogger.addMeasure("Get partition stats for partition: " + eventType.getName() + ":" + partition);
