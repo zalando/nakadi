@@ -16,13 +16,6 @@ public class EventTypeOptionsValidatorTest {
             TOPIC_RETENTION_MAX
     );
 
-
-    @Test
-    public void testValidation() {
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        validator.checkRetentionTime(eventTypeOptions);
-    }
-
     @Test
     public void testValidationMin() {
         try {
