@@ -50,7 +50,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
-import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
 
@@ -139,10 +138,6 @@ public class SubscriptionService {
 
     public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
                                     final boolean showStatus, final int limit, final int offset) {
-        if (showStatus) {
-            TimeLogger.startMeasure("LIGHT_STATS", "Get subscriptions from DB");
-        }
-
         if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'limit' parameter should have value from 1 to 1000");
@@ -168,7 +163,6 @@ public class SubscriptionService {
                 final List<Subscription> items = paginationWrapper.getItems();
                 items.forEach(s -> s.setStatus(createSubscriptionStat(s, false)));
             }
-            LOG.info(TimeLogger.finishMeasure());
             return Result.ok(paginationWrapper);
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
@@ -235,14 +229,8 @@ public class SubscriptionService {
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
                                                                     final boolean includeDistance)
             throws InconsistentStateException, ServiceTemporarilyUnavailableException {
-
-        TimeLogger.addMeasure("Get event types for subscription " + subscription.getId());
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
-
-        TimeLogger.addMeasure("Create ZkSubscriptionClient for subscription " + subscription.getId());
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
-
-        TimeLogger.addMeasure("Get ZkSubscriptionNode for subscription " + subscription.getId());
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
         if (includeDistance) {
@@ -291,10 +279,7 @@ public class SubscriptionService {
     }
 
     private List<String> getPartitionsList(final EventType eventType) {
-        TimeLogger.addMeasure("Get active timeline for ET: " + eventType.getName());
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
-
-        TimeLogger.addMeasure("List partitions for ET: " + eventType.getName());
         return timelineService.getTopicRepository(activeTimeline).listPartitionNames(activeTimeline.getTopic());
     }
 
@@ -347,22 +332,14 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         final List<String> partitionsList = subscriptionNode.map(
-                node -> {
-                    TimeLogger.addMeasure("Get partitions list from ZK for ET: " + eventType.getName());
-                    return node.getPartitions().stream()
-                            .map(Partition::getPartition)
-                            .collect(Collectors.toList());
-                })
-                .orElseGet(() -> {
-                    TimeLogger.addMeasure("Get partitions list from Kafka for ET: " + eventType.getName());
-                    return getPartitionsList(eventType);
-                });
+                node -> node.getPartitions().stream()
+                        .map(Partition::getPartition)
+                        .collect(Collectors.toList()))
+                .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {
-            TimeLogger.addMeasure("Get partition stats for partition: " + eventType.getName() + ":" + partition);
             resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
         }
-        TimeLogger.addMeasure("Sort stats");
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
     }
