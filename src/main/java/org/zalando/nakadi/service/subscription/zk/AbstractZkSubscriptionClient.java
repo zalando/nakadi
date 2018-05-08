@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.apache.curator.framework.CuratorFramework;
@@ -25,15 +26,18 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,14 +61,18 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     private InterProcessSemaphoreMutex lock;
     private final String resetCursorPath;
     private final Logger log;
+    private final Set<ZkSubscriptionImpl<?, ?>> listeners = new HashSet<>();
+    protected final ObjectMapper objectMapper;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
             final CuratorFramework curatorFramework,
+            final ObjectMapper objectMapper,
             final String loggingPath) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.resetCursorPath = getSubscriptionPath("/cursor_reset");
+        this.objectMapper = objectMapper;
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
@@ -118,6 +126,15 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throw new NakadiRuntimeException(e);
         }
     }
+
+    protected Topology parseTopology(final byte[] data) {
+        try {
+            return objectMapper.readValue(data, Topology.class);
+        } catch (IOException e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
 
     @Override
     public final void deleteSubscription() {
@@ -306,12 +323,21 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
         getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
-        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
+        return registerListener(new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 commitListener,
                 data -> new SubscriptionCursorWithoutToken(
                         key.getEventType(), key.getPartition(), new String(data, UTF_8)),
-                path);
+                path,
+                this::listenerClosed));
+    }
+
+    @Override
+    public void refreshListeners(final long staleMillis) {
+        // Listeners set may be modified, so will create a copy.
+        for (final ZkSubscriptionImpl<?, ?> item : new ArrayList<>(this.listeners)) {
+            item.refresh(staleMillis);
+        }
     }
 
     @Override
@@ -372,12 +398,33 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         throw new OperationTimeoutException("Timeout resetting cursors");
     }
 
+    private <T, V> ZkSubscriptionImpl<T, V> registerListener(final ZkSubscriptionImpl<T, V> value) {
+        listeners.add(value);
+        return value;
+    }
+
+    private void listenerClosed(final ZkSubscriptionImpl<?, ?> listener) {
+        listeners.remove(listener);
+    }
+
     @Override
     public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener)
             throws NakadiRuntimeException {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
-        return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
-                getCurator(), listener, getSubscriptionPath("/sessions"));
+        return registerListener(new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
+                getCurator(), listener, getSubscriptionPath("/sessions"), this::listenerClosed));
+    }
+
+    @Override
+    public final ZkSubscription<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
+            throws NakadiRuntimeException {
+        getLog().info("subscribeForTopologyChanges");
+        return registerListener(new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
+                getCurator(),
+                onTopologyChanged,
+                this::parseTopology,
+                getSubscriptionPath(NODE_TOPOLOGY),
+                this::listenerClosed));
     }
 
     @Override

@@ -214,11 +214,29 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
+    public void refreshZkListeners() {
+        // Already stopped, nothing to do.
+        if (null == sessionListSubscription) {
+            return;
+        }
+        getZkClient().refreshListeners(this.getParameters().commitTimeoutMillis / 4);
+
+        rescheduleZkListenersRefresh();
+    }
+
+    private void rescheduleZkListenersRefresh() {
+        this.scheduleTask(
+                this::refreshZkListeners,
+                this.getParameters().commitTimeoutMillis / 8,
+                TimeUnit.MILLISECONDS);
+    }
+
     public void registerSession() throws NakadiRuntimeException {
         log.info("Registering session {}", session);
         // Install rebalance hook on client list change.
         sessionListSubscription = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
         zkClient.registerSession(session);
+        rescheduleZkListenersRefresh();
     }
 
     public void unregisterSession() {

@@ -178,6 +178,13 @@ public interface ZkSubscriptionClient {
     void resetCursors(List<SubscriptionCursorWithoutToken> cursors, long timeout)
             throws OperationTimeoutException, ZookeeperException;
 
+    /**
+     * Asks all the listeners that were created to check if they are up to date.
+     * If it passed more than {@code staleMillis} millis since last listener call, it will be recreated.
+     * @param staleMillis listener is considered to be stale if it was not triggered for this time.
+     */
+    void refreshListeners(long staleMillis);
+
     class Topology {
         @JsonProperty("partitions")
         private final Partition[] partitions;

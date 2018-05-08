@@ -60,15 +60,12 @@ import static com.google.common.base.Charsets.UTF_8;
  */
 public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
-    private final ObjectMapper objectMapper;
-
     public NewZkSubscriptionClient(
             final String subscriptionId,
             final CuratorFramework curatorFramework,
             final String loggingPath,
             final ObjectMapper objectMapper) {
-        super(subscriptionId, curatorFramework, loggingPath);
-        this.objectMapper = objectMapper;
+        super(subscriptionId, curatorFramework, objectMapper, loggingPath);
     }
 
     @Override
@@ -116,25 +113,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         } catch (final Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
-    }
-
-    private Topology parseTopology(final byte[] data) {
-        try {
-            return objectMapper.readValue(data, Topology.class);
-        } catch (IOException e) {
-            throw new NakadiRuntimeException(e);
-        }
-    }
-
-    @Override
-    public final ZkSubscription<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
-            throws NakadiRuntimeException {
-        getLog().info("subscribeForTopologyChanges");
-        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
-                getCurator(),
-                onTopologyChanged,
-                this::parseTopology,
-                getSubscriptionPath(NODE_TOPOLOGY));
     }
 
     protected byte[] serializeSession(final Session session)
