@@ -4,6 +4,10 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -16,6 +20,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
+
+    private static final Logger LOG = LoggerFactory.getLogger(NakadiKafkaConsumer.class);
 
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
@@ -57,6 +63,10 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
         }
         final ArrayList<ConsumedEvent> result = new ArrayList<>(records.count());
         for (final ConsumerRecord<byte[], byte[]> record : records) {
+
+            final DateTime eventTimestamp = new DateTime(record.timestamp(), DateTimeZone.UTC);
+            LOG.info("[EVENT_TIMESTAMP] offset: {}, timestamp: {}", record.offset(), eventTimestamp.toString());
+
             final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
             result.add(new ConsumedEvent(record.value(), cursor.toNakadiCursor(timeline)));
