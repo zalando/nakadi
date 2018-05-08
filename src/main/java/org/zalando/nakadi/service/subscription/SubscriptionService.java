@@ -1,6 +1,9 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -23,6 +28,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
@@ -36,11 +42,13 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
@@ -55,14 +63,17 @@ import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -272,6 +283,34 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
+    private Map<EventTypePartition, Optional<Duration>> getTimeLags(final Collection<NakadiCursor> committedPositions) {
+        return committedPositions.stream()
+                .collect(Collectors.toMap(
+                        c -> new EventTypePartition(c.getTimeline().getEventType(), c.getPartition()),
+                        this::getNextEventLag
+                ));
+    }
+
+    private Optional<Duration> getNextEventLag(final NakadiCursor cursor) {
+        try {
+            final EventConsumer consumer = timelineService.createEventConsumer("]|[o/7a", ImmutableList.of(cursor));
+            final List<ConsumedEvent> events = consumer.readEvents();
+            if (events.isEmpty()) {
+                return Optional.of(Duration.ZERO);
+            }
+            final ConsumedEvent firstEvent = events.iterator().next();
+            final Duration duration = Duration.ofMillis(new Date().getTime() - firstEvent.getTimestamp());
+            return Optional.of(duration);
+
+        } catch (NakadiException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        } catch (InvalidCursorException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
     private Map<TopicRepository, List<Timeline>> getTimelinesByRepository(final Collection<EventType> eventTypes) {
         return eventTypes.stream()
                 .map(timelineService::getActiveTimeline)
@@ -291,12 +330,15 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
         final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
         final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
+
+        final Map<EventTypePartition, Optional<Duration>> timeLags = getTimeLags(committedPositions);
+
         for (final EventType eventType : eventTypes) {
             final List<PartitionBaseStatistics> statsForEventType = stats.stream()
                     .filter(s -> s.getTimeline().getEventType().equals(eventType.getName()))
                     .collect(Collectors.toList());
             result.add(getEventTypeStats(subscriptionNode, eventType.getName(), statsForEventType,
-                    committedPositions));
+                    committedPositions, timeLags));
         }
         return result;
     }
@@ -314,14 +356,19 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats getEventTypeStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                          final String eventTypeName,
                                                          final List<? extends PartitionBaseStatistics> stats,
-                                                         final Collection<NakadiCursor> committedPositions) {
+                                                         final Collection<NakadiCursor> committedPositions,
+                                                         final Map<EventTypePartition, Optional<Duration>> timeLags) {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions =
                 new ArrayList<>(stats.size());
         for (final PartitionBaseStatistics stat : stats) {
             final String partition = stat.getPartition();
             final NakadiCursor lastPosition = ((PartitionEndStatistics) stat).getLast();
             final Long distance = computeDistance(committedPositions, lastPosition);
-            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance));
+            final Long timeLag = timeLags.get(new EventTypePartition(eventTypeName, partition))
+                    .map(Duration::getSeconds)
+                    .orElse(null);
+
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance, timeLag));
         }
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventTypeName, resultPartitions);
@@ -330,8 +377,8 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats getEventTypeLightStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                               final EventType eventType) {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
-        for (final String partition: getPartitionsList(eventType)) {
-            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
+        for (final String partition : getPartitionsList(eventType)) {
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null, null));
         }
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
@@ -339,13 +386,13 @@ public class SubscriptionService {
 
     private SubscriptionEventTypeStats.Partition getPartitionStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                                    final String eventTypeName, final String partition,
-                                                                   final Long distance) {
+                                                                   final Long distance, final Long timeLag) {
         final Partition.State state = getState(subscriptionNode, eventTypeName, partition);
         final String streamId = getStreamId(subscriptionNode, eventTypeName, partition);
         final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType =
                 getAssignmentType(subscriptionNode, eventTypeName, partition);
         return new SubscriptionEventTypeStats.Partition(partition, state.getDescription(),
-                distance, streamId, assignmentType);
+                distance, timeLag, streamId, assignmentType);
     }
 
     private Collection<NakadiCursor> getCommittedPositions(final Optional<ZkSubscriptionNode> subscriptionNode,

@@ -322,6 +322,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 15L,
+                                null,
                                 client.getSessionId(),
                                 AUTO)))
                 );
@@ -340,6 +341,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 5L,
+                                null,
                                 client.getSessionId(),
                                 AUTO)))
                 );
@@ -367,6 +369,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 0L,
+                                null,
                                 client.getSessionId(),
                                 DIRECT
                         ))))));
@@ -400,6 +403,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 1L,
+                                null,
                                 client.getSessionId(),
                                 AUTO
                         ))))))
@@ -409,6 +413,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 2L,
+                                null,
                                 client.getSessionId(),
                                 AUTO
                         ))))));
