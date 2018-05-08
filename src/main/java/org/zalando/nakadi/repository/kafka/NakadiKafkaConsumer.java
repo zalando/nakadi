@@ -65,7 +65,8 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
         for (final ConsumerRecord<byte[], byte[]> record : records) {
 
             final DateTime eventTimestamp = new DateTime(record.timestamp(), DateTimeZone.UTC);
-            LOG.info("[EVENT_TIMESTAMP] offset: {}, timestamp: {}", record.offset(), eventTimestamp.toString());
+            LOG.info("[EVENT_TIMESTAMP] topic: {}, partition: {}, offset: {}, timestamp: {}",
+                    record.topic(), record.partition(), record.offset(), eventTimestamp.toString());
 
             final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
