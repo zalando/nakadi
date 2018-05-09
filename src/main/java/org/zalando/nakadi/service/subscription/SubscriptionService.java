@@ -1,9 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -25,10 +22,8 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
@@ -43,14 +38,11 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -69,15 +61,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
-
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 @Component
 public class SubscriptionService {
@@ -95,7 +83,7 @@ public class SubscriptionService {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final FeatureToggleService featureToggleService;
     private final String subLogEventType;
-    private final EventTypeCache eventTypeCache;
+    private final SubscriptionTimeLagService subscriptionTimeLagService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -107,7 +95,7 @@ public class SubscriptionService {
                                final CursorOperationsService cursorOperationsService,
                                final NakadiKpiPublisher nakadiKpiPublisher,
                                final FeatureToggleService featureToggleService,
-                               final EventTypeCache eventTypeCache,
+                               final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -118,7 +106,7 @@ public class SubscriptionService {
         this.cursorOperationsService = cursorOperationsService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.featureToggleService = featureToggleService;
-        this.eventTypeCache = eventTypeCache;
+        this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
     }
 
@@ -292,55 +280,6 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
-    private Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
-                                                          final List<PartitionEndStatistics> endPositions) {
-
-        final NakadiCursorComparator cursorComparator = new NakadiCursorComparator(eventTypeCache);
-        final MultiTimelineEventConsumer consumer = timelineService.createMultiTimelineEventConsumer(
-                "time-lag-checker-" + UUID.randomUUID().toString());
-
-        return committedPositions.stream()
-                .collect(Collectors.toMap(
-                        c -> new EventTypePartition(c.getTimeline().getEventType(), c.getPartition()),
-                        c -> {
-                            final boolean isAtTail = endPositions.stream()
-                                    .filter(endStats -> endStats.getLast().getEventType().equals(c.getEventType())
-                                            && endStats.getLast().getPartition().equals(c.getPartition()))
-                                    .findAny()
-                                    .map(endPos -> cursorComparator.compare(c, endPos.getLast()) >= 0)
-                                    .orElse(false);
-
-                            if (isAtTail) {
-                                return Duration.ZERO;
-                            } else {
-                                return getNextEventTimeLag(c, consumer);
-                            }
-                        }
-                ));
-    }
-
-    private Duration getNextEventTimeLag(final NakadiCursor cursor, final MultiTimelineEventConsumer consumer) {
-        try {
-            consumer.reassign(ImmutableList.of(cursor));
-        } catch (final NakadiException | InvalidCursorException e) {
-            throw new ErrorGettingCursorTimeLagException(cursor, e);
-        }
-
-        final ConsumedEvent nextEvent = executeWithRetry(
-                () -> {
-                    final List<ConsumedEvent> events = consumer.readEvents();
-                    return events.isEmpty() ? null : events.iterator().next();
-                },
-                new RetryForSpecifiedTimeStrategy<ConsumedEvent>(1000)
-                        .withResultsThatForceRetry((ConsumedEvent) null));
-
-        if (nextEvent == null) {
-            return Duration.ZERO;
-        } else {
-            return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
-        }
-    }
-
     private Map<TopicRepository, List<Timeline>> getTimelinesByRepository(final Collection<EventType> eventTypes) {
         return eventTypes.stream()
                 .map(timelineService::getActiveTimeline)
@@ -362,7 +301,7 @@ public class SubscriptionService {
         final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
 
         final Map<EventTypePartition, Duration> timeLags = showTimeLag ?
-                getTimeLags(committedPositions, stats) :
+                subscriptionTimeLagService.getTimeLags(committedPositions, stats) :
                 ImmutableMap.of();
 
         for (final EventType eventType : eventTypes) {
