@@ -90,8 +90,8 @@ class StreamingState extends State {
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        recreateTopologySubscription();
-        addTask(this::recheckTopology);
+        topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
+        reactOnTopologyChange();
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
@@ -108,14 +108,6 @@ class StreamingState extends State {
 
         cursorResetSubscription = getZk().subscribeForCursorsReset(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
-    }
-
-    private void recreateTopologySubscription() {
-        if (null != topologyChangeSubscription) {
-            topologyChangeSubscription.close();
-        }
-        topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
-        reactOnTopologyChange();
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -359,7 +351,7 @@ class StreamingState extends State {
                         final SubscriptionCursorWithoutToken remembered =
                                 getContext().getCursorConverter().convertToNoToken(v.getValue().getCommitOffset());
                         final SubscriptionCursorWithoutToken real = realCommitted.get(v.getKey());
-                        return real.getOffset().compareTo(remembered.getOffset())> 0;
+                        return real.getOffset().compareTo(remembered.getOffset()) > 0;
                     })
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
@@ -425,19 +417,6 @@ class StreamingState extends State {
                 .toArray(Partition[]::new);
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         trackIdleness(topology);
-    }
-
-    void recheckTopology() {
-        // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
-        final Partition[] partitions = Stream.of(getZk().getTopology().getPartitions())
-                .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
-                .toArray(Partition[]::new);
-        if (refreshTopologyUnlocked(partitions)) {
-            getLog().info("Topology changed not by event, but by schedule. Recreating zk listener");
-            recreateTopologySubscription();
-        }
-        // addTask() is used to check if state is not changed.
-        scheduleTask(() -> addTask(this::recheckTopology), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     boolean refreshTopologyUnlocked(final Partition[] assignedPartitions) {
