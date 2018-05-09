@@ -12,7 +12,7 @@ import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
+import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -53,8 +53,6 @@ public class SubscriptionTimeLagService {
             throws ErrorGettingCursorTimeLagException {
 
         final NakadiCursorComparator cursorComparator = new NakadiCursorComparator(eventTypeCache);
-        final MultiTimelineEventConsumer consumer = timelineService.createMultiTimelineEventConsumer(
-                "time-lag-checker-" + UUID.randomUUID().toString());
 
         final ThreadPoolExecutor executor = new ThreadPoolExecutor(0, 10, 100, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>());
@@ -74,7 +72,7 @@ public class SubscriptionTimeLagService {
             if (isAtTail) {
                 result.put(etp, Duration.ZERO);
             } else {
-                futures.put(etp, executor.submit(() -> getNextEventTimeLag(c, consumer)));
+                futures.put(etp, executor.submit(() -> getNextEventTimeLag(c)));
             }
         }
 
@@ -98,26 +96,26 @@ public class SubscriptionTimeLagService {
         }
     }
 
-    private Duration getNextEventTimeLag(final NakadiCursor cursor, final MultiTimelineEventConsumer consumer)
-            throws ErrorGettingCursorTimeLagException {
+    private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException {
         try {
-            consumer.reassign(ImmutableList.of(cursor));
+            final EventConsumer consumer = timelineService.createEventConsumer(
+                    "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor));
+
+            final ConsumedEvent nextEvent = executeWithRetry(
+                    () -> {
+                        final List<ConsumedEvent> events = consumer.readEvents();
+                        return events.isEmpty() ? null : events.iterator().next();
+                    },
+                    new RetryForSpecifiedTimeStrategy<ConsumedEvent>(EVENT_FETCH_WAIT_TIME_MS)
+                            .withResultsThatForceRetry((ConsumedEvent) null));
+
+            if (nextEvent == null) {
+                return Duration.ZERO;
+            } else {
+                return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
+            }
         } catch (final NakadiException | InvalidCursorException e) {
             throw new ErrorGettingCursorTimeLagException(cursor, e);
-        }
-
-        final ConsumedEvent nextEvent = executeWithRetry(
-                () -> {
-                    final List<ConsumedEvent> events = consumer.readEvents();
-                    return events.isEmpty() ? null : events.iterator().next();
-                },
-                new RetryForSpecifiedTimeStrategy<ConsumedEvent>(EVENT_FETCH_WAIT_TIME_MS)
-                        .withResultsThatForceRetry((ConsumedEvent) null));
-
-        if (nextEvent == null) {
-            return Duration.ZERO;
-        } else {
-            return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
         }
     }
 
