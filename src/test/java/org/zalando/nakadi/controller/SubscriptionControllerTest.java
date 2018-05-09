@@ -122,7 +122,7 @@ public class SubscriptionControllerTest {
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService,
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);

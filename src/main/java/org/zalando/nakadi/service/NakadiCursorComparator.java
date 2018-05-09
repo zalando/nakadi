@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class NakadiCursorComparator implements Comparator<NakadiCursor> {
+
     private final EventTypeCache eventTypeCache;
 
     public NakadiCursorComparator(final EventTypeCache eventTypeCache) {
