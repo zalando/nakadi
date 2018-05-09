@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -60,8 +60,7 @@ public class SubscriptionTimeLagService {
 
         TimeLogger.startMeasure("TIME_LAG", "putting of execution");
 
-        final ThreadPoolExecutor executor = new ThreadPoolExecutor(10, 10, 0, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>());
+        final ExecutorService executor = Executors.newFixedThreadPool(10);
 
         Map<EventTypePartition, Future<Duration>> futures = new HashMap<>();
         Map<EventTypePartition, Duration> result = new HashMap<>();
@@ -78,17 +77,18 @@ public class SubscriptionTimeLagService {
                     .orElse(false);
 
             if (isAtTail) {
+                LOG.info("[PARTITION_TIME_LAG] short path for " + cursor.getEventType() + ":" + cursor.getPartition());
                 result.put(partition, Duration.ZERO);
             } else {
                 futures.put(partition, executor.submit(() -> getNextEventTimeLag(cursor)));
             }
         }
 
-        TimeLogger.startMeasure("TIME_LAG", "shutdown");
+        TimeLogger.addMeasure("shutdown");
 
         executor.shutdown();
 
-        TimeLogger.startMeasure("TIME_LAG", "waiting to finish");
+        TimeLogger.addMeasure("waiting to finish");
 
         try {
             final boolean finished = executor.awaitTermination(COMPLETE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -96,7 +96,7 @@ public class SubscriptionTimeLagService {
                 throw new MyNakadiRuntimeException1("timeout!!!");
             }
 
-            TimeLogger.startMeasure("TIME_LAG", "extracting results from futures");
+            TimeLogger.addMeasure("extracting results from futures");
 
             futures.forEach((partition, future) -> {
                 try {
