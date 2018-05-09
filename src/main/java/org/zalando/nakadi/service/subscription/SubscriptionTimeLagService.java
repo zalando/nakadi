@@ -2,8 +2,6 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -13,12 +11,12 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.TimeLogger;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -38,11 +36,9 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 @Component
 public class SubscriptionTimeLagService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionTimeLagService.class);
-
-
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
-    private static final int COMPLETE_TIMEOUT_MS = 60000;
+    private static final int COMPLETE_TIMEOUT_MS = 30000;
+    private static final int LAG_CALCULATION_PARALLELISM = 10;
 
     private final TimelineService timelineService;
     private final NakadiCursorComparator cursorComparator;
@@ -56,11 +52,9 @@ public class SubscriptionTimeLagService {
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
                                                          final List<PartitionEndStatistics> endPositions)
-            throws ErrorGettingCursorTimeLagException {
+            throws ErrorGettingCursorTimeLagException, InconsistentStateException {
 
-        TimeLogger.startMeasure("TIME_LAG", "putting of execution");
-
-        final ExecutorService executor = Executors.newFixedThreadPool(10);
+        final ExecutorService executor = Executors.newFixedThreadPool(LAG_CALCULATION_PARALLELISM);
 
         Map<EventTypePartition, Future<Duration>> futures = new HashMap<>();
         Map<EventTypePartition, Duration> result = new HashMap<>();
@@ -77,46 +71,42 @@ public class SubscriptionTimeLagService {
                     .orElse(false);
 
             if (isAtTail) {
-                LOG.info("[PARTITION_TIME_LAG] short path for " + cursor.getEventType() + ":" + cursor.getPartition());
                 result.put(partition, Duration.ZERO);
             } else {
                 futures.put(partition, executor.submit(() -> getNextEventTimeLag(cursor)));
             }
         }
 
-        TimeLogger.addMeasure("shutdown");
-
         executor.shutdown();
-
-        TimeLogger.addMeasure("waiting to finish");
-
         try {
             final boolean finished = executor.awaitTermination(COMPLETE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!finished) {
-                throw new MyNakadiRuntimeException1("timeout!!!");
+                throw new InconsistentStateException("Timeout occurred when getting subscription time lag");
             }
-
-            TimeLogger.addMeasure("extracting results from futures");
 
             futures.forEach((partition, future) -> {
                 try {
                     result.put(partition, future.get());
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new MyNakadiRuntimeException1("wtf!!!");
+                } catch (final InterruptedException e) {
+                    throw new InconsistentStateException("Thread interrupted when getting subscription time lag", e);
+                } catch (final ExecutionException e) {
+                    if (e.getCause() instanceof MyNakadiRuntimeException1) {
+                        throw (MyNakadiRuntimeException1) e.getCause();
+                    } else {
+                        throw new InconsistentStateException("Unexpected error occurred when getting subscription " +
+                                "time lag", e);
+                    }
                 }
             });
-
-            LOG.info(TimeLogger.finishMeasure());
-
             return result;
 
-        } catch (InterruptedException e) {
-            throw new MyNakadiRuntimeException1("interrupted!!!");
+        } catch (final InterruptedException e) {
+            throw new InconsistentStateException("Thread interrupted when getting subscription time lag", e);
         }
     }
 
-    private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException {
-        final long start = System.currentTimeMillis();
+    private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
+            InconsistentStateException {
         try {
             final EventConsumer consumer = timelineService.createEventConsumer(
                     "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor));
@@ -129,15 +119,14 @@ public class SubscriptionTimeLagService {
                     new RetryForSpecifiedTimeStrategy<ConsumedEvent>(EVENT_FETCH_WAIT_TIME_MS)
                             .withResultsThatForceRetry((ConsumedEvent) null));
 
-            final long diff = System.currentTimeMillis() - start;
-            LOG.info("[PARTITION_TIME_LAG] " + cursor.getEventType() + ":" + cursor.getPartition() + " " + diff);
-
             if (nextEvent == null) {
                 return Duration.ZERO;
             } else {
                 return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
             }
-        } catch (final NakadiException | InvalidCursorException e) {
+        } catch (final NakadiException e) {
+            throw new InconsistentStateException("Unexpected error happened when getting consumer time lag", e);
+        } catch (final InvalidCursorException e) {
             throw new ErrorGettingCursorTimeLagException(cursor, e);
         }
     }

@@ -31,6 +31,7 @@ import java.util.Set;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
 @RestController
@@ -109,7 +110,7 @@ public class SubscriptionController {
     public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException ex,
                                                           final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(SERVICE_UNAVAILABLE, ex.getMessage()), request);
+        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
