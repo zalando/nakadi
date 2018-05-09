@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -82,11 +83,12 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
-            @PathVariable("id") final String subscriptionId)
+            @PathVariable("id") final String subscriptionId,
+            @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
             throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return subscriptionService.getSubscriptionStat(subscriptionId, true);
+        return subscriptionService.getSubscriptionStat(subscriptionId, true, showTimeLag);
     }
 
     @ExceptionHandler(NakadiException.class)
@@ -101,6 +103,13 @@ public class SubscriptionController {
                                                           final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
+    }
+
+    @ExceptionHandler(ErrorGettingCursorTimeLagException.class)
+    public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException ex,
+                                                          final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(SERVICE_UNAVAILABLE, ex.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
