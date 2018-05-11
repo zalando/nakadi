@@ -2712,7 +2712,7 @@ definitions:
               type: number
               description: |
                 Subscription consumer lag for this partition in seconds. Measured as the age of the oldest event of
-                this partition that is not yet consumed.
+                this partition that is not yet consumed within this subscription.
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition
