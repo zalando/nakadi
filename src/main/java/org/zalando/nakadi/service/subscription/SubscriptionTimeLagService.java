@@ -12,9 +12,7 @@ import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -45,9 +43,9 @@ public class SubscriptionTimeLagService {
 
     @Autowired
     public SubscriptionTimeLagService(final TimelineService timelineService,
-                                      final EventTypeCache eventTypeCache) {
+                                      final NakadiCursorComparator cursorComparator) {
         this.timelineService = timelineService;
-        this.cursorComparator = new NakadiCursorComparator(eventTypeCache);
+        this.cursorComparator = cursorComparator;
     }
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
@@ -56,21 +54,13 @@ public class SubscriptionTimeLagService {
 
         final ExecutorService executor = Executors.newFixedThreadPool(LAG_CALCULATION_PARALLELISM);
 
-        Map<EventTypePartition, Future<Duration>> futures = new HashMap<>();
-        Map<EventTypePartition, Duration> result = new HashMap<>();
+        final Map<EventTypePartition, Future<Duration>> futures = new HashMap<>();
+        final Map<EventTypePartition, Duration> result = new HashMap<>();
 
         for (final NakadiCursor cursor : committedPositions) {
             final EventTypePartition partition = new EventTypePartition(cursor.getTimeline().getEventType(),
                     cursor.getPartition());
-            final boolean isAtTail = endPositions.stream()
-                    .map(PartitionEndStatistics::getLast)
-                    .filter(last -> last.getEventType().equals(cursor.getEventType())
-                            && last.getPartition().equals(cursor.getPartition()))
-                    .findAny()
-                    .map(last -> cursorComparator.compare(cursor, last) >= 0)
-                    .orElse(false);
-
-            if (isAtTail) {
+            if (isCursorAtTail(cursor, endPositions)) {
                 result.put(partition, Duration.ZERO);
             } else {
                 futures.put(partition, executor.submit(() -> getNextEventTimeLag(cursor)));
@@ -83,25 +73,20 @@ public class SubscriptionTimeLagService {
             if (!finished) {
                 throw new InconsistentStateException("Timeout occurred when getting subscription time lag");
             }
-
-            futures.forEach((partition, future) -> {
+            for (final EventTypePartition partition : futures.keySet()) {
+                final Future<Duration> future = futures.get(partition);
                 try {
                     result.put(partition, future.get());
-                } catch (final InterruptedException e) {
-                    throw new InconsistentStateException("Thread interrupted when getting subscription time lag", e);
                 } catch (final ExecutionException e) {
-                    if (e.getCause() instanceof MyNakadiRuntimeException1) {
-                        throw (MyNakadiRuntimeException1) e.getCause();
-                    } else {
-                        throw new InconsistentStateException("Unexpected error occurred when getting subscription " +
-                                "time lag", e);
-                    }
+                    throw e.getCause();
                 }
-            });
+            }
             return result;
 
-        } catch (final InterruptedException e) {
-            throw new InconsistentStateException("Thread interrupted when getting subscription time lag", e);
+        } catch (final InconsistentStateException | ErrorGettingCursorTimeLagException e) {
+            throw e;
+        } catch (final Throwable e) {
+            throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag", e);
         }
     }
 
@@ -129,6 +114,16 @@ public class SubscriptionTimeLagService {
         } catch (final InvalidCursorException e) {
             throw new ErrorGettingCursorTimeLagException(cursor, e);
         }
+    }
+
+    private boolean isCursorAtTail(final NakadiCursor cursor, final List<PartitionEndStatistics> endPositions) {
+        return endPositions.stream()
+                .map(PartitionEndStatistics::getLast)
+                .filter(last -> last.getEventType().equals(cursor.getEventType())
+                        && last.getPartition().equals(cursor.getPartition()))
+                .findAny()
+                .map(last -> cursorComparator.compare(cursor, last) >= 0)
+                .orElse(false);
     }
 
 }

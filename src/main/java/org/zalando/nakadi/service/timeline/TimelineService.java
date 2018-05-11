@@ -230,13 +230,10 @@ public class TimelineService {
 
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException {
-        final MultiTimelineEventConsumer consumer = createMultiTimelineEventConsumer(clientId);
-        consumer.reassign(positions);
-        return consumer;
-    }
-
-    public MultiTimelineEventConsumer createMultiTimelineEventConsumer(@Nullable final String clientId) {
-        return new MultiTimelineEventConsumer(clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+        final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
+                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+        result.reassign(positions);
+        return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
