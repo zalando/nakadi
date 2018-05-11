@@ -4,8 +4,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -18,8 +16,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
-
-    private static final Logger LOG = LoggerFactory.getLogger(NakadiKafkaConsumer.class);
 
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
