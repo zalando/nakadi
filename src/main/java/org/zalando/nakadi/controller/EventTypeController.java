@@ -7,7 +7,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
-import org.springframework.validation.ValidationUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -41,7 +41,6 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -63,7 +62,6 @@ public class EventTypeController {
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
-    private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final ApplicationService applicationService;
     private final AdminService adminService;
     private final NakadiSettings nakadiSettings;
@@ -71,13 +69,11 @@ public class EventTypeController {
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
-                               final EventTypeOptionsValidator eventTypeOptionsValidator,
                                final ApplicationService applicationService,
                                final AdminService adminService,
                                final NakadiSettings nakadiSettings) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
-        this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.applicationService = applicationService;
         this.adminService = adminService;
         this.nakadiSettings = nakadiSettings;
@@ -100,7 +96,6 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(eventType.getOwningApplication())) {
             return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
@@ -144,7 +139,6 @@ public class EventTypeController {
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException {
-        ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -234,4 +228,10 @@ public class EventTypeController {
         return Responses.create(exception.asProblem(), request);
     }
 
+    @ExceptionHandler(EventTypeOptionsValidationException.class)
+    public ResponseEntity<Problem> unableProcess(final EventTypeOptionsValidationException exception,
+                                                 final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
 }

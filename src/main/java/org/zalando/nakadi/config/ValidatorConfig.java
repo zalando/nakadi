@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CategoryChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;

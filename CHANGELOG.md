@@ -6,8 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.7] - 2018-05-15
+
 ### Fixed
 - Improved performance of listing subscriptions with their status
+
+## [2.6.6] - 2018-05-08
+
+### Added
+- Allow Nakadi admin set unlimited retention time for event type
 
 ## [2.6.4] - 2018-04-26
 
