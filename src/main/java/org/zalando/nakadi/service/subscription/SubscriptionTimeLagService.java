@@ -106,20 +106,25 @@ public class SubscriptionTimeLagService {
         try (final EventConsumer consumer = timelineService.createEventConsumer(CUSTOM_CONSUMER_PROPERTIES, cursors)){
             LOG.info("[TIME_LAG_FIX] starting consumer for {} partitions", cursors.size());
 
-            boolean hasEventsFromAllPartition;
+            boolean hasEventsFromAllPartition = false;
             final long startTime = System.currentTimeMillis();
             Map<EventTypePartition, Long> timestamps = new HashMap<>();
             do {
                 final List<ConsumedEvent> events = consumer.readEvents();
-                events.forEach(event -> {
-                    final EventTypePartition partition = new EventTypePartition(event.getPosition().getEventType(),
-                            event.getPosition().getEventType());
-                    LOG.info("[TIME_LAG_FIX] Got event from partition: {}", partition);
-                    if (!timestamps.containsKey(partition)) {
-                        timestamps.put(partition, event.getTimestamp());
-                    }
-                });
-                hasEventsFromAllPartition = timestamps.keySet().size() >= cursors.size();
+                if (events.isEmpty()) {
+                    LOG.info("[TIME_LAG_FIX] Got 0 events");
+                } else {
+                    events.forEach(event -> {
+                        final EventTypePartition partition = new EventTypePartition(event.getPosition().getEventType(),
+                                event.getPosition().getPartition());
+                        LOG.info("[TIME_LAG_FIX] Got event from partition: {}", partition);
+                        if (!timestamps.containsKey(partition)) {
+                            timestamps.put(partition, event.getTimestamp());
+                        }
+                    });
+                    hasEventsFromAllPartition = timestamps.keySet().size() >= cursors.size();
+                }
+
 
             } while (System.currentTimeMillis() - startTime < EVENT_FETCH_WAIT_TIME_MS && !hasEventsFromAllPartition);
 
