@@ -16,6 +16,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Date;
@@ -92,9 +93,9 @@ public class SubscriptionTimeLagService {
 
     private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
             InconsistentStateException {
-        try {
-            final EventConsumer consumer = timelineService.createEventConsumer(
-                    "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor));
+
+        try (final EventConsumer consumer = timelineService.createEventConsumer(
+                "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor))) {
 
             final ConsumedEvent nextEvent = executeWithRetry(
                     () -> {
@@ -105,11 +106,11 @@ public class SubscriptionTimeLagService {
                             .withResultsThatForceRetry((ConsumedEvent) null));
 
             if (nextEvent == null) {
-                return Duration.ZERO;
+                throw new InconsistentStateException("Timeout waiting for events when getting consumer time lag");
             } else {
                 return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
             }
-        } catch (final NakadiException e) {
+        } catch (final NakadiException | IOException e) {
             throw new InconsistentStateException("Unexpected error happened when getting consumer time lag", e);
         } catch (final InvalidCursorException e) {
             throw new ErrorGettingCursorTimeLagException(cursor, e);
