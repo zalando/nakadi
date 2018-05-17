@@ -88,7 +88,7 @@ class StreamingState extends State {
 
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
 
-        this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
+        this.eventConsumer = getContext().getTimelineService().createEventConsumer();
 
         recreateTopologySubscription();
         addTask(this::recheckTopology);
@@ -359,7 +359,7 @@ class StreamingState extends State {
                         final SubscriptionCursorWithoutToken remembered =
                                 getContext().getCursorConverter().convertToNoToken(v.getValue().getCommitOffset());
                         final SubscriptionCursorWithoutToken real = realCommitted.get(v.getKey());
-                        return real.getOffset().compareTo(remembered.getOffset())> 0;
+                        return real.getOffset().compareTo(remembered.getOffset()) > 0;
                     })
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());

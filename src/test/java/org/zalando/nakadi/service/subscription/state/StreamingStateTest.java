@@ -124,7 +124,7 @@ public class StreamingStateTest {
 
         final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
         when(consumer.getAssignment()).thenReturn(Collections.emptySet());
-        when(timelineService.createEventConsumer(any())).thenReturn(consumer);
+        when(timelineService.createEventConsumer()).thenReturn(consumer);
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
 
         final Storage storage = mock(Storage.class);

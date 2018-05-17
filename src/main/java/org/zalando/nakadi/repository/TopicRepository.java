@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface TopicRepository {
@@ -68,7 +69,8 @@ public interface TopicRepository {
 
     List<String> listPartitionNames(String topicId);
 
-    EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
+    EventConsumer.LowLevelConsumer createEventConsumer(Map<String, Object> consumerCustomProperties,
+                                                       List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,

@@ -36,7 +36,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
-    private final String clientId;
+    private final Map<String, Object> customProperties;
     /**
      * Contains latest offsets that were sent to client of this class
      */
@@ -65,11 +65,11 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
 
     public MultiTimelineEventConsumer(
-            final String clientId,
+            final Map<String, Object> customProperties,
             final TimelineService timelineService,
             final TimelineSync timelineSync,
             final Comparator<NakadiCursor> comparator) {
-        this.clientId = clientId;
+        this.customProperties = customProperties;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.comparator = comparator;
@@ -225,9 +225,10 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             if (!eventConsumers.containsKey(entry.getKey())) {
                 final TopicRepository repo = entry.getKey();
-                LOG.info("Creating underlying consumer for client id {} and cursors {}",
-                        clientId, Arrays.deepToString(entry.getValue().toArray()));
-                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
+                LOG.info("Creating underlying consumer for cursors {}",
+                        Arrays.deepToString(entry.getValue().toArray()));
+                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(customProperties,
+                        entry.getValue());
                 eventConsumers.put(repo, consumer);
             }
         }

@@ -28,7 +28,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class SubscriptionTimLagServiceTest {
+public class SubscriptionTimeLagServiceTest {
 
     private static final long FAKE_EVENT_TIMESTAMP = 478220400000L;
 

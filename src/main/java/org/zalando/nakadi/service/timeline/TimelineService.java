@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +49,11 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 
-import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -228,17 +229,23 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
+    public EventConsumer createEventConsumer(final Map<String, Object> customProperties,
+                                             final List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+                customProperties, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
         result.reassign(positions);
         return result;
     }
 
-    public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
+    public EventConsumer createEventConsumer(final List<NakadiCursor> positions)
+            throws NakadiException, InvalidCursorException {
+        return createEventConsumer(ImmutableMap.of(), positions);
+    }
+
+    public EventConsumer.ReassignableEventConsumer createEventConsumer() {
         return new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+                ImmutableMap.of(), this, timelineSync, new NakadiCursorComparator(eventTypeCache));
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

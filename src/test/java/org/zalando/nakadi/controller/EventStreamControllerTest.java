@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -61,6 +62,7 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -98,7 +100,7 @@ public class EventStreamControllerTest {
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final String CLIENT_ID = "clientId";
     private static final Client FULL_ACCESS_CLIENT = new FullAccessClient(CLIENT_ID);
-    private static final String KAFKA_CLIENT_ID = CLIENT_ID + "-" + TEST_EVENT_TYPE_NAME;
+    private static final Map<String, Object> CUSTOM_PROPERTIES = ImmutableMap.of();
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -142,7 +144,7 @@ public class EventStreamControllerTest {
         streamMetrics = new MetricRegistry();
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(topicRepositoryMock.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), any()))
+                eq(CUSTOM_PROPERTIES), any()))
                 .thenReturn(eventConsumerMock);
 
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
@@ -289,7 +291,7 @@ public class EventStreamControllerTest {
     public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
         final NakadiCursor cursor = NakadiCursor.of(timeline, "0", "000000000000000000");
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(timelineService.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
+        when(timelineService.createEventConsumer(eq(CUSTOM_PROPERTIES), any()))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 0, 0, 0, 0,
@@ -329,7 +331,7 @@ public class EventStreamControllerTest {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(timelineService.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000")))))
+                eq(CUSTOM_PROPERTIES), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000")))))
                 .thenReturn(eventConsumerMock);
         when(timelineService.getActiveTimeline(eq(EVENT_TYPE))).thenReturn(timeline);
 
@@ -364,7 +366,7 @@ public class EventStreamControllerTest {
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
 
-        verify(timelineService, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID),
+        verify(timelineService, times(1)).createEventConsumer(eq(CUSTOM_PROPERTIES),
                 eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
@@ -513,7 +515,7 @@ public class EventStreamControllerTest {
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0")))))
+                eq(CUSTOM_PROPERTIES), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 

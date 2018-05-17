@@ -140,12 +140,9 @@ public class KafkaFactory {
         return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
-    public Consumer<byte[], byte[]> getConsumer(@Nullable final String clientId) {
+    public Consumer<byte[], byte[]> getConsumer(Map<String, Object> customProperties) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
-        // TODO: the line bellow has been commented after a bug in Kafka's 0.9.x throttling feature has been detected.
-        // once Kafka is upgraded, we are going to enable it back. More on how it works can be found at
-        // https://docs.google.com/document/d/1JDgsBemNqS0SrNpWUL90205u0MFmSMnOqrC-ENAb6TM/edit
-        // properties.put("client.id", clientId);
+        customProperties.entrySet().forEach(e -> properties.put(e.getKey(), e.getValue()));
         return this.getConsumer(properties);
     }
 

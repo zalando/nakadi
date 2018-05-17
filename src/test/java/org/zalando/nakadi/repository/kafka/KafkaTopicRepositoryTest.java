@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -36,6 +37,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -63,7 +65,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
-    private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
+    private static final Map<String, Object> CUSTOM_PROPERTIES = ImmutableMap.of();
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -139,18 +141,18 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws NakadiException, InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
+            kafkaTopicRepository.createEventConsumer(CUSTOM_PROPERTIES, asTopicPosition(MY_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
+        kafkaTopicRepository.createEventConsumer(CUSTOM_PROPERTIES, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
+            kafkaTopicRepository.createEventConsumer(CUSTOM_PROPERTIES, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
+                CUSTOM_PROPERTIES, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -159,7 +161,7 @@ public class KafkaTopicRepositoryTest {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
+                    CUSTOM_PROPERTIES, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -167,14 +169,14 @@ public class KafkaTopicRepositoryTest {
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
+                    CUSTOM_PROPERTIES, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
 
         final Cursor wrongOffset = cursor("0", "blah");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(wrongOffset)));
+            kafkaTopicRepository.createEventConsumer(CUSTOM_PROPERTIES, asTopicPosition(MY_TOPIC, asList(wrongOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
@@ -420,7 +422,7 @@ public class KafkaTopicRepositoryTest {
         // KafkaFactory
         final KafkaFactory kafkaFactory = mock(KafkaFactory.class);
 
-        when(kafkaFactory.getConsumer(KAFKA_CLIENT_ID)).thenReturn(consumer);
+        when(kafkaFactory.getConsumer(any(Map.class))).thenReturn(consumer);
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
         when(kafkaFactory.takeProducer()).thenReturn(kafkaProducer);
 

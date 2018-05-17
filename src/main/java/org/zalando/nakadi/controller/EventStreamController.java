@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -260,8 +261,7 @@ public class EventStreamController {
                 response.setHeader("Warning", "299 - nakadi - the Low-level API is deprecated and will " +
                         "be removed from a future release. Please consider migrating to the Subscriptions API.");
                 response.setContentType("application/x-json-stream");
-                final EventConsumer eventConsumer = timelineService.createEventConsumer(
-                        kafkaQuotaClientId, streamConfig.getCursors());
+                final EventConsumer eventConsumer = timelineService.createEventConsumer(streamConfig.getCursors());
 
                 final String bytesFlushedMetricName = MetricUtils.metricNameForLoLAStream(
                         client.getClientId(),
