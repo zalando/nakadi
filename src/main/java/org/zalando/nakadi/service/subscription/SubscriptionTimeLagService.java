@@ -103,32 +103,28 @@ public class SubscriptionTimeLagService {
             return ImmutableMap.of();
         }
 
-        try (final EventConsumer consumer = timelineService.createEventConsumer(CUSTOM_CONSUMER_PROPERTIES, cursors)){
-            LOG.info("[TIME_LAG_FIX] starting consumer for {} partitions", cursors.size());
+        try (final EventConsumer consumer = timelineService.createEventConsumer(CUSTOM_CONSUMER_PROPERTIES, cursors)) {
+            LOG.info("[TIME_LAG_FIX2] starting consumer for {} partitions", cursors.size());
 
-            boolean hasEventsFromAllPartition = false;
+            boolean hasEventsFromAllPartition;
             final long startTime = System.currentTimeMillis();
             Map<EventTypePartition, Long> timestamps = new HashMap<>();
             do {
                 final List<ConsumedEvent> events = consumer.readEvents();
-                if (events.isEmpty()) {
-                    LOG.info("[TIME_LAG_FIX] Got 0 events");
-                } else {
-                    events.forEach(event -> {
-                        final EventTypePartition partition = new EventTypePartition(event.getPosition().getEventType(),
-                                event.getPosition().getPartition());
-                        LOG.info("[TIME_LAG_FIX] Got event from partition: {}", partition);
-                        if (!timestamps.containsKey(partition)) {
-                            timestamps.put(partition, event.getTimestamp());
-                        }
-                    });
-                    hasEventsFromAllPartition = timestamps.keySet().size() >= cursors.size();
-                }
-
+                LOG.info("[TIME_LAG_FIX2] Got {} events", events.size());
+                events.forEach(event -> {
+                    final EventTypePartition partition = new EventTypePartition(event.getPosition().getEventType(),
+                            event.getPosition().getPartition());
+                    LOG.info("[TIME_LAG_FIX2] Got event from partition: {}", partition);
+                    if (!timestamps.containsKey(partition)) {
+                        timestamps.put(partition, event.getTimestamp());
+                    }
+                });
+                hasEventsFromAllPartition = timestamps.keySet().size() >= cursors.size();
 
             } while (System.currentTimeMillis() - startTime < EVENT_FETCH_WAIT_TIME_MS && !hasEventsFromAllPartition);
 
-            LOG.info("[TIME_LAG_FIX] Got events from all partitions");
+            LOG.info("[TIME_LAG_FIX2] Got events from all partitions");
 
             return timestamps.entrySet().stream().collect(Collectors.toMap(
                     Map.Entry::getKey,
