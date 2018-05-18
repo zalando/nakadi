@@ -85,6 +85,12 @@ public class SubscriptionService {
     private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
 
+    public enum StatsMode {
+        LIGHT,
+        NORMAL,
+        TIMELAG
+    }
+
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final SubscriptionClientFactory subscriptionClientFactory,
@@ -166,7 +172,7 @@ public class SubscriptionService {
                     new PaginationWrapper<>(subscriptions, paginationLinks);
             if (showStatus) {
                 final List<Subscription> items = paginationWrapper.getItems();
-                items.forEach(s -> s.setStatus(createSubscriptionStat(s, false, false)));
+                items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
             }
             return Result.ok(paginationWrapper);
         } catch (final ServiceTemporarilyUnavailableException e) {
@@ -219,8 +225,7 @@ public class SubscriptionService {
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
-                                                                        final boolean includeDistance,
-                                                                        final boolean showTimeLag)
+                                                                        final StatsMode statsMode)
             throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
@@ -228,23 +233,21 @@ public class SubscriptionService {
         } catch (final ServiceTemporarilyUnavailableException ex) {
             throw new InconsistentStateException(ex.getMessage());
         }
-        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, includeDistance,
-                showTimeLag);
+        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, statsMode);
         return new ItemsWrapper<>(subscriptionStat);
     }
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
-                                                                    final boolean includeDistance,
-                                                                    final boolean showTimeLag)
+                                                                    final StatsMode statsMode)
             throws InconsistentStateException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-        if (includeDistance) {
-            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, showTimeLag);
-        } else {
+        if (statsMode == StatsMode.LIGHT) {
             return loadLightStats(eventTypes, zkSubscriptionNode);
+        } else {
+            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
         }
     }
 
@@ -294,13 +297,13 @@ public class SubscriptionService {
     private List<SubscriptionEventTypeStats> loadStats(
             final Collection<EventType> eventTypes,
             final Optional<ZkSubscriptionNode> subscriptionNode,
-            final ZkSubscriptionClient client, final boolean showTimeLag)
+            final ZkSubscriptionClient client, final StatsMode statsMode)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
         final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
         final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
 
-        final Map<EventTypePartition, Duration> timeLags = showTimeLag ?
+        final Map<EventTypePartition, Duration> timeLags = statsMode == StatsMode.TIMELAG ?
                 subscriptionTimeLagService.getTimeLags(committedPositions, stats) :
                 ImmutableMap.of();
 

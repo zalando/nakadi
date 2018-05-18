@@ -19,9 +19,10 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -60,8 +61,8 @@ public class SubscriptionController {
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() ->
-                subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
+        return WebResult.wrap(
+                () -> subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
                 request);
     }
 
@@ -89,7 +90,8 @@ public class SubscriptionController {
             throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return subscriptionService.getSubscriptionStat(subscriptionId, true, showTimeLag);
+        final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
+        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }
 
     @ExceptionHandler(NakadiException.class)
@@ -126,7 +128,7 @@ public class SubscriptionController {
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
     public ResponseEntity<Problem> handleServiceTemporarilyUnavailable(final ServiceTemporarilyUnavailableException ex,
-                                                                     final NativeWebRequest request) {
+                                                                       final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(
                 Problem.valueOf(
