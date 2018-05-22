@@ -330,7 +330,14 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats getEventTypeLightStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                               final EventType eventType) {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
-        for (final String partition: getPartitionsList(eventType)) {
+
+        final List<String> partitionsList = subscriptionNode.map(
+                node -> node.getPartitions().stream()
+                        .map(Partition::getPartition)
+                        .collect(Collectors.toList()))
+                .orElseGet(() -> getPartitionsList(eventType));
+
+        for (final String partition : partitionsList) {
             resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
         }
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
