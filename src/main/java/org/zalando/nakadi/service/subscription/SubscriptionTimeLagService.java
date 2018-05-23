@@ -110,13 +110,13 @@ public class SubscriptionTimeLagService {
         private final ThreadPoolExecutor threadPool;
         private final Semaphore semaphore;
 
-        public TimeLagRequestHandler(final TimelineService timelineService, final ThreadPoolExecutor threadPool) {
+        TimeLagRequestHandler(final TimelineService timelineService, final ThreadPoolExecutor threadPool) {
             this.timelineService = timelineService;
             this.threadPool = threadPool;
             this.semaphore = new Semaphore(MAX_THREADS_PER_REQUEST);
         }
 
-        public CompletableFuture<Duration> getCursorTimeLagFuture(final NakadiCursor cursor)
+        CompletableFuture<Duration> getCursorTimeLagFuture(final NakadiCursor cursor)
                 throws InterruptedException, TimeoutException {
 
             final CompletableFuture<Duration> future = new CompletableFuture<>();
@@ -140,7 +140,7 @@ public class SubscriptionTimeLagService {
         private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
                 InconsistentStateException {
 
-            try (final EventConsumer consumer = timelineService.createEventConsumer(
+            try (EventConsumer consumer = timelineService.createEventConsumer(
                     "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor))) {
 
                 final ConsumedEvent nextEvent = executeWithRetry(
