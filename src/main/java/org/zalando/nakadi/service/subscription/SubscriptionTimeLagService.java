@@ -41,7 +41,7 @@ public class SubscriptionTimeLagService {
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
     private static final int SINGLE_PARTITION_TIMEOUT_MS = 5000;
     private static final int COMPLETE_TIMEOUT_MS = 30000;
-    private static final int MAX_THREADS_PER_REQUEST = 10;
+    private static final int MAX_THREADS_PER_REQUEST = 20;
     private static final int TIME_LAG_COMMON_POOL_SIZE = 400;
 
     private final TimelineService timelineService;
