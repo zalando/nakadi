@@ -42,7 +42,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 public class SubscriptionTimeLagService {
 
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
-    private static final int SINGLE_PARTITION_PROCESSING_TIMEOUT_MS = 5000;
+    private static final int REQUEST_TIMEOUT_MS = 30000;
     private static final int MAX_THREADS_PER_REQUEST = 20;
     private static final int TIME_LAG_COMMON_POOL_SIZE = 400;
 
@@ -78,7 +78,7 @@ public class SubscriptionTimeLagService {
             }
             CompletableFuture
                     .allOf(futureTimeLags.values().toArray(new CompletableFuture[futureTimeLags.size()]))
-                    .get(SINGLE_PARTITION_PROCESSING_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    .get(timeLagHandler.getRemainingTimeoutMs(), TimeUnit.MILLISECONDS);
 
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
@@ -115,18 +115,20 @@ public class SubscriptionTimeLagService {
         private final TimelineService timelineService;
         private final ThreadPoolExecutor threadPool;
         private final Semaphore semaphore;
+        private final long timeoutTimestampMs;
 
         TimeLagRequestHandler(final TimelineService timelineService, final ThreadPoolExecutor threadPool) {
             this.timelineService = timelineService;
             this.threadPool = threadPool;
             this.semaphore = new Semaphore(MAX_THREADS_PER_REQUEST);
+            this.timeoutTimestampMs = System.currentTimeMillis() + REQUEST_TIMEOUT_MS;
         }
 
         CompletableFuture<Duration> getCursorTimeLagFuture(final NakadiCursor cursor)
                 throws InterruptedException, TimeoutException {
 
             final CompletableFuture<Duration> future = new CompletableFuture<>();
-            if (semaphore.tryAcquire(SINGLE_PARTITION_PROCESSING_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+            if (semaphore.tryAcquire(getRemainingTimeoutMs(), TimeUnit.MILLISECONDS)) {
                 threadPool.submit(() -> {
                     try {
                         final Duration timeLag = getNextEventTimeLag(cursor);
@@ -141,6 +143,14 @@ public class SubscriptionTimeLagService {
                 throw new TimeoutException("Partition time lag timeout exceeded");
             }
             return future;
+        }
+
+        long getRemainingTimeoutMs() {
+            if (timeoutTimestampMs > System.currentTimeMillis()) {
+                return timeoutTimestampMs - System.currentTimeMillis();
+            } else {
+                return 0;
+            }
         }
 
         private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
