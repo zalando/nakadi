@@ -12,7 +12,9 @@ import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -39,8 +42,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 public class SubscriptionTimeLagService {
 
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
-    private static final int SINGLE_PARTITION_TIMEOUT_MS = 5000;
-    private static final int COMPLETE_TIMEOUT_MS = 30000;
+    private static final int SINGLE_PARTITION_PROCESSING_TIMEOUT_MS = 5000;
     private static final int MAX_THREADS_PER_REQUEST = 20;
     private static final int TIME_LAG_COMMON_POOL_SIZE = 400;
 
@@ -59,7 +61,8 @@ public class SubscriptionTimeLagService {
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
                                                          final List<PartitionEndStatistics> endPositions)
-            throws ErrorGettingCursorTimeLagException, InconsistentStateException {
+            throws ErrorGettingCursorTimeLagException, InconsistentStateException, LimitReachedException,
+            TimeLagStatsTimeoutException {
 
         final TimeLagRequestHandler timeLagHandler = new TimeLagRequestHandler(timelineService, threadPool);
         final Map<EventTypePartition, Duration> timeLags = new HashMap<>();
@@ -75,13 +78,16 @@ public class SubscriptionTimeLagService {
             }
             CompletableFuture
                     .allOf(futureTimeLags.values().toArray(new CompletableFuture[futureTimeLags.size()]))
-                    .get(COMPLETE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    .get(SINGLE_PARTITION_PROCESSING_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
             return timeLags;
-
+        } catch (final RejectedExecutionException e) {
+            throw new LimitReachedException("Time lag statistics thread pool exhausted", e);
+        } catch (final TimeoutException e) {
+            throw new TimeLagStatsTimeoutException("Timeout exceeded for time lag statistics", e);
         } catch (final ExecutionException e) {
             if (e.getCause() instanceof MyNakadiRuntimeException1) {
                 throw (MyNakadiRuntimeException1) e.getCause();
@@ -120,7 +126,7 @@ public class SubscriptionTimeLagService {
                 throws InterruptedException, TimeoutException {
 
             final CompletableFuture<Duration> future = new CompletableFuture<>();
-            if (semaphore.tryAcquire(SINGLE_PARTITION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+            if (semaphore.tryAcquire(SINGLE_PARTITION_PROCESSING_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                 threadPool.submit(() -> {
                     try {
                         final Duration timeLag = getNextEventTimeLag(cursor);
