@@ -1,22 +1,25 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import static com.google.common.base.Charsets.UTF_8;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
+import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 /**
  * Subscription client that uses topology as an object node and separates changeable data to a separate zk node.
@@ -59,67 +62,13 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     private final ObjectMapper objectMapper;
 
-    public static class Topology {
-        private final Partition[] partitions;
-        private final int version;
-
-        public Topology(
-                @JsonProperty("partitions") final Partition[] partitions,
-                @JsonProperty("version") final int version) {
-            this.partitions = partitions;
-            this.version = version;
-        }
-
-        public Partition[] getPartitions() {
-            return partitions;
-        }
-
-        public Topology withUpdatedPartitions(final Partition[] partitions) {
-            final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
-            for (final Partition newValue : partitions) {
-                int selectedIdx = -1;
-                for (int idx = 0; idx < resultPartitions.length; ++idx) {
-                    if (resultPartitions[idx].getKey().equals(newValue.getKey())) {
-                        selectedIdx = idx;
-                    }
-                }
-                if (selectedIdx < 0) {
-                    throw new MyNakadiRuntimeException1(
-                            "Failed to find partition " + newValue.getKey() + " in " + this);
-                }
-                resultPartitions[selectedIdx] = newValue;
-            }
-            return new Topology(resultPartitions, version + 1);
-        }
-
-        @Override
-        public String toString() {
-            return "Topology{" +
-                    "partitions=" + Arrays.toString(partitions) +
-                    ", version=" + version +
-                    '}';
-        }
-    }
-
     public NewZkSubscriptionClient(
             final String subscriptionId,
             final CuratorFramework curatorFramework,
             final String loggingPath,
-            final ObjectMapper objectMapper,
-            final Map<String, String> topicToEventType) {
-        super(subscriptionId, curatorFramework, loggingPath, topicToEventType);
+            final ObjectMapper objectMapper) {
+        super(subscriptionId, curatorFramework, loggingPath);
         this.objectMapper = objectMapper;
-    }
-
-    @Override
-    protected boolean checkTopologyVersion(final byte[] bytes) {
-        try {
-            objectMapper.readValue(bytes, Topology.class);
-            return true;
-        } catch (final IOException e) {
-            getLog().warn("Failed to check topology, will migrate to it (recreate subscription)", e);
-            return false;
-        }
     }
 
     @Override
@@ -137,15 +86,18 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 null,
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
-        final Topology topology = new Topology(partitions, 0);
+        final Topology topology = new Topology(partitions, "", 0);
+        getLog().info("Generating topology {}", topology);
         return objectMapper.writeValueAsBytes(topology);
     }
 
     @Override
-    public void updatePartitionsConfiguration(final Partition[] partitions) throws NakadiRuntimeException,
-            SubscriptionNotInitializedException, OldSubscriptionFormatException {
-        final Topology newTopology = readTopology().withUpdatedPartitions(partitions);
+    public void updatePartitionsConfiguration(
+            final String newSessionsHash, final Partition[] partitions) throws NakadiRuntimeException,
+            SubscriptionNotInitializedException {
+        final Topology newTopology = getTopology().withUpdatedPartitions(newSessionsHash, partitions);
         try {
+            getLog().info("Updating topology to {}", newTopology);
             getCurator().setData().forPath(
                     getSubscriptionPath(NODE_TOPOLOGY),
                     objectMapper.writeValueAsBytes(newTopology));
@@ -154,15 +106,11 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
-    private Topology readTopology() throws NakadiRuntimeException, OldSubscriptionFormatException,
+    @Override
+    public Topology getTopology() throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
         try {
-            final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
-            final Topology result = objectMapper.readValue(data, Topology.class);
-            getLog().info("Topology is {}", result);
-            return result;
-        } catch (final IOException ex) {
-            throw new OldSubscriptionFormatException();
+            return parseTopology(getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY)));
         } catch (KeeperException.NoNodeException ex) {
             throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (final Exception ex) {
@@ -170,10 +118,48 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
+    private Topology parseTopology(final byte[] data) {
+        try {
+            return objectMapper.readValue(data, Topology.class);
+        } catch (IOException e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
     @Override
-    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException,
-            OldSubscriptionFormatException {
-        return readTopology().getPartitions();
+    public final ZkSubscription<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
+            throws NakadiRuntimeException {
+        getLog().info("subscribeForTopologyChanges");
+        return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
+                getCurator(),
+                onTopologyChanged,
+                this::parseTopology,
+                getSubscriptionPath(NODE_TOPOLOGY));
+    }
+
+    protected byte[] serializeSession(final Session session)
+            throws NakadiRuntimeException {
+        try {
+            return objectMapper.writeValueAsBytes(session);
+        } catch (final JsonProcessingException e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
+    protected Session deserializeSession(final String sessionId, final byte[] sessionZkData)
+            throws NakadiRuntimeException {
+        try {
+            // old version of session: zkNode data is session weight
+            final int weight = Integer.parseInt(new String(sessionZkData, UTF_8));
+            return new Session(sessionId, weight, ImmutableList.of());
+        } catch (final NumberFormatException nfe) {
+            // new version of session: zkNode data is session object as json
+            try {
+                return objectMapper.readValue(sessionZkData, Session.class);
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(e);
+            }
+        }
     }
 
     protected String getOffsetPath(final EventTypePartition etp) {
@@ -181,20 +167,18 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public SubscriptionCursorWithoutToken getOffset(final EventTypePartition key) throws NakadiRuntimeException {
-        try {
-            final String offset = new String(getCurator().getData().forPath(getOffsetPath(key)), UTF_8);
-            return new SubscriptionCursorWithoutToken(key.getEventType(), key.getPartition(), offset);
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        }
+    public Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(
+            final Collection<EventTypePartition> keys)
+            throws NakadiRuntimeException, ServiceTemporarilyUnavailableException {
+        return loadDataAsync(keys, this::getOffsetPath, (etp, value) ->
+                new SubscriptionCursorWithoutToken(etp.getEventType(), etp.getPartition(), new String(value, UTF_8)));
     }
 
     @Override
     public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
-            throws NakadiRuntimeException, OldSubscriptionFormatException, SubscriptionNotInitializedException {
+            throws NakadiRuntimeException, SubscriptionNotInitializedException {
         getLog().info("session " + sessionId + " releases partitions " + partitions);
-        final Topology topology = readTopology();
+        final Topology topology = getTopology();
 
         final List<Partition> changeSet = new ArrayList<>();
         for (final EventTypePartition etp : partitions) {
@@ -210,7 +194,10 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             }
         }
         if (!changeSet.isEmpty()) {
-            updatePartitionsConfiguration(changeSet.toArray(new Partition[changeSet.size()]));
+            // The list of sessions didn't change, therefore one should not update sessionsHash.
+            updatePartitionsConfiguration(
+                    topology.getSessionsHash(),
+                    changeSet.toArray(new Partition[changeSet.size()]));
         }
     }
 

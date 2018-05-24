@@ -1,9 +1,9 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
-import org.zalando.nakadi.exceptions.PartitioningException;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.exceptions.PartitioningException;
 
 import java.util.List;
 

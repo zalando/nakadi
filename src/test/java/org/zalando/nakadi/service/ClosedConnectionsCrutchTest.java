@@ -1,13 +1,14 @@
 package org.zalando.nakadi.service;
 
 import com.codahale.metrics.MetricRegistry;
-import org.zalando.nakadi.util.FeatureToggleService;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.util.Map;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

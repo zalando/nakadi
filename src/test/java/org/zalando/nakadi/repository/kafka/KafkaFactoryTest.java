@@ -2,13 +2,14 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.kafka.clients.producer.Producer;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {

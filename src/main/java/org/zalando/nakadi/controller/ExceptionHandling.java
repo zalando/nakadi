@@ -11,15 +11,19 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
+import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -72,20 +76,27 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler(NoEventTypeException.class)
     public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
-                                                               final NativeWebRequest request) {
+                                                        final NativeWebRequest request) {
         return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(IllegalScopeException.class)
-    public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception,
-                                                               final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
+                                                         final NativeWebRequest request) {
+        return Responses.create(Response.Status.FORBIDDEN, exception.explain(), request);
     }
 
     @ExceptionHandler(IllegalClientIdException.class)
     public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
                                                                   final NativeWebRequest request) {
         return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(CursorsAreEmptyException.class)
+    public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     @ExceptionHandler
@@ -134,8 +145,24 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler(CursorConversionException.class)
     public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
-                                                                final NativeWebRequest request) {
+                                                                   final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
+
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(DbWriteOperationsBlockedException.class)
+    public ResponseEntity<Problem> handleDbWriteOperationsBlockedException(
+            final DbWriteOperationsBlockedException exception, final NativeWebRequest request) {
+        LOG.warn(exception.getMessage());
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
+                "Database is currently in read-only mode", request);
+    }
+
 }

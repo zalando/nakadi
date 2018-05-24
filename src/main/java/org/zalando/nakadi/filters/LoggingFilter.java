@@ -1,9 +1,14 @@
 package org.zalando.nakadi.filters;
 
+import com.google.common.net.HttpHeaders;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -17,6 +22,16 @@ import java.util.Optional;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
+
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String accessLogEventType;
+
+    @Autowired
+    public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
+                         @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.accessLogEventType = accessLogEventType;
+    }
 
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
@@ -34,15 +49,29 @@ public class LoggingFilter extends OncePerRequestFilter {
             final String method = request.getMethod();
             final String path = request.getRequestURI();
             final String query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
+            final String contentEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING))
+                    .orElse("-");
+            final String acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
+                    .orElse("-");
 
-            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms",
+            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\"",
                     method,
                     path,
                     query,
                     userAgent,
                     user,
                     response.getStatus(),
-                    timing);
+                    timing,
+                    contentEncoding,
+                    acceptEncoding);
+            nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
+                    .put("method", method)
+                    .put("path", path)
+                    .put("query", query)
+                    .put("app", user)
+                    .put("app_hashed", nakadiKpiPublisher.hash(user))
+                    .put("status_code", response.getStatus())
+                    .put("response_time_ms", timing));
         }
     }
 }

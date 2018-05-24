@@ -1,13 +1,15 @@
 package org.zalando.nakadi.security;
 
-import java.util.Optional;
-import javax.annotation.concurrent.Immutable;
 import org.springframework.http.HttpMethod;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import javax.annotation.concurrent.Immutable;
+import java.util.Optional;
+
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;

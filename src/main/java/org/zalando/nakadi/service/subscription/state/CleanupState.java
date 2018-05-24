@@ -18,12 +18,17 @@ public class CleanupState extends State {
     @Override
     public void onEnter() {
         try {
+            getContext().unregisterAuthorizationUpdates();
+        } catch (final RuntimeException ex) {
+            getLog().error("Unexpected fail during removing callback for registration updates", ex);
+        }
+        try {
             if (null != exception) {
                 getOut().onException(exception);
             }
         } finally {
             try {
-                unregisterSession();
+                getContext().unregisterSession();
             } finally {
                 switchState(StreamingContext.DEAD_STATE);
             }

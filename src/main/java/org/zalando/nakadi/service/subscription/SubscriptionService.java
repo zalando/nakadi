@@ -1,19 +1,11 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -23,36 +15,36 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.PartitionBaseStatistics;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.service.subscription.state.StartingState;
-import org.zalando.nakadi.service.subscription.zk.OldSubscriptionFormatException;
+import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
@@ -60,6 +52,18 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionService {
@@ -74,6 +78,9 @@ public class SubscriptionService {
     private final SubscriptionValidationService subscriptionValidationService;
     private final CursorConverter converter;
     private final CursorOperationsService cursorOperationsService;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final FeatureToggleService featureToggleService;
+    private final String subLogEventType;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -82,7 +89,10 @@ public class SubscriptionService {
                                final EventTypeRepository eventTypeRepository,
                                final SubscriptionValidationService subscriptionValidationService,
                                final CursorConverter converter,
-                               final CursorOperationsService cursorOperationsService) {
+                               final CursorOperationsService cursorOperationsService,
+                               final NakadiKpiPublisher nakadiKpiPublisher,
+                               final FeatureToggleService featureToggleService,
+                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -90,14 +100,28 @@ public class SubscriptionService {
         this.subscriptionValidationService = subscriptionValidationService;
         this.converter = converter;
         this.cursorOperationsService = cursorOperationsService;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.featureToggleService = featureToggleService;
+        this.subLogEventType = subLogEventType;
     }
 
-    public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Client client)
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException, IllegalScopeException {
+            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
 
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
-        return subscriptionRepository.createSubscription(subscriptionBase);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
+        final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
+
+        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
+                .put("subscription_id", subscription.getId())
+                .put("status", "created"));
+
+        return subscription;
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
@@ -113,7 +137,7 @@ public class SubscriptionService {
     }
 
     public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
-                                    final int limit, final int offset) {
+                                    final boolean showStatus, final int limit, final int offset) {
         if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'limit' parameter should have value from 1 to 1000");
@@ -132,11 +156,17 @@ public class SubscriptionService {
             final List<Subscription> subscriptions =
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                    owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
-            return Result.ok(new PaginationWrapper<>(subscriptions, paginationLinks));
-        } catch (final ServiceUnavailableException e) {
+                    owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
+            final PaginationWrapper<Subscription> paginationWrapper =
+                    new PaginationWrapper<>(subscriptions, paginationLinks);
+            if (showStatus) {
+                final List<Subscription> items = paginationWrapper.getItems();
+                items.forEach(s -> s.setStatus(createSubscriptionStat(s, false)));
+            }
+            return Result.ok(paginationWrapper);
+        } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
         }
     }
 
@@ -145,100 +175,94 @@ public class SubscriptionService {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId);
             return Result.problem(e.asProblem());
-        } catch (final ServiceUnavailableException e) {
+        } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
         }
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId, final Client client) {
+    public Result<Void> deleteSubscription(final String subscriptionId) throws DbWriteOperationsBlockedException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            if (!client.idMatches(subscription.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this subscription");
-            }
 
             subscriptionRepository.deleteSubscription(subscriptionId);
             final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
                     subscription, "subscription." + subscriptionId + ".delete_subscription");
             zkSubscriptionClient.deleteSubscription();
 
+            nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
+                    .put("subscription_id", subscriptionId)
+                    .put("status", "deleted"));
+
             return Result.ok();
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return Result.problem(e.asProblem());
-        } catch (final ServiceUnavailableException e) {
+        } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
         } catch (final NoSuchEventTypeException | InternalNakadiException e) {
             LOG.error("Exception can not occur", e);
             return Result.problem(e.asProblem());
         }
     }
 
-    public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId)
-            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporaryUnavailableException {
+    public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
+                                                                        final boolean includeDistance)
+            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
-        } catch (final ServiceUnavailableException ex) {
+        } catch (final ServiceTemporarilyUnavailableException ex) {
             throw new InconsistentStateException(ex.getMessage());
         }
-        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
+        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, includeDistance);
         return new ItemsWrapper<>(subscriptionStat);
     }
 
+    private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
+                                                                    final boolean includeDistance)
+            throws InconsistentStateException, ServiceTemporarilyUnavailableException {
+        final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
+        final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
+        final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-    private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
-            throws InconsistentStateException, ServiceTemporaryUnavailableException {
-
-        final List<EventType> eventTypes = subscription.getEventTypes().stream()
-                .map(Try.wrap(eventTypeRepository::findByName))
-                .map(Try::getOrThrow)
-                .collect(Collectors.toList());
-
-        final List<PartitionEndStatistics> topicPartitions;
-        try {
-            topicPartitions = loadPartitionEndStatistics(eventTypes);
-        } catch (final ServiceUnavailableException ex) {
-            throw new ServiceTemporaryUnavailableException(ex);
+        if (includeDistance) {
+            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient);
+        } else {
+            return loadLightStats(eventTypes, zkSubscriptionNode);
         }
-
-        final ZkSubscriptionClient subscriptionClient;
-        try {
-            subscriptionClient = subscriptionClientFactory.createClient(
-                    subscription, "subscription." + subscription.getId() + ".stats");
-        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
-            throw new ServiceTemporaryUnavailableException(e);
-        }
-
-        final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
-
-        return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
-                .collect(Collectors.toList());
     }
 
-    private ZkSubscriptionNode getZkSubscriptionNode(
-            final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
+    private ZkSubscriptionClient createZkSubscriptionClient(final Subscription subscription)
+            throws ServiceTemporarilyUnavailableException {
         try {
-            return subscriptionClient.getZkSubscriptionNodeLocked();
-        } catch (OldSubscriptionFormatException ex) {
-            subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
-                    subscription, timelineService, converter, subscriptionClient));
-            return subscriptionClient.getZkSubscriptionNodeLocked();
+            return subscriptionClientFactory.createClient(subscription,
+                    "subscription." + subscription.getId() + ".stats");
+        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
         }
+    }
+
+    private List<EventType> getEventTypesForSubscription(final Subscription subscription) {
+        return subscription.getEventTypes().stream()
+                .map(Try.wrap(eventTypeRepository::findByName))
+                .map(Try::getOrThrow)
+                .sorted(Comparator.comparing(EventType::getName))
+                .collect(Collectors.toList());
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
-            throws ServiceUnavailableException {
+            throws ServiceTemporarilyUnavailableException {
         final List<PartitionEndStatistics> topicPartitions = new ArrayList<>();
 
-        final Map<TopicRepository, List<Timeline>> timelinesByRepo = eventTypes.stream()
-                .map(timelineService::getTimeline)
-                .collect(Collectors.groupingBy(timelineService::getTopicRepository));
+        final Map<TopicRepository, List<Timeline>> timelinesByRepo = getTimelinesByRepository(eventTypes);
 
         for (final Map.Entry<TopicRepository, List<Timeline>> repoEntry : timelinesByRepo.entrySet()) {
             final TopicRepository topicRepository = repoEntry.getKey();
@@ -248,52 +272,143 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
-    private SubscriptionEventTypeStats loadStats(
-            final EventType eventType,
-            final ZkSubscriptionNode subscriptionNode,
-            final ZkSubscriptionClient client,
-            final List<PartitionEndStatistics> stats)
-            throws ServiceTemporaryUnavailableException, InconsistentStateException {
+    private Map<TopicRepository, List<Timeline>> getTimelinesByRepository(final Collection<EventType> eventTypes) {
+        return eventTypes.stream()
+                .map(timelineService::getActiveTimeline)
+                .collect(Collectors.groupingBy(timelineService::getTopicRepository));
+    }
 
-        final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
-        for (final PartitionEndStatistics stat : stats) {
-            final NakadiCursor lastPosition = stat.getLast();
-            if (!lastPosition.getEventType().equals(eventType.getName())) {
-                continue;
-            }
-            Long distance;
-            if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
-                final NakadiCursor currentPosition;
-                final SubscriptionCursorWithoutToken offset =
-                        client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
-                try {
-                    currentPosition = converter.convert(offset);
-                } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                        ServiceUnavailableException e) {
-                    throw new ServiceTemporaryUnavailableException(e);
-                }
-                try {
-                    distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
-                } catch (final InvalidCursorOperation ex) {
-                    if (ex.getReason() == InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER ||
-                            ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
-                        distance = 0L;
-                    } else {
-                        throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
-                    }
-                }
-            } else {
-                distance = null;
-            }
-            resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                    lastPosition.getPartition(),
-                    subscriptionNode.guessState(stat.getPartition()).getDescription(),
-                    distance,
-                    Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
-            ));
+    private List<String> getPartitionsList(final EventType eventType) {
+        final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
+        return timelineService.getTopicRepository(activeTimeline).listPartitionNames(activeTimeline.getTopic());
+    }
+
+    private List<SubscriptionEventTypeStats> loadStats(
+            final Collection<EventType> eventTypes,
+            final Optional<ZkSubscriptionNode> subscriptionNode,
+            final ZkSubscriptionClient client)
+            throws ServiceTemporarilyUnavailableException, InconsistentStateException {
+        final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
+        final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
+        final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
+        for (final EventType eventType : eventTypes) {
+            final List<PartitionBaseStatistics> statsForEventType = stats.stream()
+                    .filter(s -> s.getTimeline().getEventType().equals(eventType.getName()))
+                    .collect(Collectors.toList());
+            result.add(getEventTypeStats(subscriptionNode, eventType.getName(), statsForEventType,
+                    committedPositions));
         }
+        return result;
+    }
 
+    private List<SubscriptionEventTypeStats> loadLightStats(final Collection<EventType> eventTypes,
+                                                            final Optional<ZkSubscriptionNode> subscriptionNode)
+            throws ServiceTemporarilyUnavailableException {
+        final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
+        for (final EventType eventType : eventTypes) {
+            result.add(getEventTypeLightStats(subscriptionNode, eventType));
+        }
+        return result;
+    }
+
+    private SubscriptionEventTypeStats getEventTypeStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                         final String eventTypeName,
+                                                         final List<? extends PartitionBaseStatistics> stats,
+                                                         final Collection<NakadiCursor> committedPositions) {
+        final List<SubscriptionEventTypeStats.Partition> resultPartitions =
+                new ArrayList<>(stats.size());
+        for (final PartitionBaseStatistics stat : stats) {
+            final String partition = stat.getPartition();
+            final NakadiCursor lastPosition = ((PartitionEndStatistics) stat).getLast();
+            final Long distance = computeDistance(committedPositions, lastPosition);
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance));
+        }
+        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
+        return new SubscriptionEventTypeStats(eventTypeName, resultPartitions);
+    }
+
+    private SubscriptionEventTypeStats getEventTypeLightStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                              final EventType eventType) {
+        final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
+
+        final List<String> partitionsList = subscriptionNode.map(
+                node -> node.getPartitions().stream()
+                        .map(Partition::getPartition)
+                        .collect(Collectors.toList()))
+                .orElseGet(() -> getPartitionsList(eventType));
+
+        for (final String partition : partitionsList) {
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
+        }
+        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
+    }
+
+    private SubscriptionEventTypeStats.Partition getPartitionStats(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                                   final String eventTypeName, final String partition,
+                                                                   final Long distance) {
+        final Partition.State state = getState(subscriptionNode, eventTypeName, partition);
+        final String streamId = getStreamId(subscriptionNode, eventTypeName, partition);
+        final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType =
+                getAssignmentType(subscriptionNode, eventTypeName, partition);
+        return new SubscriptionEventTypeStats.Partition(partition, state.getDescription(),
+                distance, streamId, assignmentType);
+    }
+
+    private Collection<NakadiCursor> getCommittedPositions(final Optional<ZkSubscriptionNode> subscriptionNode,
+                                                           final ZkSubscriptionClient client) {
+        return subscriptionNode
+                .map(node -> loadCommittedPositions(node.getPartitions(), client))
+                .orElse(Collections.emptyList());
+    }
+
+    private Partition.State getState(final Optional<ZkSubscriptionNode> subscriptionNode, final String eventType,
+                                     final String partition) {
+        return subscriptionNode.map(node -> node.guessState(eventType, partition))
+                .orElse(Partition.State.UNASSIGNED);
+    }
+
+    private SubscriptionEventTypeStats.Partition.AssignmentType getAssignmentType(
+            final Optional<ZkSubscriptionNode> subscriptionNode, final String eventType, final String partition) {
+        return subscriptionNode
+                .map(node -> node.getPartitionAssignmentType(eventType, partition))
+                .orElse(null);
+    }
+
+    private String getStreamId(final Optional<ZkSubscriptionNode> subscriptionNode,
+                               final String eventType, final String partition) {
+        return subscriptionNode
+                .map(node -> node.guessStream(eventType, partition))
+                .orElse("");
+    }
+
+    private Long computeDistance(final Collection<NakadiCursor> committedPositions, final NakadiCursor lastPosition) {
+        return committedPositions.stream()
+                .filter(pos -> pos.getEventTypePartition().equals(lastPosition.getEventTypePartition()))
+                .findAny()
+                .map(committed -> {
+                    try {
+                        return cursorOperationsService.calculateDistance(committed, lastPosition);
+                    } catch (final InvalidCursorOperation ex) {
+                        throw new InconsistentStateException(
+                                "Unexpected exception while calculating distance", ex);
+                    }
+                })
+                .orElse(null);
+    }
+
+    private Collection<NakadiCursor> loadCommittedPositions(
+            final Collection<Partition> partitions, final ZkSubscriptionClient client)
+            throws ServiceTemporarilyUnavailableException {
+        try {
+
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = client.getOffsets(
+                    partitions.stream().map(Partition::getKey).collect(Collectors.toList()));
+
+            return converter.convert(committed.values());
+        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
+        }
     }
 
 }

@@ -1,15 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -40,6 +31,15 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -54,7 +54,7 @@ import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 
 public class KafkaTopicRepositoryTest {
 
@@ -130,7 +130,7 @@ public class KafkaTopicRepositoryTest {
 
     private static List<NakadiCursor> asTopicPosition(final String topic, final List<Cursor> cursors) {
         return cursors.stream()
-                .map(c -> new NakadiCursor(createFakeTimeline(topic), c.getPartition(), c.getOffset()))
+                .map(c -> NakadiCursor.of(buildTimelineWithTopic(topic), c.getPartition(), c.getOffset()))
                 .collect(toList());
     }
 
@@ -221,7 +221,11 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem("{}");
+        final BatchItem item = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -245,7 +249,10 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem("{}");
+        final BatchItem item = new BatchItem("{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -270,9 +277,13 @@ public class KafkaTopicRepositoryTest {
     @Test
     public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
 
-        final BatchItem firstItem = new BatchItem("{}");
+        final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         firstItem.setPartition("1");
-        final BatchItem secondItem = new BatchItem("{}");
+        final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
@@ -303,30 +314,6 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(createFakeTimeline(MY_TOPIC), "0", "23"));
-    }
-
-    @Test
-    public void whenValidateInvalidCommitCursorsThenException() throws NakadiException {
-        ImmutableMap.of(
-                cursor("345", "1"), CursorError.PARTITION_NOT_FOUND,
-                cursor("0", "abc"), CursorError.INVALID_FORMAT)
-                .entrySet()
-                .forEach(testCase -> {
-                    try {
-                        kafkaTopicRepository.validateCommitCursor(
-                                new NakadiCursor(
-                                        createFakeTimeline(MY_TOPIC),
-                                        testCase.getKey().getPartition(),
-                                        testCase.getKey().getOffset()));
-                    } catch (final InvalidCursorException e) {
-                        assertThat(e.getError(), equalTo(testCase.getValue()));
-                    }
-                });
-    }
-
-    @Test
     public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws Exception {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
@@ -343,7 +330,10 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                final BatchItem batchItem = new BatchItem("{}");
+                final BatchItem batchItem = new BatchItem("{}",
+                        BatchItem.EmptyInjectionConfiguration.build(1, true),
+                        new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                        Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));

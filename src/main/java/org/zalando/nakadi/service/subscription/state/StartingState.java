@@ -1,18 +1,17 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import javax.ws.rs.core.Response;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -20,34 +19,75 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
+
 public class StartingState extends State {
     @Override
     public void onEnter() {
-        getZk().runLocked(this::createSubscriptionLocked);
+        // 1. Check authorization
+        getContext().registerForAuthorizationUpdates();
+        try {
+            getContext().checkAccessAuthorized();
+        } catch (final AccessDeniedException e) {
+            switchState(new CleanupState(
+                    new NakadiException(e.explain()) {
+                        @Override
+                        protected Response.StatusType getStatus() {
+                            return Response.Status.FORBIDDEN;
+                        }
+                    }));
+            return;
+        }
+        getZk().runLocked(this::initializeStream);
     }
 
     /**
      * 1. Checks, that subscription node is present in zk. If not - creates it.
      * <p>
      * 2. If cursor reset is in progress it will switch to cleanup state.
-     * <p>
+     * <p>У
      * 3. Registers session.
      * <p>
      * 4. Switches to streaming state.
      */
-    private void createSubscriptionLocked() {
-        // check that subscription initialized in zk.
-        if (!getZk().isSubscriptionCreatedAndInitialized()) {
-            initializeSubscriptionStructure(
-                    getContext().getSubscription(),
-                    getContext().getTimelineService(),
-                    getContext().getCursorConverter(),
-                    getZk());
-        } else {
-            final Session[] sessions = getZk().listSessions();
-            final Partition[] partitions = getZk().listPartitions();
-            if (sessions.length >= partitions.length) {
-                switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
+    private void initializeStream() {
+        final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
+                getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
+        if (!subscriptionJustInitialized) {
+            // check if there are streaming slots available
+            final Collection<Session> sessions = getZk().listSessions();
+            final Partition[] partitions = getZk().getTopology().getPartitions();
+            final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
+            if (requestedPartitions.isEmpty()) {
+                final long directlyRequestedPartitionsCount = sessions.stream()
+                        .flatMap(s -> s.getRequestedPartitions().stream())
+                        .distinct()
+                        .count();
+                final long autoSlotsCount = partitions.length - directlyRequestedPartitionsCount;
+                final long autoBalanceSessionsCount = sessions.stream()
+                        .filter(s -> s.getRequestedPartitions().isEmpty())
+                        .count();
+                if (autoBalanceSessionsCount >= autoSlotsCount) {
+                    switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
+                    return;
+                }
+            }
+
+            // check if the requested partitions are not directly requested by another stream(s)
+            final List<EventTypePartition> conflictPartitions = sessions.stream()
+                    .flatMap(s -> s.getRequestedPartitions().stream())
+                    .filter(requestedPartitions::contains)
+                    .collect(Collectors.toList());
+            if (!conflictPartitions.isEmpty()) {
+                switchState(new CleanupState(SubscriptionPartitionConflictException.of(conflictPartitions)));
                 return;
             }
         }
@@ -63,7 +103,12 @@ public class StartingState extends State {
             return;
         }
 
-        registerSession();
+        try {
+            getContext().registerSession();
+        } catch (Exception ex) {
+            switchState(new CleanupState(ex));
+            return;
+        }
 
         try {
             getOut().onInitialized(getSessionId());
@@ -72,6 +117,20 @@ public class StartingState extends State {
             getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
         }
+    }
+
+    public static boolean initializeSubscriptionLocked(
+            final ZkSubscriptionClient zkClient,
+            final Subscription subscription,
+            final TimelineService timelineService,
+            final CursorConverter cursorConverter) {
+        if (!zkClient.isSubscriptionCreatedAndInitialized()) {
+            final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
+                    subscription, timelineService, cursorConverter);
+            zkClient.fillEmptySubscription(cursors);
+            return true;
+        }
+        return false;
     }
 
     public interface PositionCalculator {
@@ -93,19 +152,30 @@ public class StartingState extends State {
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
-            try {
-                for (final String eventType : subscription.getEventTypes()) {
-                    final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
-                    final Timeline timeline = activeTimelines.get(0);
-                    timelineService.getTopicRepository(timeline)
-                            .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getBeforeFirst())));
-                }
-                return result;
-            } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
-            }
+            return subscription.getEventTypes()
+                    .stream()
+                    .map(et -> {
+                        try {
+                            // get oldest active timeline
+                            return timelineService.getActiveTimelinesOrdered(et).get(0);
+                        } catch (final NakadiException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                    .values()
+                    .stream()
+                    .flatMap(timelines -> {
+                        try {
+                            return timelineService.getTopicRepository(timelines.get(0))
+                                    .loadTopicStatistics(timelines).stream();
+                        } catch (final ServiceTemporarilyUnavailableException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .map(PartitionStatistics::getBeforeFirst)
+                    .map(converter::convertToNoToken)
+                    .collect(Collectors.toList());
         }
     }
 
@@ -120,19 +190,31 @@ public class StartingState extends State {
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
-            try {
-                for (final String eventType : subscription.getEventTypes()) {
-                    final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
-                    final Timeline timeline = activeTimelines.get(activeTimelines.size() - 1);
-                    timelineService.getTopicRepository(timeline)
-                            .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getLast())));
-                }
-                return result;
-            } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
-            }
+            return subscription.getEventTypes()
+                    .stream()
+                    .map(et -> {
+                        try {
+                            // get newest active timeline
+                            final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(et);
+                            return activeTimelines.get(activeTimelines.size() - 1);
+                        } catch (final NakadiException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                    .values()
+                    .stream()
+                    .flatMap(timelines -> {
+                        try {
+                            return timelineService.getTopicRepository(timelines.get(0))
+                                    .loadTopicEndStatistics(timelines).stream();
+                        } catch (final ServiceTemporarilyUnavailableException e) {
+                            throw new NakadiRuntimeException(e);
+                        }
+                    })
+                    .map(PartitionEndStatistics::getLast)
+                    .map(converter::convertToNoToken)
+                    .collect(Collectors.toList());
         }
     }
 
@@ -149,19 +231,6 @@ public class StartingState extends State {
                 final CursorConverter converter) {
             return subscription.getInitialCursors();
         }
-    }
-
-    public static void initializeSubscriptionStructure(
-            final Subscription subscription,
-            final TimelineService timelineService,
-            final CursorConverter cursorConverter,
-            final ZkSubscriptionClient zkSubscriptionClient) {
-        // if not - create subscription node etc.
-        final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
-                subscription,
-                timelineService,
-                cursorConverter);
-        zkSubscriptionClient.fillEmptySubscription(cursors);
     }
 
     public static List<SubscriptionCursorWithoutToken> calculateStartPosition(

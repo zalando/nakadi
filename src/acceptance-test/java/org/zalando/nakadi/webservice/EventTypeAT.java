@@ -1,22 +1,23 @@
 package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -44,18 +46,27 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 public class EventTypeAT extends BaseAT {
 
     private static final String ENDPOINT = "/event-types";
-    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
     public void whenGETThenListsEventTypes() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
         final String body = MAPPER.writer().writeValueAsString(eventType);
 
-        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT).then().statusCode(
-            HttpStatus.SC_CREATED);
+        given()
+                .body(body)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
 
-        given().header("accept", "application/json").contentType(JSON).when().get(ENDPOINT).then()
-               .statusCode(HttpStatus.SC_OK).body("size()", equalTo(1)).body("name[0]", equalTo(eventType.getName()));
+        given()
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .get(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", hasItems(eventType.getName()));
     }
 
     @Test
@@ -65,7 +76,7 @@ public class EventTypeAT extends BaseAT {
         final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT).then()
-               .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
     }
 
     @Test
@@ -86,8 +97,8 @@ public class EventTypeAT extends BaseAT {
                 .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
 
         final EventType retrievedEventType = MAPPER.readValue(given()
-                .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
-                .getBody().asString(),
+                        .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
+                        .getBody().asString(),
                 EventType.class);
 
         final String updateBody = MAPPER.writer().writeValueAsString(retrievedEventType);
@@ -230,6 +241,54 @@ public class EventTypeAT extends BaseAT {
         Assert.assertEquals(defaultRetentionTime, eventType1.getOptions().getRetentionTime());
     }
 
+    @Test
+    public void whenPOSTEventTypeWithAuthorizationThenOk() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.setAuthorization(new ResourceAuthorization(
+                ImmutableList.of(new ResourceAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        when().get(String.format("%s/%s", ENDPOINT, eventType.getName()))
+                .then()
+                .body("authorization.admins[0].data_type", equalTo("type1"))
+                .body("authorization.admins[0].value", equalTo("value1"))
+                .body("authorization.readers[0].data_type", equalTo("type2"))
+                .body("authorization.readers[0].value", equalTo("value2"))
+                .body("authorization.writers[0].data_type", equalTo("type3"))
+                .body("authorization.writers[0].value", equalTo("value3"));
+    }
+
+    @Test
+    public void whenUpdateETAuthObjectThen422() throws Exception {
+        final ResourceAuthorization auth = new ResourceAuthorization(
+                Collections.singletonList(new ResourceAuthorizationAttribute("type1", "value1")),
+                Collections.singletonList(new ResourceAuthorizationAttribute("type2", "value2")),
+                Collections.singletonList(new ResourceAuthorizationAttribute("type3", "value3")));
+        final EventType eventType = EventTypeTestBuilder.builder().authorization(auth).build();
+        NakadiTestUtils.createEventTypeInNakadi(eventType);
+
+        eventType.setAuthorization(null);
+        given()
+                .body(MAPPER.writeValueAsString(eventType))
+                .contentType(JSON)
+                .put("/event-types/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body(equalTo(MAPPER.writer().writeValueAsString(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Changing authorization object to `null` is not possible due to existing one"))));
+    }
+
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
         final EventType eventType = NakadiTestUtils.getEventType(etName);
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
@@ -237,20 +296,6 @@ public class EventTypeAT extends BaseAT {
                 .map(Timeline::getTopic)
                 .forEach(topic -> waitFor(() -> Assert.assertEquals(checkingRetentionTime,
                         KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
-    }
-
-    @After
-    public void tearDown() {
-        final DriverManagerDataSource datasource = new DriverManagerDataSource(
-                POSTGRES_URL,
-                POSTGRES_USER,
-                POSTGRES_PWD
-        );
-        final JdbcTemplate template = new JdbcTemplate(datasource);
-
-        template.execute("DELETE FROM zn_data.timeline");
-        template.execute("DELETE FROM zn_data.event_type_schema");
-        template.execute("DELETE FROM zn_data.event_type");
     }
 
     private void postTimeline(final EventType eventType) {
@@ -265,8 +310,11 @@ public class EventTypeAT extends BaseAT {
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
         assertEquals(0, TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).size());
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
-        final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
+        // Kafka deletes topics asynchronously, so there may be a delay
+        waitFor(() -> {
+            final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
+            topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
+        }, 10000);
     }
 
     private void postEventType(final EventType eventType) throws JsonProcessingException {
@@ -284,9 +332,6 @@ public class EventTypeAT extends BaseAT {
                 .stream()
                 .map((Timeline t) -> t.getTopic())
                 .collect(Collectors.toList());
-        if (topics.isEmpty()) {
-            topics.add(EVENT_TYPE_REPO.findByName(eventType).getTopic());
-        }
         return topics;
     }
 }

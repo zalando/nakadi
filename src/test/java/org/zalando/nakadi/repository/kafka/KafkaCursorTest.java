@@ -12,13 +12,13 @@ public class KafkaCursorTest {
     @Test
     public void testFromNakadiCursorCorrect() throws InvalidCursorException {
         Assert.assertEquals(new KafkaCursor("t1", 1, 123L),
-                KafkaCursor.fromNakadiCursor(new NakadiCursor(TestUtils.createFakeTimeline("t1"), "1", "123")));
+                KafkaCursor.fromNakadiCursor(NakadiCursor.of(TestUtils.buildTimelineWithTopic("t1"), "1", "123")));
     }
 
     @Test
     public void testFromNakadiCursorBadPartition() {
         try {
-            KafkaCursor.fromNakadiCursor(new NakadiCursor(TestUtils.createFakeTimeline("t1"), "x", "123"));
+            KafkaCursor.fromNakadiCursor(NakadiCursor.of(TestUtils.buildTimelineWithTopic("t1"), "x", "123"));
             Assert.fail("Cursor should not be parsed");
         } catch (final InvalidCursorException ex) {
             Assert.assertEquals(ex.getError(), CursorError.PARTITION_NOT_FOUND);
@@ -28,7 +28,7 @@ public class KafkaCursorTest {
     @Test
     public void testFromNakadiCursorBadOffset() {
         try {
-            KafkaCursor.fromNakadiCursor(new NakadiCursor(TestUtils.createFakeTimeline("t1"), "0", "x"));
+            KafkaCursor.fromNakadiCursor(NakadiCursor.of(TestUtils.buildTimelineWithTopic("t1"), "0", "x"));
             Assert.fail("Cursor should not be parsed");
         } catch (final InvalidCursorException ex) {
             Assert.assertEquals(ex.getError(), CursorError.INVALID_FORMAT);

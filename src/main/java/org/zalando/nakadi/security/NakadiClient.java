@@ -1,31 +1,16 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalScopeException;
-
-import java.util.Set;
-
 public class NakadiClient extends Client {
 
-    private final Set<String> scopes;
+    private final String realm;
 
-    public NakadiClient(final String clientId, final Set<String> scopes) {
+    public NakadiClient(final String clientId, final String realm) {
         super(clientId);
-        this.scopes = scopes;
+        this.realm = realm;
     }
 
     @Override
-    public boolean idMatches(final String clientId) {
-        return super.getClientId().equals(clientId);
+    public String getRealm() {
+        return realm;
     }
-
-    @Override
-    public void checkScopes(final Set<String> allowedScopes) throws IllegalScopeException {
-        if (!allowedScopes.isEmpty()) {
-            allowedScopes.stream()
-                    .filter(scopes::contains)
-                    .findAny()
-                    .orElseThrow(() -> new IllegalScopeException(allowedScopes));
-        }
-    }
-
 }

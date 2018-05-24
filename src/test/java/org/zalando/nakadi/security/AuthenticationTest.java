@@ -10,8 +10,8 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.boot.test.WebIntegrationTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.zalando.nakadi.Application;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -45,12 +46,17 @@ import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
+import java.security.MessageDigest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
@@ -70,8 +76,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(Application.class)
-@WebIntegrationTest(randomPort = true)
+@SpringBootTest(classes=Application.class, webEnvironment= WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = AFTER_CLASS)
 @ActiveProfiles("test")
 public abstract class AuthenticationTest {
@@ -99,6 +104,8 @@ public abstract class AuthenticationTest {
 
         private final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
 
+        private final Map<String, String> realms = new HashMap<>();
+
         @PostConstruct
         public void mockTokensScopes() {
             scopesForTokens.put(TOKEN_WITH_UID_SCOPE, uidScope);
@@ -107,6 +114,20 @@ public abstract class AuthenticationTest {
             scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_READ_SCOPE, eventStreamReadScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE, eventStreamWriteScope);
             scopesForTokens.put(TOKEN_WITH_RANDOM_SCOPE, randomUUID());
+            scopesForTokens.put(TOKEN_WITH_REALM, uidScope);
+            scopesForTokens.put(TOKEN_WITH_WRONG_REALM, uidScope);
+        }
+
+        @PostConstruct
+        public void mockRealms() {
+            realms.put(TOKEN_WITH_REALM, "/arealm");
+            realms.put(TOKEN_WITH_WRONG_REALM, "/wrongrealm");
+            realms.put(TOKEN_WITH_UID_SCOPE, "/wrongrealm");
+            realms.put(TOKEN_WITH_NAKADI_ADMIN_SCOPE, "/wrongrealm");
+            realms.put(TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE, "/wrongrealm");
+            realms.put(TOKEN_WITH_EVENT_STREAM_READ_SCOPE, "/wrongrealm");
+            realms.put(TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE, "/wrongrealm");
+            realms.put(TOKEN_WITH_RANDOM_SCOPE, "/wrongrealm");
         }
 
         @Bean
@@ -120,11 +141,19 @@ public abstract class AuthenticationTest {
 
                 final String token = (String) invocation.getArguments()[0];
                 final Set<String> scopes = ImmutableSet.copyOf(scopesForTokens.get(token));
+                final Map<String, Object> details = new HashMap<>();
+                details.put("realm", realms.get(token));
+                user.setDetails(details);
 
                 final OAuth2Request request = new OAuth2Request(null, null, null, true, scopes, null, null, null, null);
+
                 return new OAuth2Authentication(request, user);
             });
             return tokenServices;
+        }
+
+        public ExtendedOAuth2WebSecurityExpressionHandler extendedOAuth2WebSecurityExpressionHandler() {
+            return mock(ExtendedOAuth2WebSecurityExpressionHandler.class);
         }
 
         @Bean
@@ -217,13 +246,20 @@ public abstract class AuthenticationTest {
 
         @Bean
         @Qualifier("default_storage")
-        public Storage defaultStorage() {
-            return mock(Storage.class);
+        public DefaultStorage defaultStorage() {
+            return new DefaultStorage(mock(Storage.class));
         }
 
         @Bean
         public StorageDbRepository storageDbRepository() {
-            return mock(StorageDbRepository.class);
+            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+            when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
+            return storageDbRepository;
+        }
+
+        @Bean
+        public MessageDigest sha256MessageDigest() {
+            return mock(MessageDigest.class);
         }
 
     }
@@ -237,6 +273,8 @@ public abstract class AuthenticationTest {
     protected static final String TOKEN_WITH_EVENT_STREAM_READ_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_RANDOM_SCOPE = randomUUID();
+    protected static final String TOKEN_WITH_REALM = randomUUID();
+    protected static final String TOKEN_WITH_WRONG_REALM = randomUUID();
 
     protected static SecuritySettings.AuthMode authMode;
 
@@ -266,6 +304,31 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/event-types", TOKEN_WITH_UID_SCOPE),
             new Endpoint(GET, "/event-types/foo", TOKEN_WITH_UID_SCOPE),
             new Endpoint(GET, "/version", TOKEN_WITH_UID_SCOPE));
+
+    protected static final List<Endpoint> ENDPOINTS_FOR_REALM = ImmutableList.of(
+            new Endpoint(POST, "/event-types", TOKEN_WITH_REALM),
+            new Endpoint(PUT, "/event-types/foo", TOKEN_WITH_REALM),
+            new Endpoint(DELETE, "/event-types/foo", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/event-types/foo/events", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/event-types/foo/shifted-cursors", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/event-types/foo/cursors-lag", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/event-types/foo/cursor-distances", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/subscriptions/foo/events", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/subscriptions", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/subscriptions", TOKEN_WITH_REALM),
+            new Endpoint(POST, "/subscriptions/foo/cursors", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/subscriptions/foo/cursors", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/subscriptions/foo", TOKEN_WITH_REALM),
+            new Endpoint(DELETE, "/subscriptions/foo", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/subscriptions/foo/stats", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/metrics", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/registry/partition-strategies", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/event-types", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_REALM),
+            new Endpoint(GET, "/version", TOKEN_WITH_REALM));
 
     private static final List<Endpoint> ENDPOINTS_WITH_NO_SCOPE = ImmutableList.of(
             new Endpoint(GET, "/health"));

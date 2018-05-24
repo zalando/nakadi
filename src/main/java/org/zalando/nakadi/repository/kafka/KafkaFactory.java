@@ -2,6 +2,14 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,13 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import javax.annotation.Nullable;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class KafkaFactory {
 
@@ -131,16 +132,19 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<String, String> getConsumer(final Properties properties) {
+    public Consumer<byte[], byte[]> getConsumer(final Properties properties) {
         return new KafkaConsumer<>(properties);
     }
 
-    public Consumer<String, String> getConsumer() {
+    public Consumer<byte[], byte[]> getConsumer() {
         return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
-    public Consumer<String, String> getConsumer(@Nullable final String clientId) {
+    public Consumer<byte[], byte[]> getConsumer(@Nullable final String clientId) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
+        // TODO: the line bellow has been commented after a bug in Kafka's 0.9.x throttling feature has been detected.
+        // once Kafka is upgraded, we are going to enable it back. More on how it works can be found at
+        // https://docs.google.com/document/d/1JDgsBemNqS0SrNpWUL90205u0MFmSMnOqrC-ENAb6TM/edit
         // properties.put("client.id", clientId);
         return this.getConsumer(properties);
     }

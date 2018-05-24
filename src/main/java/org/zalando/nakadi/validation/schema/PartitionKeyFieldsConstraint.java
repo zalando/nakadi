@@ -6,7 +6,7 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import java.util.Optional;
 
-public class PartitionKeyFieldsConstraint implements SchemaEvolutionConstraint {
+public class  PartitionKeyFieldsConstraint implements SchemaEvolutionConstraint {
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
         if (!original.getPartitionKeyFields().isEmpty()

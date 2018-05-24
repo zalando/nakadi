@@ -1,7 +1,6 @@
 package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
@@ -38,21 +37,7 @@ public class TimelinesControllerAT extends BaseAT {
     }
 
     @Test
-    public void testCreateTimelineFromFake() throws Exception {
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .get("event-types/{et_name}/timelines", eventType.getName())
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .body("[0].event_type", Matchers.equalTo(eventType.getName()))
-                .body("[0].order", Matchers.is(1))
-                .body("[0].storage_id", Matchers.equalTo("default"));
-    }
-
-    @Test
-    public void testCreateTimelineFromReal() throws Exception {
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+    public void testCreateNextTimeline() throws Exception {
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         RestAssured.given()
                 .contentType(ContentType.JSON)
@@ -69,43 +54,6 @@ public class TimelinesControllerAT extends BaseAT {
                 .body("[1].storage_id", Matchers.equalTo("default"))
                 .body("[1].switched_at", dateWithin(1, MINUTES, new DateTime()))
                 .body("[1].cleaned_up_at", nullValue());
-    }
-
-    @Test
-    public void testDeleteTimelineWhenOnlyOneTimeline() throws Exception {
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
-        final String uuid = RestAssured.given()
-                .contentType(ContentType.JSON)
-                .get("event-types/{et_name}/timelines", eventType.getName())
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .extract().body().path("[0].id");
-
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .delete("event-types/{et_name}/timelines/{uuid}", eventType.getName(), uuid)
-                .then()
-                .statusCode(HttpStatus.SC_OK);
-    }
-
-    @Test
-    public void testDeleteTimelineWhenMoreThanOneTimelineThenError() throws Exception {
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
-        final String uuid = RestAssured.given()
-                .contentType(ContentType.JSON)
-                .get("event-types/{et_name}/timelines", eventType.getName())
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .extract().body().path("[0].id");
-
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .delete("event-types/{et_name}/timelines/{uuid}", eventType.getName(), uuid)
-                .then()
-                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-                .body("detail", Matchers.stringContainsInOrder(ImmutableList.of("Timeline with id:",
-                        "could not be deleted. It is possible to delete a timeline if there is only one timeline")));
     }
 
 }

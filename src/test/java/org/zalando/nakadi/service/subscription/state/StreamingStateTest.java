@@ -1,35 +1,41 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.MetricRegistry;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Optional;
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.service.subscription.StreamParametersTest.createStreamParameters;
 
 public class StreamingStateTest {
 
@@ -46,6 +52,7 @@ public class StreamingStateTest {
         state = new StreamingState();
 
         final StreamingContext contextMock = mock(StreamingContext.class);
+        when(contextMock.getCursorComparator()).thenReturn(Comparator.comparing(NakadiCursor::getOffset));
 
         when(contextMock.getSessionId()).thenReturn(SESSION_ID);
         when(contextMock.isInState(Mockito.same(state))).thenReturn(true);
@@ -58,15 +65,16 @@ public class StreamingStateTest {
         when(metricRegistry.register(any(), any())).thenReturn(null);
         when(contextMock.getMetricRegistry()).thenReturn(metricRegistry);
 
-        final SubscriptionCursorWithoutToken cursor = mock(SubscriptionCursorWithoutToken.class);
         zkMock = mock(ZkSubscriptionClient.class);
         when(contextMock.getZkClient()).thenReturn(zkMock);
-        when(zkMock.getOffset(any())).thenReturn(cursor);
 
         cursorConverter = mock(CursorConverter.class);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
 
-        final StreamParameters spMock = StreamParameters.of(
+        final Client client = mock(Client.class);
+        when(client.getClientId()).thenReturn("consumingAppId");
+
+        final StreamParameters spMock = createStreamParameters(
                 1000,
                 100L,
                 100,
@@ -74,7 +82,7 @@ public class StreamingStateTest {
                 100,
                 100,
                 100,
-                "consumingAppId"
+                client
         );
         when(contextMock.getParameters()).thenReturn(spMock);
 
@@ -83,31 +91,33 @@ public class StreamingStateTest {
 
     @Test
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
-        final ZKSubscription topologySubscription = mock(ZKSubscription.class);
+        final ZkSubscription topologySubscription = mock(ZkSubscription.class);
+        Mockito.when(topologySubscription.getData())
+                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, null, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();
 
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
-        Mockito.verify(topologySubscription, Mockito.times(0)).refresh();
+        Mockito.verify(topologySubscription, Mockito.times(1)).getData();
 
-        state.topologyChanged();
+        state.reactOnTopologyChange();
 
-        Mockito.verify(topologySubscription, Mockito.times(1)).refresh();
-        Mockito.verify(topologySubscription, Mockito.times(0)).cancel();
+        Mockito.verify(topologySubscription, Mockito.times(2)).getData();
+        Mockito.verify(topologySubscription, Mockito.times(0)).close();
 
         state.onExit();
 
-        Mockito.verify(topologySubscription, Mockito.times(1)).cancel();
+        Mockito.verify(topologySubscription, Mockito.times(1)).close();
         // verify that no new locks created.
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
     }
 
     @Test
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed()
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
             InvalidCursorException {
-        final ZKSubscription offsetSubscription = mock(ZKSubscription.class);
+        final ZkSubscription<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscription.class);
 
         final EventTypePartition pk = new EventTypePartition("t", "0");
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
@@ -117,37 +127,39 @@ public class StreamingStateTest {
         when(timelineService.createEventConsumer(any())).thenReturn(consumer);
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
 
-        final Timeline timeline = new Timeline("t", 0, null, "t", new Date());
+        final Storage storage = mock(Storage.class);
+        when(storage.getType()).thenReturn(Storage.Type.KAFKA);
+        final Timeline timeline = new Timeline("t", 0, storage, "t", new Date());
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(timelineService.getTopicRepository(eq(timeline))).thenReturn(topicRepository);
         final PartitionStatistics stats = mock(PartitionStatistics.class);
-        when(stats.getBeforeFirst()).thenReturn(new NakadiCursor(timeline, "0", "0"));
-        when(topicRepository.loadPartitionStatistics(eq(timeline), eq("0"))).thenReturn(Optional.of(stats));
+        final NakadiCursor beforeFirstCursor = NakadiCursor.of(timeline, "0", "0");
+        when(stats.getBeforeFirst()).thenReturn(beforeFirstCursor);
+        when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(stats));
 
         state.onEnter();
-
-        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(
-                new NakadiCursor(timeline, "0", "0"));
+        final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
+        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(anyCursor);
 
         state.refreshTopologyUnlocked(new Partition[]{
                 new Partition(
                         pk.getEventType(), pk.getPartition(), SESSION_ID, null, Partition.State.ASSIGNED)});
 
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(0)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).getData();
 
         state.offsetChanged(pk);
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
 
         // Verify that offset change listener is removed
         state.refreshTopologyUnlocked(new Partition[0]);
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(1)).cancel();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).refresh();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).close();
+        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
     }
 
 }

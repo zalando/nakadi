@@ -1,9 +1,9 @@
 package org.zalando.nakadi.util;
 
-import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
 

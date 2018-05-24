@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
@@ -10,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -30,6 +32,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +56,9 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
     private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
     private static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
+    private static final String DEFAULT_ADMIN_DATA_TYPE = "service";
+    private static final String DEFAULT_ADMIN_VALUE = "nakadi";
+    private static final String DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE = "";
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -73,7 +79,10 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES,
-                NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
+                NAKADI_SUBSCRIPTION_MAX_PARTITIONS,
+                DEFAULT_ADMIN_DATA_TYPE,
+                DEFAULT_ADMIN_VALUE,
+                DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
@@ -132,12 +141,11 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
         final List<BatchItem> items = new ArrayList<>();
-        final String event = "{}";
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
 
         for (int i = 0; i < 10; i++) {
-            final BatchItem item = new BatchItem(event);
+            final BatchItem item = BatchFactory.from("[{}]").get(0);
             item.setPartition("0");
             items.add(item);
         }
@@ -178,7 +186,11 @@ public class KafkaRepositoryAT extends BaseAT {
         final ZooKeeperHolder zooKeeperHolder = mock(ZooKeeperHolder.class);
         when(zooKeeperHolder.get()).thenReturn(curatorFramework);
 
+        final Consumer<byte[], byte[]> consumer = mock(Consumer.class);
+        when(consumer.partitionsFor(any())).thenReturn(new ArrayList<>());
+
         final KafkaFactory factory = mock(KafkaFactory.class);
+        when(factory.getConsumer()).thenReturn(consumer);
 
         Mockito
                 .doReturn(kafkaHelper.createProducer())

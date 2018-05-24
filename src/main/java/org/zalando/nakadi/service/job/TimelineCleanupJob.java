@@ -13,7 +13,10 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
+
+import java.util.List;
 
 @Service
 public class TimelineCleanupJob {
@@ -25,33 +28,56 @@ public class TimelineCleanupJob {
     private final EventTypeCache eventTypeCache;
     private final TimelineDbRepository timelineDbRepository;
     private final TimelineService timelineService;
+    private final FeatureToggleService featureToggleService;
     private final ExclusiveJobWrapper jobWrapper;
+    private final long deletionDelayMs;
 
     @Autowired
     public TimelineCleanupJob(final EventTypeCache eventTypeCache,
                               final TimelineDbRepository timelineDbRepository,
                               final TimelineService timelineService,
+                              final FeatureToggleService featureToggleService,
                               final JobWrapperFactory jobWrapperFactory,
-                              @Value("${nakadi.jobs.timelineCleanup.runPeriodMs}") final int periodMs) {
+                              @Value("${nakadi.jobs.timelineCleanup.runPeriodMs}") final int periodMs,
+                              @Value("${nakadi.jobs.timelineCleanup.deletionDelayMs}") final long deletionDelayMs) {
         this.eventTypeCache = eventTypeCache;
         this.timelineDbRepository = timelineDbRepository;
         this.timelineService = timelineService;
         this.jobWrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, periodMs);
+        this.featureToggleService = featureToggleService;
+        this.deletionDelayMs = deletionDelayMs;
     }
 
     @Scheduled(
             fixedDelayString = "${nakadi.jobs.checkRunMs}",
             initialDelayString = "${random.int(${nakadi.jobs.checkRunMs})}")
     public void cleanupTimelines() {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            LOG.warn("Skipping timelines cleanup because write operations to the DB are disabled");
+            return;
+        }
         try {
-            jobWrapper.runJobLocked(() ->
-                    timelineDbRepository.getExpiredTimelines().stream()
-                            .forEach(timeline -> {
-                                deleteTimelineTopic(timeline);
-                                markTimelineDeleted(timeline);
-                            }));
+            jobWrapper.runJobLocked(this::deleteTimelinesLocked);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when trying to get expired timelines", e);
+        }
+    }
+
+    private void deleteTimelinesLocked() {
+        final List<Timeline> expired = timelineDbRepository.getExpiredTimelines();
+        for (int i = 0; i < expired.size(); ++i) {
+            if (i != 0 && deletionDelayMs > 0) {
+                try {
+                    Thread.sleep(deletionDelayMs);
+                } catch (InterruptedException e) {
+                    LOG.warn("Timeline deletion thread was interrupted", e);
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            final Timeline timeline = expired.get(i);
+            deleteTimelineTopic(timeline);
+            markTimelineDeleted(timeline);
         }
     }
 

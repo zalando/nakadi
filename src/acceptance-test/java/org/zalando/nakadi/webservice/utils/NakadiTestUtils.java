@@ -22,6 +22,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -32,9 +33,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.springframework.http.HttpStatus.OK;
@@ -53,7 +57,7 @@ public class NakadiTestUtils {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .post("/event-types");
+                .post("/event-types").print();
     }
 
     public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
@@ -92,6 +96,14 @@ public class NakadiTestUtils {
                 .post(format("/event-types/{0}/events", eventType));
     }
 
+    public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
+        final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
+        given()
+                .body("[" + events + "]")
+                .contentType(JSON)
+                .post(format("/event-types/{0}/events", eventType));
+    }
+
     public static void createTimeline(final String eventType) {
         given()
                 .body("{\"storage_id\": \"default\"}")
@@ -106,7 +118,8 @@ public class NakadiTestUtils {
                 .accept(JSON)
                 .get(format("/event-types/{0}/timelines", eventType));
         final String data = response.print();
-        final TypeReference<List<Map>> typeReference = new TypeReference<List<Map>>(){};
+        final TypeReference<List<Map>> typeReference = new TypeReference<List<Map>>() {
+        };
         return MAPPER.readValue(data, typeReference);
     }
 
@@ -123,19 +136,24 @@ public class NakadiTestUtils {
                 .statusCode(HttpStatus.SC_OK);
     }
 
-    public static void publishBusinessEventWithUserDefinedPartition(final String eventType,
-                                                                    final String foo,
-                                                                    final String partition) {
-        final JSONObject metadata = new JSONObject();
-        metadata.put("eid", UUID.randomUUID().toString());
-        metadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
-        metadata.put("partition", partition);
+    public static void publishBusinessEventWithUserDefinedPartition(
+            final String eventType,
+            final int count,
+            final IntFunction<String> fooGenerator,
+            final IntFunction<String> partitionGenerator) {
+        publishEvents(
+                eventType,
+                count, i -> {
+                    final JSONObject metadata = new JSONObject();
+                    metadata.put("eid", UUID.randomUUID().toString());
+                    metadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
+                    metadata.put("partition", partitionGenerator.apply(i));
 
-        final JSONObject event = new JSONObject();
-        event.put("metadata", metadata);
-        event.put("foo", foo);
-
-        publishEvent(eventType, event.toString());
+                    final JSONObject event = new JSONObject();
+                    event.put("metadata", metadata);
+                    event.put("foo", fooGenerator.apply(i));
+                    return event.toString();
+                });
     }
 
     public static void publishBusinessEventsWithUserDefinedPartition(
@@ -163,6 +181,14 @@ public class NakadiTestUtils {
     public static Subscription createSubscriptionForEventType(final String eventType) throws IOException {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType)
+                .buildSubscriptionBase();
+        return createSubscription(subscriptionBase);
+    }
+
+    public static Subscription createSubscriptionForEventTypeFromBegin(final String eventType) throws IOException {
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType)
+                .withStartFrom(SubscriptionBase.InitialPosition.BEGIN)
                 .buildSubscriptionBase();
         return createSubscription(subscriptionBase);
     }
@@ -235,5 +261,26 @@ public class NakadiTestUtils {
                 .header("accept", "application/json")
                 .get("/event-types/{name}", name)
                 .getBody().asString(), EventType.class);
+    }
+
+    public static int getNumberOfAssignedStreams(final String sid) {
+        final Response response = when().get("/subscriptions/{sid}/stats", sid).thenReturn();
+        final ItemsWrapper<SubscriptionEventTypeStats> statsItems;
+        try {
+            statsItems = MAPPER.readValue(
+                    response.print(),
+                    new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
+                    });
+        } catch (final IOException e) {
+            throw new AssertionError("Failed to get stats", e);
+        }
+        final long assignedUniqueStreamsCount = statsItems.getItems()
+                .stream()
+                .flatMap(stat -> stat.getPartitions().stream())
+                .filter(p -> "assigned".equals(p.getState()))
+                .map(SubscriptionEventTypeStats.Partition::getStreamId)
+                .distinct()
+                .count();
+        return (int) assignedUniqueStreamsCount;
     }
 }

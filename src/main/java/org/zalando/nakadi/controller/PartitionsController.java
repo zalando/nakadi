@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -21,9 +22,11 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -54,14 +57,20 @@ public class PartitionsController {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private static final String INVALID_CURSOR_MESSAGE = "invalid consumed_offset or partition";
+    private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public PartitionsController(final TimelineService timelineService,
                                 final CursorConverter cursorConverter,
-                                final CursorOperationsService cursorOperationsService) {
+                                final CursorOperationsService cursorOperationsService,
+                                final EventTypeRepository eventTypeRepository,
+                                final AuthorizationValidator authorizationValidator) {
         this.timelineService = timelineService;
         this.cursorConverter = cursorConverter;
         this.cursorOperationsService = cursorOperationsService;
+        this.eventTypeRepository = eventTypeRepository;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
@@ -69,6 +78,9 @@ public class PartitionsController {
                                             final NativeWebRequest request) {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            authorizationValidator.authorizeStreamRead(eventType);
+
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
             final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                     .loadTopicStatistics(Collections.singletonList(timelines.get(0)));
@@ -105,6 +117,9 @@ public class PartitionsController {
                                               final String consumedOffset, final NativeWebRequest request) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            authorizationValidator.authorizeStreamRead(eventType);
+
             if (consumedOffset != null) {
                 final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
                 return ok().body(cursorLag);
@@ -139,7 +154,7 @@ public class PartitionsController {
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceUnavailableException {
+            ServiceTemporarilyUnavailableException {
         final Cursor consumedCursor = new Cursor(partition, consumedOffset);
         final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
         return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
@@ -150,7 +165,7 @@ public class PartitionsController {
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final Optional<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                 .loadPartitionStatistics(timelines.get(0), partition);

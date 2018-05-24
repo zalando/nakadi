@@ -42,9 +42,8 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
             final DateTime now = new DateTime(DateTimeZone.UTC);
             final EventType eventType = new EventType(eventTypeBase, "1.0.0", now, now);
             jdbcTemplate.update(
-                    "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
+                    "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
                     eventTypeBase.getName(),
-                    eventTypeBase.getTopic(),
                     jsonMapper.writer().writeValueAsString(eventType));
             insertEventTypeSchema(eventType);
             return eventType;
@@ -57,12 +56,12 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
 
     @Override
     public EventType findByName(final String name) throws NoSuchEventTypeException {
-        final String sql = "SELECT et_topic, et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
+        final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
 
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
         } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.", e);
+            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
         }
     }
 
@@ -97,9 +96,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         @Override
         public EventType mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             try {
-                final EventType eventType = jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
-                eventType.setTopic(rs.getString("et_topic"));
-                return eventType;
+                return jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
             } catch (IOException e) {
                 throw new SQLException(e);
             }
@@ -109,7 +106,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     @Override
     public List<EventType> list() {
         return jdbcTemplate.query(
-                "SELECT et_topic, et_event_type_object FROM zn_data.event_type",
+                "SELECT et_event_type_object FROM zn_data.event_type",
                 new EventTypeMapper());
     }
 

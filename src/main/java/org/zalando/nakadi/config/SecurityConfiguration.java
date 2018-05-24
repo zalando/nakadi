@@ -5,13 +5,27 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpOutputMessage;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
+import org.springframework.security.oauth2.provider.error.DefaultOAuth2ExceptionRenderer;
+import org.springframework.security.oauth2.provider.error.OAuth2AccessDeniedHandler;
+import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
+import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
@@ -33,6 +47,9 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Value("${nakadi.oauth2.scopes.uid}")
     private String uidScope;
 
+    @Value("${nakadi.oauth2.realms}")
+    private String realms;
+
     @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
     private String nakadiAdminScope;
 
@@ -44,6 +61,14 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
     private String eventStreamWriteScope;
+
+    public static String hasScope(final String scope) {
+        return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
+    }
+
+    public static String hasUidScopeAndAnyRealm(final String realms) {
+        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm(''{0}'')", realms);
+    }
 
     @Override
     public void configure(final HttpSecurity http) throws Exception {
@@ -73,25 +98,96 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(GET, "/subscriptions/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
-        }
-        else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
+        } else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
             http.authorizeRequests()
                     .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
-        }
-        else {
+        } else if (settings.getAuthMode() == SecuritySettings.AuthMode.REALM) {
+            http.authorizeRequests()
+                    .antMatchers(GET, "/health/**").permitAll()
+                    .anyRequest().access(hasUidScopeAndAnyRealm(realms));
+        } else {
             http.authorizeRequests()
                     .anyRequest().permitAll();
         }
     }
 
-    public static String hasScope(final String scope) {
-        return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
-    }
-
     @Override
     public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
+        final OAuth2AuthenticationEntryPoint oAuth2AuthenticationEntryPoint = new OAuth2AuthenticationEntryPoint();
+        oAuth2AuthenticationEntryPoint.setExceptionRenderer(new ProblemOauthExceptionRenderer());
+        resources.authenticationEntryPoint(oAuth2AuthenticationEntryPoint);
         resources.tokenServices(tokenServices);
+        resources.expressionHandler(new ExtendedOAuth2WebSecurityExpressionHandler());
+        final OAuth2AccessDeniedHandler oAuth2AccessDeniedHandler = new OAuth2AccessDeniedHandler();
+        oAuth2AccessDeniedHandler.setExceptionRenderer(new ProblemOauthExceptionRenderer());
+        resources.accessDeniedHandler(oAuth2AccessDeniedHandler);
     }
+
+    private static class ProblemOauthExceptionRenderer extends DefaultOAuth2ExceptionRenderer {
+
+        ProblemOauthExceptionRenderer() {
+            final List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
+            messageConverters.add(new ProblemOauthMessageConverter());
+            setMessageConverters(messageConverters);
+        }
+    }
+
+    private static class ProblemOauthMessageConverter extends MappingJackson2HttpMessageConverter {
+
+        @Override
+        protected void writeInternal(final Object object, final HttpOutputMessage outputMessage)
+                throws IOException, HttpMessageNotWritableException {
+            super.writeInternal(toJsonResponse(object), outputMessage);
+        }
+
+        protected Object toJsonResponse(final Object object) {
+            if (object instanceof OAuth2Exception) {
+                final OAuth2Exception oae = (OAuth2Exception) object;
+                if (oae.getCause() != null) {
+                    if (oae.getCause() instanceof AuthenticationException) {
+                        return new ProblemResponse(Response.Status.UNAUTHORIZED, oae.getCause().getMessage());
+                    }
+                    return new ProblemResponse(Response.Status.INTERNAL_SERVER_ERROR, oae.getMessage());
+                }
+
+                return new ProblemResponse(Response.Status.fromStatusCode(oae.getHttpErrorCode()), oae.getMessage());
+            }
+
+            return new ProblemResponse(Response.Status.INTERNAL_SERVER_ERROR,
+                    "Unrecognized error happened in authentication path");
+        }
+    }
+
+    private static class ProblemResponse {
+        private final String type;
+        private final String title;
+        private final int status;
+        private final String detail;
+
+        ProblemResponse(final Response.StatusType status, final String detail) {
+            this.type = "https://httpstatus.es/" + status.getStatusCode();
+            this.title = status.getReasonPhrase();
+            this.status = status.getStatusCode();
+            this.detail = detail;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        public String getDetail() {
+            return detail;
+        }
+    }
+
 
 }

@@ -1,21 +1,21 @@
 package org.zalando.nakadi.enrichment;
 
+import org.joda.time.DateTimeUtils;
+import org.json.JSONObject;
+import org.junit.Test;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.util.FlowIdUtils;
-import org.joda.time.DateTimeUtils;
-import org.json.JSONObject;
-import org.junit.Test;
 import org.zalando.nakadi.utils.TestUtils;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.junit.Assert.assertThat;
 
 public class MetadataEnrichmentStrategyTest {
     private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy();
@@ -82,6 +82,47 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         assertThat(event.getJSONObject("metadata").optString("flow_id"), isEmptyString());
+
+        final String flowId = randomString();
+        FlowIdUtils.push(flowId);
+        strategy.enrich(batch, eventType);
+
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+    }
+
+    @Test
+    public void whenFlowIdIsPresentDoNotOverride() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("flow_id", "something");
+        final BatchItem batch = createBatchItem(event);
+
+        FlowIdUtils.push("something-else");
+        strategy.enrich(batch, eventType);
+
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo("something"));
+    }
+
+    @Test
+    public void whenFlowIsEmptyStringOverrideIt() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("flow_id", "");
+        final BatchItem batch = createBatchItem(event);
+
+        final String flowId = randomString();
+        FlowIdUtils.push(flowId);
+        strategy.enrich(batch, eventType);
+
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+    }
+
+    @Test
+    public void whenFlowIsNullOverrideIt() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("flow_id", (Object)null);
+        final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);

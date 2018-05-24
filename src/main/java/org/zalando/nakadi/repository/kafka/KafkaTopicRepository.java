@@ -1,30 +1,8 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
-import static com.google.common.collect.Lists.newArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import static java.util.Collections.unmodifiableList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import static java.util.stream.Collectors.toList;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
-import kafka.common.TopicExistsException;
+import kafka.admin.RackAwareMode;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -35,16 +13,15 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -53,11 +30,9 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -65,6 +40,35 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
+import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
+import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -126,7 +130,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 final Properties topicConfig = new Properties();
                 topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
-                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
+                        RackAwareMode.Safe$.MODULE$);
             });
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + topic +
@@ -134,6 +139,22 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
         }
+        // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
+        // receive information about topic creation, which in turn will block publishing.
+        // This kind of behavior was observed during tests, but may also present on highly loaded event types.
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        return null != consumer.partitionsFor(topic);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                        .withWaitBetweenEachTry(100L)
+                        .withResultsThatForceRetry(Boolean.FALSE));
+        if (!Boolean.TRUE.equals(allowsConsumption)) {
+            throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
+        }
+
     }
 
     @Override
@@ -164,7 +185,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
                     item.getPartition(),
-                    item.getEvent().toString());
+                    item.dumpEventToString());
 
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
@@ -287,32 +308,61 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
-            throws ServiceUnavailableException {
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
-            final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
-                    .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
-                    .findAny();
-            if (!tp.isPresent()) {
-                return Optional.empty();
+            throws ServiceTemporarilyUnavailableException {
+        return loadPartitionStatistics(Collections.singletonList(new TimelinePartition(timeline, partition))).get(0);
+    }
+
+    @Override
+    public List<Optional<PartitionStatistics>> loadPartitionStatistics(
+            final Collection<TimelinePartition> partitions) throws ServiceTemporarilyUnavailableException {
+        final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
+                Collectors.groupingBy(
+                        tp -> tp.getTimeline().getTopic(),
+                        Collectors.mapping(TimelinePartition::getPartition, Collectors.toSet())
+                ));
+        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+            final List<PartitionInfo> allKafkaPartitions = topicToPartitions.keySet().stream()
+                    .map(consumer::partitionsFor)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+            final List<TopicPartition> partitionsToQuery = allKafkaPartitions.stream()
+                    .filter(pi -> topicToPartitions.get(pi.topic())
+                            .contains(KafkaCursor.toNakadiPartition(pi.partition())))
+                    .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                    .collect(Collectors.toList());
+
+            consumer.assign(partitionsToQuery);
+            consumer.seekToBeginning(partitionsToQuery);
+            final List<Long> begins = partitionsToQuery.stream().map(consumer::position).collect(toList());
+            consumer.seekToEnd(partitionsToQuery);
+            final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
+
+            final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
+            for (final TimelinePartition tap : partitions) {
+                // Now search for an index.
+                final Optional<PartitionStatistics> itemResult = IntStream.range(0, partitionsToQuery.size())
+                        .filter(i -> {
+                            final TopicPartition info = partitionsToQuery.get(i);
+                            return info.topic().equals(tap.getTimeline().getTopic()) &&
+                                    info.partition() == KafkaCursor.toKafkaPartition(tap.getPartition());
+                        }).mapToObj(indexFound -> (PartitionStatistics) new KafkaPartitionStatistics(
+                                tap.getTimeline(),
+                                partitionsToQuery.get(indexFound).partition(),
+                                begins.get(indexFound),
+                                ends.get(indexFound) - 1L))
+                        .findAny();
+                result.add(itemResult);
             }
-            final TopicPartition kafkaTP = tp.map(v -> new TopicPartition(v.topic(), v.partition())).get();
-            consumer.assign(Collections.singletonList(kafkaTP));
-            consumer.seekToBeginning(kafkaTP);
-
-            final long begin = consumer.position(kafkaTP);
-            consumer.seekToEnd(kafkaTP);
-            final long end = consumer.position(kafkaTP);
-
-            return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
+            return result;
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
     @Override
     public List<PartitionStatistics> loadTopicStatistics(final Collection<Timeline> timelines)
-            throws ServiceUnavailableException {
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            throws ServiceTemporarilyUnavailableException {
+        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final Map<TopicPartition, Timeline> backMap = new HashMap<>();
             for (final Timeline timeline : timelines) {
                 consumer.partitionsFor(timeline.getTopic())
@@ -320,30 +370,30 @@ public class KafkaTopicRepository implements TopicRepository {
                         .map(p -> new TopicPartition(p.topic(), p.partition()))
                         .forEach(tp -> backMap.put(tp, timeline));
             }
-            final TopicPartition[] kafkaTPs = backMap.keySet().toArray(new TopicPartition[backMap.size()]);
-            consumer.assign(Arrays.asList(kafkaTPs));
+            final List<TopicPartition> kafkaTPs = new ArrayList<>(backMap.keySet());
+            consumer.assign(kafkaTPs);
             consumer.seekToBeginning(kafkaTPs);
-            final long[] begins = Stream.of(kafkaTPs).mapToLong(consumer::position).toArray();
+            final long[] begins = kafkaTPs.stream().mapToLong(consumer::position).toArray();
 
             consumer.seekToEnd(kafkaTPs);
-            final long[] ends = Stream.of(kafkaTPs).mapToLong(consumer::position).toArray();
+            final long[] ends = kafkaTPs.stream().mapToLong(consumer::position).toArray();
 
-            return IntStream.range(0, kafkaTPs.length)
+            return IntStream.range(0, kafkaTPs.size())
                     .mapToObj(i -> new KafkaPartitionStatistics(
-                            backMap.get(kafkaTPs[i]),
-                            kafkaTPs[i].partition(),
+                            backMap.get(kafkaTPs.get(i)),
+                            kafkaTPs.get(i).partition(),
                             begins[i],
                             ends[i] - 1))
                     .collect(toList());
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
     @Override
     public List<PartitionEndStatistics> loadTopicEndStatistics(final Collection<Timeline> timelines)
-            throws ServiceUnavailableException {
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            throws ServiceTemporarilyUnavailableException {
+        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final Map<TopicPartition, Timeline> backMap = new HashMap<>();
             for (final Timeline timeline : timelines) {
                 consumer.partitionsFor(timeline.getTopic())
@@ -353,7 +403,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final List<TopicPartition> kafkaTPs = newArrayList(backMap.keySet());
             consumer.assign(kafkaTPs);
-            consumer.seekToEnd(kafkaTPs.toArray(new TopicPartition[kafkaTPs.size()]));
+            consumer.seekToEnd(kafkaTPs);
             return backMap.entrySet().stream()
                     .map(e -> {
                         final TopicPartition tp = e.getKey();
@@ -362,7 +412,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     })
                     .collect(toList());
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
@@ -382,9 +432,9 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
             @Nullable final String clientId, final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, InvalidCursorException {
+            throws ServiceTemporarilyUnavailableException, InvalidCursorException {
 
-        final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
+        final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
@@ -402,52 +452,14 @@ public class KafkaTopicRepository implements TopicRepository {
 
     }
 
-    public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
-        return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
-    }
-
-    public long totalEventsInPartition(final Timeline timeline, final String partitionString)
-            throws InvalidCursorOperation {
-        try {
-            final Timeline.StoragePosition positions = timeline.getLatestPosition();
-            if (positions == null) {
-                final Optional<PartitionStatistics> statsO = loadPartitionStatistics(timeline, partitionString);
-                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast()) + 1).orElseThrow(
-                        MyNakadiRuntimeException1::new
-                );
-            }
-            final int partition = KafkaCursor.toKafkaPartition(partitionString);
-            final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
-            final List<Long> offsets = kafkaPositions.getOffsets();
-            if (offsets.size() - 1 < partition) {
-                throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-            } else {
-                // The number stored in positions is the Kafka offset, which could be -1, for example, when a partition
-                // is empty, or zero when there is only one event. In order to count precisely the amount of events
-                // in a partition, we need to adjust it by adding one.
-                return offsets.get(partition) + 1;
-            }
-        } catch (final ServiceUnavailableException e) {
-            throw new MyNakadiRuntimeException1("Problem calculating partition statistics", e);
-        }
-    }
-
-    public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
-        // could be -1 in case the cursor points to BEGIN
-        return KafkaCursor.toKafkaOffset(cursor.getOffset());
-    }
-
-    public String getOffsetForPosition(final long offset) {
-        return KafkaCursor.toNakadiOffset(offset);
-    }
-
+    @Override
     public void validateReadCursors(final List<NakadiCursor> cursors)
-            throws InvalidCursorException, ServiceUnavailableException {
+            throws InvalidCursorException, ServiceTemporarilyUnavailableException {
         convertToKafkaCursors(cursors);
     }
 
     private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
-            throws ServiceUnavailableException, InvalidCursorException {
+            throws ServiceTemporarilyUnavailableException, InvalidCursorException {
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 
@@ -461,7 +473,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }
-            final KafkaCursor toCheck = KafkaCursor.fromNakadiCursor(position);
+            final KafkaCursor toCheck = position.asKafkaCursor();
 
             // Checking oldest position
             final KafkaCursor oldestCursor = KafkaCursor.fromNakadiCursor(partition.get().getBeforeFirst());
@@ -480,13 +492,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        KafkaCursor.fromNakadiCursor(position);
-    }
-
-    @Override
     public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-         try {
+        try {
             doWithZkUtils(zkUtils -> {
                 final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
                 topicProps.setProperty("retention.ms", Long.toString(retentionMs));

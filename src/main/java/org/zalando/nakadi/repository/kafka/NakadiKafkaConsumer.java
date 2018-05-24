@@ -1,11 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -14,14 +8,21 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
 
-    private final Consumer<String, String> kafkaConsumer;
+    private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
     private final Map<TopicPartition, Timeline> timelineMap;
 
     public NakadiKafkaConsumer(
-            final Consumer<String, String> kafkaConsumer,
+            final Consumer<byte[], byte[]> kafkaConsumer,
             final List<KafkaCursor> kafkaCursors,
             final Map<TopicPartition, Timeline> timelineMap,
             final long pollTimeout) {
@@ -50,12 +51,12 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
 
     @Override
     public List<ConsumedEvent> readEvents() {
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
+        final ConsumerRecords<byte[], byte[]> records = kafkaConsumer.poll(pollTimeout);
         if (records.isEmpty()) {
             return Collections.emptyList();
         }
         final ArrayList<ConsumedEvent> result = new ArrayList<>(records.count());
-        for (final ConsumerRecord<String, String> record : records) {
+        for (final ConsumerRecord<byte[], byte[]> record : records) {
             final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
             result.add(new ConsumedEvent(record.value(), cursor.toNakadiCursor(timeline)));

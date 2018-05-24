@@ -1,14 +1,27 @@
 package org.zalando.nakadi.domain;
 
-public class ShiftedNakadiCursor extends NakadiCursor {
-    private long shift = 0;
+public class ShiftedNakadiCursor {
+    private final NakadiCursor nakadiCursor;
+    private final long shift;
 
     public ShiftedNakadiCursor(final Timeline timeline, final String partition, final String offset, final long shift) {
-        super(timeline, partition, offset);
+        this.nakadiCursor = NakadiCursor.of(timeline, partition, offset);
         this.shift = shift;
     }
 
     public long getShift() {
         return shift;
+    }
+
+    public NakadiCursor getNakadiCursor() {
+        return nakadiCursor;
+    }
+
+    @Override
+    public String toString() {
+        return "ShiftedNakadiCursor{" +
+                nakadiCursor.toString() +
+                ", shift='" + shift + '\'' +
+                '}';
     }
 }

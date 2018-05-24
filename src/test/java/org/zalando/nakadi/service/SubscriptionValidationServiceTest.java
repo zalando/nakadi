@@ -2,9 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -15,28 +12,32 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class SubscriptionValidationServiceTest {
@@ -52,7 +53,6 @@ public class SubscriptionValidationServiceTest {
     private SubscriptionValidationService subscriptionValidationService;
     private SubscriptionBase subscriptionBase;
     private CursorConverter cursorConverter;
-    private Client client;
 
     @Before
     public void setUp() throws InternalNakadiException {
@@ -64,16 +64,22 @@ public class SubscriptionValidationServiceTest {
                 .thenReturn(ImmutableList.of(P0));
 
         etRepo = mock(EventTypeRepository.class);
-        when(etRepo.findByNameO(any())).thenAnswer(invocation -> {
-            final String etName = (String) invocation.getArguments()[0];
+        final Map<String, EventType> eventTypes = new HashMap<>();
+        for (final String etName : new String[]{ET1, ET2, ET3}) {
             final EventType eventType = new EventType();
             eventType.setName(etName);
-            eventType.setTopic(topicForET(etName));
-            eventType.setReadScopes(scopesForET(etName));
-            return Optional.of(eventType);
-        });
+            eventTypes.put(etName, eventType);
+        }
+        when(etRepo.findByNameO(any()))
+                .thenAnswer(invocation -> Optional.ofNullable(eventTypes.get(invocation.getArguments()[0])));
 
         final TimelineService timelineService = mock(TimelineService.class);
+        for (final EventType et : eventTypes.values()) {
+            final Timeline timeline = mock(Timeline.class);
+            when(timeline.getTopic()).thenReturn(topicForET(et.getName()));
+            when(timeline.getEventType()).thenReturn(et.getName());
+            when(timelineService.getActiveTimeline(eq(et.getName()))).thenReturn(timeline);
+        }
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
@@ -83,14 +89,12 @@ public class SubscriptionValidationServiceTest {
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
         subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.CURSORS);
-
-        client = mock(Client.class);
     }
 
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
         when(etRepo.findByNameO(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
@@ -99,7 +103,7 @@ public class SubscriptionValidationServiceTest {
         when(etRepo.findByNameO(ET2)).thenReturn(Optional.of(new EventType()));
 
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("NoEventTypeException expected");
         } catch (final NoEventTypeException e) {
             final String expectedMessage =
@@ -108,31 +112,22 @@ public class SubscriptionValidationServiceTest {
         }
     }
 
-    @Test
-    public void whenValidatingThenScopesAreChecked() throws Exception {
-        subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
-        verify(client, times(1)).checkScopes(scopesForET(ET1));
-        verify(client, times(1)).checkScopes(scopesForET(ET2));
-        verify(client, times(1)).checkScopes(scopesForET(ET3));
-    }
-
     @Test(expected = TooManyPartitionsException.class)
-    public void whenTooManyPartitionsThenException() throws Exception {
+    public void whenTooManyPartitionsThenException() {
         when(topicRepository.listPartitionNames(argThat(isOneOf(
                 topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
                 .thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
-    public void whenCursorForSomePartitionIsMissingThenException() throws Exception {
+    public void whenCursorForSomePartitionIsMissingThenException() {
         subscriptionBase.setInitialCursors(ImmutableList.of(
                 new SubscriptionCursorWithoutToken(ET1, P0, ""),
                 new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -141,7 +136,7 @@ public class SubscriptionValidationServiceTest {
     }
 
     @Test
-    public void whenCursorForWrongPartitionThenException() throws Exception {
+    public void whenCursorForWrongPartitionThenException() {
         subscriptionBase.setInitialCursors(ImmutableList.of(
                 new SubscriptionCursorWithoutToken(ET1, P0, ""),
                 new SubscriptionCursorWithoutToken(ET2, P0, ""),
@@ -149,7 +144,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken("wrongET", P0, "")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -158,7 +153,7 @@ public class SubscriptionValidationServiceTest {
     }
 
     @Test
-    public void whenMoreThanOneCursorPerPartitionThenException() throws Exception {
+    public void whenMoreThanOneCursorPerPartitionThenException() {
         subscriptionBase.setInitialCursors(ImmutableList.of(
                 new SubscriptionCursorWithoutToken(ET1, P0, ""),
                 new SubscriptionCursorWithoutToken(ET2, P0, ""),
@@ -166,7 +161,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(ET3, P0, "b")
         ));
         try {
-            subscriptionValidationService.validateSubscription(subscriptionBase, client);
+            subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
@@ -181,11 +176,11 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(ET2, P0, ""),
                 new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
-        final NakadiCursor cursor = mock(NakadiCursor.class);
+        final NakadiCursor cursor = mockCursorWithTimeline();
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
         doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT))
                 .when(topicRepository).validateReadCursors(any());
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test(expected = RepositoryProblemException.class)
@@ -195,18 +190,22 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(ET2, P0, ""),
                 new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
-        final NakadiCursor cursor = mock(NakadiCursor.class);
+        final NakadiCursor cursor = mockCursorWithTimeline();
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
-        doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
-        subscriptionValidationService.validateSubscription(subscriptionBase, client);
+        doThrow(new ServiceTemporarilyUnavailableException("")).when(topicRepository).validateReadCursors(any());
+        subscriptionValidationService.validateSubscription(subscriptionBase);
+    }
+
+    private static NakadiCursor mockCursorWithTimeline() {
+        final Timeline timeline = mock(Timeline.class);
+        when(timeline.isDeleted()).thenReturn(false);
+        final NakadiCursor cursor = mock(NakadiCursor.class);
+        when(cursor.getTimeline()).thenReturn(timeline);
+        return cursor;
     }
 
     private static String topicForET(final String etName) {
         return "topic_" + etName;
-    }
-
-    private static Set<String> scopesForET(final String etName) {
-        return ImmutableSet.of("read_scope_for_" + etName);
     }
 
 }

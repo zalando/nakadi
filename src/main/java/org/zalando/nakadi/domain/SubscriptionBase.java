@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
@@ -22,6 +23,7 @@ public class SubscriptionBase {
     }
 
     @NotNull
+    @Size(min = 1, message = "must contain at least one character")
     private String owningApplication;
 
     @NotNull
@@ -29,11 +31,13 @@ public class SubscriptionBase {
     private Set<String> eventTypes;
 
     @NotNull
+    @Size(min = 1, message = "must contain at least one character")
     private String consumerGroup = "default";
 
     @NotNull
     private InitialPosition readFrom = InitialPosition.END;
 
+    @Valid
     private List<SubscriptionCursorWithoutToken> initialCursors = ImmutableList.of();
 
     public SubscriptionBase() {

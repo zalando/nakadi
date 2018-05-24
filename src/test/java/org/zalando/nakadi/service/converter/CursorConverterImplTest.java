@@ -1,17 +1,20 @@
 package org.zalando.nakadi.service.converter;
 
-import java.util.Collections;
-import java.util.Optional;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
+
+import java.util.Collections;
+import java.util.Optional;
+
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -43,7 +46,10 @@ public class CursorConverterImplTest {
     public void testBeginConvertedVersionZero() throws Exception {
         final String eventType = "test-et";
         final String partition = "2";
+        final Storage storage = new Storage("", Storage.Type.KAFKA);
         final Timeline timeline = mock(Timeline.class);
+        when(timeline.getStorage()).thenReturn(storage);
+
         final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
@@ -52,7 +58,8 @@ public class CursorConverterImplTest {
         when(timelineService.getActiveTimelinesOrdered(eq(eventType))).thenReturn(Collections.singletonList(timeline));
         when(timelineService.getTopicRepository(eq(timeline))).thenReturn(topicRepository);
         when(topicRepository.loadPartitionStatistics(eq(timeline), eq(partition))).thenReturn(Optional.of(stats));
-        when(stats.getBeforeFirst()).thenReturn(new NakadiCursor(timeline, partition, "000001"));
+        final NakadiCursor beforeFirstCursor = NakadiCursor.of(timeline, partition, "000001");
+        when(stats.getBeforeFirst()).thenReturn(beforeFirstCursor);
 
         final CursorConverter converter = new CursorConverterImpl(eventTypeCache, timelineService);
 

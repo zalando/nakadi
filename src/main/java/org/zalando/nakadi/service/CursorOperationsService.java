@@ -1,144 +1,120 @@
 package org.zalando.nakadi.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 
 @Service
 public class CursorOperationsService {
     private final TimelineService timelineService;
+    private static final Logger LOG = LoggerFactory.getLogger(CursorOperationsService.class);
 
     @Autowired
     public CursorOperationsService(final TimelineService timelineService) {
         this.timelineService = timelineService;
     }
 
-    public Long calculateDistance(final NakadiCursor initialCursor, final NakadiCursor finalCursor)
-        throws InvalidCursorOperation {
+    public long calculateDistance(final NakadiCursor initialCursor, final NakadiCursor finalCursor)
+            throws InvalidCursorOperation {
         // Validate query
         if (!initialCursor.getPartition().equals(finalCursor.getPartition())) {
             throw new InvalidCursorOperation(CURSORS_WITH_DIFFERENT_PARTITION);
-        } else if (initialCursor.getTimeline().getOrder() > finalCursor.getTimeline().getOrder()) {
-            throw new InvalidCursorOperation(INVERTED_TIMELINE_ORDER);
         }
 
-        if (initialCursor.getTimeline().getOrder() == finalCursor.getTimeline().getOrder()) {
-            return getDistanceSameTimeline(initialCursor, finalCursor);
-        } else {
-            return getDistanceDifferentTimelines(initialCursor, finalCursor);
-        }
-    }
+        long result = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
+        final int initialOrder = initialCursor.getTimeline().getOrder();
+        final int finalOrder = finalCursor.getTimeline().getOrder();
 
-    private long getDistanceSameTimeline(final NakadiCursor initialCursor, final NakadiCursor finalCursor) {
-        final long distance = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
-        if (distance < 0) {
-            throw new InvalidCursorOperation(INVERTED_OFFSET_ORDER);
-        }
-        return distance;
-    }
-
-    private long getDistanceDifferentTimelines(final NakadiCursor initialCursor, final NakadiCursor finalCursor) {
-        long distance = 0;
-
-        // get distance from initialCursor to the end of the timeline
-        if (numberOfEventsBeforeCursor(initialCursor) < 0) { // special case for BEGIN
-            distance += totalEventsInTimeline(initialCursor);
-        } else {
-            // does not count the initial cursor as consumed
-            distance += totalEventsInTimeline(initialCursor) - numberOfEventsBeforeCursor(initialCursor) - 1;
+        int startOrder = Math.min(initialOrder, finalOrder);
+        if (startOrder == Timeline.STARTING_ORDER) {
+            startOrder += 1;
         }
 
-        // get all intermediary timelines sizes
-        final String partitionString = initialCursor.getPartition();
-        for (int order = initialCursor.getTimeline().getOrder() + 1;
-             order < finalCursor.getTimeline().getOrder();
-             order++) {
+        for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            distance += totalEventsInTimeline(timeline, partitionString);
+            final long eventsTotal = getStorageWorker(timeline)
+                    .totalEventsInPartition(timeline, initialCursor.getPartition());
+            result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
-
-        distance += numberOfEventsBeforeCursor(finalCursor) + 1; // count latest cursor, inclusive
-
-        return distance;
+        return result;
     }
 
     public List<NakadiCursorLag> cursorsLag(final String eventTypeName, final List<NakadiCursor> cursors)
             throws InvalidCursorOperation {
         try {
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
-            final Timeline oldestTimeline = timelines.get(0);
-            final Timeline newestTimeline = timelines.get(timelines.size() - 1);
-            final List<PartitionStatistics> oldestStats = getStatsForTimeline(oldestTimeline);
-            final List<PartitionStatistics> newestStats = getStatsForTimeline(newestTimeline);
+            // Next 2 calls could be optimized to 1 storage call, instead of possible 2 calls.
+            // But it is simpler not to do anything, cause timelines are not switched every day and almost all the time
+            // (except retention time after switch) there will be only 1 active timeline, and this option is covered.
+            final List<PartitionStatistics> oldestStats = getStatsForTimeline(timelines.get(0));
+            final List<PartitionStatistics> newestStats = timelines.size() == 1 ? oldestStats :
+                    getStatsForTimeline(timelines.get(timelines.size() - 1));
 
-            // Cursors to empty partitions were represeted as BEGIN. But with multiple timelines, if current one is
-            // empty, we point to the latest event from the previous one.
-            // For example: given there 2 timelines, the first one with 123 events and the second one is empty, instead
-            // of exposing as latest cursor "001-0002--1" we'll be displaying "001-0001-000000000000000123" (latest
-            // event from timeline 1)
-            // TODO cannot handle two empty timelines in a row
-            for (int i = 0; i < newestStats.size(); i++) {
-                if (newestStats.get(i).getLast().getOffset().equals("-1") && timelines.size() > 1) {
-                    final Timeline newestTimelineNotEmpty = timelines.get(timelines.size() - 2);
-                    final List<PartitionStatistics> newestStatsNotEmptyTmp = getStatsForTimeline(
-                            newestTimelineNotEmpty);
-                    newestStats.set(i, newestStatsNotEmptyTmp.get(i));
-                }
-            }
+            return cursors.stream()
+                    .map(c -> {
+                        final PartitionStatistics oldestStat = oldestStats.stream()
+                                .filter(item -> item.getPartition().equalsIgnoreCase(c.getPartition()))
+                                .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
 
-            final Map<String, NakadiCursorLag> stats = new HashMap<>();
+                        NakadiCursor newestPosition = newestStats.stream()
+                                .filter(item -> item.getPartition().equalsIgnoreCase(c.getPartition()))
+                                .map(PartitionEndStatistics::getLast)
+                                .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
+                        // trick to avoid -1 position - move cursor to previous timeline while there is no data before
+                        // it
+                        while (numberOfEventsBeforeCursor(newestPosition) == -1) {
+                            final int prevOrder = newestPosition.getTimeline().getOrder() - 1;
+                            final Timeline prevTimeline = timelines.stream()
+                                    .filter(t -> t.getOrder() == prevOrder)
+                                    .findAny().orElse(null);
+                            if (null == prevTimeline) {
+                                break;
+                            }
+                            // We moved back, so timeline definitely have latest position set
+                            newestPosition = prevTimeline.getLatestPosition()
+                                    .toNakadiCursor(prevTimeline, newestPosition.getPartition());
+                        }
 
-            // assume all timelines have an equal number of partitions
-            for (int i = 0; i < oldestStats.size(); i++) {
-                final PartitionStatistics oldStat = oldestStats.get(i);
-                final PartitionStatistics newStat = newestStats.get(i);
-                final NakadiCursorLag nakadiCursorLag = new NakadiCursorLag(oldStat.getFirst(), newStat.getLast());
-                stats.put(oldStat.getPartition(), nakadiCursorLag);
-            }
+                        // It is safe to call calculate distance here, cause it will not involve any storage-related
+                        // calls (in case of kafka)
+                        return new NakadiCursorLag(
+                                oldestStat.getFirst(),
+                                newestPosition,
+                                calculateDistance(c, newestPosition)
+                        );
+                    }).collect(Collectors.toList());
 
-            // assume all partitions are present in the `stats` map
-            return cursors.stream().map(cursor -> {
-                final NakadiCursorLag nakadiCursorLag = stats.get(cursor.getPartition());
-                if (nakadiCursorLag == null) {
-                    throw new InvalidCursorOperation(PARTITION_NOT_FOUND);
-                }
-                final Long distance = this.calculateDistance(cursor, nakadiCursorLag.getLastCursor());
-                nakadiCursorLag.setLag(distance);
-                return nakadiCursorLag;
-            }).collect(Collectors.toList());
         } catch (final NakadiException e) {
             throw new MyNakadiRuntimeException1("error", e);
         }
     }
 
-    private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline) throws ServiceUnavailableException {
-        return timelineService.getTopicRepository(timeline)
-                .loadTopicStatistics(Collections.singletonList(timeline));
+    private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline)
+            throws ServiceTemporarilyUnavailableException {
+        return timelineService.getTopicRepository(timeline).loadTopicStatistics(Collections.singletonList(timeline));
     }
 
     public List<NakadiCursor> unshiftCursors(final List<ShiftedNakadiCursor> cursors) throws InvalidCursorOperation {
@@ -147,79 +123,85 @@ public class CursorOperationsService {
 
     public NakadiCursor unshiftCursor(final ShiftedNakadiCursor cursor) throws InvalidCursorOperation {
         if (cursor.getShift() < 0) {
-            return moveCursorBackwards(cursor.getEventType(), cursor.getTimeline(), cursor.getPartition(),
-                    numberOfEventsBeforeCursor(cursor),
-                    cursor.getShift());
+            return moveBack(cursor);
         } else if (cursor.getShift() > 0) {
-            return moveCursorForward(cursor.getEventType(), cursor.getTimeline(), cursor.getPartition(),
-                    numberOfEventsBeforeCursor(cursor), cursor.getShift());
+            return moveForward(cursor);
         } else {
-            return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
+            return cursor.getNakadiCursor();
         }
     }
 
-    private NakadiCursor moveCursorBackwards(final String eventTypeName, final Timeline timeline,
-                                             final String partition, final long offset, final long shift) {
-        final long shiftedOffset = offset + shift;
-        if (shiftedOffset >= 0 ||
-                isBegin(eventTypeName, timeline, shiftedOffset)) { // move left in the same timeline
-            final String paddedOffset = getOffsetForPosition(timeline, shiftedOffset);
-            return new NakadiCursor(timeline, partition, paddedOffset);
-        } else { // move to previous timeline
-            final Timeline previousTimeline = getTimeline(eventTypeName, timeline.getOrder() - 1);
-            final long totalEventsInTimeline = totalEventsInTimeline(previousTimeline, partition);
-            return moveCursorBackwards(eventTypeName, previousTimeline, partition, totalEventsInTimeline,
-                    shift + offset);
+    private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) {
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
+        long stillToAdd = cursor.getShift();
+        while (currentCursor.getTimeline().getLatestPosition() != null) {
+            final NakadiCursor timelineLastPosition = currentCursor.getTimeline().getLatestPosition()
+                    .toNakadiCursor(currentCursor.getTimeline(), currentCursor.getPartition());
+            final long distance = calculateDistance(currentCursor, timelineLastPosition);
+            if (stillToAdd > distance) {
+                stillToAdd -= distance;
+                final Timeline nextTimeline = getTimeline(
+                        currentCursor.getEventType(), currentCursor.getTimeline().getOrder() + 1);
+
+                currentCursor = NakadiCursor.of(
+                        nextTimeline,
+                        currentCursor.getPartition(),
+                        StaticStorageWorkerFactory.get(nextTimeline).getBeforeFirstOffset());
+            } else {
+                break;
+            }
         }
+        if (stillToAdd > 0) {
+            return currentCursor.shiftWithinTimeline(stillToAdd);
+        }
+        return currentCursor;
     }
 
-    private boolean isBegin(final String eventTypeName, final Timeline timeline, final long shiftedOffset) {
-        try {
-            return shiftedOffset == -1 && timeline.getOrder() == timelineService
-                    .getActiveTimelinesOrdered(eventTypeName).get(0).getOrder();
-        } catch (final InternalNakadiException e) {
-            throw new RuntimeException(e);
-        } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("event type not found " + eventTypeName, e);
-        }
-    }
+    private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) {
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
+        long toMoveBack = -cursor.getShift();
+        while (toMoveBack > 0) {
+            final long totalBefore = numberOfEventsBeforeCursor(currentCursor);
+            if (totalBefore < toMoveBack) {
+                toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
 
-    private NakadiCursor moveCursorForward(final String eventType, final Timeline timeline, final String partition,
-                                    final long offset, final long shift) {
-        if (offset + shift < totalEventsInTimeline(timeline, partition)) {
-            final long finalOffset = offset + shift;
-            final String paddedOffset = getOffsetForPosition(timeline, finalOffset);
-            return new NakadiCursor(timeline, partition, paddedOffset);
-        } else {
-            final long totalEventsInTimeline = totalEventsInTimeline(timeline, partition);
-            final long newShift = shift - (totalEventsInTimeline - offset);
-            final Timeline nextTimeline = getTimeline(eventType, timeline.getOrder() + 1);
-            return moveCursorForward(eventType, nextTimeline, partition, 0, newShift);
-        }
-    }
+                // Next case is a special one. User must have ability to move to the begin (actually - position before
+                // begin event that is not within limits)
+                if (toMoveBack == 0) {
+                    toMoveBack += totalBefore + 1;
+                    break;
+                }
 
-    private String getOffsetForPosition(final Timeline timeline, final long shiftedOffset) {
-        return getTopicRepository(timeline).getOffsetForPosition(shiftedOffset);
+                final Timeline prevTimeline = getTimeline(
+                        currentCursor.getEventType(),
+                        currentCursor.getTimeline().getOrder() - 1);
+                // When moving back latest position is always defined
+                currentCursor = prevTimeline.getLatestPosition()
+                        .toNakadiCursor(prevTimeline, currentCursor.getPartition());
+            } else {
+                break;
+            }
+        }
+        if (toMoveBack != 0) {
+            currentCursor = currentCursor.shiftWithinTimeline(-toMoveBack);
+        }
+        return currentCursor;
     }
 
     private long numberOfEventsBeforeCursor(final NakadiCursor initialCursor) {
-        final TopicRepository topicRepository = getTopicRepository(initialCursor.getTimeline());
-        return topicRepository.numberOfEventsBeforeCursor(initialCursor);
-    }
-
-    private long totalEventsInTimeline(final Timeline timeline, final String partition) {
-        return getTopicRepository(timeline).totalEventsInPartition(timeline, partition);
-    }
-
-    private long totalEventsInTimeline(final NakadiCursor cursor) {
-        final TopicRepository topicRepository = getTopicRepository(cursor.getTimeline());
-        return topicRepository.totalEventsInPartition(cursor.getTimeline(), cursor.getPartition());
+        final Storage.Type storageType = initialCursor.getTimeline().getStorage().getType();
+        switch (storageType) {
+            case KAFKA:
+                return KafkaCursor.toKafkaOffset(initialCursor.getOffset());
+            default:
+                throw new UnknownStorageTypeException("Unknown storage type: " + storageType.toString());
+        }
     }
 
     private Timeline getTimeline(final String eventTypeName, final int order) {
         final List<Timeline> timelines;
         try {
-            timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
+            timelines = timelineService.getAllTimelinesOrdered(eventTypeName);
         } catch (final NakadiException e) {
             throw new RuntimeException(e);
         }
@@ -229,7 +211,8 @@ public class CursorOperationsService {
                 .orElseThrow(() -> new InvalidCursorOperation(TIMELINE_NOT_FOUND));
     }
 
-    private TopicRepository getTopicRepository(final Timeline timeline) {
-        return timelineService.getTopicRepository(timeline);
+    private static StaticStorageWorkerFactory.StaticStorageWorker getStorageWorker(final Timeline timeline) {
+        return StaticStorageWorkerFactory.get(timeline);
     }
+
 }

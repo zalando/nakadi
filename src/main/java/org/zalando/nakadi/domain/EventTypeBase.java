@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import javax.annotation.Nullable;
@@ -8,23 +9,19 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
 public class EventTypeBase {
-    public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
+
+    private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
 
     @NotNull
-    @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
+    @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed")
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
-
-    @JsonIgnore
-    private String topic;
 
     @NotNull
     private String owningApplication;
@@ -54,10 +51,10 @@ public class EventTypeBase {
     @Valid
     private EventTypeOptions options;
 
-    private Set<String> writeScopes;
+    @Valid
+    private ResourceAuthorization authorization;
 
-    private Set<String> readScopes;
-
+    @NotNull
     private CompatibilityMode compatibilityMode;
 
     public EventTypeBase() {
@@ -65,23 +62,19 @@ public class EventTypeBase {
         this.enrichmentStrategies = Collections.emptyList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.options = new EventTypeOptions();
-        this.writeScopes = Collections.emptySet();
-        this.readScopes = Collections.emptySet();
         this.compatibilityMode = CompatibilityMode.FORWARD;
     }
 
-    public EventTypeBase(final String name, final String topic, final String owningApplication,
+    public EventTypeBase(final String name, final String owningApplication,
                      final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
                      final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options, final Set<String> writeScopes,
-                     final Set<String> readScopes,
+                     final EventTypeOptions options,
                      final CompatibilityMode compatibilityMode) {
         this.name = name;
-        this.topic = topic;
         this.owningApplication = owningApplication;
         this.category = category;
         this.validationStrategies = validationStrategies;
@@ -91,14 +84,11 @@ public class EventTypeBase {
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
-        this.writeScopes = writeScopes;
-        this.readScopes = readScopes;
         this.compatibilityMode = compatibilityMode;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
         this.setName(eventType.getName());
-        this.setTopic(eventType.getTopic());
         this.setOwningApplication(eventType.getOwningApplication());
         this.setCategory(eventType.getCategory());
         this.setValidationStrategies(eventType.getValidationStrategies());
@@ -108,9 +98,8 @@ public class EventTypeBase {
         this.setSchema(eventType.getSchema());
         this.setDefaultStatistic(eventType.getDefaultStatistic());
         this.setOptions(eventType.getOptions());
-        this.setWriteScopes(eventType.getWriteScopes());
-        this.setReadScopes(eventType.getReadScopes());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
+        this.setAuthorization(eventType.getAuthorization());
     }
 
     public String getName() {
@@ -166,7 +155,7 @@ public class EventTypeBase {
     }
 
     public List<String> getPartitionKeyFields() {
-        return unmodifiableList(partitionKeyFields != null ? partitionKeyFields : EMPTY_STRING_LIST);
+        return unmodifiableList(partitionKeyFields != null ? partitionKeyFields : EMPTY_PARTITION_KEY_FIELDS);
     }
 
     public void setPartitionKeyFields(final List<String> partitionKeyFields) {
@@ -181,36 +170,12 @@ public class EventTypeBase {
         this.enrichmentStrategies = enrichmentStrategies;
     }
 
-    public String getTopic() {
-        return topic;
-    }
-
-    public void setTopic(final String topic) {
-        this.topic = topic;
-    }
-
     public EventTypeOptions getOptions() {
         return options;
     }
 
     public void setOptions(final EventTypeOptions options) {
         this.options = options;
-    }
-
-    public Set<String> getWriteScopes() {
-        return Collections.unmodifiableSet(writeScopes);
-    }
-
-    public void setWriteScopes(final Set<String> writeScopes) {
-        this.writeScopes = writeScopes == null ? Collections.emptySet() : writeScopes;
-    }
-
-    public Set<String> getReadScopes() {
-        return Collections.unmodifiableSet(readScopes);
-    }
-
-    public void setReadScopes(final Set<String> readScopes) {
-        this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
     }
 
     public CompatibilityMode getCompatibilityMode() {
@@ -223,5 +188,14 @@ public class EventTypeBase {
 
     public void setValidationStrategies(final List<ValidationStrategyConfiguration> validationStrategies) {
         this.validationStrategies = validationStrategies;
+    }
+
+    @Nullable
+    public ResourceAuthorization getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(final ResourceAuthorization authorization) {
+        this.authorization = authorization;
     }
 }

@@ -1,44 +1,17 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import static java.text.MessageFormat.format;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import javax.ws.rs.core.Response;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.ResultActions;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -51,7 +24,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -60,6 +33,8 @@ import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -67,66 +42,94 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
-import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
-import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import javax.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static java.text.MessageFormat.format;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
+import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
+import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
 
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
+    private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
+    private static final Timeline TIMELINE = buildTimelineWithTopic("topic");
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final JsonTestHelper jsonHelper;
     private final StandaloneMockMvcBuilder mockMvcBuilder;
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
-    private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
-    private static final Timeline TIMELINE = createFakeTimeline("topic");
+    private final TimelineService timelineService;
 
     public SubscriptionControllerTest() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
-
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(false);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
-        final TimelineService timelineService = mock(TimelineService.class);
-        when(timelineService.getTimeline(any())).thenReturn(TIMELINE);
+        timelineService = mock(TimelineService.class);
+        when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
+        final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService);
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService,
+                "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
 
         mockMvcBuilder = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setControllerAdvice(new ExceptionHandling())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
     }
@@ -138,7 +141,7 @@ public class SubscriptionControllerTest {
 
         getSubscription(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(sameJSONAs(objectMapper.writeValueAsString(subscription))));
+                .andExpect(content().string(sameJSONAs(TestUtils.OBJECT_MAPPER.writeValueAsString(subscription))));
     }
 
     @Test
@@ -150,7 +153,7 @@ public class SubscriptionControllerTest {
 
         getSubscription(subscription.getId())
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -162,7 +165,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptions()
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
     }
@@ -176,7 +179,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
@@ -185,7 +188,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
-                .thenThrow(new ServiceUnavailableException("dummy message"));
+                .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
     }
@@ -217,12 +220,13 @@ public class SubscriptionControllerTest {
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedResult)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedResult)));
     }
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.getSubscription(any())).thenThrow(new ServiceUnavailableException("dummy message"));
+        when(subscriptionRepository.getSubscription(any()))
+                .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscription("dummyId"), expectedProblem);
     }
@@ -230,36 +234,41 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
-        final Partition[] partitions = {
-                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
-        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
-        zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
+        final Collection<Partition> partitions = Collections.singleton(
+                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
+        final ZkSubscriptionNode zkSubscriptionNode =
+                new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
-        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
-                .thenReturn(currentOffset);
+        final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> offsets = new HashMap<>();
+        offsets.put(etp, currentOffset);
+        when(zkSubscriptionClient.getOffsets(Collections.singleton(etp))).thenReturn(offsets);
         when(eventTypeRepository.findByName(TIMELINE.getEventType()))
                 .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(
                 new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
         when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
         final NakadiCursor currentCursor = mock(NakadiCursor.class);
-        when(cursorConverter.convert(eq(currentOffset))).thenReturn(currentCursor);
+        when(currentCursor.getEventTypePartition()).thenReturn(new EventTypePartition(TIMELINE.getEventType(), "0"));
+        when(cursorConverter.convert((List<SubscriptionCursorWithoutToken>) any()))
+                .thenReturn(Collections.singletonList(currentCursor));
         when(cursorOperationsService.calculateDistance(eq(currentCursor), eq(statistics.get(0).getLast())))
                 .thenReturn(10L);
 
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         TIMELINE.getEventType(),
-                        Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
+                        Collections.singletonList(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz", AUTO)))
                 );
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(expectedStats))));
+                .andExpect(content().string(
+                        TestUtils.JSON_TEST_HELPER.matchesObject(new ItemsWrapper<>(expectedStats))));
     }
 
     @Test
@@ -267,7 +276,8 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
+                Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
@@ -284,7 +294,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit);
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
         return mockMvcBuilder.build().perform(get(url));
     }
 
@@ -307,16 +317,8 @@ public class SubscriptionControllerTest {
                 Problem.valueOf(NOT_FOUND, "dummy message"));
     }
 
-    @Test
-    public void whenDeleteSubscriptionAndOwningAppDoesNotMatchThenForbidden() throws Exception {
-        mockGetFromRepoSubscriptionWithOwningApp("sid", "wrongApp");
-        checkForProblem(
-                mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
-                Problem.valueOf(FORBIDDEN, "You don't have access to this subscription"));
-    }
-
     private void mockGetFromRepoSubscriptionWithOwningApp(final String subscriptionId, final String owningApplication)
-            throws NoSuchSubscriptionException, ServiceUnavailableException {
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = RandomSubscriptionBuilder.builder()
                 .withId(subscriptionId)
                 .withOwningApplication(owningApplication)
@@ -332,17 +334,10 @@ public class SubscriptionControllerTest {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
-
-        private Set<String> scopes = new HashSet<>();
-
-        public TestHandlerMethodArgumentResolver addScope(final Set<String> scopes) {
-            this.scopes = scopes;
-            return this;
-        }
 
         @Override
         public boolean supportsParameter(final MethodParameter parameter) {
@@ -353,8 +348,8 @@ public class SubscriptionControllerTest {
         public Object resolveArgument(final MethodParameter parameter,
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
-                                      final WebDataBinderFactory binderFactory) throws Exception {
-            return new NakadiClient("nakadiClientId", scopes);
+                                      final WebDataBinderFactory binderFactory) {
+            return new NakadiClient("nakadiClientId", "");
         }
     }
 }

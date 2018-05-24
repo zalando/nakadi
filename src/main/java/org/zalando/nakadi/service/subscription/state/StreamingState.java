@@ -1,32 +1,35 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
+import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.service.EventStreamWriter;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Charsets.UTF_8;
+import static java.util.stream.Collectors.groupingBy;
 
 
 class StreamingState extends State {
@@ -47,16 +50,20 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private ZKSubscription topologyChangeSubscription;
+    private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private EventConsumer.ReassignableEventConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
-    private Meter bytesSentMeter;
+    private Meter bytesSentMeterPerSubscription;
+    private Map<String, StreamKpiData> kpiDataPerEventType;
+    private long lastKpiEventSent;
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
-    private ZKSubscription cursorResetSubscription;
+    private Closeable cursorResetSubscription;
+    private IdleStreamWatcher idleStreamWatcher;
+    private boolean commitTimeoutReached = false;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -70,33 +77,45 @@ class StreamingState extends State {
     @Override
     public void onEnter() {
         final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
-                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getParameters().getConsumingClient().getClientId(),
                 this.getContext().getSubscription().getId()
         );
-        bytesSentMeter = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
+        bytesSentMeterPerSubscription = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
+
+        lastKpiEventSent = System.currentTimeMillis();
+        kpiDataPerEventType = this.getContext().getSubscription().getEventTypes().stream()
+                .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
+
+        idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
 
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        // Subscribe for topology changes.
-        this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
-        // and call directly
-        reactOnTopologyChange();
+        recreateTopologySubscription();
+        addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() -> {
-                            final String debugMessage = "Stream timeout reached";
-                            this.sendMetadata(debugMessage);
-                            this.shutdownGracefully(debugMessage);
-                        }, timeout,
-                        TimeUnit.MILLISECONDS));
+        scheduleTask(() -> {
+                    streamToOutput(true);
+                    final String debugMessage = "Stream timeout reached";
+                    sendMetadata(debugMessage);
+                    shutdownGracefully(debugMessage);
+                }, getParameters().streamTimeoutMillis,
+                TimeUnit.MILLISECONDS);
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
 
         cursorResetSubscription = getZk().subscribeForCursorsReset(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
+    }
+
+    private void recreateTopologySubscription() {
+        if (null != topologyChangeSubscription) {
+            topologyChangeSubscription.close();
+        }
+        topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
+        reactOnTopologyChange();
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -111,6 +130,7 @@ class StreamingState extends State {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
                 final String debugMessage = "Commit timeout reached";
+                this.commitTimeoutReached = true;
                 sendMetadata(debugMessage);
                 shutdownGracefully(debugMessage);
             } else {
@@ -204,6 +224,10 @@ class StreamingState extends State {
     }
 
     private void streamToOutput() {
+        streamToOutput(false);
+    }
+
+    private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         final boolean wasCommitted = isEverythingCommitted();
@@ -214,7 +238,8 @@ class StreamingState extends State {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
-                    getParameters().batchTimeoutMillis))) {
+                    getParameters().batchTimeoutMillis,
+                    streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
@@ -223,6 +248,35 @@ class StreamingState extends State {
                 }
                 messagesAllowedToSend -= toSend.size();
             }
+        }
+
+        long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
+        while (memoryConsumed > getContext().getStreamMemoryLimitBytes()) {
+            // Select heaviest guy (and on previous step we figured out that we can not send anymore full batches,
+            // therefore we can take all the events from one partition.
+            final Map.Entry<EventTypePartition, PartitionData> heaviestPartition = offsets.entrySet().stream().max(
+                    Comparator.comparing(e -> e.getValue().getBytesInMemory())
+            ).get(); // There is always at least 1 item in list
+
+            long deltaSize = heaviestPartition.getValue().getBytesInMemory();
+            final List<ConsumedEvent> events = heaviestPartition.getValue().extractAll(currentTimeMillis);
+            deltaSize -= heaviestPartition.getValue().getBytesInMemory();
+
+            sentSomething = true;
+            flushData(
+                    heaviestPartition.getKey(),
+                    events,
+                    batchesSent == 0 ?
+                            Optional.of("Stream started with memory overflow") :
+                            Optional.of("Stream parameters are causing overflow"));
+            getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+                    memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
+            memoryConsumed -= deltaSize;
+        }
+
+        if (lastKpiEventSent + getContext().getKpiCollectionFrequencyMs() < System.currentTimeMillis()) {
+            getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
+            lastKpiEventSent = System.currentTimeMillis();
         }
         if (wasCommitted && sentSomething) {
             this.lastCommitMillis = System.currentTimeMillis();
@@ -235,15 +289,51 @@ class StreamingState extends State {
         }
     }
 
+    private void publishKpi(final String eventTypeName) {
+        final Client client = getContext().getParameters().getConsumingClient();
+        final NakadiKpiPublisher kpiPublisher = getContext().getKpiPublisher();
+        final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
+        final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
+        final String appNameHashed = kpiPublisher.hash(client.getClientId());
+
+        getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
+                        "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
+                eventTypeName, client.getClientId(), appNameHashed, count, bytes,
+                getContext().getSubscription().getId());
+
+        kpiPublisher.publish(
+                getContext().getKpiDataStreamedEventType(),
+                () -> new JSONObject()
+                        .put("api", "hila")
+                        .put("subscription", getContext().getSubscription().getId())
+                        .put("event_type", eventTypeName)
+                        .put("app", client.getClientId())
+                        .put("app_hashed", appNameHashed)
+                        .put("token_realm", client.getRealm())
+                        .put("number_of_events", count)
+                        .put("bytes_streamed", bytes));
+    }
+
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
                            final Optional<String> metadata) {
         try {
             final NakadiCursor sentOffset = offsets.get(pk).getSentOffset();
-            final String batch = serializeBatch(sentOffset, data, metadata);
+            final SubscriptionCursor cursor = getContext().getCursorConverter().convert(
+                    sentOffset,
+                    getContext().getCursorTokenService().generateToken());
 
-            final byte[] batchBytes = batch.getBytes(UTF_8);
-            getOut().streamData(batchBytes);
-            bytesSentMeter.mark(batchBytes.length);
+            final int batchSize = getContext().getWriter().writeSubscriptionBatch(
+                    getOut().getOutputStream(),
+                    cursor,
+                    data,
+                    metadata);
+
+            bytesSentMeterPerSubscription.mark(batchSize);
+
+            final StreamKpiData kpiData = kpiDataPerEventType.get(pk.getEventType());
+            kpiData.addBytesSent(batchSize);
+            kpiData.addNumberOfEventsSent(data.size());
+
             batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -251,27 +341,41 @@ class StreamingState extends State {
         }
     }
 
-    private String serializeBatch(final NakadiCursor lastSentCursor, final List<ConsumedEvent> events,
-                                  final Optional<String> metadata)
-            throws JsonProcessingException {
-
-        final SubscriptionCursor cursor = getContext().getCursorConverter().convert(
-                lastSentCursor,
-                getContext().getCursorTokenService().generateToken());
-        final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
-
-        final StringBuilder builder = new StringBuilder()
-                .append("{\"cursor\":")
-                .append(cursorSerialized);
-        if (!events.isEmpty()) {
-            builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event.getEvent()).append(","));
-            builder.deleteCharAt(builder.length() - 1).append("]");
+    public void logExtendedCommitInformation() {
+        // We need to log situation when commit timeout was reached, and check that current committed offset is the
+        // same as it is in zk.
+        if (!commitTimeoutReached) {
+            return;
         }
-        metadata.ifPresent(s -> builder.append(",\"info\":{\"debug\":\"").append(s).append("\"}"));
-
-        builder.append("}").append(EventStreamWriter.BATCH_SEPARATOR);
-        return builder.toString();
+        final List<EventTypePartition> toCheck = offsets.entrySet().stream()
+                .filter(e -> !e.getValue().isCommitted())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        try {
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> realCommitted = getZk().getOffsets(toCheck);
+            final List<EventTypePartition> bustedPartitions = offsets.entrySet().stream()
+                    .filter(v -> realCommitted.containsKey(v.getKey()))
+                    .filter(v -> {
+                        final SubscriptionCursorWithoutToken remembered =
+                                getContext().getCursorConverter().convertToNoToken(v.getValue().getCommitOffset());
+                        final SubscriptionCursorWithoutToken real = realCommitted.get(v.getKey());
+                        return real.getOffset().compareTo(remembered.getOffset())> 0;
+                    })
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+            if (!bustedPartitions.isEmpty()) {
+                final String bustedData = bustedPartitions.stream().map(etp -> {
+                    final PartitionData pd = offsets.get(etp);
+                    return "(ETP: " + etp +
+                            ", StreamCommitted: " + pd.getCommitOffset() +
+                            ", StreamSent: " + pd.getSentOffset() +
+                            ", ZkCommitted: " + realCommitted.get(etp) + ")";
+                }).collect(Collectors.joining(", "));
+                getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
+            }
+        } catch (NakadiRuntimeException ex) {
+            getLog().warn("Failed to get nakadi cursors for logging purposes.");
+        }
     }
 
     @Override
@@ -280,9 +384,11 @@ class StreamingState extends State {
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
 
+        getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
+        logExtendedCommitInformation();
         if (null != topologyChangeSubscription) {
             try {
-                topologyChangeSubscription.cancel();
+                topologyChangeSubscription.close();
             } catch (final RuntimeException ex) {
                 getLog().warn("Failed to cancel topology subscription", ex);
             } finally {
@@ -293,7 +399,7 @@ class StreamingState extends State {
         if (null != eventConsumer) {
             try {
                 eventConsumer.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new NakadiRuntimeException(e);
             } finally {
                 eventConsumer = null;
@@ -301,28 +407,40 @@ class StreamingState extends State {
         }
 
         if (cursorResetSubscription != null) {
-            cursorResetSubscription.cancel();
+            try {
+                cursorResetSubscription.close();
+            } catch (IOException ignore) {
+            }
             cursorResetSubscription = null;
         }
     }
 
-    void topologyChanged() {
-        if (null != topologyChangeSubscription) {
-            topologyChangeSubscription.refresh();
+    void reactOnTopologyChange() {
+        if (null == topologyChangeSubscription) {
+            return;
         }
-        reactOnTopologyChange();
+        final ZkSubscriptionClient.Topology topology = topologyChangeSubscription.getData();
+        final Partition[] assignedPartitions = Stream.of(topology.getPartitions())
+                .filter(p -> getSessionId().equals(p.getSession()))
+                .toArray(Partition[]::new);
+        addTask(() -> refreshTopologyUnlocked(assignedPartitions));
+        trackIdleness(topology);
     }
 
-    private void reactOnTopologyChange() {
-        getZk().runLocked(() -> {
-            final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
-                    .filter(p -> getSessionId().equals(p.getSession()))
-                    .toArray(Partition[]::new);
-            addTask(() -> refreshTopologyUnlocked(assignedPartitions));
-        });
+    void recheckTopology() {
+        // Sometimes topology is not refreshed. One need to explicitly check that topology is still valid.
+        final Partition[] partitions = Stream.of(getZk().getTopology().getPartitions())
+                .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
+                .toArray(Partition[]::new);
+        if (refreshTopologyUnlocked(partitions)) {
+            getLog().info("Topology changed not by event, but by schedule. Recreating zk listener");
+            recreateTopologySubscription();
+        }
+        // addTask() is used to check if state is not changed.
+        scheduleTask(() -> addTask(this::recheckTopology), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
-    void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
+    boolean refreshTopologyUnlocked(final Partition[] assignedPartitions) {
         final Map<EventTypePartition, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
@@ -331,32 +449,54 @@ class StreamingState extends State {
                 .filter(p -> p.getState() == Partition.State.REASSIGNING)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
+        boolean modified = false;
+
         // 1. Select which partitions must be removed right now for some (strange) reasons
         // (no need to release topology).
-        offsets.keySet().stream()
+        final List<EventTypePartition> forciblyRemoved = offsets.keySet().stream()
                 .filter(e -> !newAssigned.containsKey(e))
                 .filter(e -> !newReassigning.containsKey(e))
-                .collect(Collectors.toList()).forEach(this::removeFromStreaming);
+                .collect(Collectors.toList());
+        if (!forciblyRemoved.isEmpty()) {
+            modified = true;
+            forciblyRemoved.forEach(this::removeFromStreaming);
+        }
         // 2. Clear releasing partitions that was returned to this session.
-        releasingPartitions.keySet().stream()
-                .filter(p -> !newReassigning.containsKey(p))
-                .collect(Collectors.toList()).forEach(releasingPartitions::remove);
+        final List<EventTypePartition> removedFromReassign =
+                releasingPartitions.keySet().stream()
+                        .filter(p -> !newReassigning.containsKey(p))
+                        .collect(Collectors.toList());
+        if (!removedFromReassign.isEmpty()) {
+            modified = true;
+            removedFromReassign.forEach(releasingPartitions::remove);
+        }
 
         // 3. Add releasing partitions information
-        newReassigning.keySet().forEach(this::addPartitionToReassigned);
+        modified |= !newReassigning.keySet().stream()
+                .filter(this::addPartitionToReassigned)
+                .collect(Collectors.toList()).isEmpty();
 
         // 4. Select which partitions must be added and add it.
-        newAssigned.values()
+        final List<Partition> newAssignedPartitions = newAssigned.values()
                 .stream()
                 .filter(p -> !offsets.containsKey(p.getKey()))
-                .forEach(this::addToStreaming);
+                .collect(Collectors.toList());
+        if (!newAssignedPartitions.isEmpty()) {
+            modified = true;
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> committed = getZk().getOffsets(
+                    newAssignedPartitions.stream().map(Partition::getKey).collect(Collectors.toList()));
+            newAssignedPartitions.forEach(p -> this.addToStreaming(p, committed));
+        }
         // 5. Check if something can be released right now
-        reassignCommitted();
+        if (modified) {
+            reassignCommitted();
 
-        // 6. Reconfigure kafka consumer
-        reconfigureKafkaConsumer(false);
+            // 6. Reconfigure kafka consumer
+            reconfigureKafkaConsumer(false);
 
-        logPartitionAssignment("Topology refreshed");
+            logPartitionAssignment("Topology refreshed");
+        }
+        return modified;
     }
 
     private void logPartitionAssignment(final String reason) {
@@ -370,14 +510,16 @@ class StreamingState extends State {
         }
     }
 
-    private void addPartitionToReassigned(final EventTypePartition partitionKey) {
+    private boolean addPartitionToReassigned(final EventTypePartition partitionKey) {
         if (!releasingPartitions.containsKey(partitionKey)) {
             final long currentTime = System.currentTimeMillis();
             final long barrier = currentTime + getParameters().commitTimeoutMillis;
             releasingPartitions.put(partitionKey, barrier);
             scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
                     TimeUnit.MILLISECONDS);
+            return true;
         }
+        return false;
     }
 
     private void barrierOnRebalanceReached(final EventTypePartition pk) {
@@ -422,14 +564,17 @@ class StreamingState extends State {
 
         if (!currentAssignment.equals(newAssignment)) {
             try {
-                final List<NakadiCursor> cursors = new ArrayList<>();
-                for (final EventTypePartition pk : newAssignment) {
-                    // Next 2 lines checks that current cursor is still available in storage
-                    final NakadiCursor beforeFirstAvailable = getBeforeFirstCursor(pk);
-                    offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
-                    // Now it is safe to reposition.
-                    cursors.add(offsets.get(pk).getSentOffset());
-                }
+                final Map<EventTypePartition, NakadiCursor> beforeFirst = getBeforeFirstCursors(newAssignment);
+                final List<NakadiCursor> cursors = newAssignment.stream()
+                        .map(pk -> {
+                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
+
+                            // Checks that current cursor is still available in storage
+                            offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
+                            return offsets.get(pk).getSentOffset();
+                        })
+                        .collect(Collectors.toList());
+
                 eventConsumer.reassign(cursors);
             } catch (NakadiException | InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
@@ -437,16 +582,30 @@ class StreamingState extends State {
         }
     }
 
-    private NakadiCursor getBeforeFirstCursor(final EventTypePartition pk)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
-        final Timeline firstTimelineForET = getContext().getTimelineService()
-                .getActiveTimelinesOrdered(pk.getEventType()).get(0);
-
-        final Optional<PartitionStatistics> stats = getContext().getTimelineService()
-                .getTopicRepository(firstTimelineForET)
-                .loadPartitionStatistics(firstTimelineForET, pk.getPartition());
-
-        return stats.get().getBeforeFirst();
+    private Map<EventTypePartition, NakadiCursor> getBeforeFirstCursors(final Set<EventTypePartition> newAssignment) {
+        return newAssignment.stream()
+                .map(EventTypePartition::getEventType)
+                .map(et -> {
+                    try {
+                        // get oldest active timeline
+                        return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
+                    } catch (final NakadiException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
+                .values()
+                .stream()
+                .flatMap(timelines -> {
+                    try {
+                        return getContext().getTimelineService().getTopicRepository(timelines.get(0))
+                                .loadTopicStatistics(timelines).stream();
+                    } catch (final ServiceTemporarilyUnavailableException e) {
+                        throw new NakadiRuntimeException(e);
+                    }
+                })
+                .map(PartitionStatistics::getBeforeFirst)
+                .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, cursor -> cursor));
     }
 
     private NakadiCursor createNakadiCursor(final SubscriptionCursorWithoutToken cursor) {
@@ -457,16 +616,19 @@ class StreamingState extends State {
         }
     }
 
-    private void addToStreaming(final Partition partition) {
-        final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(partition.getKey()));
+    private void addToStreaming(final Partition partition,
+                                final Map<EventTypePartition, SubscriptionCursorWithoutToken> cursorMap) {
+        final NakadiCursor cursor = createNakadiCursor(cursorMap.get(partition.getKey()));
         getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
-        final ZKSubscription subscription = getZk().subscribeForOffsetChanges(
+        final ZkSubscription<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
         final PartitionData pd = new PartitionData(
+                getComparator(),
                 subscription,
                 cursor,
-                LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()));
+                LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()),
+                System.currentTimeMillis());
 
         offsets.put(partition.getKey(), pd);
     }
@@ -487,16 +649,15 @@ class StreamingState extends State {
     void offsetChanged(final EventTypePartition key) {
         if (offsets.containsKey(key)) {
             final PartitionData data = offsets.get(key);
-            data.getSubscription().refresh();
 
-            final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(key));
+            final NakadiCursor cursor = createNakadiCursor(data.getSubscription().getData());
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
             if (commitResult.seekOnKafka) {
                 reconfigureKafkaConsumer(true);
             }
 
-	    if (commitResult.committedCount > 0) {
+            if (commitResult.committedCount > 0) {
                 committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
                 streamToOutput();
@@ -523,10 +684,34 @@ class StreamingState extends State {
                     getLog().warn("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }
-                data.getSubscription().cancel();
+                data.getSubscription().close();
             } catch (final RuntimeException ex) {
                 getLog().warn("Failed to cancel subscription, skipping exception", ex);
             }
         }
     }
+
+    /**
+     * If stream doesn't have any partitions - start timer that will close this session
+     * in commitTimeout*2 if it doesn't get any partitions during that time
+     *
+     * @param topology the new topology
+     */
+    private void trackIdleness(final ZkSubscriptionClient.Topology topology) {
+        final boolean hasAnyAssignment = Stream.of(topology.getPartitions())
+                .anyMatch(p -> getSessionId().equals(p.getSession()) || getSessionId().equals(p.getNextSession()));
+        if (hasAnyAssignment) {
+            idleStreamWatcher.idleEnd();
+        } else {
+            final boolean justSwitchedToIdle = idleStreamWatcher.idleStart();
+            if (justSwitchedToIdle) {
+                scheduleTask(() -> {
+                    if (idleStreamWatcher.isIdleForToolLong()) {
+                        shutdownGracefully("There are no available partitions to read");
+                    }
+                }, idleStreamWatcher.getIdleCloseTimeout(), TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
 }

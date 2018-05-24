@@ -2,6 +2,22 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,21 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import javax.annotation.Nullable;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 @Service
 @Profile("!test")
@@ -127,7 +128,7 @@ public class TimelineSyncImpl implements TimelineSync {
         while (!queuedChanges.isEmpty()) {
             final DelayedChange change = queuedChanges.peek();
             LOG.info("Reacting on delayed change {}", change);
-            final Set<String> unlockedEventTypes = localLocking.lockedEventTypesChanged(change.lockedEventTypes);
+            final Set<String> unlockedEventTypes = localLocking.getUnlockedEventTypes(change.lockedEventTypes);
             // Notify consumers that they should refresh timeline information
             for (final String unlocked : unlockedEventTypes) {
                 LOG.info("Notifying about unlock of {}", unlocked);
@@ -146,6 +147,10 @@ public class TimelineSyncImpl implements TimelineSync {
                     }
                 }
             }
+            // Updating the list of locked event types is done only after updating the cache in order to guarantee that
+            // there is no concurrency between publisher threads and cache expire thread, which has lead to events being
+            // published to the wrong timeline. More details in ARUHA-1359.
+            localLocking.updateLockedEventTypes(change.lockedEventTypes);
             try {
                 updateSelfVersionTo(change.version);
             } catch (final Exception ex) {

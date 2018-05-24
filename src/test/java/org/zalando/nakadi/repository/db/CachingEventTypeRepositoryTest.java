@@ -1,10 +1,10 @@
 package org.zalando.nakadi.repository.db;
 
+import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;

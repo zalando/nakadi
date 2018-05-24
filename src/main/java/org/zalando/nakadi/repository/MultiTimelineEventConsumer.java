@@ -1,10 +1,27 @@
 package org.zalando.nakadi.repository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.NakadiCollectionUtils;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,21 +34,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
     private final String clientId;
@@ -59,15 +61,18 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineService timelineService;
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
+    private final Comparator<NakadiCursor> comparator;
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
 
     public MultiTimelineEventConsumer(
             final String clientId,
             final TimelineService timelineService,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            final Comparator<NakadiCursor> comparator) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
+        this.comparator = comparator;
     }
 
     @Override
@@ -125,7 +130,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             final NakadiCursor cursor,
             final Consumer<NakadiCursor> cursorReplacer,
             final Consumer<NakadiCursor> lastTimelinePosition)
-            throws ServiceUnavailableException {
+            throws ServiceTemporarilyUnavailableException {
         final List<Timeline> eventTimelines = eventTypeTimelines.get(cursor.getEventType());
         final ListIterator<Timeline> itTimeline = eventTimelines.listIterator(eventTimelines.size());
         // select last timeline, and then move back until position was found.
@@ -135,13 +140,13 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             final NakadiCursor latest = toCheck.calculateNakadiLatestPosition(cursor.getPartition());
             if (latest == null) {
                 electedTimeline = toCheck;
-            } else if (latest.compareTo(cursor) > 0) {
+            } else if (comparator.compare(latest, cursor) > 0) {
                 // There is a border case - latest is equal to begin (that means that there are no available events
                 // there), and one should position on timeline that have something inside.
                 final NakadiCursor firstItem = timelineService.getTopicRepository(toCheck)
                         .loadPartitionStatistics(toCheck, cursor.getPartition())
                         .get().getFirst();
-                if (latest.compareTo(firstItem) >= 0) {
+                if (comparator.compare(latest, firstItem) >= 0) {
                     electedTimeline = toCheck;
                 } else {
                     LOG.info("Timeline {} is empty, skipping", toCheck);
@@ -153,14 +158,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         final TopicRepository result = timelineService.getTopicRepository(electedTimeline);
         if (electedTimeline.getOrder() != cursor.getTimeline().getOrder()) {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.
-            final NakadiCursor replacement;
-            if (electedTimeline.isFake() || (cursor.getTimeline().isFake() && electedTimeline.isFirstAfterFake())) {
-                // There should be special treatment when there is a jump from fake timeline to first one, cause
-                // in this case consumption should start from the same offset, instead of starting from before first
-                replacement = new NakadiCursor(electedTimeline, cursor.getPartition(), cursor.getOffset());
-            } else {
-                replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
-            }
+            final NakadiCursor replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
             LOG.info("Replacing cursor because of jumping between timelines from {} to {}", cursor, replacement);
             cursorReplacer.accept(replacement);
         }
@@ -170,11 +168,11 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
 
     private NakadiCursor getBeforeFirstCursor(
             final TopicRepository topicRepository, final Timeline electedTimeline, final String partition)
-            throws ServiceUnavailableException {
+            throws ServiceTemporarilyUnavailableException {
         final Optional<PartitionStatistics> statistics =
                 topicRepository.loadPartitionStatistics(electedTimeline, partition);
         return statistics
-                .orElseThrow(() -> new ServiceUnavailableException(
+                .orElseThrow(() -> new ServiceTemporarilyUnavailableException(
                         "It is expected that partition statistics exists for timeline " + electedTimeline +
                                 " and partition " + partition + ", but it wasn't found")).getBeforeFirst();
     }

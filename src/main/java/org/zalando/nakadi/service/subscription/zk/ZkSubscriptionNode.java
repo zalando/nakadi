@@ -1,60 +1,59 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import java.util.Optional;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
-import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Optional;
+
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
+
 public final class ZkSubscriptionNode {
 
-    private Partition[] partitions;
-    private Session[] sessions;
+    private final Collection<Partition> partitions;
+    private final Collection<Session> sessions;
 
-    public ZkSubscriptionNode() {
-        this.partitions = new Partition[0];
-        this.sessions = new Session[0];
-    }
-
-    public ZkSubscriptionNode(final Partition[] partitions, final Session[] sessions) {
+    public ZkSubscriptionNode(final Collection<Partition> partitions, final Collection<Session> sessions) {
         this.partitions = partitions;
         this.sessions = sessions;
     }
 
-    public void setPartitions(final Partition[] partitions) {
-        this.partitions = partitions;
-    }
-
-    public void setSessions(final Session[] sessions) {
-        this.sessions = sessions;
-    }
-
-    public Partition[] getPartitions() {
+    public Collection<Partition> getPartitions() {
         return partitions;
     }
 
-    public Session[] getSessions() {
-        return sessions;
+    public Partition.State guessState(final String eventType, final String partition) {
+        return getPartitionWithActiveSession(eventType, partition)
+                .map(Partition::getState)
+                .orElse(Partition.State.UNASSIGNED);
     }
 
-    public Partition.State guessState(final String partition) {
-        return getPartitionWithActiveSession(partition).map(Partition::getState).orElse(Partition.State.UNASSIGNED);
-    }
-
-    private Optional<Partition> getPartitionWithActiveSession(final String partition) {
-        return Stream.of(partitions)
-                .filter(p -> p.getPartition().equals(partition))
-                .filter(p -> Stream.of(sessions).anyMatch(s -> s.getId().equalsIgnoreCase(p.getSession())))
+    private Optional<Partition> getPartitionWithActiveSession(final String eventType, final String partition) {
+        return partitions.stream()
+                .filter(p -> p.getPartition().equals(partition) && p.getEventType().equals(eventType))
+                .filter(p -> sessions.stream().anyMatch(s -> s.getId().equalsIgnoreCase(p.getSession())))
                 .findAny();
     }
 
     @Nullable
-    public String guessStream(final String partition) {
-        return getPartitionWithActiveSession(partition).map(Partition::getSession).orElse(null);
+    public String guessStream(final String eventType, final String partition) {
+        return getPartitionWithActiveSession(eventType, partition)
+                .map(Partition::getSession)
+                .orElse(null);
     }
 
-    public boolean containsPartition(final EventTypePartition eventTypePartition) {
-        return Stream.of(getPartitions()).anyMatch(p -> p.getKey().equals(eventTypePartition));
+    @Nullable
+    public SubscriptionEventTypeStats.Partition.AssignmentType getPartitionAssignmentType(final String eventType,
+                                                                                          final String partition) {
+        return partitions.stream()
+                .filter(p -> p.getPartition().equals(partition) && p.getEventType().equals(eventType))
+                .flatMap(p -> sessions.stream().filter(s -> s.getId().equalsIgnoreCase(p.getSession())))
+                .findAny()
+                .map(s -> s.getRequestedPartitions().isEmpty() ? AUTO : DIRECT)
+                .orElse(null);
     }
+
 }

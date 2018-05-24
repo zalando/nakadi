@@ -1,9 +1,6 @@
 package org.zalando.nakadi.service.converter;
 
-import com.google.common.base.Preconditions;
-import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -11,9 +8,12 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
-import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.StaticStorageWorkerFactory;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
@@ -23,16 +23,25 @@ class VersionOneConverter implements VersionedConverter {
     private static final int TIMELINE_ORDER_BASE = 16;
 
     private final EventTypeCache eventTypeCache;
-    private final TimelineService timelineService;
 
-    VersionOneConverter(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
+    VersionOneConverter(final EventTypeCache eventTypeCache) {
         this.eventTypeCache = eventTypeCache;
-        this.timelineService = timelineService;
     }
 
     @Override
     public CursorConverter.Version getVersion() {
         return CursorConverter.Version.ONE;
+    }
+
+    @Override
+    public List<NakadiCursor> convertBatched(final List<SubscriptionCursorWithoutToken> cursors) throws
+            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException {
+        // For version one it doesn't matter - batched or not
+        final List<NakadiCursor> result = new ArrayList<>(cursors.size());
+        for (final SubscriptionCursorWithoutToken cursor : cursors) {
+            result.add(convert(cursor.getEventType(), cursor));
+        }
+        return result;
     }
 
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)
@@ -59,27 +68,35 @@ class VersionOneConverter implements VersionedConverter {
         } catch (final NumberFormatException ex) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
-        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeStr);
-        final EventType eventType = eventTypeCache.getEventType(eventTypeStr);
-        if (timelines.isEmpty()) {
-            // Timeline probably was there some time ago, but now it is rolled back.
-            // Therefore one should create NakadiCursor with version zero, checking that order is almost default one.
-            Preconditions.checkArgument(
-                    order == (Timeline.STARTING_ORDER + 1), "Fallback supported only for order next after initial");
-            return new NakadiCursor(
-                    timelineService.getFakeTimeline(eventType),
-                    cursor.getPartition(),
-                    StringUtils.leftPad(offsetStr, VersionZeroConverter.VERSION_ZERO_MIN_OFFSET_LENGTH, '0')
-            );
+        return findCorrectTimelinedCursor(eventTypeStr, order, cursor.getPartition(), offsetStr);
+    }
+
+    private NakadiCursor findCorrectTimelinedCursor(
+            final String eventType, final int order, final String partition, final String offset)
+            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType);
+        final Iterator<Timeline> timelineIterator = timelines.iterator();
+        Timeline timeline = null;
+        while (timelineIterator.hasNext()) {
+            final Timeline t = timelineIterator.next();
+            if (t.getOrder() == order) {
+                timeline = t;
+                break;
+            }
         }
-        final Timeline timeline = timelines.stream()
-                .filter(t -> t.getOrder() == order)
-                .findAny()
-                .orElseThrow(() -> new InvalidCursorException(CursorError.UNAVAILABLE));
-        return new NakadiCursor(
-                timeline,
-                cursor.getPartition(),
-                offsetStr);
+        if (null == timeline) {
+            throw new InvalidCursorException(CursorError.UNAVAILABLE);
+        }
+        NakadiCursor cursor = NakadiCursor.of(timeline, partition, offset);
+        while (cursor.isLast()) {
+            // Will not check this call, because latest offset is not set for last timeline
+            timeline = timelineIterator.next();
+            cursor = NakadiCursor.of(
+                    timeline,
+                    partition,
+                    StaticStorageWorkerFactory.get(timeline).getBeforeFirstOffset());
+        }
+        return cursor;
     }
 
     public String formatOffset(final NakadiCursor nakadiCursor) {

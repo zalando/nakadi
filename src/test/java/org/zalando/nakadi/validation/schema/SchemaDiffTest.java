@@ -4,8 +4,10 @@ import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.io.IOException;
@@ -20,7 +22,7 @@ public class SchemaDiffTest {
     private SchemaDiff service;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         this.service = new SchemaDiff();
     }
 
@@ -29,7 +31,7 @@ public class SchemaDiffTest {
         final JSONArray testCases = new JSONArray(
                 readFile("org/zalando/nakadi/validation/invalid-schema-evolution-examples.json"));
 
-        for(final Object testCaseObject : testCases) {
+        for (final Object testCaseObject : testCases) {
             final JSONObject testCase = (JSONObject) testCaseObject;
             final Schema original = SchemaLoader.load(testCase.getJSONObject("original_schema"));
             final Schema update = SchemaLoader.load(testCase.getJSONObject("update_schema"));
@@ -46,5 +48,23 @@ public class SchemaDiffTest {
                     .collect(toList()), is(errorMessages));
 
         }
+    }
+
+    @Test
+    public void testRecursiveCheck() throws IOException {
+        final Schema original = SchemaLoader.load(new JSONObject(
+                readFile("org/zalando/nakadi/validation/recursive-schema.json")));
+        final Schema newOne = SchemaLoader.load(new JSONObject(
+                readFile("org/zalando/nakadi/validation/recursive-schema.json")));
+        Assert.assertTrue(service.collectChanges(original, newOne).isEmpty());
+    }
+
+    @Test
+    public void testSchemaAddsProperties() {
+        final Schema first = SchemaLoader.load(new JSONObject("{}"));
+
+        final Schema second = SchemaLoader.load(new JSONObject("{\"properties\": {}}"));
+        final List<SchemaChange> changes = service.collectChanges(first, second);
+        Assert.assertTrue(changes.isEmpty());
     }
 }

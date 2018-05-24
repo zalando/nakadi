@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Iterator;
@@ -42,8 +43,12 @@ public class TimelineCleaningJobTest {
         final ExclusiveJobWrapper jobWrapper = DummyJobWrapper.create();
         when(jobWrapperFactory.createExclusiveJobWrapper(any(), anyLong())).thenReturn(jobWrapper);
 
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
+
         timelineCleanupJob = new TimelineCleanupJob(eventTypeCache, timelineDbRepository, timelineService,
-                jobWrapperFactory, 0);
+                featureToggleService, jobWrapperFactory, 0, 0L);
     }
 
     @Test

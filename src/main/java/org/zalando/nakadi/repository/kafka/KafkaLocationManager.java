@@ -1,6 +1,9 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -57,11 +60,11 @@ public class KafkaLocationManager {
                 try {
                     final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                     brokers.add(Broker.fromByteJson(brokerData));
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
                 }
             }
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
         }
 
@@ -77,8 +80,6 @@ public class KafkaLocationManager {
     private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
         props.put("bootstrap.servers", buildBootstrapServers(brokers));
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
     }
 
@@ -87,25 +88,33 @@ public class KafkaLocationManager {
         if (kafkaProperties != null) {
             final List<Broker> brokers = fetchBrokers();
             if (!brokers.isEmpty()) {
-                kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
+                kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+                        buildBootstrapServers(brokers));
             }
         }
     }
 
     public Properties getKafkaConsumerProperties() {
         final Properties properties = (Properties) kafkaProperties.clone();
-        properties.put("enable.auto.commit", kafkaSettings.getEnableAutoCommit());
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaSettings.getEnableAutoCommit());
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         return properties;
     }
 
     public Properties getKafkaProducerProperties() {
-        final Properties producerProps = getKafkaConsumerProperties();
-        producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producerProps.put("acks", "all");
-        producerProps.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
-        producerProps.put("batch.size", kafkaSettings.getBatchSize());
-        producerProps.put("linger.ms", kafkaSettings.getLingerMs());
+        final Properties producerProps = (Properties) kafkaProperties.clone();
+        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaSettings.getRequestTimeoutMs());
+        producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, kafkaSettings.getBatchSize());
+        producerProps.put(ProducerConfig.LINGER_MS_CONFIG, kafkaSettings.getLingerMs());
+        producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         return producerProps;
     }
 }

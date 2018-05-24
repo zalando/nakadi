@@ -1,16 +1,18 @@
 package org.zalando.nakadi.service.subscription.model;
 
 import com.google.common.collect.ImmutableList;
+import org.junit.Assert;
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventTypePartition;
+
 import java.util.Arrays;
 import java.util.Collection;
+
 import static java.util.Collections.singletonList;
-import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventTypePartition;
 
 public class PartitionTest {
     @Test

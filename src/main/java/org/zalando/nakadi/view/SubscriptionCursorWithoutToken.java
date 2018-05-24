@@ -2,9 +2,10 @@ package org.zalando.nakadi.view;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.zalando.nakadi.domain.EventTypePartition;
+
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
-import org.zalando.nakadi.domain.EventTypePartition;
 
 @Immutable
 public class SubscriptionCursorWithoutToken extends Cursor {

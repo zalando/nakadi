@@ -1,0 +1,31 @@
+title: Nakadi
+baseurl: "."
+url: ""
+
+collections:
+  - documentation
+  - api
+  - concepts
+
+# Build settings
+markdown: kramdown
+gems:
+  - jekyll-feed
+exclude:
+  - Gemfile
+  - Gemfile.lock
+sass:
+  style: compressed
+
+defaults:
+  position: 1000
+  method_order:
+          - get
+          - post
+          - put
+          - patch
+          - delete
+          - connect
+          - head
+          - options
+

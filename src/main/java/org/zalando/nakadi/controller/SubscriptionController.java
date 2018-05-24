@@ -1,9 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import java.util.Set;
-import javax.annotation.Nullable;
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,14 +17,19 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.annotation.Nullable;
+import java.util.Set;
+
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 
 @RestController
@@ -51,13 +52,15 @@ public class SubscriptionController {
     public ResponseEntity<?> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
             @Nullable @RequestParam(value = "event_type", required = false) final Set<String> eventTypes,
+            @RequestParam(value = "show_status", required = false, defaultValue = "false") final boolean showStatus,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return WebResult.wrap(() ->
-                subscriptionService.listSubscriptions(owningApplication, eventTypes, limit, offset), request);
+                subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
+                request);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
@@ -70,20 +73,20 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request, final Client client) {
+                                                final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request,
+        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
                 HttpStatus.NO_CONTENT);
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId)
-            throws NakadiException, InconsistentStateException, ServiceTemporaryUnavailableException {
+            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return subscriptionService.getSubscriptionStat(subscriptionId);
+        return subscriptionService.getSubscriptionStat(subscriptionId, true);
     }
 
     @ExceptionHandler(NakadiException.class)
@@ -111,8 +114,8 @@ public class SubscriptionController {
                 request);
     }
 
-    @ExceptionHandler(ServiceTemporaryUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporaryUnavailableException ex,
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailable(final ServiceTemporarilyUnavailableException ex,
                                                                      final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(

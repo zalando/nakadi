@@ -20,13 +20,12 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.util.ValidListWrapper;
@@ -54,20 +53,26 @@ public class CursorOperationsController {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public CursorOperationsController(final CursorOperationsService cursorOperationsService,
-                             final CursorConverter cursorConverter, final EventTypeRepository eventTypeRepository) {
+                                      final CursorConverter cursorConverter,
+                                      final EventTypeRepository eventTypeRepository,
+                                      final AuthorizationValidator authorizationValidator) {
         this.cursorOperationsService = cursorOperationsService;
         this.cursorConverter = cursorConverter;
         this.eventTypeRepository = eventTypeRepository;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
-                                         final Client client) {
-        checkReadScopes(eventTypeName, client);
+                                         @Valid @RequestBody final ValidListWrapper<CursorDistance> queries)
+            throws InternalNakadiException, NoSuchEventTypeException {
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(eventType);
 
         queries.getList().forEach(query -> {
             try {
@@ -77,7 +82,7 @@ public class CursorOperationsController {
                         .convert(eventTypeName, query.getFinalCursor());
                 final Long distance = cursorOperationsService.calculateDistance(initialCursor, finalCursor);
                 query.setDistance(distance);
-            } catch (InternalNakadiException | ServiceUnavailableException e) {
+            } catch (InternalNakadiException | ServiceTemporarilyUnavailableException e) {
                 throw new MyNakadiRuntimeException1("problem calculating cursors distance", e);
             } catch (final NoSuchEventTypeException e) {
                 throw new NotFoundException("event type not found", e);
@@ -91,9 +96,11 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
-                                         final Client client) {
-        checkReadScopes(eventTypeName, client);
+                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException {
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(eventType);
 
         final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
@@ -108,10 +115,12 @@ public class CursorOperationsController {
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
-    public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
-                                        @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
-                                        final Client client) {
-        checkReadScopes(eventTypeName, client);
+    public List<CursorLag> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
+                                        @Valid @RequestBody final ValidListWrapper<Cursor> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException {
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(eventType);
 
         final List<NakadiCursor> domainCursor = cursors.getList().stream()
                 .map(toNakadiCursor(eventTypeName))
@@ -120,15 +129,13 @@ public class CursorOperationsController {
         final List<NakadiCursorLag> lagResult = cursorOperationsService
                 .cursorsLag(eventTypeName, domainCursor);
 
-        final List<CursorLag> viewResult = lagResult.stream().map(this::toCursorLag)
+        return lagResult.stream().map(this::toCursorLag)
                 .collect(Collectors.toList());
-
-        return status(OK).body(viewResult);
     }
 
     @ExceptionHandler(InvalidCursorOperation.class)
     public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                          final NativeWebRequest request) {
+                                                    final NativeWebRequest request) {
         LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
         return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                 clientErrorMessage(e.getReason())), request);
@@ -136,31 +143,15 @@ public class CursorOperationsController {
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
         switch (reason) {
-            case INVERTED_TIMELINE_ORDER: return "Inverted timelines. Final cursor must correspond to a newer " +
-                    "timeline than initial cursor.";
-
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
-            case INVERTED_OFFSET_ORDER: return "Inverted offsets. Final cursor offsets must be newer than initial " +
-                    "cursor offsets";
             case PARTITION_NOT_FOUND: return "Partition not found.";
+            case CURSOR_FORMAT_EXCEPTION: return "Сursor format is not supported.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
             default:
                 LOG.error("Unexpected invalid cursor operation reason " + reason);
                 throw new MyNakadiRuntimeException1();
-        }
-    }
-
-    private void checkReadScopes(final String eventTypeName, final Client client) {
-        final EventType eventType;
-        try {
-            eventType = eventTypeRepository.findByName(eventTypeName);
-            client.checkScopes(eventType.getReadScopes());
-        } catch (final InternalNakadiException e) {
-            throw new MyNakadiRuntimeException1("failed to get event type", e);
-        } catch (final NoSuchEventTypeException e) {
-            throw new NoEventTypeException(e.getMessage(), e);
         }
     }
 

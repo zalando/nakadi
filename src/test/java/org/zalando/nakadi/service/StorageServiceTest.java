@@ -1,14 +1,15 @@
 package org.zalando.nakadi.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.utils.TestUtils;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
@@ -22,12 +23,16 @@ public class StorageServiceTest {
 
     private StorageService storageService;
     private StorageDbRepository storageDbRepository;
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private FeatureToggleService featureToggleService;
 
     @Before
     public void setUp() {
+        featureToggleService = mock(FeatureToggleService.class);
         storageDbRepository = mock(StorageDbRepository.class);
-        storageService = new StorageService(objectMapper, storageDbRepository);
+        storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
+                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class), featureToggleService);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+                .thenReturn(false);
     }
 
     @Test

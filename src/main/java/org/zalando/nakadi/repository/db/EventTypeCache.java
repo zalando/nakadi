@@ -5,16 +5,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -33,6 +23,19 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
+import javax.annotation.Nonnull;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 public class EventTypeCache {
 
     public static final String ZKNODE_PATH = "/nakadi/event_types";
@@ -43,6 +46,7 @@ public class EventTypeCache {
     private final ZooKeeperHolder zkClient;
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
     private final TimelineSync timelineSync;
+    private final List<Consumer<String>> invalidationListeners = new CopyOnWriteArrayList<>();
     private Map<String, TimelineSync.ListenerRegistration> timelineRegistrations;
 
     public EventTypeCache(final EventTypeRepository eventTypeRepository,
@@ -176,22 +180,6 @@ public class EventTypeCache {
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
-    public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
-            NoSuchEventTypeException {
-        final List<Timeline> timelines = getTimelinesOrdered(name);
-        if (timelines == null) {
-            return Optional.empty();
-        }
-        final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
-        while (rIterator.hasPrevious()) {
-            final Timeline toCheck = rIterator.previous();
-            if (toCheck.getSwitchedAt() != null) {
-                return Optional.of(toCheck);
-            }
-        }
-        return Optional.empty();
-    }
-
     public List<Timeline> getTimelinesOrdered(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
         return getCached(name)
@@ -202,6 +190,7 @@ public class EventTypeCache {
     private void onZkEvent(final PathChildrenCacheEvent event) {
         // Lock is needed only to support massive load on startup. In all other cases it will be called for
         // event type creation/update, so it won't create any additional load.
+        String invalidatedEventType = null;
         rwLock.readLock().lock();
         try {
             final boolean needInvalidate = event.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED ||
@@ -209,10 +198,16 @@ public class EventTypeCache {
                     event.getType() == PathChildrenCacheEvent.Type.CHILD_ADDED;
             if (needInvalidate) {
                 final String[] path = event.getData().getPath().split("/");
-                eventTypeCache.invalidate(path[path.length - 1]);
+                invalidatedEventType = path[path.length - 1];
+                eventTypeCache.invalidate(invalidatedEventType);
             }
         } finally {
             rwLock.readLock().unlock();
+        }
+        if (null != invalidatedEventType) {
+            for (final Consumer<String> listener : invalidationListeners) {
+                listener.accept(invalidatedEventType);
+            }
         }
     }
 
@@ -235,9 +230,14 @@ public class EventTypeCache {
         return ZKPaths.makePath(ZKNODE_PATH, eventTypeName);
     }
 
+    public void addInvalidationListener(final Consumer<String> onEventTypeInvalidated) {
+        invalidationListeners.add(onEventTypeInvalidated);
+    }
+
     private static class CachedValue {
         private final EventType eventType;
         private final EventTypeValidator eventTypeValidator;
+        @Nonnull
         private final List<Timeline> timelines;
 
         CachedValue(final EventType eventType,

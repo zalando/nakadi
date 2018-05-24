@@ -1,24 +1,30 @@
 package org.zalando.nakadi.service.converter;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 public class CursorConverterImpl implements CursorConverter {
@@ -27,8 +33,8 @@ public class CursorConverterImpl implements CursorConverter {
 
     @Autowired
     public CursorConverterImpl(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
-        registerConverter(new VersionOneConverter(eventTypeCache, timelineService));
-        registerConverter(new VersionZeroConverter(eventTypeCache, timelineService));
+        registerConverter(new VersionOneConverter(eventTypeCache));
+        registerConverter(new VersionZeroConverter(timelineService));
     }
 
     private void registerConverter(final VersionedConverter converter) {
@@ -37,21 +43,33 @@ public class CursorConverterImpl implements CursorConverter {
 
     @Override
     public NakadiCursor convert(final SubscriptionCursorWithoutToken cursor)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
             InvalidCursorException {
         return convert(cursor.getEventType(), cursor);
     }
 
     @Override
+    public List<NakadiCursor> convert(final Collection<SubscriptionCursorWithoutToken> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
+            InvalidCursorException {
+        final LinkedHashMap<SubscriptionCursorWithoutToken, AtomicReference<NakadiCursor>> orderingMap =
+                new LinkedHashMap<>();
+        cursors.forEach(item -> orderingMap.put(item, new AtomicReference<>(null)));
+
+        final Map<Version, List<SubscriptionCursorWithoutToken>> mappedByVersions = cursors.stream()
+                .collect(Collectors.groupingBy(c -> guessVersion(c.getOffset())));
+        for (final Map.Entry<Version, List<SubscriptionCursorWithoutToken>> entry : mappedByVersions.entrySet()) {
+            final List<NakadiCursor> result = converters.get(entry.getKey()).convertBatched(entry.getValue());
+            IntStream.range(0, entry.getValue().size())
+                    .forEach(idx -> orderingMap.get(entry.getValue().get(idx)).set(result.get(idx)));
+        }
+        return orderingMap.values().stream().map(AtomicReference::get).collect(Collectors.toList());
+    }
+
+    @Override
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceUnavailableException {
-        if (null == cursor.getPartition()) {
-            throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
-        } else if (null == cursor.getOffset()) {
-            throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
-        }
-
+            ServiceTemporarilyUnavailableException {
         return converters.get(guessVersion(cursor.getOffset())).convert(eventTypeStr, cursor);
     }
 
@@ -76,11 +94,9 @@ public class CursorConverterImpl implements CursorConverter {
     }
 
     public Cursor convert(final NakadiCursor nakadiCursor) {
-        final Version version = nakadiCursor.getTimeline().isFake() ? CursorConverter.Version.ZERO
-                : CursorConverter.Version.ONE;
         return new Cursor(
                 nakadiCursor.getPartition(),
-                converters.get(version).formatOffset(nakadiCursor));
+                converters.get(CursorConverter.Version.ONE).formatOffset(nakadiCursor));
     }
 
     public SubscriptionCursor convert(final NakadiCursor position, final String token) {

@@ -1,8 +1,8 @@
 package org.zalando.nakadi.enrichment;
 
 import com.google.common.collect.ImmutableMap;
-import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 
 import java.util.Map;
 
