@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -81,6 +83,13 @@ public class SubscriptionService {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final FeatureToggleService featureToggleService;
     private final String subLogEventType;
+    private final SubscriptionTimeLagService subscriptionTimeLagService;
+
+    public enum StatsMode {
+        LIGHT,
+        NORMAL,
+        TIMELAG
+    }
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -92,6 +101,7 @@ public class SubscriptionService {
                                final CursorOperationsService cursorOperationsService,
                                final NakadiKpiPublisher nakadiKpiPublisher,
                                final FeatureToggleService featureToggleService,
+                               final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -102,6 +112,7 @@ public class SubscriptionService {
         this.cursorOperationsService = cursorOperationsService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.featureToggleService = featureToggleService;
+        this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
     }
 
@@ -161,7 +172,7 @@ public class SubscriptionService {
                     new PaginationWrapper<>(subscriptions, paginationLinks);
             if (showStatus) {
                 final List<Subscription> items = paginationWrapper.getItems();
-                items.forEach(s -> s.setStatus(createSubscriptionStat(s, false)));
+                items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
             }
             return Result.ok(paginationWrapper);
         } catch (final ServiceTemporarilyUnavailableException e) {
@@ -214,7 +225,7 @@ public class SubscriptionService {
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
-                                                                        final boolean includeDistance)
+                                                                        final StatsMode statsMode)
             throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
@@ -222,21 +233,21 @@ public class SubscriptionService {
         } catch (final ServiceTemporarilyUnavailableException ex) {
             throw new InconsistentStateException(ex.getMessage());
         }
-        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, includeDistance);
+        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, statsMode);
         return new ItemsWrapper<>(subscriptionStat);
     }
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
-                                                                    final boolean includeDistance)
+                                                                    final StatsMode statsMode)
             throws InconsistentStateException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-        if (includeDistance) {
-            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient);
-        } else {
+        if (statsMode == StatsMode.LIGHT) {
             return loadLightStats(eventTypes, zkSubscriptionNode);
+        } else {
+            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
         }
     }
 
@@ -286,17 +297,22 @@ public class SubscriptionService {
     private List<SubscriptionEventTypeStats> loadStats(
             final Collection<EventType> eventTypes,
             final Optional<ZkSubscriptionNode> subscriptionNode,
-            final ZkSubscriptionClient client)
+            final ZkSubscriptionClient client, final StatsMode statsMode)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
         final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
         final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
+
+        final Map<EventTypePartition, Duration> timeLags = statsMode == StatsMode.TIMELAG ?
+                subscriptionTimeLagService.getTimeLags(committedPositions, stats) :
+                ImmutableMap.of();
+
         for (final EventType eventType : eventTypes) {
             final List<PartitionBaseStatistics> statsForEventType = stats.stream()
                     .filter(s -> s.getTimeline().getEventType().equals(eventType.getName()))
                     .collect(Collectors.toList());
             result.add(getEventTypeStats(subscriptionNode, eventType.getName(), statsForEventType,
-                    committedPositions));
+                    committedPositions, timeLags));
         }
         return result;
     }
@@ -314,14 +330,18 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats getEventTypeStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                          final String eventTypeName,
                                                          final List<? extends PartitionBaseStatistics> stats,
-                                                         final Collection<NakadiCursor> committedPositions) {
+                                                         final Collection<NakadiCursor> committedPositions,
+                                                         final Map<EventTypePartition, Duration> timeLags) {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions =
                 new ArrayList<>(stats.size());
         for (final PartitionBaseStatistics stat : stats) {
             final String partition = stat.getPartition();
             final NakadiCursor lastPosition = ((PartitionEndStatistics) stat).getLast();
             final Long distance = computeDistance(committedPositions, lastPosition);
-            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance));
+            final Long lagSeconds = Optional.ofNullable(timeLags.get(new EventTypePartition(eventTypeName, partition)))
+                    .map(Duration::getSeconds)
+                    .orElse(null);
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventTypeName, partition, distance, lagSeconds));
         }
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventTypeName, resultPartitions);
@@ -338,7 +358,7 @@ public class SubscriptionService {
                 .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {
-            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null));
+            resultPartitions.add(getPartitionStats(subscriptionNode, eventType.getName(), partition, null, null));
         }
         resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
@@ -346,13 +366,13 @@ public class SubscriptionService {
 
     private SubscriptionEventTypeStats.Partition getPartitionStats(final Optional<ZkSubscriptionNode> subscriptionNode,
                                                                    final String eventTypeName, final String partition,
-                                                                   final Long distance) {
+                                                                   final Long distance, final Long lagSeconds) {
         final Partition.State state = getState(subscriptionNode, eventTypeName, partition);
         final String streamId = getStreamId(subscriptionNode, eventTypeName, partition);
         final SubscriptionEventTypeStats.Partition.AssignmentType assignmentType =
                 getAssignmentType(subscriptionNode, eventTypeName, partition);
         return new SubscriptionEventTypeStats.Partition(partition, state.getDescription(),
-                distance, streamId, assignmentType);
+                distance, lagSeconds, streamId, assignmentType);
     }
 
     private Collection<NakadiCursor> getCommittedPositions(final Optional<ZkSubscriptionNode> subscriptionNode,

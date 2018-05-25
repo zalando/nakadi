@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.0] - 2018-05-25
+
+### Added
+- Extended subscription statistics endpoint with time-lag information
+
 ## [2.6.7] - 2018-05-15
 
 ### Fixed

@@ -56,6 +56,9 @@ public class SubscriptionEventTypeStats {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private final Long unconsumedEvents;
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private final Long consumerLagSeconds;
+
         private final String streamId;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -65,11 +68,13 @@ public class SubscriptionEventTypeStats {
                 @JsonProperty("partition") final String partition,
                 @JsonProperty("state") final String state,
                 @JsonProperty("unconsumed_events") @Nullable final Long unconsumedEvents,
+                @JsonProperty("consumer_lag_seconds") @Nullable final Long consumerLagSeconds,
                 @JsonProperty("stream_id") final String streamId,
                 @JsonProperty("assignment_type") @Nullable final AssignmentType assignmentType) {
             this.partition = partition;
             this.state = state;
             this.unconsumedEvents = unconsumedEvents;
+            this.consumerLagSeconds = consumerLagSeconds;
             this.streamId = streamId;
             this.assignmentType = assignmentType;
         }
@@ -85,6 +90,11 @@ public class SubscriptionEventTypeStats {
         @Nullable
         public Long getUnconsumedEvents() {
             return unconsumedEvents;
+        }
+
+        @Nullable
+        public Long getConsumerLagSeconds() {
+            return consumerLagSeconds;
         }
 
         public String getStreamId() {
