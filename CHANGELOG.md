@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.1] - 2018-05-28
+
+### Changed
+- Added gzip compression for POST responses if it was requested
+
 ## [2.7.0] - 2018-05-25
 
 ### Added
