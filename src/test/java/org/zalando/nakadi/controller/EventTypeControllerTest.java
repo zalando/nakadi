@@ -731,7 +731,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final Problem expectedProblem =
                 new InvalidEventTypeException(
-                        "schema must be a valid json: Unexpected token 'invalid' on line 1, char 1").asProblem();
+                        "schema must be a valid json: Unexpected symbol i at pos 1").asProblem();
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
