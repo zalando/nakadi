@@ -1,7 +1,7 @@
 package org.zalando.nakadi.util;
 
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
 public class JsonUtilsTest {
 
