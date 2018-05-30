@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.2] - 2018-05-30
+
 ### Changed
 - Refactored multiple exceptions
 
