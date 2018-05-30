@@ -2,7 +2,7 @@ package org.zalando.nakadi.util;
 
 import com.grack.nanojson.JsonParser;
 import com.grack.nanojson.JsonParserException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
 public class JsonUtils {
 

@@ -4,7 +4,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeResource;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;

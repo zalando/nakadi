@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;

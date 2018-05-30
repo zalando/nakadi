@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;

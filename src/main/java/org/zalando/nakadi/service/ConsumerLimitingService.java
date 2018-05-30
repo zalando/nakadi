@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
+import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZkChildrenCache;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
