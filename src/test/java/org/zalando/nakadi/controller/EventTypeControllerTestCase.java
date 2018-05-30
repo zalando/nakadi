@@ -32,7 +32,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
@@ -103,15 +103,14 @@ public class EventTypeControllerTestCase {
             return callback.doInTransaction(null);
         });
 
+        final EventTypeOptionsValidator eventTypeOptionsValidator =
+                new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type");
-
-        final EventTypeOptionsValidator eventTypeOptionsValidator =
-                new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
-        final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService, eventTypeOptionsValidator, applicationService, adminService, nakadiSettings);
+                nakadiKpiPublisher, "et-log-event-type", eventTypeOptionsValidator, adminService);
+        final EventTypeController controller = new EventTypeController(eventTypeService,featureToggleService,
+                applicationService, adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();
 
         doReturn(true).when(applicationService).exists(any());

@@ -19,6 +19,7 @@ springBoot {
     layout = "ZIP"
 }
 
+
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 
@@ -87,7 +88,7 @@ jar {
 }
 
 configurations {
-    all*.exclude module : 'spring-boot-starter-logging'
+    all*.exclude module: 'spring-boot-starter-logging'
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
     dbMigrationCompile.extendsFrom compile
@@ -103,6 +104,8 @@ findbugs {
 dependencies {
     ext {
         dropwizardVersion = '3.1.2'
+        curatorVersion = '4.0.1'
+        zookeeperVersion = '3.4.10'
     }
 
     // spring
@@ -135,7 +138,7 @@ dependencies {
 
     // misc
     compile 'org.apache.httpcomponents:httpclient:4.5.3'
-    compile ('org.zalando.stups:stups-spring-oauth2-server:1.0.19') {
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.19') {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
@@ -154,15 +157,19 @@ dependencies {
 
     // kafka & zookeeper
     compile 'org.apache.kafka:kafka-clients:0.10.1.0'
-    compile 'org.apache.kafka:kafka_2.11:0.10.1.0'
-    compile 'org.apache.curator:curator-framework:2.12.0'
-    compile 'org.apache.curator:curator-recipes:2.12.0'
+    compile('org.apache.kafka:kafka_2.11:0.10.1.0') {
+        exclude module: "zookeeper"
+    }
+    compile("org.apache.curator:curator-recipes:$curatorVersion") {
+        exclude module: "zookeeper"
+    }
+    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
 
     // json
-    compile ('com.github.everit-org.json-schema:org.everit.json.schema:6cb8ae440b0bc34030d7bea85ac609d980d741fb') {
+    compile('com.github.everit-org.json-schema:org.everit.json.schema:6cb8ae440b0bc34030d7bea85ac609d980d741fb') {
         exclude module: "json"
     }
-    compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
+    compile('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
         exclude module: "json"
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.8.8'
@@ -294,9 +301,9 @@ def waitForNakadi() {
 
 def execAndWait(command, timeoutInSeconds = 15) {
     println "Running command: " + command
-    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO();
-    Process proc = pb.start();
-    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
+    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO()
+    Process proc = pb.start()
+    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS)
     return proc.exitValue()
 }
 

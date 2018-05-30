@@ -7,16 +7,15 @@ position: 10
 
 Nakadi does not ship with a client, but there are some open source clients available that you can try:
 
-| Name            | Language/Framework |  GitHub                                             |
-|-----------------|--------------------|-----------------------------------------------------|
-| Nakadi Java     | Java               | <https://github.com/dehora/nakadi-java>             |
-| Nakadi Klients  | Scala & Java       | <https://github.com/kanuku/nakadi-klients>          |
-| Reactive Nakadi | Scala/Akka         | <https://github.com/zalando-nakadi/reactive-nakadi> |
-| Fahrschein      | Java               | <https://github.com/zalando-nakadi/fahrschein>      |
-| Nakadion        | Rust               | <https://crates.io/crates/nakadion>                 |
-| nakadi-client   | Haskell            | <http://nakadi-client.haskell.silverratio.net>      |
-| go-nakadi       | Go                 | <https://github.com/stoewer/go-nakadi>              |
-| nakacli         | CLI                | <https://github.com/amrhassan/nakacli>              |
+| Name            | Language/Framework |  GitHub                                                         |
+|-----------------|--------------------|-----------------------------------------------------------------|
+| Nakadi Java     | Java               | <https://github.com/dehora/nakadi-java>                         |
+| Fahrschein      | Java               | <https://github.com/zalando-nakadi/fahrschein>                  |
+| Riptide: Stream | Java/Spring        | <https://github.com/zalando/riptide/tree/master/riptide-stream> |
+| Nakadion        | Rust               | <https://crates.io/crates/nakadion>                             |
+| nakadi-client   | Haskell            | <https://nakadi-client.haskell.silverratio.net>                 |
+| go-nakadi       | Go                 | <https://github.com/stoewer/go-nakadi>                          |
+| nakacli         | CLI                | <https://github.com/amrhassan/nakacli>                          |
 
 
 More Nakadi related projects can be found here [https://github.com/zalando-nakadi](https://github.com/zalando-nakadi)

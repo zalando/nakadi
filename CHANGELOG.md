@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.1] - 2018-05-28
+
+### Changed
+- Added gzip compression for POST responses if it was requested
+
+## [2.7.0] - 2018-05-25
+
+### Added
+- Extended subscription statistics endpoint with time-lag information
+
+## [2.6.7] - 2018-05-15
+
+### Fixed
+- Improved performance of listing subscriptions with their status
+
+## [2.6.6] - 2018-05-08
+
+### Added
+- Allow Nakadi admin set unlimited retention time for event type
+
 ## [2.6.4] - 2018-04-26
 
 ### Added

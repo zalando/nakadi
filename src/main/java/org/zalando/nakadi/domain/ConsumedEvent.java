@@ -8,10 +8,12 @@ public class ConsumedEvent {
 
     private final byte[] event;
     private final NakadiCursor position;
+    private final long timestamp;
 
-    public ConsumedEvent(final byte[] event, final NakadiCursor position) {
+    public ConsumedEvent(final byte[] event, final NakadiCursor position, final long timestamp) {
         this.event = event;
         this.position = position;
+        this.timestamp = timestamp;
     }
 
     public byte[] getEvent() {
@@ -20,6 +22,10 @@ public class ConsumedEvent {
 
     public NakadiCursor getPosition() {
         return position;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 
     @Override

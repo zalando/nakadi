@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,6 +51,34 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
                         "Access on ADMIN event-type:"+ eventType.getName() + " denied"))));
+    }
+
+    @Test
+    public void whenPUTUnlimitedRetentionTimeByAdminThen200() throws Exception {
+        final EventTypeOptions eto = new EventTypeOptions();
+        eto.setRetentionTime(Long.MAX_VALUE);
+        final EventType eventType = EventTypeTestBuilder.builder().options(eto).build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
+
+        putEventType(eventType, eventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTUnlimitedRetentionTimeByUserThen422() throws Exception {
+        final EventTypeOptions eto = new EventTypeOptions();
+        eto.setRetentionTime(Long.MAX_VALUE);
+        final EventType eventType = EventTypeTestBuilder.builder().options(eto).build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
+
+        putEventType(eventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(matchesProblem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Field \"options.retention_time\" can not be more than 345600000"))));
     }
 
     @Test

@@ -39,18 +39,21 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -85,6 +88,8 @@ public class EventTypeService {
     private final TransactionTemplate transactionTemplate;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String etLogEventType;
+    private final EventTypeOptionsValidator eventTypeOptionsValidator;
+    private final AdminService adminService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -100,7 +105,9 @@ public class EventTypeService {
                             final TransactionTemplate transactionTemplate,
                             final NakadiSettings nakadiSettings,
                             final NakadiKpiPublisher nakadiKpiPublisher,
-                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType) {
+                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
+                            final EventTypeOptionsValidator eventTypeOptionsValidator,
+                            final AdminService adminService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -115,19 +122,27 @@ public class EventTypeService {
         this.nakadiSettings = nakadiSettings;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.etLogEventType = etLogEventType;
+        this.eventTypeOptionsValidator = eventTypeOptionsValidator;
+        this.adminService = adminService;
     }
 
     public List<EventType> list() {
         return eventTypeRepository.list();
     }
 
-    public void create(final EventTypeBase eventType) throws TopicCreationException, InternalNakadiException,
-            NoSuchPartitionStrategyException, DuplicatedEventTypeNameException, InvalidEventTypeException,
-            DbWriteOperationsBlockedException {
+    public void create(final EventTypeBase eventType)
+            throws TopicCreationException,
+            InternalNakadiException,
+            NoSuchPartitionStrategyException,
+            DuplicatedEventTypeNameException,
+            InvalidEventTypeException,
+            DbWriteOperationsBlockedException,
+            EventTypeOptionsValidationException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
         }
+        eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
         enrichment.validate(eventType);
@@ -250,7 +265,8 @@ public class EventTypeService {
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
-            DbWriteOperationsBlockedException {
+            DbWriteOperationsBlockedException,
+            EventTypeOptionsValidationException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -258,10 +274,12 @@ public class EventTypeService {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-
             final EventType original = eventTypeRepository.findByName(eventTypeName);
 
-            authorizationValidator.authorizeEventTypeAdmin(original);
+            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+                eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
+                authorizationValidator.authorizeEventTypeAdmin(original);
+            }
             authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
