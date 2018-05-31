@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;

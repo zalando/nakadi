@@ -29,7 +29,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;

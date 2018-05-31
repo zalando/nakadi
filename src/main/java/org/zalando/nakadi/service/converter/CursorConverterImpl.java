@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;

@@ -19,7 +19,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;

@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
@@ -190,6 +191,13 @@ public class EventTypeController {
     @ExceptionHandler(NoEventTypeException.class)
     public ResponseEntity<Problem> noEventType(final NoEventTypeException exception,
                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> noSuchEventType(final NoSuchEventTypeException exception,
+                                                   final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
     }

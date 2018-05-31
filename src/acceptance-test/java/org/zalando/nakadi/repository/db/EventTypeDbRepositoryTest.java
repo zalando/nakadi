@@ -10,7 +10,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.TestUtils;

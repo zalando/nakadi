@@ -27,7 +27,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
@@ -57,6 +57,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.problem.Problem;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -67,6 +68,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
@@ -385,7 +387,7 @@ public class EventTypeService {
             return Result.ok(eventType);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", eventTypeName);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + eventTypeName, e);
             return Result.problem(e.asProblem());

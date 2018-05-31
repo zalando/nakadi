@@ -23,7 +23,7 @@ import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;

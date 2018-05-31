@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;

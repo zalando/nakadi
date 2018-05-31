@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -144,6 +145,13 @@ public class SubscriptionController {
                                                                       final NativeWebRequest request) {
         LOG.warn(e.getMessage());
         return Responses.create(Response.Status.REQUEST_TIMEOUT, e.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException e,
+                                                                      final NativeWebRequest request) {
+        LOG.debug(e.getMessage());
+        return Responses.create(Response.Status.NOT_FOUND, e.getMessage(), request);
     }
 
 }
