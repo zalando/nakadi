@@ -169,7 +169,7 @@ public class CursorsController {
     }
 
     @ExceptionHandler(InvalidStreamIdException.class)
-    public ResponseEntity<Problem> handleInvalidStreamId(final InvalidStreamIdException ex,
+    public ResponseEntity<Problem> handleInvalidStreamIdException(final InvalidStreamIdException ex,
                                                          final NativeWebRequest request) {
         LOG.warn("Stream id {} is not found: {}", ex.getStreamId(), ex.getMessage());
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
@@ -197,10 +197,17 @@ public class CursorsController {
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureNotAllowed(final FeatureNotAvailableException ex,
+    public ResponseEntity<Problem> handleFeatureNotAllowedException(final FeatureNotAvailableException ex,
                                                            final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException ex,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(Response.Status.NOT_FOUND, ex.getMessage()), request);
     }
 
 }
