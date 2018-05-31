@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;

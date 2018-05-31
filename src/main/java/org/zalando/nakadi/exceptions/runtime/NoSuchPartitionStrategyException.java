@@ -1,4 +1,4 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 public class NoSuchPartitionStrategyException extends UnprocessableEntityException {
 

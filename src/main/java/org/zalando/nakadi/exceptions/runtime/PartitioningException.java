@@ -1,4 +1,4 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 public class PartitioningException extends UnprocessableEntityException {
     public PartitioningException(final String message) {
@@ -9,7 +9,4 @@ public class PartitioningException extends UnprocessableEntityException {
         super(msg, cause);
     }
 
-    public PartitioningException(final String msg, final String problemMessage, final Exception cause) {
-        super(msg, problemMessage, cause);
-    }
 }
