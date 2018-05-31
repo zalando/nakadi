@@ -8,7 +8,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
@@ -76,7 +76,7 @@ public class StartingState extends State {
                         .filter(s -> s.getRequestedPartitions().isEmpty())
                         .count();
                 if (autoBalanceSessionsCount >= autoSlotsCount) {
-                    switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
+                    switchState(new CleanupState(new NoStreamingSlotsAvailableException(partitions.length)));
                     return;
                 }
             }
