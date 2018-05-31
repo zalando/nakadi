@@ -25,7 +25,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
@@ -187,7 +187,7 @@ public class SubscriptionService {
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, e.getMessage()));
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
@@ -214,7 +214,7 @@ public class SubscriptionService {
             return Result.ok();
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, e.getMessage()));
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));

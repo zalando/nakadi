@@ -22,7 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;

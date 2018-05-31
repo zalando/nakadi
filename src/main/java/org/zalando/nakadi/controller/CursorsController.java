@@ -17,15 +17,16 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
@@ -125,6 +127,9 @@ public class CursorsController {
             } catch (final ServiceTemporarilyUnavailableException e) {
                 LOG.error("Failed to commit cursors", e);
                 return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
+            } catch (final NoSuchSubscriptionException e) {
+                LOG.error("Failed to commit cursors", e);
+                return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
             } catch (final NakadiException e) {
                 LOG.error("Failed to commit cursors", e);
                 return create(e.asProblem(), request);
