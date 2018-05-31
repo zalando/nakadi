@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -35,6 +35,7 @@ import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
@@ -115,9 +116,9 @@ public class EventPublishingController {
         } catch (final EventTypeTimeoutException e) {
             LOG.debug("Failed to publish batch", e);
             return create(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()), nativeWebRequest);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.debug("Failed to publish batch", e);
-            return create(e.asProblem(), nativeWebRequest);
+            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), nativeWebRequest);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }

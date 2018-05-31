@@ -15,9 +15,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
@@ -168,7 +167,7 @@ public class CursorOperationsController {
         return cursor -> {
             try {
                 return cursorConverter.convert(eventTypeName, cursor);
-            } catch (final NakadiException | InvalidCursorException e) {
+            } catch (final InternalNakadiException | InvalidCursorException e) {
                 throw new CursorConversionException("problem converting cursors", e);
             }
         };
@@ -180,7 +179,7 @@ public class CursorOperationsController {
                 final NakadiCursor nakadiCursor = cursorConverter.convert(eventTypeName, cursor);
                 return new ShiftedNakadiCursor(nakadiCursor.getTimeline(), nakadiCursor.getPartition(),
                         nakadiCursor.getOffset(), cursor.getShift());
-            } catch (final NakadiException | InvalidCursorException e) {
+            } catch (final InternalNakadiException | InvalidCursorException e) {
                 throw new CursorConversionException("problem converting cursors", e);
             }
         };

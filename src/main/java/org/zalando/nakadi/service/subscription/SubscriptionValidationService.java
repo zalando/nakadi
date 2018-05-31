@@ -9,9 +9,8 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -130,7 +129,7 @@ public class SubscriptionValidationService {
             }
         } catch (final InvalidCursorException ex) {
             throw new WrongInitialCursorsException(ex.getMessage(), ex);
-        } catch (final NakadiException | ServiceTemporarilyUnavailableException ex) {
+        } catch (final InternalNakadiException | ServiceTemporarilyUnavailableException ex) {
             throw new RepositoryProblemException("Topic repository problem occurred when validating cursors", ex);
         }
     }

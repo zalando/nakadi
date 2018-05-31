@@ -15,9 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
@@ -48,6 +47,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
@@ -86,7 +86,7 @@ public class CursorsController {
                     .map(cursor -> cursor.withToken(cursorTokenService.generateToken()))
                     .collect(Collectors.toList());
             return new ItemsWrapper<>(cursors);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             throw new NakadiRuntimeException(e);
         }
     }
@@ -130,9 +130,9 @@ public class CursorsController {
             } catch (final NoSuchSubscriptionException e) {
                 LOG.error("Failed to commit cursors", e);
                 return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
-            } catch (final NakadiException e) {
+            } catch (final InternalNakadiException e) {
                 LOG.error("Failed to commit cursors", e);
-                return create(e.asProblem(), request);
+                return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
             }
         } finally {
             LOG.info(TimeLogger.finishMeasure());
@@ -152,8 +152,8 @@ public class CursorsController {
             throw new UnableProcessException(e.getMessage());
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
-        } catch (final NakadiException e) {
-            return create(e.asProblem(), request);
+        } catch (final InternalNakadiException e) {
+            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
         }
     }
 

@@ -9,8 +9,8 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -85,7 +85,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         if (timelinesChanged.compareAndSet(true, false)) {
             try {
                 onTimelinesChanged();
-            } catch (final NakadiException | InvalidCursorException ex) {
+            } catch (final InternalNakadiException | InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
@@ -177,7 +177,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                                 " and partition " + partition + ", but it wasn't found")).getBeforeFirst();
     }
 
-    private void electTopicRepositories() throws NakadiException, InvalidCursorException {
+    private void electTopicRepositories() throws InternalNakadiException, InvalidCursorException {
         final Map<TopicRepository, List<NakadiCursor>> newAssignment = new HashMap<>();
         borderOffsets.clear();
         // Purpose of this collection is to hold tr that definitely changed their positions and should be recreated.
@@ -244,7 +244,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
 
-    private void onTimelinesChanged() throws NakadiException, InvalidCursorException {
+    private void onTimelinesChanged() throws InternalNakadiException, InvalidCursorException {
         final Set<String> eventTypes = latestOffsets.values().stream()
                 .map(NakadiCursor::getEventType)
                 .collect(Collectors.toSet());
@@ -265,7 +265,8 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
     @Override
-    public void reassign(final Collection<NakadiCursor> newValues) throws NakadiException, InvalidCursorException {
+    public void reassign(final Collection<NakadiCursor> newValues)
+            throws InternalNakadiException, InvalidCursorException {
         final Map<EventTypePartition, NakadiCursor> newCursorMap = newValues.stream()
                 .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, Function.identity()));
 
@@ -308,7 +309,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     public void close() throws IOException {
         try {
             reassign(Collections.emptySet());
-        } catch (final NakadiException | InvalidCursorException e) {
+        } catch (final InternalNakadiException | InvalidCursorException e) {
             throw new IOException(e);
         }
     }

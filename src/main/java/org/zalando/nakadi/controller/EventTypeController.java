@@ -17,8 +17,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
@@ -50,6 +49,8 @@ import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
@@ -171,7 +172,7 @@ public class EventTypeController {
     public ResponseEntity<Problem> deletion(final EventTypeDeletionException exception,
                                             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
+        return Responses.create(INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
     @ExceptionHandler(UnableProcessException.class)
@@ -191,7 +192,7 @@ public class EventTypeController {
     public ResponseEntity<Problem> noSuchEventType(final NoSuchEventTypeException exception,
                                                    final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
 
     @ExceptionHandler(EventTypeUnavailableException.class)
@@ -201,18 +202,18 @@ public class EventTypeController {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(NakadiException.class)
-    public ResponseEntity<Problem> nakadiException(final NakadiException exception,
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<Problem> nakadiException(final InternalNakadiException exception,
                                                    final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(exception.asProblem(), request);
+        return Responses.create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
 
     @ExceptionHandler(NoSuchPartitionStrategyException.class)
-    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NakadiException exception,
+    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NoSuchPartitionStrategyException exception,
                                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(exception.asProblem(), request);
+        return Responses.create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(DuplicatedEventTypeNameException.class)

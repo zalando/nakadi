@@ -19,9 +19,8 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
@@ -203,7 +202,7 @@ public class TimelineService {
             }
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }
@@ -229,7 +228,7 @@ public class TimelineService {
     }
 
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
-            throws NakadiException, InvalidCursorException {
+            throws InternalNakadiException, InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
                 clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
         result.reassign(positions);

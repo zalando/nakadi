@@ -10,8 +10,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
@@ -172,7 +172,7 @@ public class SubscriptionTimeLagService {
                 } else {
                     return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
                 }
-            } catch (final NakadiException | IOException e) {
+            } catch (final InternalNakadiException | IOException e) {
                 throw new InconsistentStateException("Unexpected error happened when getting consumer time lag", e);
             } catch (final InvalidCursorException e) {
                 throw new ErrorGettingCursorTimeLagException(cursor, e);

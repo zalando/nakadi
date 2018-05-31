@@ -15,9 +15,9 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
@@ -32,6 +32,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.util.Set;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
@@ -90,18 +91,18 @@ public class SubscriptionController {
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId,
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
-            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws InternalNakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }
 
-    @ExceptionHandler(NakadiException.class)
-    public ResponseEntity<Problem> handleNakadiException(final NakadiException ex,
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException ex,
                                                          final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(ex.asProblem(), request);
+        return Responses.create(Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)

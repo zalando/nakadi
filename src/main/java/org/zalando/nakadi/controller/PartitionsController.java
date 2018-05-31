@@ -17,9 +17,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -45,6 +44,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -104,9 +104,9 @@ public class PartitionsController {
             return ok().body(result);
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
         }
     }
 
@@ -130,9 +130,9 @@ public class PartitionsController {
             }
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
                     request);

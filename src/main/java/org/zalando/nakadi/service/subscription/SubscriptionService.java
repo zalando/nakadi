@@ -22,7 +22,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -66,6 +66,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Component
@@ -224,7 +225,7 @@ public class SubscriptionService {
             return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         } catch (final InternalNakadiException e) {
             LOG.error("Exception can not occur", e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
     }
 

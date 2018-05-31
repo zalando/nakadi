@@ -24,8 +24,8 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -121,7 +121,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void canDetermineIfTopicExists() throws NakadiException {
+    public void canDetermineIfTopicExists() throws InternalNakadiException {
         assertThat(kafkaTopicRepository.topicExists(MY_TOPIC), is(true));
         assertThat(kafkaTopicRepository.topicExists(ANOTHER_TOPIC), is(true));
 
@@ -136,7 +136,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void validateValidCursors() throws NakadiException, InvalidCursorException {
+    public void validateValidCursors() throws InternalNakadiException, InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
@@ -155,7 +155,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void invalidateInvalidCursors() throws NakadiException {
+    public void invalidateInvalidCursors() throws InternalNakadiException {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(

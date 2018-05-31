@@ -21,7 +21,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
@@ -130,8 +131,8 @@ public class SubscriptionStreamController {
                     } else if (ex instanceof NoSuchSubscriptionException) {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.NOT_FOUND,
                                 ex.getMessage()));
-                    } else if (ex instanceof NakadiException) {
-                        writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
+                    } else if (ex instanceof InternalNakadiException) {
+                        writeProblemResponse(response, out, Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()));
                     } else {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));

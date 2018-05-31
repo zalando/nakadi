@@ -6,10 +6,10 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailableException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
@@ -147,7 +147,7 @@ public class StartingState extends State {
                         try {
                             // get oldest active timeline
                             return timelineService.getActiveTimelinesOrdered(et).get(0);
-                        } catch (final NakadiException e) {
+                        } catch (final InternalNakadiException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })
@@ -186,7 +186,7 @@ public class StartingState extends State {
                             // get newest active timeline
                             final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(et);
                             return activeTimelines.get(activeTimelines.size() - 1);
-                        } catch (final NakadiException e) {
+                        } catch (final InternalNakadiException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })
