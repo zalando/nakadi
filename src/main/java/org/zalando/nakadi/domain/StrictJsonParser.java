@@ -123,7 +123,7 @@ public class StrictJsonParser {
         if (tokenizer.next(3).equals("rue")) {
             return Boolean.TRUE;
         } else {
-            throw syntaxError("Expected false value", tokenizer);
+            throw syntaxError("Expected true value", tokenizer);
         }
     }
 

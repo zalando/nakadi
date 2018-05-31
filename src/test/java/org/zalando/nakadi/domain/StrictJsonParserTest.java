@@ -15,7 +15,7 @@ public class StrictJsonParserTest {
     private void testSingleString(final String value) {
 
         final JSONObject orthodoxJson = new JSONObject(value);
-        final JSONObject anarchyJson = (JSONObject) StrictJsonParser.parse(value);
+        final JSONObject anarchyJson = StrictJsonParser.parseObject(value);
         Assert.assertEquals("Checking json " + value, orthodoxJson.toString(), anarchyJson.toString());
     }
 
@@ -35,29 +35,24 @@ public class StrictJsonParserTest {
 
     }
 
-    @Test(expected = JSONException.class)
-    public void testBadJson() {
-        StrictJsonParser.parse("{,");
+    @Test
+    public void testInvalidJsonFormats() {
+        final String[] testsData = new String[]{
+                "{\"a\":1,}",
+                "{,",
+                "{\"name",
+                "{\"name\"}",
+                "{name\"}",
+                "{\"name\"NaN}",
+                "{\"name\":NaN}"
+        };
+        for (final String example : testsData) {
+            try {
+                StrictJsonParser.parseObject(example);
+                Assert.fail("Test failed for " + example);
+            } catch (JSONException ignore) {
+                System.out.println("For " + example + " error is " + ignore.getMessage());
+            }
+        }
     }
-
-    @Test(expected = JSONException.class)
-    public void testBadJson2() {
-        StrictJsonParser.parse("{\"name");
-    }
-
-    @Test(expected = JSONException.class)
-    public void testBadJson3() {
-        StrictJsonParser.parse("{name\"}");
-    }
-
-    @Test(expected = JSONException.class)
-    public void testBadJson4() {
-        StrictJsonParser.parse("{\"name\"NaN}");
-    }
-
-    @Test(expected = JSONException.class)
-    public void testBadJson5() {
-        StrictJsonParser.parse("{\"name\":NaN}");
-    }
-
 }
