@@ -10,19 +10,19 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
+import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -75,8 +75,8 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Response.Status.BAD_REQUEST, message, request);
     }
 
-    @ExceptionHandler(NoEventTypeException.class)
-    public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> noEventTypeException(final NoSuchEventTypeException exception,
                                                         final NativeWebRequest request) {
         return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
     }

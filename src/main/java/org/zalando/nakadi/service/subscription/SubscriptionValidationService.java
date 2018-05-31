@@ -13,7 +13,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
@@ -54,7 +54,7 @@ public class SubscriptionValidationService {
     }
 
     public void validateSubscription(final SubscriptionBase subscription)
-            throws TooManyPartitionsException, RepositoryProblemException, NoEventTypeException,
+            throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
             InconsistentStateException, WrongInitialCursorsException {
 
         // check that all event-types exist
@@ -159,13 +159,14 @@ public class SubscriptionValidationService {
     }
 
     private void checkEventTypesExist(final Map<String, Optional<EventType>> eventTypesOrNone)
-            throws NoEventTypeException {
+            throws NoSuchEventTypeException {
         final List<String> missingEventTypes = eventTypesOrNone.entrySet().stream()
                 .filter(entry -> !entry.getValue().isPresent())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
         if (!missingEventTypes.isEmpty()) {
-            throw new NoEventTypeException(String.format("Failed to create subscription, event type(s) not found: '%s'",
+            throw new NoSuchEventTypeException(
+                    String.format("Failed to create subscription, event type(s) not found: '%s'",
                     StringUtils.join(missingEventTypes, "', '")));
         }
     }

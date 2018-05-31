@@ -13,7 +13,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
@@ -105,7 +105,7 @@ public class SubscriptionValidationServiceTest {
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase);
             fail("NoEventTypeException expected");
-        } catch (final NoEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             final String expectedMessage =
                     String.format("Failed to create subscription, event type(s) not found: '%s', '%s'", ET1, ET3);
             assertThat(e.getMessage(), equalTo(expectedMessage));

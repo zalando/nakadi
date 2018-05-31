@@ -19,15 +19,15 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -108,7 +108,7 @@ public class PostSubscriptionController {
     }
 
     @ExceptionHandler({
-            NoEventTypeException.class,
+            NoSuchEventTypeException.class,
             WrongInitialCursorsException.class,
             TooManyPartitionsException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
