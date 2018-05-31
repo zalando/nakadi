@@ -130,16 +130,6 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenListPartitionsForWrongTopicThenNotFound() throws Exception {
-        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions", UNKNOWN_EVENT_TYPE)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
-    }
-
-    @Test
     public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
@@ -229,17 +219,6 @@ public class PartitionsControllerTest {
         when(lag.getFirstCursor()).thenReturn(firstCursor);
         when(lag.getLastCursor()).thenReturn(lastCursor);
         return Lists.newArrayList(lag);
-    }
-
-    @Test
-    public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
-        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions/%s", UNKNOWN_EVENT_TYPE, TEST_PARTITION)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
