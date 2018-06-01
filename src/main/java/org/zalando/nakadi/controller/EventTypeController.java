@@ -40,7 +40,6 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.Result;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -60,7 +59,7 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 @RequestMapping(value = "/event-types")
 public class EventTypeController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TimelinesController.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
@@ -152,11 +151,7 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
-        final Result<EventType> result = eventTypeService.get(name);
-        if (!result.isSuccessful()) {
-            return Responses.create(result.getProblem(), request);
-        }
-        return status(HttpStatus.OK).body(result.getValue());
+        return status(HttpStatus.OK).body(eventTypeService.get(name));
     }
 
     private HttpHeaders generateWarningHeaders() {

@@ -1,22 +1,33 @@
 package org.zalando.nakadi.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOffsetException;
+import org.zalando.nakadi.exceptions.runtime.InvalidSchemaVersionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.service.EventTypeService;
-import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @RestController
 public class SchemaController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaController.class);
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
@@ -33,16 +44,10 @@ public class SchemaController {
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             final NativeWebRequest request) {
-        final Result<EventType> eventTypeResult = eventTypeService.get(name);
-        if (!eventTypeResult.isSuccessful()) {
-            return Responses.create(eventTypeResult.getProblem(), request);
+        if (!eventTypeService.exists(name)) {
+            throw new NoSuchEventTypeException(String.format("EventType \"%s\" does not exist.", name));
         }
-
-        final Result result = schemaService.getSchemas(name, offset, limit);
-        if (result.isSuccessful()) {
-            return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
-        }
-        return Responses.create(result.getProblem(), request);
+        return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemas(name, offset, limit));
     }
 
     @RequestMapping("/event-types/{name}/schemas/{version}")
@@ -50,19 +55,46 @@ public class SchemaController {
                                               @PathVariable("version") final String version,
                                               final NativeWebRequest request) {
         if (version.equals("latest")) { // latest schema might be cached with the event type
-            final Result<EventType> eventTypeResult = eventTypeService.get(name);
-            if (!eventTypeResult.isSuccessful()) {
-                return Responses.create(eventTypeResult.getProblem(), request);
-            }
-
-            return ResponseEntity.status(HttpStatus.OK).body(eventTypeResult.getValue().getSchema());
+            return ResponseEntity.status(HttpStatus.OK).body(eventTypeService.get(name).getSchema());
         }
+        return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemaVersion(name, version));
+    }
 
-        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);
-        if (!result.isSuccessful()) {
-            return Responses.create(result.getProblem(), request);
-        }
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                   final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
 
-        return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
+    @ExceptionHandler(NoSuchSchemaException.class)
+    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
+                                                   final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidSchemaVersionException.class)
+    public ResponseEntity<Problem> handleInvalidSchemaVersionException(
+            final InvalidSchemaVersionException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidLimitException.class)
+    public ResponseEntity<Problem> handleInvalidLimitException(
+            final InvalidLimitException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidOffsetException.class)
+    public ResponseEntity<Problem> handleInvalidOffsetException(
+            final InvalidOffsetException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
     }
 }
