@@ -10,7 +10,7 @@ import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;

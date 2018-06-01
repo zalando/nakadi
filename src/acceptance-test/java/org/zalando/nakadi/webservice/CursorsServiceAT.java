@@ -11,7 +11,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
