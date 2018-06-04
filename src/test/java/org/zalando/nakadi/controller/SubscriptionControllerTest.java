@@ -195,14 +195,14 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
+        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter cannot be lower than 0");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", -5, 10), expectedProblem);
     }
 
     @Test
     public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
-                "'limit' parameter should have value from 1 to 1000");
+                "'limit' parameter should have a value between 1 and 1000");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
     }
 

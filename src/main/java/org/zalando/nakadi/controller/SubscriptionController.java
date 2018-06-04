@@ -3,7 +3,6 @@ package org.zalando.nakadi.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,16 +12,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOffsetException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
 import org.zalando.problem.Problem;
@@ -35,6 +38,9 @@ import java.util.Set;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
@@ -65,9 +71,9 @@ public class SubscriptionController {
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(
-                () -> subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
-                request);
+        final PaginationWrapper<Subscription> wrapper = subscriptionService.listSubscriptions(owningApplication,
+                eventTypes, showStatus, limit, offset);
+        return status(OK).body(wrapper);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
@@ -75,7 +81,8 @@ public class SubscriptionController {
                                              final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
+        final Subscription subscription = subscriptionService.getSubscription(subscriptionId);
+        return status(OK).body(subscription);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
@@ -83,8 +90,8 @@ public class SubscriptionController {
                                                 final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
-                HttpStatus.NO_CONTENT);
+        subscriptionService.deleteSubscription(subscriptionId);
+        return status(NO_CONTENT).build();
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
@@ -153,6 +160,27 @@ public class SubscriptionController {
                                                                       final NativeWebRequest request) {
         LOG.debug(e.getMessage());
         return Responses.create(Response.Status.NOT_FOUND, e.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException e,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(e.getMessage());
+        return Responses.create(Response.Status.NOT_FOUND, e.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidLimitException.class)
+    public ResponseEntity<Problem> handleInvalidLimitException(final InvalidLimitException e,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(e.getMessage());
+        return Responses.create(Response.Status.BAD_REQUEST, e.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidOffsetException.class)
+    public ResponseEntity<Problem> handleInvalidOffsetException(final InvalidOffsetException e,
+                                                               final NativeWebRequest request) {
+        LOG.debug(e.getMessage());
+        return Responses.create(Response.Status.BAD_REQUEST, e.getMessage(), request);
     }
 
 }
