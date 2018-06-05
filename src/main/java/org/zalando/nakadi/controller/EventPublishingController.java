@@ -129,9 +129,6 @@ public class EventPublishingController {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
             final String applicationName = client.getClientId();
 
-            LOG.info("[SLO] [publishing-latency] time={} size={} count={} eventTypeName={} app={}", msSpent,
-                    totalSizeBytes, eventCount, eventTypeName, applicationName);
-
             nakadiKpiPublisher.publish(kpiBatchPublishedEventType, () -> new JSONObject()
                     .put("event_type", eventTypeName)
                     .put("app", applicationName)

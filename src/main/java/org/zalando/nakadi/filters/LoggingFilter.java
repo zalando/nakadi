@@ -53,8 +53,9 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .orElse("-");
             final String acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
                     .orElse("-");
+            final Long contentLength = request.getContentLengthLong();
 
-            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\"",
+            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\" {} bytes",
                     method,
                     path,
                     query,
@@ -63,7 +64,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                     response.getStatus(),
                     timing,
                     contentEncoding,
-                    acceptEncoding);
+                    acceptEncoding,
+                    contentLength);
             nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                     .put("method", method)
                     .put("path", path)
