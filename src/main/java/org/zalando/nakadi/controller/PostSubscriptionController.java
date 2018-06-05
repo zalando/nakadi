@@ -28,23 +28,22 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
 
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static org.springframework.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.problem.Status.NOT_IMPLEMENTED;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 
 @RestController
-public class PostSubscriptionController {
+public class PostSubscriptionController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(PostSubscriptionController.class);
 
@@ -69,12 +68,12 @@ public class PostSubscriptionController {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
+            return create(new ValidationProblem(errors), request);
         }
 
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(subscriptionBase.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY,
                     "owning_application doesn't exist"), request);
         }
 
@@ -82,8 +81,8 @@ public class PostSubscriptionController {
             return ok(subscriptionService.getExistingSubscription(subscriptionBase));
         } catch (final NoSubscriptionException e) {
             if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
-                return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
-                        "Subscription creation is temporarily unavailable", request);
+                return create(Problem.valueOf(SERVICE_UNAVAILABLE,
+                        "Subscription creation is temporarily unavailable"), request);
             }
             try {
                 final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
@@ -103,18 +102,23 @@ public class PostSubscriptionController {
         final UriComponents location = subscriptionService.getSubscriptionUri(subscription);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .location(location.toUri())
-                .header(HttpHeaders.CONTENT_LOCATION, location.toString())
+                .header(CONTENT_LOCATION, location.toString())
                 .body(subscription);
     }
 
+    @Override
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                   final NativeWebRequest request) {
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
     @ExceptionHandler({
-            NoSuchEventTypeException.class,
             WrongInitialCursorsException.class,
             TooManyPartitionsException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
                                                                    final NativeWebRequest request) {
         LOG.debug("Error occurred when working with subscriptions", exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
@@ -122,7 +126,7 @@ public class PostSubscriptionController {
             final FeatureNotAvailableException ex,
             final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
 
     }
 }

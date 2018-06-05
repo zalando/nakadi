@@ -49,7 +49,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,9 +59,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.text.MessageFormat.format;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -82,6 +78,9 @@ import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionL
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
@@ -130,7 +129,7 @@ public class SubscriptionControllerTest {
 
         mockMvcBuilder = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setControllerAdvice(new ExceptionHandling())
+                .setControllerAdvice(new NakadiProblemControllerAdvice())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
     }
 
@@ -149,7 +148,7 @@ public class SubscriptionControllerTest {
         final Subscription subscription = builder().build();
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
-        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy-message");
+        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
         getSubscription(subscription.getId())
                 .andExpect(status().isNotFound())

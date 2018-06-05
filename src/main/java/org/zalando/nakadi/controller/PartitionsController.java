@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
@@ -32,23 +33,22 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class PartitionsController {
+public class PartitionsController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
@@ -126,33 +126,40 @@ public class PartitionsController {
     public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
                                                     final NativeWebRequest request) {
         LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
     @ExceptionHandler(InvalidCursorException.class)
     public ResponseEntity<?> handleInvalidCursorException(final InvalidCursorException e,
                                                     final NativeWebRequest request) {
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> handleNotFoundException(final NotFoundException ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
+        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
     }
 
+    @Override
     @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<?> handleNoSuchEventTypeException(final NoSuchEventTypeException e,
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException e,
                                                     final NativeWebRequest request) {
         LOG.debug(e.getMessage());
-        return Responses.create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
+        return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
     }
 
     @ExceptionHandler(InternalNakadiException.class)
     public ResponseEntity<?> handleInternalNakadiException(final InternalNakadiException e,
                                                     final NativeWebRequest request) {
         LOG.debug("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-        return Responses.create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
+                                                         final NativeWebRequest request) {
+        return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
     }
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
@@ -165,6 +172,13 @@ public class PartitionsController {
                 .findFirst()
                 .map(this::toCursorLag)
                 .orElseThrow(MyNakadiRuntimeException1::new);
+    }
+
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)

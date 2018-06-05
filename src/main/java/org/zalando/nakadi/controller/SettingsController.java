@@ -22,18 +22,17 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 @RequestMapping(value = "/settings")
-public class SettingsController {
+public class SettingsController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
     private final BlacklistService blacklistService;
@@ -120,15 +119,15 @@ public class SettingsController {
     public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
                                                                    final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
-                "There was a problem processing your request.", request);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE,
+                "There was a problem processing your request."), request);
     }
 
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
     }
 
     private boolean isNotAdmin(final Client client) {

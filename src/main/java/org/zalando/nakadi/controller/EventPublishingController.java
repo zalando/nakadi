@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -29,20 +29,20 @@ import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-import org.zalando.problem.spring.web.advice.Responses;
 
-import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 
 @RestController
-public class EventPublishingController {
+public class EventPublishingController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublishingController.class);
 
@@ -76,8 +76,8 @@ public class EventPublishingController {
 
         try {
             if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
-                return Responses.create(
-                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
+                return create(
+                        Problem.valueOf(FORBIDDEN, "Application or event type is blocked"), request);
             }
 
             final ResponseEntity response = postEventInternal(
@@ -85,7 +85,7 @@ public class EventPublishingController {
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final RuntimeException ex) {
-            eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
     }
@@ -115,7 +115,7 @@ public class EventPublishingController {
             return create(Problem.valueOf(NOT_FOUND, e.getMessage()), nativeWebRequest);
         } catch (final EventTypeTimeoutException e) {
             LOG.debug("Failed to publish batch", e);
-            return create(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()), nativeWebRequest);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), nativeWebRequest);
         } catch (final InternalNakadiException e) {
             LOG.debug("Failed to publish batch", e);
             return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), nativeWebRequest);
@@ -164,11 +164,11 @@ public class EventPublishingController {
         if (e.getCause() == null) {
             return create(createProblem(e), nativeWebRequest);
         }
-        return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+        return create(Problem.valueOf(BAD_REQUEST), nativeWebRequest);
     }
 
     private ThrowableProblem createProblem(final JSONException e) {
-        return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
+        return Problem.valueOf(BAD_REQUEST, e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {

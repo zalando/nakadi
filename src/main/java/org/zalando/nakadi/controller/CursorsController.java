@@ -35,29 +35,27 @@ import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.CONFLICT;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.NOT_IMPLEMENTED;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class CursorsController {
+public class CursorsController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
 
@@ -172,42 +170,43 @@ public class CursorsController {
     public ResponseEntity<Problem> handleInvalidStreamIdException(final InvalidStreamIdException ex,
                                                          final NativeWebRequest request) {
         LOG.warn("Stream id {} is not found: {}", ex.getStreamId(), ex.getMessage());
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
     }
 
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(SERVICE_UNAVAILABLE, ex.getMessage(), request);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, ex.getMessage()), request);
     }
 
     @ExceptionHandler(RequestInProgressException.class)
     public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
                                                                     final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
+        return create(Problem.valueOf(CONFLICT, ex.getMessage()), request);
     }
 
+    @Override
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Problem> handleMethodArgumentNotValidException(final MethodArgumentNotValidException ex,
+    public ResponseEntity<Problem> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
                                                                          final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
+        return create(new ValidationProblem(ex.getBindingResult()), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
     public ResponseEntity<Problem> handleFeatureNotAllowedException(final FeatureNotAvailableException ex,
                                                            final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
     }
 
     @ExceptionHandler(NoSuchSubscriptionException.class)
     public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException ex,
                                                                      final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(Response.Status.NOT_FOUND, ex.getMessage()), request);
+        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
     }
 
 }

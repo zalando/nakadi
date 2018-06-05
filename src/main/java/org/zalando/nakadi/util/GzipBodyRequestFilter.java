@@ -24,9 +24,9 @@ import java.io.PrintWriter;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
-import static javax.ws.rs.HttpMethod.POST;
-import static javax.ws.rs.core.HttpHeaders.CONTENT_ENCODING;
-import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
+import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
+import static org.springframework.http.HttpMethod.POST;
+import static org.zalando.problem.Status.NOT_ACCEPTABLE;
 
 public class GzipBodyRequestFilter implements Filter {
 

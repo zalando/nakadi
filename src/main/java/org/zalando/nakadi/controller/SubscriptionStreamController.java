@@ -39,26 +39,27 @@ import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.problem.Status.CONFLICT;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class SubscriptionStreamController {
+public class SubscriptionStreamController implements NakadiProblemHandling {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
@@ -122,23 +123,23 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 try {
                     if (ex instanceof AccessDeniedException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
+                        writeProblemResponse(response, out, Problem.valueOf(FORBIDDEN,
                                 ((AccessDeniedException) ex).explain()));
                     } else if (ex instanceof SubscriptionPartitionConflictException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.CONFLICT,
+                        writeProblemResponse(response, out, Problem.valueOf(CONFLICT,
                                 ex.getMessage()));
                     } else if (ex instanceof WrongStreamParametersException) {
-                        writeProblemResponse(response, out, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                        writeProblemResponse(response, out, Problem.valueOf(UNPROCESSABLE_ENTITY,
                                 ex.getMessage()));
                     } else if (ex instanceof NoSuchSubscriptionException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.NOT_FOUND,
+                        writeProblemResponse(response, out, Problem.valueOf(NOT_FOUND,
                                 ex.getMessage()));
                     } else if (ex instanceof NoStreamingSlotsAvailableException) {
                         writeProblemResponse(response, out, Problem.valueOf(CONFLICT, ex.getMessage()));
                     } else if (ex instanceof InternalNakadiException) {
                         writeProblemResponse(response, out, Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()));
                     } else {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                        writeProblemResponse(response, out, Problem.valueOf(SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));
                     }
                     out.flush();
@@ -218,7 +219,7 @@ public class SubscriptionStreamController {
             try {
                 if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
-                            Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
+                            Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
 
@@ -254,7 +255,7 @@ public class SubscriptionStreamController {
     public ResponseEntity<Problem> invalidEventTypeException(final WrongStreamParametersException exception,
                                                              final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
 }

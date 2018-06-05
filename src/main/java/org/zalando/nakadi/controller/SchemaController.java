@@ -19,13 +19,12 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.NOT_FOUND;
 
 @RestController
-public class SchemaController {
+public class SchemaController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaController.class);
 
@@ -64,14 +63,14 @@ public class SchemaController {
     public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
                                                    final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(NoSuchSchemaException.class)
     public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
                                                    final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InvalidSchemaVersionException.class)
@@ -79,7 +78,7 @@ public class SchemaController {
             final InvalidSchemaVersionException exception,
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InvalidLimitException.class)
@@ -87,7 +86,7 @@ public class SchemaController {
             final InvalidLimitException exception,
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InvalidOffsetException.class)
@@ -95,6 +94,6 @@ public class SchemaController {
             final InvalidOffsetException exception,
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
     }
 }
