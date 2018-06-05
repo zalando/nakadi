@@ -13,7 +13,6 @@ import java.nio.charset.Charset;
 public class StrictJsonParserTest {
 
     private void testSingleString(final String value) {
-
         final JSONObject orthodoxJson = new JSONObject(value);
         final JSONObject anarchyJson = StrictJsonParser.parseObject(value);
         Assert.assertEquals("Checking json " + value, orthodoxJson.toString(), anarchyJson.toString());

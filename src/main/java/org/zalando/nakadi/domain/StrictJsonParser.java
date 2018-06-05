@@ -62,10 +62,6 @@ public class StrictJsonParser {
         }
     }
 
-    public static Object parse(final String value) throws JSONException {
-        return parse(value, true);
-    }
-
     public static JSONObject parseObject(final String value) throws JSONException {
         return (JSONObject) parse(value, true);
     }
@@ -74,7 +70,7 @@ public class StrictJsonParser {
         return parse(value, 0, value.length(), allowMore);
     }
 
-    public static Object parse(final String value, final int startIdx, final int endIdx, final boolean allowMore)
+    private static Object parse(final String value, final int startIdx, final int endIdx, final boolean allowMore)
             throws JSONException {
         final StringTokenizer stringTokenizer = new StringTokenizer(value, startIdx, endIdx);
         final Object result = parse(stringTokenizer);
