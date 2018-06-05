@@ -1,6 +1,5 @@
 package org.zalando.nakadi.domain;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -32,26 +31,5 @@ public class StrictJsonParserTest {
         }
         testSingleString(veryComplexString);
 
-    }
-
-    @Test
-    public void testInvalidJsonFormats() {
-        final String[] testsData = new String[]{
-                "{\"a\":1,}",
-                "{,",
-                "{\"name",
-                "{\"name\"}",
-                "{name\"}",
-                "{\"name\"NaN}",
-                "{\"name\":NaN}"
-        };
-        for (final String example : testsData) {
-            try {
-                StrictJsonParser.parseObject(example);
-                Assert.fail("Test failed for " + example);
-            } catch (JSONException ignore) {
-                System.out.println("For " + example + " error is " + ignore.getMessage());
-            }
-        }
     }
 }
