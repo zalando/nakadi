@@ -53,7 +53,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .orElse("-");
             final String acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
                     .orElse("-");
-            final Long contentLength = request.getContentLengthLong();
+            final Long contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
 
             LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\" {} bytes",
                     method,
