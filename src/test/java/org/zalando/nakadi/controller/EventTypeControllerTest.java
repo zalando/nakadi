@@ -731,7 +731,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.getSchema().setSchema("invalid-json");
 
         final Problem expectedProblem =
-                createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected symbol i at pos 1");
+                createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected symbol 'i' at pos 1");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }

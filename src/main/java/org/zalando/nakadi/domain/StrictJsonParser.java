@@ -63,11 +63,11 @@ public class StrictJsonParser {
     }
 
     public static JSONObject parseObject(final String value) throws JSONException {
-        return (JSONObject) parse(value, true);
+        return parse(value, true);
     }
 
-    public static Object parse(final String value, final boolean allowMore) throws JSONException {
-        return parse(value, 0, value.length(), allowMore);
+    public static JSONObject parse(final String value, final boolean allowMore) throws JSONException {
+        return (JSONObject) parse(value, 0, value.length(), allowMore);
     }
 
     private static Object parse(final String value, final int startIdx, final int endIdx, final boolean allowMore)
@@ -81,7 +81,7 @@ public class StrictJsonParser {
             } catch (JSONException ignore) {
                 return result;
             }
-            throw syntaxError("Unexpected symbol " + unexpectedValue, stringTokenizer);
+            throw syntaxError("Unexpected symbol '" + unexpectedValue + "'", stringTokenizer);
         } else {
             return result;
         }
@@ -125,7 +125,7 @@ public class StrictJsonParser {
 
     private static Object readNumberTillTheEnd(final char value, final StringTokenizer tokenizer) {
         if (POSSIBLE_NUMBER_DIGITS.indexOf(value) < 0) {
-            throw syntaxError("Unexpected symbol " + value, tokenizer);
+            throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
         }
         final int start = tokenizer.getCurrentPosition() - 1;
         while (tokenizer.hasNext()) {
@@ -153,7 +153,7 @@ public class StrictJsonParser {
                 }
                 return longValue;
             } else {
-                throw syntaxError("Can not use long value " + stringNumber + " cause it is too big", tokenizer);
+                throw syntaxError("Can not use long value '" + stringNumber + "' cause it is too big", tokenizer);
             }
         }
     }
@@ -184,7 +184,7 @@ public class StrictJsonParser {
                 if (nextToken == '}') {
                     finished = true;
                 } else if (nextToken != ',') {
-                    throw syntaxError("Unexpected symbol " + nextToken + " while parsing object", tokenizer);
+                    throw syntaxError("Unexpected symbol '" + nextToken + "' while parsing object", tokenizer);
                 }
             }
             allowObjectEnd = false;
@@ -214,7 +214,7 @@ public class StrictJsonParser {
             if (separator == ']') {
                 finished = true;
             } else if (separator != ',') {
-                throw syntaxError("Unexpected separator " + separator, tokenizer);
+                throw syntaxError("Unexpected separator '" + separator + "'", tokenizer);
             }
         }
         return result;
