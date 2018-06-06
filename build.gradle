@@ -204,7 +204,7 @@ dependencies {
 // end::dependencies[]
 
 // tag::wrapper[]
-task wrapper(type: Wrapper) {
+wrapper {
     gradleVersion = '2.3'
 }
 
@@ -331,7 +331,7 @@ task fullAcceptanceTest(type: GradleBuild) {
 }
 
 task acceptanceTest(type: Test) {
-    testClassesDir = sourceSets.acceptanceTest.output.classesDir
+    testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
     classpath = sourceSets.acceptanceTest.runtimeClasspath
     maxParallelForks = Runtime.runtime.availableProcessors()
 }
