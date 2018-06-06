@@ -49,7 +49,7 @@ public class GzipBodyRequestFilter implements Filter {
                 .map(encoding -> encoding.contains("gzip"))
                 .orElse(false);
 
-        if (isGzipped && !POST.equals(request.getMethod())) {
+        if (isGzipped && !POST.matches(request.getMethod())) {
             reportNotAcceptableError((HttpServletResponse) servletResponse, request);
             return;
         }

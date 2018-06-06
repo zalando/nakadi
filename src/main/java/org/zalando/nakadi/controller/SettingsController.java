@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
@@ -107,9 +109,13 @@ public class SettingsController implements NakadiProblemHandling {
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
-    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz) {
+    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
+                                          final Errors errors, final NativeWebRequest request) {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (errors.hasErrors()) {
+            return create(new ValidationProblem(errors), request);
         }
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();
