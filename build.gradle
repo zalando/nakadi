@@ -4,6 +4,7 @@ buildscript {
     ext {
         springBootVersion = '1.5.13.RELEASE'
         springFrameworkVersion = '4.3.17.RELEASE'
+        jacksonVersion = '2.8.11'
     }
 
     repositories {
@@ -170,12 +171,14 @@ dependencies {
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
     }
-    compile('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.11') {
+    compile("com.fasterxml.jackson.datatype:jackson-datatype-json-org:$jacksonVersion") {
         exclude module: "json"
     }
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.8.11'
-    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.11'
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.11'
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'com.grack:nanojson:1.2'
     compile 'org.json:json:20180130'
