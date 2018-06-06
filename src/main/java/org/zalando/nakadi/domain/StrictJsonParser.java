@@ -3,13 +3,10 @@ package org.zalando.nakadi.domain;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StrictJsonParser {
 
     private static final String POSSIBLE_NUMBER_DIGITS = "0123456789-.Ee";
-    private static final Logger LOG = LoggerFactory.getLogger(StrictJsonParser.class);
 
     private static class StringTokenizer {
 
@@ -66,13 +63,7 @@ public class StrictJsonParser {
     }
 
     public static JSONObject parseObject(final String value) throws JSONException {
-        try {
-            return parse(value, true);
-        } catch (final JSONException ex) {
-            // Temporary logging events to perform incident analysis.
-            LOG.debug("Failed to parse event {}", value, ex);
-            throw ex;
-        }
+        return parse(value, true);
     }
 
     public static JSONObject parse(final String value, final boolean allowMore) throws JSONException {
