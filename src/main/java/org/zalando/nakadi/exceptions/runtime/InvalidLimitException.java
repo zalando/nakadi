@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class InvalidLimitException extends MyNakadiRuntimeException1 {
+public class InvalidLimitException extends NakadiRuntimeBaseException {
 
     public InvalidLimitException(final String message) {
         super(message);

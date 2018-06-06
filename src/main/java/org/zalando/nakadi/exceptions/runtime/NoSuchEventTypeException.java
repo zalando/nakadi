@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class NoSuchEventTypeException extends MyNakadiRuntimeException1 {
+public class NoSuchEventTypeException extends NakadiRuntimeBaseException {
     public NoSuchEventTypeException(final String message) {
         super(message);
     }

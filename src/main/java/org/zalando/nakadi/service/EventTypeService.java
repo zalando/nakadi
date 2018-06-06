@@ -23,7 +23,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -260,7 +260,7 @@ public class EventTypeService {
                        final EventTypeBase eventTypeBase)
             throws TopicConfigException,
             InconsistentStateException,
-            NakadiRuntimeException,
+            NakadiWrapperException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
             DbWriteOperationsBlockedException,
@@ -296,7 +296,7 @@ public class EventTypeService {
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final InternalNakadiException e) {
             LOG.error("Unable to update event type", e);
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         } finally {
             try {
                 if (updatingCloser != null) {

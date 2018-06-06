@@ -5,7 +5,7 @@ import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 
 import java.util.List;
 import java.util.function.Function;
@@ -18,10 +18,10 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
     private final Function<ZkType, ReturnType> converter;
 
     private static class ExceptionOrData<T> {
-        private final NakadiRuntimeException ex;
+        private final NakadiWrapperException ex;
         private final T data;
 
-        ExceptionOrData(final NakadiRuntimeException ex) {
+        ExceptionOrData(final NakadiWrapperException ex) {
             this.ex = ex;
             this.data = null;
         }
@@ -31,7 +31,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
             this.ex = null;
         }
 
-        public T get() throws NakadiRuntimeException {
+        public T get() throws NakadiWrapperException {
             if (null != ex) {
                 throw ex;
             }
@@ -52,13 +52,13 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
     }
 
     @Override
-    public ReturnType getData() throws NakadiRuntimeException {
+    public ReturnType getData() throws NakadiWrapperException {
         if (data == null) { // If there is new value pending
             try {
                 // create listener only in case if subscription is still active.
                 final ZkType zkData = query(null != listener);
                 data = new ExceptionOrData<>(converter.apply(zkData));
-            } catch (NakadiRuntimeException ex) {
+            } catch (NakadiWrapperException ex) {
                 data = new ExceptionOrData<>(ex);
             }
         }
@@ -70,7 +70,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
         listener = null;
     }
 
-    protected abstract ZkType query(boolean createListener) throws NakadiRuntimeException;
+    protected abstract ZkType query(boolean createListener) throws NakadiWrapperException;
 
     @Override
     public void process(final WatchedEvent event) {
@@ -91,14 +91,14 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
                 final CuratorFramework curatorFramework,
                 final Runnable listener,
                 final Function<byte[], R> converter,
-                final String key) throws NakadiRuntimeException {
+                final String key) throws NakadiWrapperException {
             super(curatorFramework, listener, converter, key);
             // The very first call is used to initialize listener
             getData();
         }
 
         @Override
-        protected byte[] query(final boolean setListener) throws NakadiRuntimeException {
+        protected byte[] query(final boolean setListener) throws NakadiWrapperException {
             final GetDataBuilder builder = curatorFramework.getData();
             if (setListener) {
                 builder.usingWatcher(this);
@@ -106,7 +106,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
             try {
                 return builder.forPath(key);
             } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
+                throw new NakadiWrapperException(ex);
             }
         }
     }
@@ -116,13 +116,13 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
         public ZkSubscriptionChildrenImpl(
                 final CuratorFramework curatorFramework,
                 final Runnable listener,
-                final String key) throws NakadiRuntimeException {
+                final String key) throws NakadiWrapperException {
             super(curatorFramework, listener, Function.identity(), key);
             getData();
         }
 
         @Override
-        protected List<String> query(final boolean setListener) throws NakadiRuntimeException {
+        protected List<String> query(final boolean setListener) throws NakadiWrapperException {
             final GetChildrenBuilder builder = curatorFramework.getChildren();
             if (setListener) {
                 builder.usingWatcher(this);
@@ -130,7 +130,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
             try {
                 return builder.forPath(key);
             } catch (final Exception ex) {
-                throw new NakadiRuntimeException(ex);
+                throw new NakadiWrapperException(ex);
             }
         }
     }

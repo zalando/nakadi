@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class WrongInitialCursorsException extends MyNakadiRuntimeException1 {
+public class WrongInitialCursorsException extends NakadiRuntimeBaseException {
 
     public WrongInitialCursorsException(final String msg) {
         super(msg);

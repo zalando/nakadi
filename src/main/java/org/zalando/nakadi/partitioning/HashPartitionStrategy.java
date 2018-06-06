@@ -5,8 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -63,7 +63,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
             final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
             return sortedPartitions.get(partitionIndex);
 
-        } catch (NakadiRuntimeException e) {
+        } catch (NakadiWrapperException e) {
             final Exception original = e.getException();
             if (original instanceof InvalidPartitionKeyFieldsException) {
                 throw (InvalidPartitionKeyFieldsException) original;

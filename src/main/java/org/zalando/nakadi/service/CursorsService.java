@@ -11,7 +11,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
@@ -227,7 +227,7 @@ public class CursorsService {
                 return result;
             } catch (final Exception ignore) {
                 //On this stage exception should not be generated - cursors are validated.
-                throw new NakadiRuntimeException(ignore);
+                throw new NakadiWrapperException(ignore);
             }
         }
     }

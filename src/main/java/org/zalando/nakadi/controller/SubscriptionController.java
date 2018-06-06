@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -107,7 +107,7 @@ public class SubscriptionController implements NakadiProblemHandling {
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         try {
             return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
-        } catch (final NakadiRuntimeException exception) {
+        } catch (final NakadiWrapperException exception) {
             throw exception.getException();
         }
     }

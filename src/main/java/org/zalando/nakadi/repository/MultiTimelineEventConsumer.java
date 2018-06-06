@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -86,7 +86,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             try {
                 onTimelinesChanged();
             } catch (final InternalNakadiException | InvalidCursorException ex) {
-                throw new NakadiRuntimeException(ex);
+                throw new NakadiWrapperException(ex);
             }
         }
         final List<ConsumedEvent> result = poll();

@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
@@ -85,7 +85,7 @@ public class CursorsController implements NakadiProblemHandling {
                     .collect(Collectors.toList());
             return new ItemsWrapper<>(cursors);
         } catch (final InternalNakadiException e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 

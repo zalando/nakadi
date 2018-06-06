@@ -13,7 +13,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
@@ -108,7 +108,7 @@ public class CursorOperationsService {
                     }).collect(Collectors.toList());
 
         } catch (final InternalNakadiException e) {
-            throw new MyNakadiRuntimeException1("error", e);
+            throw new NakadiRuntimeBaseException("error", e);
         }
     }
 

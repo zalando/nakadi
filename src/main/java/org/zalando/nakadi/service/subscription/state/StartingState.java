@@ -6,7 +6,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -148,7 +148,7 @@ public class StartingState extends State {
                             // get oldest active timeline
                             return timelineService.getActiveTimelinesOrdered(et).get(0);
                         } catch (final InternalNakadiException e) {
-                            throw new NakadiRuntimeException(e);
+                            throw new NakadiWrapperException(e);
                         }
                     })
                     .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
@@ -159,7 +159,7 @@ public class StartingState extends State {
                             return timelineService.getTopicRepository(timelines.get(0))
                                     .loadTopicStatistics(timelines).stream();
                         } catch (final ServiceTemporarilyUnavailableException e) {
-                            throw new NakadiRuntimeException(e);
+                            throw new NakadiWrapperException(e);
                         }
                     })
                     .map(PartitionStatistics::getBeforeFirst)
@@ -187,7 +187,7 @@ public class StartingState extends State {
                             final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(et);
                             return activeTimelines.get(activeTimelines.size() - 1);
                         } catch (final InternalNakadiException e) {
-                            throw new NakadiRuntimeException(e);
+                            throw new NakadiWrapperException(e);
                         }
                     })
                     .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
@@ -198,7 +198,7 @@ public class StartingState extends State {
                             return timelineService.getTopicRepository(timelines.get(0))
                                     .loadTopicEndStatistics(timelines).stream();
                         } catch (final ServiceTemporarilyUnavailableException e) {
-                            throw new NakadiRuntimeException(e);
+                            throw new NakadiWrapperException(e);
                         }
                     })
                     .map(PartitionEndStatistics::getLast)

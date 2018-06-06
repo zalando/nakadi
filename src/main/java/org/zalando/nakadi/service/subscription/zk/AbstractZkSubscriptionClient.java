@@ -12,9 +12,9 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
@@ -112,10 +112,10 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 throw releaseException;
             }
             return result;
-        } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
+        } catch (final NakadiWrapperException | NakadiRuntimeBaseException e) {
             throw e;
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
@@ -127,12 +127,12 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
     @Override
-    public final boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException {
+    public final boolean isSubscriptionCreatedAndInitialized() throws NakadiWrapperException {
         // First step - check that state node was already written
         try {
             final String state = new String(getCurator().getData().forPath(getSubscriptionPath("/state")), UTF_8);
@@ -140,7 +140,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (final KeeperException.NoNodeException ex) {
             return false;
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
@@ -165,7 +165,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             getLog().info("updating state");
             getCurator().create().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(UTF_8));
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
@@ -177,7 +177,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final byte[] sessionData = serializeSession(session);
             getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, sessionData);
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
@@ -186,14 +186,14 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         try {
             getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 
     protected <K, V> Map<K, V> loadDataAsync(final Collection<K> keys,
                                              final Function<K, String> keyConverter,
                                              final BiFunction<K, byte[], V> valueConverter)
-            throws ServiceTemporarilyUnavailableException, NakadiRuntimeException {
+            throws ServiceTemporarilyUnavailableException, NakadiWrapperException {
         final Map<K, V> result = new HashMap<>();
         final CountDownLatch latch = new CountDownLatch(keys.size());
         try {
@@ -219,7 +219,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 }).forPath(zkKey);
             }
         } catch (Exception ex) {
-            throw new NakadiRuntimeException(ex);
+            throw new NakadiWrapperException(ex);
         }
         try {
             if (!latch.await(MAX_ZK_RESPONSE_SECONDS, TimeUnit.SECONDS)) {
@@ -242,7 +242,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final Collection<Session> listSessions()
-            throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
+            throws SubscriptionNotInitializedException, NakadiWrapperException, ServiceTemporarilyUnavailableException {
         getLog().info("fetching sessions information");
         final List<String> zkSessions;
         try {
@@ -250,7 +250,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (final KeeperException.NoNodeException e) {
             throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (Exception ex) {
-            throw new NakadiRuntimeException(ex);
+            throw new NakadiWrapperException(ex);
         }
 
         return loadDataAsync(
@@ -281,14 +281,14 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final Closeable subscribeForCursorsReset(final Runnable listener)
-            throws NakadiRuntimeException, UnsupportedOperationException {
+            throws NakadiWrapperException, UnsupportedOperationException {
         final NodeCache cursorResetCache = new NodeCache(getCurator(), resetCursorPath);
         cursorResetCache.getListenable().addListener(listener::run);
 
         try {
             cursorResetCache.start();
         } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
 
         return () -> {
@@ -296,7 +296,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 cursorResetCache.getListenable().clear();
                 cursorResetCache.close();
             } catch (final IOException e) {
-                throw new NakadiRuntimeException(e);
+                throw new NakadiWrapperException(e);
             }
         };
     }
@@ -374,7 +374,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener)
-            throws NakadiRuntimeException {
+            throws NakadiWrapperException {
         getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
         return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
                 getCurator(), listener, getSubscriptionPath("/sessions"));
@@ -382,7 +382,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final Optional<ZkSubscriptionNode> getZkSubscriptionNode()
-            throws SubscriptionNotInitializedException, NakadiRuntimeException {
+            throws SubscriptionNotInitializedException, NakadiWrapperException {
         if (!isSubscriptionCreatedAndInitialized()) {
             return Optional.empty();
         }
@@ -454,7 +454,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                     .collect(Collectors.toList());
 
         } catch (final Exception ex) {
-            throw new NakadiRuntimeException(ex);
+            throw new NakadiWrapperException(ex);
         }
     }
 
@@ -463,7 +463,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     protected abstract String getOffsetPath(EventTypePartition etp);
 
-    protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
+    protected abstract byte[] serializeSession(Session session) throws NakadiWrapperException;
 
-    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiWrapperException;
 }

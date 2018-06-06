@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class UnprocessableEntityException extends MyNakadiRuntimeException1 {
+public class UnprocessableEntityException extends NakadiRuntimeBaseException {
     public UnprocessableEntityException(final String message) {
         super(message);
     }

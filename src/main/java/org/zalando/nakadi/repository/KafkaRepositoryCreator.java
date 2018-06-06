@@ -7,7 +7,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
@@ -66,7 +66,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
 
     @Override
     public Timeline.StoragePosition createStoragePosition(final List<NakadiCursor> offsets)
-            throws NakadiRuntimeException {
+            throws NakadiWrapperException {
         final Timeline.KafkaStoragePosition kafkaStoragePosition = new Timeline.KafkaStoragePosition();
         kafkaStoragePosition.setOffsets(offsets.stream()
                 .sorted(Comparator.comparing(p -> Integer.valueOf(p.getPartition())))

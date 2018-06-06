@@ -5,7 +5,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SubscriptionPartitionConflictException extends MyNakadiRuntimeException1 {
+public class SubscriptionPartitionConflictException extends NakadiRuntimeBaseException {
 
     private SubscriptionPartitionConflictException(final String msg) {
         super(msg);

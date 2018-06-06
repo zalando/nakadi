@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
@@ -17,7 +17,7 @@ import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -116,8 +116,8 @@ public interface NakadiProblemHandling extends ProblemHandling {
         return create(Problem.valueOf(TOO_MANY_REQUESTS, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(MyNakadiRuntimeException1.class)
-    default ResponseEntity<Problem> handleInternalErrorException(final MyNakadiRuntimeException1 exception,
+    @ExceptionHandler(NakadiRuntimeBaseException.class)
+    default ResponseEntity<Problem> handleInternalErrorException(final NakadiRuntimeBaseException exception,
                                                                  final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
@@ -164,7 +164,7 @@ public interface NakadiProblemHandling extends ProblemHandling {
     }
 
     @ExceptionHandler
-    default ResponseEntity<Problem> handleNakadiRuntimeException(final NakadiRuntimeException exception,
+    default ResponseEntity<Problem> handleNakadiRuntimeException(final NakadiWrapperException exception,
                                                                  final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
         if (cause instanceof InternalNakadiException) {
