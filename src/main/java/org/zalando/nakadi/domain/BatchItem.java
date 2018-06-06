@@ -82,8 +82,11 @@ public class BatchItem {
         if (strictParsing) {
             try {
                 final JSONObject shadowEvent = StrictJsonParser.parseObject(rawEvent);
-                if (!shadowEvent.toString().equals(this.event.toString())) {
-                    LOG.debug("[STRICT_JSON_DIFF] Strict parser produced different output for event: {}", rawEvent);
+                final String shadowOutput = shadowEvent.toString();
+                final String usualOutput = this.event.toString();
+                if (!shadowOutput.equals(usualOutput)) {
+                    LOG.debug("[STRICT_JSON_DIFF] Strict parser produced different output for event: {} " +
+                            "Strict parser output: {} Old parser output: {}", rawEvent, shadowOutput, usualOutput);
                 }
             } catch (final Exception e) {
                 LOG.debug("[STRICT_JSON_DIFF] Failed to parse event with strict parser: {}", rawEvent);
