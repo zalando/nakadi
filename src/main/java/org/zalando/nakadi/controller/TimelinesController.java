@@ -61,22 +61,25 @@ public class TimelinesController implements NakadiProblemHandling {
                 .collect(Collectors.toList()));
     }
 
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> unprocessable(final UnableProcessException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Problem> handleConflictException(final ConflictException exception,
+                                                           final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(CONFLICT, exception.getMessage()), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
+    public ResponseEntity<Problem> handleNotFoundException(final NotFoundException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<Problem> conflict(final ConflictException ex, final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(CONFLICT, ex.getMessage()), request);
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
 }

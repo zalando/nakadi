@@ -59,28 +59,6 @@ public class SchemaController implements NakadiProblemHandling {
         return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemaVersion(name, version));
     }
 
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
-                                                   final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(NoSuchSchemaException.class)
-    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
-                                                   final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(InvalidSchemaVersionException.class)
-    public ResponseEntity<Problem> handleInvalidSchemaVersionException(
-            final InvalidSchemaVersionException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
-    }
-
     @ExceptionHandler(InvalidLimitException.class)
     public ResponseEntity<Problem> handleInvalidLimitException(
             final InvalidLimitException exception,
@@ -95,5 +73,27 @@ public class SchemaController implements NakadiProblemHandling {
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidSchemaVersionException.class)
+    public ResponseEntity<Problem> handleInvalidSchemaVersionException(
+            final InvalidSchemaVersionException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(NoSuchSchemaException.class)
+    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
+                                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 }

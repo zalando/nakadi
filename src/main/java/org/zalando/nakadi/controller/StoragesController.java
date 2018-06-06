@@ -135,7 +135,7 @@ public class StoragesController implements NakadiProblemHandling {
 
     @ExceptionHandler(StorageIsUsedException.class)
     public ResponseEntity<Problem> handleStorageIsUsedException(final StorageIsUsedException exception,
-                                                                 final NativeWebRequest request) {
+                                                                final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
     }

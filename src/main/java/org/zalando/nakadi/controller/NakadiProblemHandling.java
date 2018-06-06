@@ -60,7 +60,7 @@ public interface NakadiProblemHandling extends ProblemHandling {
     @Override
     @ExceptionHandler
     default ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception,
-                                                                     final NativeWebRequest request) {
+                                                                      final NativeWebRequest request) {
         /*
         Unwrap nested JsonMappingException because the enclosing HttpMessageNotReadableException adds some ugly, Java
         class and stacktrace like information.
@@ -76,16 +76,16 @@ public interface NakadiProblemHandling extends ProblemHandling {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    default ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
-                                                         final NativeWebRequest request) {
+    default ResponseEntity<Problem> handleAccessDeniedException(final AccessDeniedException exception,
+                                                                final NativeWebRequest request) {
         return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
     }
 
     @ExceptionHandler(CursorsAreEmptyException.class)
-    default ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+    default ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException exception,
                                                                       final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(CursorConversionException.class)
@@ -105,20 +105,20 @@ public interface NakadiProblemHandling extends ProblemHandling {
 
     @ExceptionHandler(IllegalClientIdException.class)
     default ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
-                                                                  final NativeWebRequest request) {
+                                                                   final NativeWebRequest request) {
         return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
     }
 
     @ExceptionHandler(LimitReachedException.class)
-    default ResponseEntity<Problem> handleLimitReachedException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+    default ResponseEntity<Problem> handleLimitReachedException(final ServiceTemporarilyUnavailableException exception,
+                                                                final NativeWebRequest request) {
         LOG.warn(exception.getMessage());
         return create(Problem.valueOf(TOO_MANY_REQUESTS, exception.getMessage()), request);
     }
 
     @ExceptionHandler(MyNakadiRuntimeException1.class)
-    default ResponseEntity<Problem> handleInternalError(final MyNakadiRuntimeException1 exception,
-                                                        final NativeWebRequest request) {
+    default ResponseEntity<Problem> handleInternalErrorException(final MyNakadiRuntimeException1 exception,
+                                                                 final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
@@ -130,15 +130,16 @@ public interface NakadiProblemHandling extends ProblemHandling {
     }
 
     @ExceptionHandler(RepositoryProblemException.class)
-    default ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
-                                                            final NativeWebRequest request) {
+    default ResponseEntity<Problem> handleRepositoryProblemException(final RepositoryProblemException exception,
+                                                                     final NativeWebRequest request) {
         LOG.error("Repository problem occurred", exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
     default ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+            final ServiceTemporarilyUnavailableException exception,
+            final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
@@ -163,8 +164,8 @@ public interface NakadiProblemHandling extends ProblemHandling {
     }
 
     @ExceptionHandler
-    default ResponseEntity<Problem> handleExceptionWrapper(final NakadiRuntimeException exception,
-                                                          final NativeWebRequest request) throws Exception {
+    default ResponseEntity<Problem> handleNakadiRuntimeException(final NakadiRuntimeException exception,
+                                                                 final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
         if (cause instanceof InternalNakadiException) {
             final InternalNakadiException ne = (InternalNakadiException) cause;

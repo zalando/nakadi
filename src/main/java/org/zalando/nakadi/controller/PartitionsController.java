@@ -122,56 +122,45 @@ public class PartitionsController implements NakadiProblemHandling {
         }
     }
 
-    @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> handleAccessDeniedException(final AccessDeniedException exception,
+                                                               final NativeWebRequest request) {
+        return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
+    }
+
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<?> handleInternalNakadiException(final InternalNakadiException exception,
+                                                           final NativeWebRequest request) {
+        LOG.debug("Could not get partition. Respond with SERVICE_UNAVAILABLE.", exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InvalidCursorException.class)
-    public ResponseEntity<?> handleInvalidCursorException(final InvalidCursorException e,
-                                                    final NativeWebRequest request) {
+    public ResponseEntity<?> handleInvalidCursorException(final InvalidCursorException exception,
+                                                          final NativeWebRequest request) {
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> handleNotFoundException(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
+    @ExceptionHandler(InvalidCursorOperation.class)
+    public ResponseEntity<?> handleInvalidCursorOperation(final InvalidCursorOperation exception,
+                                                          final NativeWebRequest request) {
+        LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
     @Override
     @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException e,
-                                                    final NativeWebRequest request) {
-        LOG.debug(e.getMessage());
-        return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(InternalNakadiException.class)
-    public ResponseEntity<?> handleInternalNakadiException(final InternalNakadiException e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-        return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
-                                                         final NativeWebRequest request) {
-        return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
-    }
-
-    private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
-            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceTemporarilyUnavailableException {
-        final Cursor consumedCursor = new Cursor(partition, consumedOffset);
-        final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
-        return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
-                .stream()
-                .findFirst()
-                .map(this::toCursorLag)
-                .orElseThrow(MyNakadiRuntimeException1::new);
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Problem> handleNotFoundException(final NotFoundException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
@@ -211,5 +200,17 @@ public class PartitionsController implements NakadiProblemHandling {
                 cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
                 nakadiCursorLag.getLag()
         );
+    }
+
+    private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
+            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
+            ServiceTemporarilyUnavailableException {
+        final Cursor consumedCursor = new Cursor(partition, consumedOffset);
+        final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
+        return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
+                .stream()
+                .findFirst()
+                .map(this::toCursorLag)
+                .orElseThrow(MyNakadiRuntimeException1::new);
     }
 }

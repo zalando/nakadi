@@ -112,36 +112,61 @@ public class SubscriptionController implements NakadiProblemHandling {
         }
     }
 
-    @ExceptionHandler(InternalNakadiException.class)
-    public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException ex,
-                                                         final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()), request);
+    @ExceptionHandler(ErrorGettingCursorTimeLagException.class)
+    public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException exception,
+                                                          final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException ex,
+    public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException exception,
                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
-    }
-
-    @ExceptionHandler(ErrorGettingCursorTimeLagException.class)
-    public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException ex,
-                                                          final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
-    public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException ex,
-                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(
-                Problem.valueOf(
-                        SERVICE_UNAVAILABLE,
-                        ex.getMessage()),
-                request);
+    public ResponseEntity<Problem> handleInconsistentStateException(final InconsistentStateException exception,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException exception,
+                                                                 final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidLimitException.class)
+    public ResponseEntity<Problem> handleInvalidLimitException(final InvalidLimitException exception,
+                                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidOffsetException.class)
+    public ResponseEntity<Problem> handleInvalidOffsetException(final InvalidOffsetException exception,
+                                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
+    }
+
+    @Override
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @Override
@@ -150,47 +175,14 @@ public class SubscriptionController implements NakadiProblemHandling {
             final ServiceTemporarilyUnavailableException exception,
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return create(
-                Problem.valueOf(
-                        SERVICE_UNAVAILABLE,
-                        exception.getMessage()),
-                request);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(TimeLagStatsTimeoutException.class)
-    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException e,
+    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException exception,
                                                                       final NativeWebRequest request) {
-        LOG.warn(e.getMessage());
-        return create(Problem.valueOf(REQUEST_TIMEOUT, e.getMessage()), request);
-    }
-
-    @Override
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException e,
-                                                                      final NativeWebRequest request) {
-        LOG.debug(e.getMessage());
-        return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
-    }
-
-    @ExceptionHandler(NoSuchSubscriptionException.class)
-    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException e,
-                                                                  final NativeWebRequest request) {
-        LOG.debug(e.getMessage());
-        return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
-    }
-
-    @ExceptionHandler(InvalidLimitException.class)
-    public ResponseEntity<Problem> handleInvalidLimitException(final InvalidLimitException e,
-                                                                     final NativeWebRequest request) {
-        LOG.debug(e.getMessage());
-        return create(Problem.valueOf(BAD_REQUEST, e.getMessage()), request);
-    }
-
-    @ExceptionHandler(InvalidOffsetException.class)
-    public ResponseEntity<Problem> handleInvalidOffsetException(final InvalidOffsetException e,
-                                                               final NativeWebRequest request) {
-        LOG.debug(e.getMessage());
-        return create(Problem.valueOf(BAD_REQUEST, e.getMessage()), request);
+        LOG.warn(exception.getMessage());
+        return create(Problem.valueOf(REQUEST_TIMEOUT, exception.getMessage()), request);
     }
 
 }

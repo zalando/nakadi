@@ -155,6 +155,49 @@ public class CursorsController implements NakadiProblemHandling {
         }
     }
 
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureNotAllowedException(final FeatureNotAvailableException exception,
+                                                           final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
+    }
+
+    @ExceptionHandler(InvalidStreamIdException.class)
+    public ResponseEntity<Problem> handleInvalidStreamIdException(final InvalidStreamIdException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.warn("Stream id {} is not found: {}", exception.getStreamId(), exception.getMessage());
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
+    @Override
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Problem> handleMethodArgumentNotValid(final MethodArgumentNotValidException exception,
+                                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(new ValidationProblem(exception.getBindingResult()), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(RequestInProgressException.class)
+    public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException exception,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(CONFLICT, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException exception,
+                                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
+    }
+
     private List<NakadiCursor> convertToNakadiCursors(
             final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
@@ -165,48 +208,4 @@ public class CursorsController implements NakadiProblemHandling {
         }
         return nakadiCursors;
     }
-
-    @ExceptionHandler(InvalidStreamIdException.class)
-    public ResponseEntity<Problem> handleInvalidStreamIdException(final InvalidStreamIdException ex,
-                                                         final NativeWebRequest request) {
-        LOG.warn("Stream id {} is not found: {}", ex.getStreamId(), ex.getMessage());
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
-    }
-
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
-                                                                final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(SERVICE_UNAVAILABLE, ex.getMessage()), request);
-    }
-
-    @ExceptionHandler(RequestInProgressException.class)
-    public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
-                                                                    final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(CONFLICT, ex.getMessage()), request);
-    }
-
-    @Override
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Problem> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
-                                                                         final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(new ValidationProblem(ex.getBindingResult()), request);
-    }
-
-    @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureNotAllowedException(final FeatureNotAvailableException ex,
-                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
-    }
-
-    @ExceptionHandler(NoSuchSubscriptionException.class)
-    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException ex,
-                                                                     final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
-    }
-
 }

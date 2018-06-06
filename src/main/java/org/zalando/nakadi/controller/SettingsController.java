@@ -121,19 +121,19 @@ public class SettingsController implements NakadiProblemHandling {
         return ResponseEntity.ok().build();
     }
 
-    @ExceptionHandler(UnknownOperationException.class)
-    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
-                                                                   final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(SERVICE_UNAVAILABLE,
-                "There was a problem processing your request."), request);
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
-                                                                final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
+    @ExceptionHandler(UnknownOperationException.class)
+    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException exception,
+                                                                   final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE,
+                "There was a problem processing your request."), request);
     }
 
     private boolean isNotAdmin(final Client client) {

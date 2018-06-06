@@ -132,8 +132,8 @@ public class CursorOperationsController implements NakadiProblemHandling {
     }
 
     @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation exception,
-                                                    final NativeWebRequest request) {
+    public ResponseEntity<?> handleInvalidCursorOperationException(final InvalidCursorOperation exception,
+                                                                   final NativeWebRequest request) {
         LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY,
                 clientErrorMessage(exception.getReason())), request);

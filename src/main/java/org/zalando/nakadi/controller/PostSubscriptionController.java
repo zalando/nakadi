@@ -93,6 +93,31 @@ public class PostSubscriptionController implements NakadiProblemHandling {
         }
     }
 
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureNotAvailableException(
+            final FeatureNotAvailableException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, exception.getMessage()), request);
+
+    }
+
+    @Override
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                   final NativeWebRequest request) {
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler({
+            WrongInitialCursorsException.class,
+            TooManyPartitionsException.class})
+    public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
+                                                                   final NativeWebRequest request) {
+        LOG.debug("Error occurred when working with subscriptions", exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
     private ResponseEntity<?> ok(final Subscription existingSubscription) {
         final UriComponents location = subscriptionService.getSubscriptionUri(existingSubscription);
         return ResponseEntity.status(OK).location(location.toUri()).body(existingSubscription);
@@ -104,29 +129,5 @@ public class PostSubscriptionController implements NakadiProblemHandling {
                 .location(location.toUri())
                 .header(CONTENT_LOCATION, location.toString())
                 .body(subscription);
-    }
-
-    @Override
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
-                                                                   final NativeWebRequest request) {
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-    @ExceptionHandler({
-            WrongInitialCursorsException.class,
-            TooManyPartitionsException.class})
-    public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
-                                                                   final NativeWebRequest request) {
-        LOG.debug("Error occurred when working with subscriptions", exception);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureNotAvailable(
-            final FeatureNotAvailableException ex,
-            final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
-
     }
 }
