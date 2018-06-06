@@ -89,7 +89,8 @@ public class BatchItem {
                             "Strict parser output: {} Old parser output: {}", rawEvent, shadowOutput, usualOutput);
                 }
             } catch (final Exception e) {
-                LOG.debug("[STRICT_JSON_DIFF] Failed to parse event with strict parser: {}", rawEvent);
+                LOG.debug("[STRICT_JSON_DIFF] Failed to parse event with strict parser: {} Error message: {}",
+                        rawEvent, e.getMessage());
             }
         }
 
