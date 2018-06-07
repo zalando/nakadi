@@ -32,4 +32,12 @@ public class StrictJsonParserTest {
         testSingleString(veryComplexString);
 
     }
+
+    @Test
+    public void testNumbers() {
+        testSingleString("{\"test\":1e+2}");
+        testSingleString("{\"test\":1e-2}");
+        testSingleString("{\"test\":1e+2}");
+        testSingleString("{\"test\":-1e+4}");
+    }
 }

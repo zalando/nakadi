@@ -6,7 +6,7 @@ import org.json.JSONObject;
 
 public class StrictJsonParser {
 
-    private static final String POSSIBLE_NUMBER_DIGITS = "0123456789-.Ee";
+    private static final String POSSIBLE_NUMBER_DIGITS = "0123456789-+.Ee";
 
     private static class StringTokenizer {
 
