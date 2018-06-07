@@ -166,7 +166,7 @@ public class EventPublishingController {
     }
 
     private ThrowableProblem createProblem(final JSONException e) {
-        return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
+        return Problem.valueOf(Response.Status.BAD_REQUEST, "Error occurred when parsing event(s). " + e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {

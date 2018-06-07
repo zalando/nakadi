@@ -38,6 +38,8 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.STRICT_JSON_PARSING;
+
 @Component
 public class EventPublisher {
 
@@ -51,6 +53,7 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -59,7 +62,8 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthorizationValidator authValidator) {
+                          final AuthorizationValidator authValidator,
+                          final FeatureToggleService featureToggleService) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -67,6 +71,7 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
+        this.featureToggleService = featureToggleService;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -85,7 +90,8 @@ public class EventPublisher {
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(events);
+        final List<BatchItem> batch = BatchFactory.from(
+                events, featureToggleService.isFeatureEnabled(STRICT_JSON_PARSING));
         try {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 

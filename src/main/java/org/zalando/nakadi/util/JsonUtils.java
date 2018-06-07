@@ -1,7 +1,6 @@
 package org.zalando.nakadi.util;
 
-import com.grack.nanojson.JsonParser;
-import com.grack.nanojson.JsonParserException;
+import org.zalando.nakadi.domain.StrictJsonParser;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
 public class JsonUtils {
@@ -9,8 +8,8 @@ public class JsonUtils {
 
     public static void checkEventTypeSchemaValid(final String jsonInString) throws InvalidEventTypeException {
         try {
-            JsonParser.any().from(jsonInString);
-        } catch (final JsonParserException jpe) {
+            StrictJsonParser.parse(jsonInString, false);
+        } catch (final RuntimeException jpe) {
             throw new InvalidEventTypeException("schema must be a valid json: " + jpe.getMessage());
         }
     }

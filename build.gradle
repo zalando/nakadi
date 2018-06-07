@@ -175,7 +175,6 @@ dependencies {
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.8.8'
     compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.8'
     compile 'org.zalando:twintip-spring-web:1.1.0'
-    compile 'com.grack:nanojson:1.2'
     compile 'org.json:json:20171018'
 
     // tests
@@ -375,3 +374,4 @@ checkstyle {
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
 }
+
