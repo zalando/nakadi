@@ -374,3 +374,4 @@ checkstyle {
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
 }
+
