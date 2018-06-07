@@ -1019,6 +1019,29 @@ paths:
       responses:
         '204':
           description: Subscription was deleted
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Updates a subscription.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '204':
+          description: Subscription was updated
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1158,6 +1181,10 @@ paths:
       responses:
         '204':
           description: Offsets were reset
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
