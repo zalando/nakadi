@@ -1032,9 +1032,21 @@ paths:
         - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
-      description: Updates a subscription.
+      description: |
+        This endpoint only allows to update the authorization section of a subscription. All other properties are
+        immutable. This operation is restricted to subjects with administrative role.
       parameters:
-        - $ref: '#/parameters/SubscriptionId'
+        - name: subscription
+          in: body
+          description: Subscription with modified authorization section.
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
       responses:
         '204':
           description: Subscription was updated
