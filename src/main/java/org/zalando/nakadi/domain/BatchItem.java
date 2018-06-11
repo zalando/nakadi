@@ -1,9 +1,6 @@
 package org.zalando.nakadi.domain;
 
-import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
@@ -13,8 +10,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class BatchItem {
-
-    private static final Logger LOG = LoggerFactory.getLogger(BatchItem.class);
 
     public enum Injection {
         METADATA("metadata");
@@ -75,14 +70,7 @@ public class BatchItem {
             final List<Integer> skipCharacters) {
         this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
-        try {
-            this.event = StrictJsonParser.parseObject(rawEvent);
-        } catch (final JSONException e) {
-            // temporary logging
-            LOG.debug("[STRICT_JSON_FAIL] Failed to parse event with strict parser: {} Error message: {}",
-                    rawEvent, e.getMessage());
-            throw e;
-        }
+        this.event = StrictJsonParser.parseObject(rawEvent);
         this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
