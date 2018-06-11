@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,31 +70,19 @@ public class BatchItem {
 
     public BatchItem(
             final String rawEvent,
-            final boolean strictParsing,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
             final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
         this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
-        this.event = new JSONObject(rawEvent);
-
-        // We will first release in a shadow mode when the strict parser does second parsing
-        // and we compare if the result is the same as with the old parser; we also log invalid events;
-        if (strictParsing) {
-            try {
-                final JSONObject shadowEvent = StrictJsonParser.parseObject(rawEvent);
-                final String shadowOutput = shadowEvent.toString();
-                final String usualOutput = this.event.toString();
-                if (!shadowOutput.equals(usualOutput)) {
-                    LOG.debug("[STRICT_JSON_DIFF] Strict parser produced different output for event: {} " +
-                            "Strict parser output: {} Old parser output: {}", rawEvent, shadowOutput, usualOutput);
-                }
-            } catch (final Exception e) {
-                LOG.debug("[STRICT_JSON_DIFF] Failed to parse event with strict parser: {} Error message: {}",
-                        rawEvent, e.getMessage());
-            }
+        try {
+            this.event = StrictJsonParser.parseObject(rawEvent);
+        } catch (final JSONException e) {
+            // temporary logging
+            LOG.debug("[STRICT_JSON_FAIL] Failed to parse event with strict parser: {} Error message: {}",
+                    rawEvent, e.getMessage());
+            throw e;
         }
-
         this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;

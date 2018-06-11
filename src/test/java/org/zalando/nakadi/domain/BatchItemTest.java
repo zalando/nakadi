@@ -23,7 +23,7 @@ public class BatchItemTest {
 
     @Test
     public void testBatchItemSizeWithMultiByteChar() {
-        final BatchItem item = new BatchItem("{ \"name\": \"香港\"} ", true,
+        final BatchItem item = new BatchItem("{ \"name\": \"香港\"} ",
                 BatchItem.EmptyInjectionConfiguration.build(1, false),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
