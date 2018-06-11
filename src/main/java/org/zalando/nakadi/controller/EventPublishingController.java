@@ -129,9 +129,6 @@ public class EventPublishingController {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
             final String applicationName = client.getClientId();
 
-            LOG.info("[SLO] [publishing-latency] time={} size={} count={} eventTypeName={} app={}", msSpent,
-                    totalSizeBytes, eventCount, eventTypeName, applicationName);
-
             nakadiKpiPublisher.publish(kpiBatchPublishedEventType, () -> new JSONObject()
                     .put("event_type", eventTypeName)
                     .put("app", applicationName)
@@ -166,7 +163,7 @@ public class EventPublishingController {
     }
 
     private ThrowableProblem createProblem(final JSONException e) {
-        return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
+        return Problem.valueOf(Response.Status.BAD_REQUEST, "Error occurred when parsing event(s). " + e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {

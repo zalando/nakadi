@@ -1,6 +1,8 @@
 package org.zalando.nakadi.domain;
 
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +12,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class BatchItem {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BatchItem.class);
 
     public enum Injection {
         METADATA("metadata");
@@ -64,14 +68,33 @@ public class BatchItem {
     private int eventSize;
 
     public BatchItem(
-            final String event,
+            final String rawEvent,
+            final boolean strictParsing,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
             final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
-        this.rawEvent = event;
+        this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
-        this.event = new JSONObject(event);
-        this.eventSize = event.getBytes(StandardCharsets.UTF_8).length;
+        this.event = new JSONObject(rawEvent);
+
+        // We will first release in a shadow mode when the strict parser does second parsing
+        // and we compare if the result is the same as with the old parser; we also log invalid events;
+        if (strictParsing) {
+            try {
+                final JSONObject shadowEvent = StrictJsonParser.parseObject(rawEvent);
+                final String shadowOutput = shadowEvent.toString();
+                final String usualOutput = this.event.toString();
+                if (!shadowOutput.equals(usualOutput)) {
+                    LOG.debug("[STRICT_JSON_DIFF] Strict parser produced different output for event: {} " +
+                            "Strict parser output: {} Old parser output: {}", rawEvent, shadowOutput, usualOutput);
+                }
+            } catch (final Exception e) {
+                LOG.debug("[STRICT_JSON_DIFF] Failed to parse event with strict parser: {} Error message: {}",
+                        rawEvent, e.getMessage());
+            }
+        }
+
+        this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
         this.response = new BatchItemResponse();
@@ -85,7 +108,7 @@ public class BatchItem {
         if (null == injectionValues) {
             injectionValues = new String[Injection.values().length];
         }
-        injectionValues[type.ordinal()] =value;
+        injectionValues[type.ordinal()] = value;
     }
 
     public JSONObject getEvent() {
@@ -151,7 +174,7 @@ public class BatchItem {
             return null == config ? emptyInjectionConfiguration.position : config.startPos;
         }));
 
-        for (final Injection injectionKey: sortedInjections) {
+        for (final Injection injectionKey : sortedInjections) {
             final String injectionValue = injectionValues[injectionKey.ordinal()];
             if (injectionValue == null) {
                 continue;

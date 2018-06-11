@@ -82,7 +82,7 @@ public class EventPublisherTest {
         Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
-                authzValidator);
+                authzValidator, Mockito.mock(FeatureToggleService.class));
     }
 
     @Test
