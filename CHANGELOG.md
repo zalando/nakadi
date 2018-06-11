@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Upgraded dependencies
 
+### Changed
+- Allow to use strict json parsing for event type publishing under feature toggle
+
 ## [2.7.2] - 2018-05-30
 
 ### Changed

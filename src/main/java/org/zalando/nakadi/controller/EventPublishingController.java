@@ -168,7 +168,7 @@ public class EventPublishingController implements NakadiProblemHandling {
     }
 
     private ThrowableProblem createProblem(final JSONException e) {
-        return Problem.valueOf(BAD_REQUEST, e.getMessage());
+        return Problem.valueOf(BAD_REQUEST, "Error occurred when parsing event(s). " + e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {

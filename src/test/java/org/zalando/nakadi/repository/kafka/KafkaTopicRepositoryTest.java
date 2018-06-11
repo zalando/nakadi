@@ -115,13 +115,13 @@ public class KafkaTopicRepositoryTest {
 
 
     @Test
-    public void canListAllTopics() throws Exception {
+    public void canListAllTopics() {
         final List<String> allTopics = allTopics().stream().collect(toList());
         assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
     }
 
     @Test
-    public void canDetermineIfTopicExists() throws InternalNakadiException {
+    public void canDetermineIfTopicExists() {
         assertThat(kafkaTopicRepository.topicExists(MY_TOPIC), is(true));
         assertThat(kafkaTopicRepository.topicExists(ANOTHER_TOPIC), is(true));
 
@@ -136,7 +136,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void validateValidCursors() throws InternalNakadiException, InvalidCursorException {
+    public void validateValidCursors() throws InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
@@ -155,7 +155,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void invalidateInvalidCursors() throws InternalNakadiException {
+    public void invalidateInvalidCursors() {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
@@ -182,7 +182,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void canLoadPartitionStatistics() throws Exception {
+    public void canLoadPartitionStatistics() {
         final Timeline t1 = mock(Timeline.class);
         when(t1.getTopic()).thenReturn(MY_TOPIC);
         final Timeline t2 = mock(Timeline.class);
@@ -201,7 +201,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void canLoadPartitionEndStatistics() throws Exception {
+    public void canLoadPartitionEndStatistics() {
         final Timeline t1 = mock(Timeline.class);
         when(t1.getTopic()).thenReturn(MY_TOPIC);
         final Timeline t2 = mock(Timeline.class);
@@ -220,9 +220,9 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
+    public void whenPostEventTimesOutThenUpdateItemStatus() {
         final BatchItem item = new BatchItem(
-                "{}",
+                "{}", true,
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
@@ -248,8 +248,8 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem("{}",
+    public void whenPostEventOverflowsBufferThenUpdateItemStatus() {
+        final BatchItem item = new BatchItem("{}", true,
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
@@ -275,13 +275,13 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
+    public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() {
 
-        final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+        final BatchItem firstItem = new BatchItem("{}", true, BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         firstItem.setPartition("1");
-        final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+        final BatchItem secondItem = new BatchItem("{}", true, BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         secondItem.setPartition("2");
@@ -314,7 +314,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws Exception {
+    public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
 
@@ -330,7 +330,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                final BatchItem batchItem = new BatchItem("{}",
+                final BatchItem batchItem = new BatchItem("{}", true,
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
                         new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                         Collections.emptyList());
