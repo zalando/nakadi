@@ -93,10 +93,10 @@ public abstract class Try<T> {
 
         @Override
         public T getOrThrow() {
-            if (exception instanceof NakadiRuntimeException) {
-                throw (NakadiRuntimeException) exception;
+            if (exception instanceof NakadiWrapperException) {
+                throw (NakadiWrapperException) exception;
             }
-            throw new NakadiRuntimeException(exception);
+            throw new NakadiWrapperException(exception);
         }
 
         @Override

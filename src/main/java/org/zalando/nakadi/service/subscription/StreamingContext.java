@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
@@ -186,7 +186,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 if (task != null) {
                     task.run();
                 }
-            } catch (final NakadiRuntimeException ex) {
+            } catch (final NakadiWrapperException ex) {
                 log.error("Failed to process task " + task + ", will rethrow original error", ex);
                 switchState(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
@@ -214,7 +214,7 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
-    public void registerSession() throws NakadiRuntimeException {
+    public void registerSession() throws NakadiWrapperException {
         log.info("Registering session {}", session);
         // Install rebalance hook on client list change.
         sessionListSubscription = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));

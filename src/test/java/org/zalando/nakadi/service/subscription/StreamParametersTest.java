@@ -2,7 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;

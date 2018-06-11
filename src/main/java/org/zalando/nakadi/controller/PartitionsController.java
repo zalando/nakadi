@@ -17,13 +17,13 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -33,23 +33,22 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class PartitionsController {
+public class PartitionsController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
@@ -75,93 +74,100 @@ public class PartitionsController {
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
-                                            final NativeWebRequest request) {
+                                            final NativeWebRequest request) throws Throwable {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
-        try {
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            authorizationValidator.authorizeStreamRead(eventType);
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(eventType);
 
-            final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
-            final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
-                    .loadTopicStatistics(Collections.singletonList(timelines.get(0)));
-            final List<PartitionStatistics> lastStats;
-            if (timelines.size() == 1) {
-                lastStats = firstStats;
-            } else {
-                lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
-                        .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
-            }
-            final List<EventTypePartitionView> result = firstStats.stream().map(first -> {
-                final PartitionStatistics last = lastStats.stream()
-                        .filter(l -> l.getPartition().equals(first.getPartition()))
-                        .findAny().get();
-                return new EventTypePartitionView(
-                        eventTypeName,
-                        first.getPartition(),
-                        cursorConverter.convert(first.getFirst()).getOffset(),
-                        cursorConverter.convert(last.getLast()).getOffset());
-            }).collect(Collectors.toList());
-            return ok().body(result);
-        } catch (final NoSuchEventTypeException e) {
-            return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
-            LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
+        final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
+        final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
+                .loadTopicStatistics(Collections.singletonList(timelines.get(0)));
+        final List<PartitionStatistics> lastStats;
+        if (timelines.size() == 1) {
+            lastStats = firstStats;
+        } else {
+            lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
+                    .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
         }
+        final List<EventTypePartitionView> result = firstStats.stream().map(first -> {
+            final PartitionStatistics last = lastStats.stream()
+                    .filter(l -> l.getPartition().equals(first.getPartition()))
+                    .findAny().get();
+            return new EventTypePartitionView(
+                    eventTypeName,
+                    first.getPartition(),
+                    cursorConverter.convert(first.getFirst()).getOffset(),
+                    cursorConverter.convert(last.getLast()).getOffset());
+        }).collect(Collectors.toList());
+        return ok().body(result);
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
     public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
                                           @PathVariable("partition") final String partition,
                                           @Nullable @RequestParam(value = "consumed_offset", required = false)
-                                              final String consumedOffset, final NativeWebRequest request) {
+                                          final String consumedOffset, final NativeWebRequest request)
+            throws InvalidCursorException {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
-        try {
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            authorizationValidator.authorizeStreamRead(eventType);
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(eventType);
 
-            if (consumedOffset != null) {
-                final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
-                return ok().body(cursorLag);
-            } else {
-                final EventTypePartitionView result = getTopicPartition(eventTypeName, partition);
+        if (consumedOffset != null) {
+            final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
+            return ok().body(cursorLag);
+        } else {
+            final EventTypePartitionView result = getTopicPartition(eventTypeName, partition);
 
-                return ok().body(result);
-            }
-        } catch (final NoSuchEventTypeException e) {
-            return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
-            LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
-        } catch (final InvalidCursorException e) {
-            return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
-                    request);
+            return ok().body(result);
         }
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> handleAccessDeniedException(final AccessDeniedException exception,
+                                                               final NativeWebRequest request) {
+        return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
+    }
+
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<?> handleInternalNakadiException(final InternalNakadiException exception,
+                                                           final NativeWebRequest request) {
+        LOG.debug("Could not get partition. Respond with SERVICE_UNAVAILABLE.", exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidCursorException.class)
+    public ResponseEntity<?> handleInvalidCursorException(final InvalidCursorException exception,
+                                                          final NativeWebRequest request) {
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+    }
+
     @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+    public ResponseEntity<?> handleInvalidCursorOperation(final InvalidCursorOperation exception,
+                                                          final NativeWebRequest request) {
+        LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+    }
+
+    @Override
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
+    public ResponseEntity<Problem> handleNotFoundException(final NotFoundException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
-    private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
-            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceTemporarilyUnavailableException {
-        final Cursor consumedCursor = new Cursor(partition, consumedOffset);
-        final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
-        return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
-                .stream()
-                .findFirst()
-                .map(this::toCursorLag)
-                .orElseThrow(MyNakadiRuntimeException1::new);
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
@@ -194,5 +200,17 @@ public class PartitionsController {
                 cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
                 nakadiCursorLag.getLag()
         );
+    }
+
+    private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
+            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
+            ServiceTemporarilyUnavailableException {
+        final Cursor consumedCursor = new Cursor(partition, consumedOffset);
+        final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
+        return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
+                .stream()
+                .findFirst()
+                .map(this::toCursorLag)
+                .orElseThrow(NakadiRuntimeBaseException::new);
     }
 }

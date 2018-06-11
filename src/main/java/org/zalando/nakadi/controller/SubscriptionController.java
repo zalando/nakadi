@@ -3,7 +3,6 @@ package org.zalando.nakadi.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,33 +12,44 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
+import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOffsetException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.util.Set;
 
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.NOT_IMPLEMENTED;
+import static org.zalando.problem.Status.REQUEST_TIMEOUT;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 
 @RestController
 @RequestMapping(value = "/subscriptions")
-public class SubscriptionController {
+public class SubscriptionController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionController.class);
 
@@ -63,9 +73,9 @@ public class SubscriptionController {
             final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(
-                () -> subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
-                request);
+        final PaginationWrapper<Subscription> wrapper = subscriptionService.listSubscriptions(owningApplication,
+                eventTypes, showStatus, limit, offset);
+        return status(OK).body(wrapper);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
@@ -73,7 +83,8 @@ public class SubscriptionController {
                                              final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
+        final Subscription subscription = subscriptionService.getSubscription(subscriptionId);
+        return status(OK).body(subscription);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
@@ -81,69 +92,97 @@ public class SubscriptionController {
                                                 final NativeWebRequest request) {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
-                HttpStatus.NO_CONTENT);
+        subscriptionService.deleteSubscription(subscriptionId);
+        return status(NO_CONTENT).build();
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId,
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
-            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws InternalNakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException, 
+            Exception {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
-        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
-    }
-
-    @ExceptionHandler(NakadiException.class)
-    public ResponseEntity<Problem> handleNakadiException(final NakadiException ex,
-                                                         final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(ex.asProblem(), request);
-    }
-
-    @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException ex,
-                                                          final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
+        try {
+            return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
+        } catch (final NakadiWrapperException exception) {
+            throw exception.getException();
+        }
     }
 
     @ExceptionHandler(ErrorGettingCursorTimeLagException.class)
-    public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException ex,
+    public ResponseEntity<Problem> handleTimeLagException(final ErrorGettingCursorTimeLagException exception,
                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException exception,
+                                                          final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(NOT_IMPLEMENTED, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
-    public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException ex,
-                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(
-                Problem.valueOf(
-                        SERVICE_UNAVAILABLE,
-                        ex.getMessage()),
-                request);
+    public ResponseEntity<Problem> handleInconsistentStateException(final InconsistentStateException exception,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
+    @ExceptionHandler(InternalNakadiException.class)
+    public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException exception,
+                                                                 final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidLimitException.class)
+    public ResponseEntity<Problem> handleInvalidLimitException(final InvalidLimitException exception,
+                                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(InvalidOffsetException.class)
+    public ResponseEntity<Problem> handleInvalidOffsetException(final InvalidOffsetException exception,
+                                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
+    }
+
+    @Override
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
+    }
+
+    @Override
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporarilyUnavailable(final ServiceTemporarilyUnavailableException ex,
-                                                                       final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(
-                Problem.valueOf(
-                        SERVICE_UNAVAILABLE,
-                        ex.getMessage()),
-                request);
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
+            final ServiceTemporarilyUnavailableException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(TimeLagStatsTimeoutException.class)
-    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException e,
+    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException exception,
                                                                       final NativeWebRequest request) {
-        LOG.warn(e.getMessage());
-        return Responses.create(Response.Status.REQUEST_TIMEOUT, e.getMessage(), request);
+        LOG.warn(exception.getMessage());
+        return create(Problem.valueOf(REQUEST_TIMEOUT, exception.getMessage()), request);
     }
 
 }

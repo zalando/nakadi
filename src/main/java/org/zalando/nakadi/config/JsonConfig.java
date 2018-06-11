@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.zalando.problem.ProblemModule;
+import org.zalando.problem.validation.ConstraintViolationProblemModule;
 
 import java.io.IOException;
 
@@ -40,6 +41,7 @@ public class JsonConfig {
         objectMapper.registerModule(enumModule());
         objectMapper.registerModule(new Jdk8Module());
         objectMapper.registerModule(new ProblemModule());
+        objectMapper.registerModule(new ConstraintViolationProblemModule());
         objectMapper.registerModule(new JodaModule());
         objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS , false);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

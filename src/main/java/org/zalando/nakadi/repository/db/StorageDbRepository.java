@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
-import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 
@@ -73,11 +73,11 @@ public class StorageDbRepository extends AbstractDbRepository {
     }
 
     public void deleteStorage(final String id)
-            throws NoStorageException, StorageIsUsedException, RepositoryProblemException {
+            throws NoSuchStorageException, StorageIsUsedException, RepositoryProblemException {
         try {
             final int rowDeleted = jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
             if (rowDeleted == 0) {
-                throw new NoStorageException("Tried to remove storage that doesn't exist, id: " + id);
+                throw new NoSuchStorageException("Tried to remove storage that doesn't exist, id: " + id);
             }
         } catch (final DataIntegrityViolationException e) {
             throw new StorageIsUsedException("Can't delete storage as it is still used, id: " + id, e);

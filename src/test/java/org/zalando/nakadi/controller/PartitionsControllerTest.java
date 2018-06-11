@@ -14,8 +14,8 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -38,8 +38,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -51,6 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 
 public class PartitionsControllerTest {
 
@@ -111,7 +111,7 @@ public class PartitionsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new ExceptionHandling())
+                .setControllerAdvice(new NakadiProblemControllerAdvice())
                 .build();
     }
 
@@ -130,21 +130,11 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenListPartitionsForWrongTopicThenNotFound() throws Exception {
-        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions", UNKNOWN_EVENT_TYPE)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
-    }
-
-    @Test
-    public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
+    public void whenListPartitionsAndServiceTemporarilyUnavailableExceptionThenServiceUnavaiable() throws Exception {
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "");
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isServiceUnavailable())
@@ -232,17 +222,6 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
-        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions/%s", UNKNOWN_EVENT_TYPE, TEST_PARTITION)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
-    }
-
-    @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
@@ -258,11 +237,11 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenGetPartitionAndNakadiExceptionThenServiceUnavaiable() throws Exception {
+    public void whenGetPartitionAndServiceTemporarilyUnavailableExceptionThenServiceUnavaiable() throws Exception {
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "");
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())

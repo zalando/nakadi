@@ -9,10 +9,10 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
+import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.SubscriptionTimeLagService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -45,7 +45,7 @@ public class SubscriptionTimeLagServiceTest {
     }
 
     @Test
-    public void testTimeLagsForTailAndNotTailPositions() throws NakadiException, InvalidCursorException {
+    public void testTimeLagsForTailAndNotTailPositions() throws InternalNakadiException, InvalidCursorException {
 
         final EventConsumer eventConsumer = mock(EventConsumer.class);
         final Timeline timeline = mock(Timeline.class);
@@ -82,8 +82,8 @@ public class SubscriptionTimeLagServiceTest {
     @Test(expected = InconsistentStateException.class)
     @SuppressWarnings("unchecked")
     public void whenNakadiExceptionThenInconsistentStateExceptionIsThrown()
-            throws NakadiException, InvalidCursorException {
-        when(timelineService.createEventConsumer(any(), any())).thenThrow(NakadiException.class);
+            throws InternalNakadiException, InvalidCursorException {
+        when(timelineService.createEventConsumer(any(), any())).thenThrow(InternalNakadiException.class);
 
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
@@ -94,7 +94,7 @@ public class SubscriptionTimeLagServiceTest {
     @Test(expected = ErrorGettingCursorTimeLagException.class)
     @SuppressWarnings("unchecked")
     public void whenInvalidCursorThenErrorGettingCursorTimeLagExceptionIsThrown()
-            throws NakadiException, InvalidCursorException {
+            throws InternalNakadiException, InvalidCursorException {
         when(timelineService.createEventConsumer(any(), any())).thenThrow(InvalidCursorException.class);
 
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);

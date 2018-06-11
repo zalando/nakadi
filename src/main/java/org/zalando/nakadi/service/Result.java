@@ -2,7 +2,9 @@ package org.zalando.nakadi.service;
 
 import org.zalando.problem.Problem;
 
-import javax.ws.rs.core.Response;
+import static org.zalando.problem.Status.CONFLICT;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.NOT_FOUND;
 
 public interface Result<T> {
 
@@ -25,15 +27,15 @@ public interface Result<T> {
     }
 
     static Result<Void> forbidden(final String message) {
-        return problem(Problem.valueOf(Response.Status.FORBIDDEN, message));
+        return problem(Problem.valueOf(FORBIDDEN, message));
     }
 
     static Result<Void> notFound(final String message) {
-        return problem(Problem.valueOf(Response.Status.NOT_FOUND, message));
+        return problem(Problem.valueOf(NOT_FOUND, message));
     }
 
     static Result<Void> conflict(final String message) {
-        return problem(Problem.valueOf(Response.Status.CONFLICT, message));
+        return problem(Problem.valueOf(CONFLICT, message));
     }
 
     class Success<V> implements Result<V> {

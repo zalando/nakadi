@@ -10,6 +10,12 @@ import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 public class SchemaControllerAT extends BaseAT {
 
+    private static final String ET_NAME = "et_test_name";
+    private static final String FIRST_SCHEMA = "{ \"properties\": { \"order_number\": { \"type\": \"string\" }}}";
+    private static final String LATEST_SCHEMA = "{ \"properties\": { \"order_number\": { \"type\": \"string\" }, " +
+            "\"order_number_2\": { \"type\": \"string\" }," +
+            "\"order_number_3\": { \"type\": \"string\" }}}";
+
     @Test
     public void whenGetSchemasThenList() throws Exception {
         createEventType();
@@ -76,6 +82,42 @@ public class SchemaControllerAT extends BaseAT {
     }
 
     @Test
+    public void whenGetLatestSchemaThen200() throws Exception {
+        createEventType();
+        RestAssured.given()
+                .when()
+                .get("/event-types/et_test_name/schemas/latest")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .and()
+                .body("schema", Matchers.is(LATEST_SCHEMA));
+    }
+
+    @Test
+    public void whenGetLatestSchemaByVersionNumberThen200() throws Exception {
+        createEventType();
+        RestAssured.given()
+                .when()
+                .get("/event-types/et_test_name/schemas/1.1.0")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .and()
+                .body("schema", Matchers.is(LATEST_SCHEMA));
+    }
+
+    @Test
+    public void whenGetFirstSchemaThen200() throws Exception {
+        createEventType();
+        RestAssured.given()
+                .when()
+                .get("/event-types/et_test_name/schemas/1.0.0")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .and()
+                .body("schema", Matchers.is(FIRST_SCHEMA));
+    }
+
+    @Test
     public void whenGetSchemasNoSchemasThen404() throws Exception {
         RestAssured.given()
                 .when()
@@ -84,19 +126,36 @@ public class SchemaControllerAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NOT_FOUND);
     }
 
+    @Test
+    public void whenGetNonExistingSchemaVersionThen404() throws Exception {
+        RestAssured.given()
+                .when()
+                .get("/event-types/et_test_name/schemas/3.9.9")
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND);
+    }
+
+    @Test
+    public void whenGetInvalidSchemaThen404() throws Exception {
+        createEventType();
+        RestAssured.given()
+                .when()
+                .get("/event-types/et_test_name/schemas/illegal")
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND);
+    }
+
     private void createEventType() throws Exception {
         EventType eventType =
                 EventTypeTestBuilder.builder()
-                        .schema("{ \"properties\": { \"order_number\": { \"type\": \"string\" }}}")
-                        .name("et_test_name")
+                        .schema(FIRST_SCHEMA)
+                        .name(ET_NAME)
                         .build();
         NakadiTestUtils.createEventTypeInNakadi(eventType);
         eventType =
                 EventTypeTestBuilder.builder()
-                        .schema("{ \"properties\": { \"order_number\": { \"type\": \"string\" }, " +
-                                "\"order_number_2\": { \"type\": \"string\" }," +
-                                "\"order_number_3\": { \"type\": \"string\" }}}")
-                        .name("et_test_name")
+                        .schema(LATEST_SCHEMA)
+                        .name(ET_NAME)
                         .build();
         NakadiTestUtils.updateEventTypeInNakadi(eventType);
     }

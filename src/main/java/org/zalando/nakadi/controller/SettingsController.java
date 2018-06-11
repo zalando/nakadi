@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,22 +19,22 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 @RequestMapping(value = "/settings")
-public class SettingsController {
+public class SettingsController implements NakadiProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
     private final BlacklistService blacklistService;
@@ -108,27 +109,31 @@ public class SettingsController {
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
-    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz) {
+    public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
+                                          final Errors errors, final NativeWebRequest request) {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (errors.hasErrors()) {
+            return create(new ValidationProblem(errors), request);
         }
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();
     }
 
-    @ExceptionHandler(UnknownOperationException.class)
-    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
-                                                                   final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
-                "There was a problem processing your request.", request);
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
-                                                                final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+    @ExceptionHandler(UnknownOperationException.class)
+    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException exception,
+                                                                   final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE,
+                "There was a problem processing your request."), request);
     }
 
     private boolean isNotAdmin(final Client client) {

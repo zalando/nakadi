@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZkChildrenCache;
@@ -180,7 +180,7 @@ public class ConsumerLimitingService {
                     .forPath(zkPath);
         } catch (Exception e) {
             LOG.error("Zookeeper error when creating consumer node", e);
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
         final ConnectionSlot acquiredSlot = new ConnectionSlot(client, eventType, partition, slotId);
         ACQUIRED_SLOTS.add(acquiredSlot);

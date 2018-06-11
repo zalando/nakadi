@@ -10,8 +10,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
@@ -373,7 +373,7 @@ class StreamingState extends State {
                 }).collect(Collectors.joining(", "));
                 getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
             }
-        } catch (NakadiRuntimeException ex) {
+        } catch (NakadiWrapperException ex) {
             getLog().warn("Failed to get nakadi cursors for logging purposes.");
         }
     }
@@ -400,7 +400,7 @@ class StreamingState extends State {
             try {
                 eventConsumer.close();
             } catch (final IOException e) {
-                throw new NakadiRuntimeException(e);
+                throw new NakadiWrapperException(e);
             } finally {
                 eventConsumer = null;
             }
@@ -552,8 +552,8 @@ class StreamingState extends State {
             // removing all the current assignments for real consumer.
             try {
                 eventConsumer.reassign(Collections.emptyList());
-            } catch (final NakadiException | InvalidCursorException ex) {
-                throw new NakadiRuntimeException(ex);
+            } catch (final InternalNakadiException | InvalidCursorException ex) {
+                throw new NakadiWrapperException(ex);
             }
         }
         final Set<EventTypePartition> currentAssignment = eventConsumer.getAssignment();
@@ -576,8 +576,8 @@ class StreamingState extends State {
                         .collect(Collectors.toList());
 
                 eventConsumer.reassign(cursors);
-            } catch (NakadiException | InvalidCursorException ex) {
-                throw new NakadiRuntimeException(ex);
+            } catch (InternalNakadiException | InvalidCursorException ex) {
+                throw new NakadiWrapperException(ex);
             }
         }
     }
@@ -589,8 +589,8 @@ class StreamingState extends State {
                     try {
                         // get oldest active timeline
                         return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
-                    } catch (final NakadiException e) {
-                        throw new NakadiRuntimeException(e);
+                    } catch (final InternalNakadiException e) {
+                        throw new NakadiWrapperException(e);
                     }
                 })
                 .collect(groupingBy(Timeline::getStorage)) // for performance reasons. See ARUHA-1387
@@ -601,7 +601,7 @@ class StreamingState extends State {
                         return getContext().getTimelineService().getTopicRepository(timelines.get(0))
                                 .loadTopicStatistics(timelines).stream();
                     } catch (final ServiceTemporarilyUnavailableException e) {
-                        throw new NakadiRuntimeException(e);
+                        throw new NakadiWrapperException(e);
                     }
                 })
                 .map(PartitionStatistics::getBeforeFirst)
@@ -612,7 +612,7 @@ class StreamingState extends State {
         try {
             return getContext().getCursorConverter().convert(cursor);
         } catch (final Exception ex) {
-            throw new NakadiRuntimeException(ex);
+            throw new NakadiWrapperException(ex);
         }
     }
 

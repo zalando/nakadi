@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.security.Client;
 
 import javax.annotation.Nullable;

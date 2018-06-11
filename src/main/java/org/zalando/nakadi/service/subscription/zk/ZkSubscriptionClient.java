@@ -3,8 +3,8 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -52,7 +52,7 @@ public interface ZkSubscriptionClient {
      * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to CREATED.
      */
-    boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException;
+    boolean isSubscriptionCreatedAndInitialized() throws NakadiWrapperException;
 
     /**
      * Deletes subscription with all its data in zookeeper
@@ -70,7 +70,7 @@ public interface ZkSubscriptionClient {
     /**
      * Updates specified partitions in zk.
      */
-    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
+    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiWrapperException,
             SubscriptionNotInitializedException;
 
     /**
@@ -79,7 +79,7 @@ public interface ZkSubscriptionClient {
      * @return List of existing sessions.
      */
     Collection<Session> listSessions()
-            throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException;
+            throws SubscriptionNotInitializedException, NakadiWrapperException, ServiceTemporarilyUnavailableException;
 
     boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
@@ -88,7 +88,7 @@ public interface ZkSubscriptionClient {
      *
      * @return list of partitions related to this subscription.
      */
-    Topology getTopology() throws SubscriptionNotInitializedException, NakadiRuntimeException;
+    Topology getTopology() throws SubscriptionNotInitializedException, NakadiWrapperException;
 
     /**
      * Subscribes to changes of session list in /nakadi/subscriptions/{subscriptionId}/sessions.
@@ -96,7 +96,7 @@ public interface ZkSubscriptionClient {
      *
      * @param listener method to call on any change of client list.
      */
-    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws NakadiRuntimeException;
+    ZkSubscription<List<String>> subscribeForSessionListChanges(Runnable listener) throws NakadiWrapperException;
 
     /**
      * Subscribe for topology changes.
@@ -104,7 +104,7 @@ public interface ZkSubscriptionClient {
      * @param listener called whenever /nakadi/subscriptions/{subscriptionId}/topology node is changed.
      * @return Subscription instance
      */
-    ZkSubscription<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiRuntimeException;
+    ZkSubscription<Topology> subscribeForTopologyChanges(Runnable listener) throws NakadiWrapperException;
 
     ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
             EventTypePartition key, Runnable commitListener);
@@ -119,7 +119,7 @@ public interface ZkSubscriptionClient {
      * @return commit offset
      */
     Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(Collection<EventTypePartition> keys)
-            throws NakadiRuntimeException;
+            throws NakadiWrapperException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);
@@ -141,7 +141,7 @@ public interface ZkSubscriptionClient {
      * @param partitions topic ids and partition ids of transferred data.
      */
     void transfer(String sessionId, Collection<EventTypePartition> partitions)
-            throws NakadiRuntimeException, SubscriptionNotInitializedException;
+            throws NakadiWrapperException, SubscriptionNotInitializedException;
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK without a lock
@@ -149,7 +149,7 @@ public interface ZkSubscriptionClient {
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
     Optional<ZkSubscriptionNode> getZkSubscriptionNode()
-            throws SubscriptionNotInitializedException, NakadiRuntimeException;
+            throws SubscriptionNotInitializedException, NakadiWrapperException;
 
     /**
      * Subscribes to cursor reset event.
@@ -158,7 +158,7 @@ public interface ZkSubscriptionClient {
      * @return {@link Closeable}
      */
     Closeable subscribeForCursorsReset(Runnable listener)
-            throws NakadiRuntimeException, UnsupportedOperationException;
+            throws NakadiWrapperException, UnsupportedOperationException;
 
     /**
      * Gets current status of cursor reset request.
@@ -214,7 +214,7 @@ public interface ZkSubscriptionClient {
                     }
                 }
                 if (selectedIdx < 0) {
-                    throw new MyNakadiRuntimeException1(
+                    throw new NakadiRuntimeBaseException(
                             "Failed to find partition " + newValue.getKey() + " in " + this);
                 }
                 resultPartitions[selectedIdx] = newValue;

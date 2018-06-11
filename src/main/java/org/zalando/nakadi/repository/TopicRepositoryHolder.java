@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
@@ -93,7 +93,7 @@ public class TopicRepositoryHolder {
                     .collect(Collectors.toList());
             return getTopicRepositoryCreator(storage.getType()).createStoragePosition(offsets);
         } catch (final ServiceTemporarilyUnavailableException e) {
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 

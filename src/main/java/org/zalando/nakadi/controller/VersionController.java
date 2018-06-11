@@ -8,15 +8,15 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.ws.rs.core.MediaType;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
 @RestController
-@RequestMapping(value = "/version", produces = MediaType.APPLICATION_JSON)
+@RequestMapping(value = "/version", produces = APPLICATION_JSON_VALUE)
 @Profile("!test")
 public class VersionController {
 

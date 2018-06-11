@@ -7,7 +7,7 @@ import org.apache.zookeeper.KeeperException;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.NakadiWrapperException;
 
 import static org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode.BUILD_INITIAL_CACHE;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -46,7 +46,7 @@ public class ZkChildrenCache extends PathChildrenCache {
                         } catch (final KeeperException.NoNodeException e) {
                             throw e; // throw it to activate retry
                         } catch (final Exception e) {
-                            throw new NakadiRuntimeException(e);
+                            throw new NakadiWrapperException(e);
                         }
                     },
                     new RetryForSpecifiedCountStrategy<ZkChildrenCache>(MAX_NUMBER_OF_RETRIES)
@@ -54,7 +54,7 @@ public class ZkChildrenCache extends PathChildrenCache {
                             .withWaitBetweenEachTry(WAIT_BETWEEN_TRIES_MS));
         } catch (final Exception e) {
             LOG.error("Zookeeper error when creating cache for children", e);
-            throw new NakadiRuntimeException(e);
+            throw new NakadiWrapperException(e);
         }
     }
 }

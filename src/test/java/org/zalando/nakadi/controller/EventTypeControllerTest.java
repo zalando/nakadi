@@ -22,23 +22,21 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,8 +45,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
@@ -74,6 +70,11 @@ import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createInvalidEventTypeExceptionProblem;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
+import static org.zalando.problem.Status.CONFLICT;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
@@ -371,7 +372,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         doThrow(new UnableProcessException("dummy")).when(authorizationValidator).validateAuthorization(any());
 
-        postETAndExpect422WithProblem(eventType, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "dummy"));
+        postETAndExpect422WithProblem(eventType, Problem.valueOf(UNPROCESSABLE_ENTITY, "dummy"));
     }
 
     @Test
@@ -446,7 +447,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
     @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
+        final Problem expectedProblem = Problem.valueOf(CONFLICT, "some-name");
 
         doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
                 EventTypeBase.class));
@@ -516,7 +517,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .listSubscriptions(eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
                 .thenReturn(ImmutableList.of(mock(Subscription.class)));
 
-        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
+        final Problem expectedProblem = Problem.valueOf(CONFLICT,
                 "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
 
         deleteEventType(eventType.getName())
@@ -581,7 +582,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = randomValidEventTypeName();
-        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR,
+        final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR,
                 "Failed to delete event type " + eventTypeName);
 
         doThrow(new InternalNakadiException("dummy message"))
@@ -596,7 +597,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
     @Test
     public void whenPersistencyErrorThen500() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+        final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR);
 
         doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventType.class));
 
@@ -683,7 +684,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPUTRepoNakadiExceptionThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY);
 
         doThrow(UnprocessableEntityException.class).when(eventTypeRepository).findByName(eventType.getName());
 
