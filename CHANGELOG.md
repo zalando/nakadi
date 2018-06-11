@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Upgraded dependencies
 
+## [2.7.3] - 2018-06-11
+
 ### Changed
 - Allow to use strict json parsing for event type publishing under feature toggle
+- Reduced logging by merging SLO publishing and ACCESS_LOG fields 
 
 ## [2.7.2] - 2018-05-30
 
