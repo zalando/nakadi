@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
@@ -77,7 +78,9 @@ public class BlacklistService {
         try {
             return isSubscriptionConsumptionBlocked(
                     subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
-        } catch (final NakadiException e) {
+        } catch (final NoSuchSubscriptionException e) {
+            LOG.error(e.getMessage());
+        } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error(e.getMessage(), e);
         }
         return false;

@@ -11,8 +11,9 @@ import org.zalando.nakadi.domain.AdminResource;
 import org.zalando.nakadi.domain.AllDataAccessResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
+import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
@@ -67,14 +68,14 @@ public class AdminService {
         authorizationDbRepository.update(add, delete);
     }
 
-    public boolean isAdmin(final AuthorizationService.Operation operation) {
+    public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
         final List<Permission> permissions = getAdmins();
         final Resource resource = new AdminResource(ADMIN_RESOURCE,
                 ResourceAuthorization.fromPermissionsList(permissions));
         return authorizationService.isAuthorized(operation, resource);
     }
 
-    public boolean hasAllDataAccess(final AuthorizationService.Operation operation) {
+    public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
             final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
                     () -> authorizationDbRepository.listAllDataAccess());
@@ -100,7 +101,7 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-    private void validateAllAdmins(final List<Permission> admins) throws UnableProcessException {
+    private void validateAllAdmins(final List<Permission> admins) throws UnableProcessException, PluginException {
         final List<Permission> invalid = admins.stream().filter(permission ->
                 !authorizationService.isAuthorizationAttributeValid(permission.getAuthorizationAttribute()))
                 .collect(Collectors.toList());

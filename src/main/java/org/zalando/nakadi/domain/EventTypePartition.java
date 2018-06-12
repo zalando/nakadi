@@ -1,17 +1,24 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.concurrent.Immutable;
+import javax.validation.constraints.NotNull;
 
 @Immutable
 public class EventTypePartition {
 
+    @NotNull
     private final String eventType;
 
+    @NotNull
     private final String partition;
 
-    public EventTypePartition(final String eventType, final String partition) {
+    @JsonCreator
+    public EventTypePartition(@JsonProperty("event_type") final String eventType,
+                              @JsonProperty("partition") final String partition) {
         this.eventType = eventType;
         this.partition = partition;
     }

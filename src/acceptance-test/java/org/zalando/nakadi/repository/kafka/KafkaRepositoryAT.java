@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -140,12 +141,11 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
         final List<BatchItem> items = new ArrayList<>();
-        final String event = "{}";
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
 
         for (int i = 0; i < 10; i++) {
-            final BatchItem item = new BatchItem(event);
+            final BatchItem item = BatchFactory.from("[{}]").get(0);
             item.setPartition("0");
             items.add(item);
         }

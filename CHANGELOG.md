@@ -6,6 +6,77 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.3] - 2018-06-11
+
+### Changed
+- Allow to use strict json parsing for event type publishing under feature toggle
+- Reduced logging by merging SLO publishing and ACCESS_LOG fields 
+
+## [2.7.2] - 2018-05-30
+
+### Changed
+- Refactored multiple exceptions
+
+## [2.7.1] - 2018-05-28
+
+### Changed
+- Added gzip compression for POST responses if it was requested
+
+## [2.7.0] - 2018-05-25
+
+### Added
+- Extended subscription statistics endpoint with time-lag information
+
+## [2.6.7] - 2018-05-15
+
+### Fixed
+- Improved performance of listing subscriptions with their status
+
+## [2.6.6] - 2018-05-08
+
+### Added
+- Allow Nakadi admin set unlimited retention time for event type
+
+## [2.6.4] - 2018-04-26
+
+### Added
+- Add optional status to the /subscriptions endpoint
+
+### Fixed
+- Fixed commit for subscriptions that use direct assignment of partitions
+- Fixed OutOfMemoryError when using huge values for batch_limit and max_uncommitted_events
+- Added flushing of collected events when reaching stream_timeout in subscription API
+
+## [2.6.3] - 2018-04-10
+
+### Fixed
+- Do not log a complete stack trace when a user tries to publish to a non-existing event type
+
+## [2.6.2] - 2018-04-05
+
+### Changed
+- Changed the way how nakadi parses events, eliminating the need of json serialization during publish
+
+## [2.6.1] - 2018-04-03
+
+### Fixed
+- Do not log a complete stack trace when a user makes a request for a non-existing subscription
+
+## [2.6.0] - 2018-03-26
+
+### Added
+- Allow to select partitions to read from a subscription
+
+## [2.5.10] - 2018-03-26
+
+### Added
+- Added support of future format of session in ZK
+
+## [2.5.9] - 2018-03-06
+
+### Changed
+- Updated json-schema validation library, now using [RE2/J](https://github.com/google/re2j) for regex pattern matching
+
 ## [2.5.8] - 2018-02-22
 
 ### Added

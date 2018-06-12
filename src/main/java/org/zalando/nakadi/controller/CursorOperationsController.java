@@ -19,11 +19,11 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
@@ -82,7 +82,7 @@ public class CursorOperationsController {
                         .convert(eventTypeName, query.getFinalCursor());
                 final Long distance = cursorOperationsService.calculateDistance(initialCursor, finalCursor);
                 query.setDistance(distance);
-            } catch (InternalNakadiException | ServiceUnavailableException e) {
+            } catch (InternalNakadiException | ServiceTemporarilyUnavailableException e) {
                 throw new MyNakadiRuntimeException1("problem calculating cursors distance", e);
             } catch (final NoSuchEventTypeException e) {
                 throw new NotFoundException("event type not found", e);

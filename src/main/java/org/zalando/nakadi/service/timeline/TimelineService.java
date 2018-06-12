@@ -18,22 +18,22 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.ConflictException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.TimelineException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -123,10 +123,10 @@ public class TimelineService {
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 
             switchTimelines(activeTimeline, nextTimeline);
-        } catch (final TopicCreationException | ServiceUnavailableException | InternalNakadiException e) {
+        } catch (final TopicCreationException | ServiceTemporarilyUnavailableException | InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
         }
     }
 
@@ -191,9 +191,8 @@ public class TimelineService {
         return eventTypeCache.getTimelinesOrdered(eventType);
     }
 
-    public Timeline getActiveTimeline(final EventTypeBase eventType) throws TimelineException {
+    public Timeline getActiveTimeline(final String eventTypeName) throws TimelineException {
         try {
-            final String eventTypeName = eventType.getName();
             final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeName);
             final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
             while (rIterator.hasPrevious()) {
@@ -205,9 +204,13 @@ public class TimelineService {
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
         } catch (final NakadiException e) {
-            LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
+            LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }
+    }
+
+    public Timeline getActiveTimeline(final EventTypeBase eventType) throws TimelineException {
+        return getActiveTimeline(eventType.getName());
     }
 
     public TopicRepository getTopicRepository(final Storage storage) {
@@ -321,7 +324,7 @@ public class TimelineService {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
         } catch (final InternalNakadiException e) {
             throw new TimelineException("Could not get event type: " + eventTypeName, e);
         }

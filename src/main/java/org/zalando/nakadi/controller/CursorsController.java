@@ -17,15 +17,15 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
@@ -121,6 +122,9 @@ public class CursorsController {
                 }
             } catch (final NoSuchEventTypeException | InvalidCursorException e) {
                 return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+            } catch (final ServiceTemporarilyUnavailableException e) {
+                LOG.error("Failed to commit cursors", e);
+                return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
             } catch (final NakadiException e) {
                 LOG.error("Failed to commit cursors", e);
                 return create(e.asProblem(), request);
@@ -150,7 +154,8 @@ public class CursorsController {
 
     private List<NakadiCursor> convertToNakadiCursors(
             final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
-            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
+            InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
+            InvalidCursorException {
         final List<NakadiCursor> nakadiCursors = new ArrayList<>();
         for (final SubscriptionCursorWithoutToken cursor : cursors.getItems()) {
             nakadiCursors.add(cursorConverter.convert(cursor));
@@ -169,7 +174,7 @@ public class CursorsController {
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+        return Responses.create(SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
     @ExceptionHandler(RequestInProgressException.class)

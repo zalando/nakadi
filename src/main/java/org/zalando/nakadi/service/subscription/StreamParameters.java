@@ -1,10 +1,12 @@
 package org.zalando.nakadi.service.subscription;
 
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
+import org.zalando.nakadi.view.UserStreamParameters;
 
-import javax.annotation.Nullable;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -41,25 +43,25 @@ public class StreamParameters {
 
     private final Client consumingClient;
 
-    private StreamParameters(
-            final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
-            @Nullable final Long streamTimeoutSeconds, @Nullable final Integer batchKeepAliveIterations,
-            final int maxUncommittedMessages, final long commitTimeoutMillis, final Client consumingClient)
-            throws UnprocessableEntityException {
-        if (batchLimitEvents > 0) {
-            this.batchLimitEvents = batchLimitEvents;
-        } else {
-            throw new UnprocessableEntityException("batch_limit can't be lower than 1");
+    private final List<EventTypePartition> partitions;
+
+    private StreamParameters(final UserStreamParameters userParameters, final long commitTimeoutMillis,
+                             final Client consumingClient) throws WrongStreamParametersException {
+
+        this.batchLimitEvents = userParameters.getBatchLimit().orElse(1);
+        if (batchLimitEvents <= 0) {
+            throw new WrongStreamParametersException("batch_limit can't be lower than 1");
         }
-        this.streamLimitEvents = Optional.ofNullable(streamLimitEvents).filter(v -> v != 0);
-        this.batchTimeoutMillis = batchTimeoutMillis;
+        this.streamLimitEvents = userParameters.getStreamLimit().filter(v -> v != 0);
+        this.batchTimeoutMillis = TimeUnit.SECONDS.toMillis(userParameters.getBatchFlushTimeout().orElse(30));
         this.streamTimeoutMillis = TimeUnit.SECONDS.toMillis(
-                Optional.ofNullable(streamTimeoutSeconds)
+                userParameters.getStreamTimeout()
                         .filter(timeout -> timeout > 0 && timeout <= EventStreamConfig.MAX_STREAM_TIMEOUT)
                         .orElse((long) EventStreamConfig.generateDefaultStreamTimeout()));
-        this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
-        this.maxUncommittedMessages = maxUncommittedMessages;
-        this.commitTimeoutMillis = commitTimeoutMillis;
+        this.maxUncommittedMessages = userParameters.getMaxUncommittedEvents().orElse(10);
+        this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit();
+        this.partitions = userParameters.getPartitions();
+        this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeoutMillis);
         this.consumingClient = consumingClient;
     }
 
@@ -79,23 +81,14 @@ public class StreamParameters {
         return consumingClient;
     }
 
-    public static StreamParameters of(
-            final int batchLimitEvents,
-            @Nullable final Long streamLimitEvents,
-            final long batchTimeoutSeconds,
-            @Nullable final Long streamTimeoutSeconds,
-            @Nullable final Integer batchKeepAliveIterations,
-            final int maxUncommittedMessages,
-            final long commitTimeoutSeconds,
-            final Client client) throws UnprocessableEntityException {
-        return new StreamParameters(
-                batchLimitEvents,
-                streamLimitEvents,
-                TimeUnit.SECONDS.toMillis(batchTimeoutSeconds),
-                streamTimeoutSeconds,
-                batchKeepAliveIterations,
-                maxUncommittedMessages,
-                TimeUnit.SECONDS.toMillis(commitTimeoutSeconds),
-                client);
+    public List<EventTypePartition> getPartitions() {
+        return partitions;
     }
+
+    public static StreamParameters of(final UserStreamParameters userStreamParameters,
+                                      final long commitTimeoutSeconds,
+                                      final Client client) throws WrongStreamParametersException {
+        return new StreamParameters(userStreamParameters, commitTimeoutSeconds, client);
+    }
+
 }

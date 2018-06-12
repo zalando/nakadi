@@ -32,6 +32,8 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.List;
@@ -57,7 +59,9 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventTypeFromBegin;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class SubscriptionAT extends BaseAT {
@@ -366,7 +370,7 @@ public class SubscriptionAT extends BaseAT {
     }
 
     @Test
-    public void whenStatsOnNotInitializedSubscriptionThanCorrectResponse() throws IOException {
+    public void whenStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventType(et);
         final Response response = when().get("/subscriptions/{sid}/stats", s.getId())
@@ -384,8 +388,102 @@ public class SubscriptionAT extends BaseAT {
             Assert.assertNotNull(partition.getPartition());
             Assert.assertEquals("", partition.getStreamId());
             Assert.assertNull(partition.getUnconsumedEvents());
-            Assert.assertEquals(partition.getState(), "unassigned");
+            Assert.assertEquals("unassigned", partition.getState());
         }
+    }
+
+    @Test
+    public void whenLightStatsOnNotInitializedSubscriptionThenCorrectResponse() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+        final String owningApplication = s.getOwningApplication();
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("unassigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals("", subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
+    }
+
+    @Test
+    public void whenLightStatsOnActiveSubscriptionThenCorrectRespones() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventTypeFromBegin(et);
+        final String owningApplication = s.getOwningApplication();
+
+        publishEvents(et, 15, i -> "{\"foo\":\"bar\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, s.getId(), "max_uncommitted_events=20")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+
+        final Response response = when()
+                .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
+                .thenReturn();
+        final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
+                new TypeReference<ItemsWrapper<Subscription>>(){});
+        for (final Subscription subscription: subsItems.getItems()) {
+            if (subscription.getId().equals(s.getId())) {
+                Assert.assertNotNull(subscription.getStatus());
+                Assert.assertEquals("assigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
+                Assert.assertEquals(client.getSessionId(),
+                        subscription.getStatus().get(0).getPartitions().get(0).getStreamId());
+                Assert.assertEquals(SubscriptionEventTypeStats.Partition.AssignmentType.AUTO,
+                        subscription.getStatus().get(0).getPartitions().get(0).getAssignmentType());
+                return;
+            }
+        }
+        Assert.assertTrue(false);
+    }
+
+    @Test
+    public void whenStreamDuplicatePartitionsThenUnprocessableEntity() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+
+        final String body = "{\"partitions\":[" +
+                "{\"event_type\":\"et1\",\"partition\":\"0\"}," +
+                "{\"event_type\":\"et1\",\"partition\":\"0\"}]}";
+        given().body(body)
+                .contentType(JSON)
+                .when()
+                .post("/subscriptions/{sid}/events", s.getId())
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body(JSON_HELPER.matchesObject(Problem.valueOf(
+                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Duplicated partition specified")));
+    }
+
+    @Test
+    public void whenStreamWrongPartitionsThenUnprocessableEntity() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+
+        final String body = "{\"partitions\":[" +
+                "{\"event_type\":\"" + et + "\",\"partition\":\"0\"}," +
+                "{\"event_type\":\"" + et + "\",\"partition\":\"1\"}," +
+                "{\"event_type\":\"dummy-et-123\",\"partition\":\"0\"}]}";
+        given().body(body)
+                .contentType(JSON)
+                .when()
+                .post("/subscriptions/{sid}/events", s.getId())
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body(JSON_HELPER.matchesObject(Problem.valueOf(
+                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Wrong partitions specified - some partitions don't belong to subscription: " +
+                                "EventTypePartition{eventType='" + et + "', partition='1'}, " +
+                                "EventTypePartition{eventType='dummy-et-123', partition='0'}")));
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {

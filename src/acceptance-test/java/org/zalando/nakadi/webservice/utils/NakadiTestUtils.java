@@ -22,6 +22,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.springframework.http.HttpStatus.OK;
@@ -183,6 +185,14 @@ public class NakadiTestUtils {
         return createSubscription(subscriptionBase);
     }
 
+    public static Subscription createSubscriptionForEventTypeFromBegin(final String eventType) throws IOException {
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType)
+                .withStartFrom(SubscriptionBase.InitialPosition.BEGIN)
+                .buildSubscriptionBase();
+        return createSubscription(subscriptionBase);
+    }
+
     public static Subscription createSubscription(final SubscriptionBase subscription) throws IOException {
         return createSubscription(given(), subscription);
     }
@@ -251,5 +261,26 @@ public class NakadiTestUtils {
                 .header("accept", "application/json")
                 .get("/event-types/{name}", name)
                 .getBody().asString(), EventType.class);
+    }
+
+    public static int getNumberOfAssignedStreams(final String sid) {
+        final Response response = when().get("/subscriptions/{sid}/stats", sid).thenReturn();
+        final ItemsWrapper<SubscriptionEventTypeStats> statsItems;
+        try {
+            statsItems = MAPPER.readValue(
+                    response.print(),
+                    new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
+                    });
+        } catch (final IOException e) {
+            throw new AssertionError("Failed to get stats", e);
+        }
+        final long assignedUniqueStreamsCount = statsItems.getItems()
+                .stream()
+                .flatMap(stat -> stat.getPartitions().stream())
+                .filter(p -> "assigned".equals(p.getState()))
+                .map(SubscriptionEventTypeStats.Partition::getStreamId)
+                .distinct()
+                .count();
+        return (int) assignedUniqueStreamsCount;
     }
 }

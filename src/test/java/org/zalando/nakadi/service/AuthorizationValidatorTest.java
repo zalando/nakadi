@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
@@ -121,7 +121,7 @@ public class AuthorizationValidatorTest {
     }
 
     @Test(expected = ServiceTemporarilyUnavailableException.class)
-    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException()
+    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporarilyUnavailableException()
             throws Exception {
         when(authorizationService.isAuthorized(any(), any())).thenThrow(new PluginException("blah"));
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()

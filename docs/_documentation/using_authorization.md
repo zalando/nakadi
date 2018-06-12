@@ -49,7 +49,7 @@ Here is a sample request with an authorization section. It gives read, write, an
 of type `service`:
 
 ```bash
-curl -v -XPOST -H "Content-Type: application/json" https://localhost:8080/event-types -d '{
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types -d '{
   "name": "order_received",
   "owning_application": "acme-order-service",
   "category": "business",
@@ -80,7 +80,7 @@ Updating an event type is similar to creating one. Here is a sample request, tha
 to the same application:
 
 ```bash
-curl -v -XPUT -H "Content-Type: application/json" https://localhost:8080/event-types/order_received -d '{
+curl -v -XPUT -H "Content-Type: application/json" http://localhost:8080/event-types/order_received -d '{
   "name": "order_received",
   "owning_application": "acme-order-service",
   "category": "business",

@@ -11,6 +11,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
@@ -23,7 +24,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -76,6 +77,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
@@ -110,7 +112,7 @@ public class SubscriptionControllerTest {
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
         timelineService = mock(TimelineService.class);
-        when(timelineService.getActiveTimeline(any())).thenReturn(TIMELINE);
+        when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
@@ -120,7 +122,7 @@ public class SubscriptionControllerTest {
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
-                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService,
+                cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 "subscription_log_et");
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
@@ -186,7 +188,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
-                .thenThrow(new ServiceUnavailableException("dummy message"));
+                .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
     }
@@ -223,7 +225,8 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.getSubscription(any())).thenThrow(new ServiceUnavailableException("dummy message"));
+        when(subscriptionRepository.getSubscription(any()))
+                .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscription("dummyId"), expectedProblem);
     }
@@ -236,7 +239,7 @@ public class SubscriptionControllerTest {
         final ZkSubscriptionNode zkSubscriptionNode =
                 new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(Optional.of(zkSubscriptionNode));
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
         final EventTypePartition etp = new EventTypePartition(TIMELINE.getEventType(), "0");
@@ -258,7 +261,8 @@ public class SubscriptionControllerTest {
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         TIMELINE.getEventType(),
-                        Collections.singletonList(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
+                        Collections.singletonList(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, null, "xz", AUTO)))
                 );
 
         getSubscriptionStats(subscription.getId())
@@ -272,7 +276,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
@@ -290,7 +294,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit);
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
         return mockMvcBuilder.build().perform(get(url));
     }
 
@@ -314,7 +318,7 @@ public class SubscriptionControllerTest {
     }
 
     private void mockGetFromRepoSubscriptionWithOwningApp(final String subscriptionId, final String owningApplication)
-            throws NoSuchSubscriptionException, ServiceUnavailableException {
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = RandomSubscriptionBuilder.builder()
                 .withId(subscriptionId)
                 .withOwningApplication(owningApplication)

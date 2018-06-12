@@ -10,19 +10,20 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.IllegalClientIdException;
+import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.TimelineException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
+import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
@@ -151,10 +152,17 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporaryUnavailableException(
+    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(LimitReachedException.class)
+    public ResponseEntity<Problem> handleLimitReachedException(
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+        LOG.warn(exception.getMessage());
+        return Responses.create(MoreStatus.TOO_MANY_REQUESTS, exception.getMessage(), request);
     }
 
     @ExceptionHandler(DbWriteOperationsBlockedException.class)

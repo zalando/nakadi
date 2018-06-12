@@ -22,13 +22,13 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -71,6 +71,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
+import static org.zalando.nakadi.utils.TestUtils.createInvalidEventTypeExceptionProblem;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
@@ -425,7 +426,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = new InvalidEventTypeException("\"metadata\" property is reserved").asProblem();
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("\"metadata\" property is reserved");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -437,8 +438,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 "{\"not\": {\"type\": \"object\"} }");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = new InvalidEventTypeException("Invalid schema: Invalid schema found in [#]: " +
-                "extraneous key [not] is not permitted").asProblem();
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("Invalid schema: Invalid schema found " +
+                "in [#]: extraneous key [not] is not permitted");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -656,7 +657,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final String eventTypeName = eventType.getName();
         eventType.setName("event-name-different");
 
-        final Problem expectedProblem = new InvalidEventTypeException("path does not match resource name").asProblem();
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("path does not match resource name");
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
 
@@ -730,8 +731,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.getSchema().setSchema("invalid-json");
 
         final Problem expectedProblem =
-                new InvalidEventTypeException(
-                        "schema must be a valid json: Unexpected token 'invalid' on line 1, char 1").asProblem();
+                createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected symbol 'i' at pos 1");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -744,7 +744,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must be a valid json-schema").asProblem();
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("schema must be a valid json-schema");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }

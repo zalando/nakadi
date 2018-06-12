@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -30,7 +29,7 @@ public interface ZkSubscriptionClient {
 
     /**
      * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining runLocked,
+     * Lock is created as an ephemeral node, so it will be deleted if nakadi goes down. After obtaining runLocked,
      * provided function will be called under subscription runLocked
      *
      * @param function Function to call in context of runLocked.
@@ -82,7 +81,7 @@ public interface ZkSubscriptionClient {
     Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException;
 
-    boolean isActiveSession(String streamId) throws ServiceUnavailableException;
+    boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
     /**
      * List partitions
@@ -145,12 +144,12 @@ public interface ZkSubscriptionClient {
             throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
-     * Retrieves subscription data like partitions and sessions from ZK under lock.
-     *
+     * Retrieves subscription data like partitions and sessions from ZK without a lock
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
+    Optional<ZkSubscriptionNode> getZkSubscriptionNode()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
      * Subscribes to cursor reset event.

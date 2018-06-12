@@ -16,17 +16,16 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -38,6 +37,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.STRICT_JSON_PARSING;
 
 @Component
 public class EventPublisher {
@@ -52,6 +53,7 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -60,7 +62,8 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthorizationValidator authValidator) {
+                          final AuthorizationValidator authValidator,
+                          final FeatureToggleService featureToggleService) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -68,9 +71,10 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
+        this.featureToggleService = featureToggleService;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
+    public EventPublishResult publish(final String events, final String eventTypeName)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EventTypeTimeoutException,
@@ -86,7 +90,8 @@ public class EventPublisher {
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(events);
+        final List<BatchItem> batch = BatchFactory.from(
+                events, featureToggleService.isFeatureEnabled(STRICT_JSON_PARSING));
         try {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
@@ -187,7 +192,7 @@ public class EventPublisher {
         final Optional<ValidationError> validationError = validator.validate(event);
 
         if (validationError.isPresent()) {
-            throw new EventValidationException(validationError.get());
+            throw new EventValidationException(validationError.get().getMessage());
         }
     }
 

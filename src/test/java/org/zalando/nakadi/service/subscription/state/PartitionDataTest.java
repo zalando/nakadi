@@ -60,10 +60,10 @@ public class PartitionDataTest {
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (long i = 0; i < 100; ++i) {
-            pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1)));
+            pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1), 0));
         }
         // Now say to it that it was sent
-        pd.takeEventsToStream(currentTimeMillis(), 1000, 0L);
+        pd.takeEventsToStream(currentTimeMillis(), 1000, 0L, false);
         assertEquals(100L, pd.getUnconfirmed());
         for (long i = 0; i < 10; ++i) {
             final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(110L + i * 10L));
@@ -77,14 +77,14 @@ public class PartitionDataTest {
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
-            pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+            pd.takeEventsToStream(currentTimeMillis(), 10, 0L, false);
             assertEquals(i + 1, pd.getKeepAliveInARow());
         }
-        pd.addEvent(new ConsumedEvent("".getBytes(), createCursor(101L)));
+        pd.addEvent(new ConsumedEvent("".getBytes(), createCursor(101L), 0));
         assertEquals(100, pd.getKeepAliveInARow());
-        pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+        pd.takeEventsToStream(currentTimeMillis(), 10, 0L, false);
         assertEquals(0, pd.getKeepAliveInARow());
-        pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+        pd.takeEventsToStream(currentTimeMillis(), 10, 0L, false);
         assertEquals(1, pd.getKeepAliveInARow());
     }
 
@@ -95,28 +95,28 @@ public class PartitionDataTest {
 
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime);
         for (int i = 0; i < 100; ++i) {
-            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0));
         }
-        List<ConsumedEvent> data = pd.takeEventsToStream(currentTime, 1000, timeout);
+        List<ConsumedEvent> data = pd.takeEventsToStream(currentTime, 1000, timeout, false);
         assertNull(data);
         assertEquals(0, pd.getKeepAliveInARow());
 
         currentTime += timeout + 1;
 
-        data = pd.takeEventsToStream(currentTime, 1000, timeout);
+        data = pd.takeEventsToStream(currentTime, 1000, timeout, false);
         assertNotNull(data);
         assertEquals(100, data.size());
 
         for (int i = 100; i < 200; ++i) {
-            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0));
         }
-        data = pd.takeEventsToStream(currentTime, 1000, timeout);
+        data = pd.takeEventsToStream(currentTime, 1000, timeout, false);
         assertNull(data);
         assertEquals(0, pd.getKeepAliveInARow());
 
         currentTime += timeout + 1;
 
-        data = pd.takeEventsToStream(currentTime, 1000, timeout);
+        data = pd.takeEventsToStream(currentTime, 1000, timeout, false);
         assertNotNull(data);
         assertEquals(100, data.size());
     }
@@ -126,11 +126,31 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
-            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0));
         }
-        assertNull(pd.takeEventsToStream(currentTimeMillis(), 1000, timeout));
-        final List<ConsumedEvent> eventsToStream = pd.takeEventsToStream(currentTimeMillis(), 99, timeout);
+        assertNull(pd.takeEventsToStream(currentTimeMillis(), 1000, timeout, false));
+        final List<ConsumedEvent> eventsToStream = pd.takeEventsToStream(currentTimeMillis(), 99, timeout, false);
         assertNotNull(eventsToStream);
         assertEquals(99, eventsToStream.size());
+    }
+
+    @Test
+    public void eventsShouldBeStreamedOnStreamTimeout() {
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        for (int i = 0; i < 10; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0));
+        }
+        assertEquals(10, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
+    }
+
+    @Test
+    public void noEmptyBatchShouldBeStreamedOnStreamTimeoutWhenNoEvents() {
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        for (int i = 0; i < 10; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0));
+        }
+        assertNull(pd.takeEventsToStream(currentTimeMillis(), 0, timeout, true));
     }
 }

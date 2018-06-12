@@ -13,8 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -95,7 +94,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
             final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
             if (!acquired) {
-                throw new ServiceUnavailableException("Failed to acquire subscription lock within " +
+                throw new ServiceTemporarilyUnavailableException("Failed to acquire subscription lock within " +
                         SECONDS_TO_WAIT_FOR_LOCK + " seconds");
             }
             final T result;
@@ -175,8 +174,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         getLog().info("Registering session " + session);
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
-            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath,
-                    String.valueOf(session.getWeight()).getBytes(UTF_8));
+            final byte[] sessionData = serializeSession(session);
+            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, sessionData);
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -257,15 +256,16 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return loadDataAsync(
                 zkSessions,
                 key -> getSubscriptionPath("/sessions/" + key),
-                (key, data) -> new Session(key, Integer.parseInt(new String(data, UTF_8)))).values();
+                this::deserializeSession
+        ).values();
     }
 
     @Override
-    public boolean isActiveSession(final String streamId) throws ServiceUnavailableException {
+    public boolean isActiveSession(final String streamId) throws ServiceTemporarilyUnavailableException {
         try {
             return getCurator().checkExists().forPath(getSubscriptionPath("/sessions/" + streamId)) != null;
         } catch (final Exception ex) {
-            throw new ServiceUnavailableException("Error communicating with zookeeper", ex);
+            throw new ServiceTemporarilyUnavailableException("Error communicating with zookeeper", ex);
         }
     }
 
@@ -381,15 +381,15 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked()
+    public final Optional<ZkSubscriptionNode> getZkSubscriptionNode()
             throws SubscriptionNotInitializedException, NakadiRuntimeException {
         if (!isSubscriptionCreatedAndInitialized()) {
             return Optional.empty();
         }
 
-        return Optional.of(runLocked(() -> new ZkSubscriptionNode(
+        return Optional.of(new ZkSubscriptionNode(
                 Arrays.asList(getTopology().getPartitions()),
-                listSessions())));
+                listSessions()));
     }
 
     private void forceCommitOffsets(final List<SubscriptionCursorWithoutToken> cursors) throws Exception {
@@ -462,4 +462,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             throws Exception;
 
     protected abstract String getOffsetPath(EventTypePartition etp);
+
+    protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
+
+    protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
 }

@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,6 +32,7 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -49,12 +51,15 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
+import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
@@ -94,6 +99,24 @@ public class HilaAT extends BaseAT {
                 Collections.singletonList(toCommit),
                 client.getSessionId());
         Assert.assertEquals(SC_NO_CONTENT, statusCode);
+    }
+
+    @Test(timeout = 10000)
+    public void whenStreamTimeoutReachedThenEventsFlushed() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(),
+                        "batch_flush_timeout=600&batch_limit=1000&stream_timeout=2&max_uncommitted_events=1000")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        publishEvents(eventType.getName(), 4, x -> "{\"foo\":\"bar\"}");
+
+        // when stream_timeout is reached we should get 2 batches:
+        // first one containing 4 events, second one with debug message
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
+        assertThat(client.getBatches().get(0).getEvents(), hasSize(4));
+        assertThat(client.getBatches().get(1).getEvents(), hasSize(0));
+        System.out.println(client.getBatches());
     }
 
     @Test(timeout = 30000)
@@ -295,8 +318,13 @@ public class HilaAT extends BaseAT {
         List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
-                        Collections.singletonList(
-                                new SubscriptionEventTypeStats.Partition("0", "assigned", 15L, client.getSessionId())))
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition(
+                                "0",
+                                "assigned",
+                                15L,
+                                null,
+                                client.getSessionId(),
+                                AUTO)))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
@@ -309,12 +337,42 @@ public class HilaAT extends BaseAT {
         subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
-                        Collections.singletonList(
-                                new SubscriptionEventTypeStats.Partition("0", "assigned", 5L, client.getSessionId())))
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition(
+                                "0",
+                                "assigned",
+                                5L,
+                                null,
+                                client.getSessionId(),
+                                AUTO)))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
+    }
+
+    @Test(timeout = 10000)
+    public void testGetSubscriptionStatWhenDirectAssignment() throws Exception {
+        // connect with 1 stream directly requesting the partition
+        final TestStreamingClient client = new TestStreamingClient(URL, subscription.getId(), "",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        client.start();
+        // wait for rebalance to finish
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), Matchers.is(1)));
+
+        NakadiTestUtils.getSubscriptionStat(subscription)
+                .then()
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                        eventType.getName(),
+                        Collections.singletonList(new SubscriptionEventTypeStats.Partition(
+                                "0",
+                                "assigned",
+                                0L,
+                                null,
+                                client.getSessionId(),
+                                DIRECT
+                        ))))));
     }
 
     @Test
@@ -345,7 +403,9 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 1L,
-                                client.getSessionId()
+                                null,
+                                client.getSessionId(),
+                                AUTO
                         ))))))
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventTypes.get(1).getName(),
@@ -353,7 +413,9 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 2L,
-                                client.getSessionId()
+                                null,
+                                client.getSessionId(),
+                                AUTO
                         ))))));
         client.close();
     }
