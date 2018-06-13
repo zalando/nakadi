@@ -21,9 +21,8 @@ public class BatchFactory {
         return found ? curPos : -1;
     }
 
-    private static int navigateToObjectEnd(
-            final boolean strict, final int from, final int end, final String data,
-            final Consumer<BatchItem> batchItemConsumer) {
+    private static int navigateToObjectEnd(final int from, final int end, final String data,
+                                           final Consumer<BatchItem> batchItemConsumer) {
         int curPos = from;
         int nestingLevel = 0;
         boolean escaped = false;
@@ -80,7 +79,6 @@ public class BatchFactory {
         batchItemConsumer.accept(
                 new BatchItem(
                         data.substring(from, curPos + 1),
-                        strict,
                         BatchItem.EmptyInjectionConfiguration.build(1, hasFields),
                         injections,
                         skipPositions));
@@ -114,16 +112,12 @@ public class BatchFactory {
     }
 
     public static List<BatchItem> from(final String events) {
-        return from(events, true);
-    }
-
-    public static List<BatchItem> from(final String events, final boolean strict) {
         final List<BatchItem> batch = new ArrayList<>();
         int objectStart = locateOpenSquareBracket(events) + 1;
         final int arrayEnd = locateClosingSquareBracket(objectStart, events);
 
         while (-1 != (objectStart = navigateToObjectStart(objectStart, arrayEnd, events))) {
-            final int objectEnd = navigateToObjectEnd(strict, objectStart, arrayEnd, events, batch::add);
+            final int objectEnd = navigateToObjectEnd(objectStart, arrayEnd, events, batch::add);
             if (objectEnd == -1) {
                 throw new JSONException("Unclosed object staring at " + objectStart + " found.");
             }

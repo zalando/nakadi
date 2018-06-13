@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.4] - 2018-06-13
+
+### Changed
+- Switched to strict json parsing
+
 ## [2.7.3] - 2018-06-11
 
 ### Changed
