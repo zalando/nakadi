@@ -97,6 +97,11 @@ configurations {
     dbMigrationCompile.extendsFrom compile
     dbMigrationRuntime.extendsFrom runtime
     pgsql
+
+    implementation {
+        exclude group: 'org.codehaus.jackson', module: 'jackson-mapper-asl'
+        exclude group: 'org.codehaus.jackson', module: 'jackson-core-asl'
+    }
 }
 
 findbugs {
