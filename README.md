@@ -223,9 +223,9 @@ Events for an event type can be published by posting to its "events" collection:
 curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
  -H "Content-type: application/json" \
  -d '[{
-    "order_number": "24873243241",    
+    "order_number": "24873243241"
   }, {
-    "order_number": "24873243242",    
+    "order_number": "24873243242"
   }]'
 
 
