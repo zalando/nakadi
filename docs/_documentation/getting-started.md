@@ -56,7 +56,13 @@ by other applications.
 <a name="macos"></a>
 ### Mac OS Docker Settings
 
-Since Docker for Mac OS runs inside Virtual Box, you will  want to expose
+Nakadi is tested to work with [Docker for Mac](https://docs.docker.com/docker-for-mac/)
+v18.03.1-ce-mac65 on OSX 10.12.6 without additional configuration.
+
+Nakadi can also run in Docker Toolbox for Mac. Check out differences between
+Docker and Docker Toolbox [here](https://docs.docker.com/docker-for-mac/docker-toolbox/).
+
+Since Docker Toolbox runs inside VirtualBox, you will want to expose
 some ports first to allow Nakadi to access its dependencies:
 
 ```sh
@@ -68,7 +74,7 @@ docker-machine ssh default \
 ```
 
 Alternatively you can set up port forwarding on the "default" machine through
-its network settings in the VirtualBox UI. 
+its network settings in the VirtualBox UI.
 
 ![vbox](./img/vbox.png)
 
@@ -79,6 +85,4 @@ running, you might want to run this command:
 ```sh
 eval "$(docker-machine env default)"
 ```
-
-**Note:** Docker for Mac OS (previously in beta) version 1.12 (1.12.0 or 1.12.1) currently is not supported due to the [bug](https://github.com/docker/docker/issues/22753#issuecomment-242711639) in networking host configuration.
 
