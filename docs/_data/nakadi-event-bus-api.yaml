@@ -2468,6 +2468,30 @@ definitions:
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
 
+      ordering_key_fields:
+        type: array
+        description: |
+          This field is useful in case the producer wants to communicate the complete order accross all the events
+          published to all partitions. This is the case when there is an incremental generator on the producer side,
+          for example.
+
+          It differs from `partition_key_fields` in the sense that it's not used for partitioning (known as sharding in
+          some systems). Also, the order of the events published in the same partition is not guaranteed to be
+          monotonically increased as with `partition_key_fields`. For `ordering_key_fields`, the consumer should handle
+          the order based on the value of each event.
+
+          In most cases, this would have just a single item (the path of the field
+          by which this is to be ordered), but can have multiple items, in which case
+          those are considered as a compound key, with lexicographic ordering (first
+          item is most significant).
+        items:
+          type: string
+          description: |
+            Indicates a single ordering field. This is a dot separated string, which is applied
+            onto the whole event object, including the contained metadata and data (in
+            case of a data change event) objects.
+          example: "data.incremental_counter"
+
       created_at:
         type: string
         pattern: RFC 3339 date-time

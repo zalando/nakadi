@@ -17,6 +17,7 @@ import static java.util.Collections.unmodifiableList;
 public class EventTypeBase {
 
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
+    private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed")
@@ -39,6 +40,9 @@ public class EventTypeBase {
 
     @Nullable
     private List<String> partitionKeyFields;
+
+    @Nullable
+    private List<String> orderingKeyFields;
 
     @Valid
     @NotNull
@@ -160,6 +164,14 @@ public class EventTypeBase {
 
     public void setPartitionKeyFields(final List<String> partitionKeyFields) {
         this.partitionKeyFields = partitionKeyFields;
+    }
+
+    public List<String> getOrderingKeyFields() {
+        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_ORDERING_KEY_FIELDS);
+    }
+
+    public void setOrderingKeyFields(@Nullable final List<String> orderingKeyFields) {
+        this.orderingKeyFields = orderingKeyFields;
     }
 
     public List<EnrichmentStrategyDescriptor> getEnrichmentStrategies() {
