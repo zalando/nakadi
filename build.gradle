@@ -97,11 +97,6 @@ configurations {
     dbMigrationCompile.extendsFrom compile
     dbMigrationRuntime.extendsFrom runtime
     pgsql
-
-    implementation {
-        exclude group: 'org.codehaus.jackson', module: 'jackson-mapper-asl'
-        exclude group: 'org.codehaus.jackson', module: 'jackson-core-asl'
-    }
 }
 
 findbugs {
@@ -129,7 +124,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-jetty:$springBootVersion"
 
     // oauth
-    compile 'org.springframework.security.oauth:spring-security-oauth2:2.1.0.RELEASE'
+    compile 'org.springframework.security.oauth:spring-security-oauth2:2.3.3.RELEASE'
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
