@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- Removed high-level API feature flag
+
 ## [2.7.4] - 2018-06-13
 
 ### Changed
