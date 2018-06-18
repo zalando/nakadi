@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventAudience;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
@@ -213,6 +214,23 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTwithNullEventAudienceThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .eventAudience(EventAudience.BUSINESS_UNIT_INTERNAL)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
