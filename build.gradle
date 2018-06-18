@@ -2,8 +2,8 @@ import java.util.concurrent.TimeUnit
 
 buildscript {
     ext {
-        springBootVersion = '1.5.13.RELEASE'
-        springFrameworkVersion = '4.3.17.RELEASE'
+        springBootVersion = '1.5.14.RELEASE'
+        springFrameworkVersion = '4.3.18.RELEASE'
         jacksonVersion = '2.8.11'
     }
 
@@ -29,7 +29,7 @@ plugins {
     id 'findbugs'
     id 'checkstyle'
     id 'project-report'
-    id 'org.springframework.boot' version "1.5.13.RELEASE"
+    id 'org.springframework.boot' version "1.5.14.RELEASE"
 }
 
 group 'org.zalando'
