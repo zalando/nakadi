@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ## Added
-- Extended event type's definition to support Zalando's internal audience attribute
+- Extended event type's definition to support audience attribute
 
 ## [2.7.3] - 2018-06-11
 

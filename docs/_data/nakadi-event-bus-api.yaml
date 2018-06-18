@@ -2477,9 +2477,9 @@ definitions:
           - external_partner
           - external_public
         description: |
-          Zalando's internal detail. Intended target audience of the API. Relevant for standards around quality of
-          design and documentation, reviews, discoverability, changeability, and permission granting. See the
-          guidelines https://opensource.zalando.com/restful-api-guidelines/#219
+          Intended target audience of the event type. Relevant for standards around quality of design and documentation,
+          reviews, discoverability, changeability, and permission granting. See the guidelines
+          https://opensource.zalando.com/restful-api-guidelines/#219
 
       created_at:
         type: string
