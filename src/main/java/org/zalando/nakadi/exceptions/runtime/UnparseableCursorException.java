@@ -1,8 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
-import javax.ws.rs.core.Response;
-
-public class UnparseableCursorException extends NakadiException {
+public class UnparseableCursorException extends MyNakadiRuntimeException1 {
     private final String cursors;
 
     public UnparseableCursorException(final String msg, final Exception cause, final String cursors) {
@@ -12,10 +10,5 @@ public class UnparseableCursorException extends NakadiException {
 
     public String getCursors() {
         return cursors;
-    }
-
-    @Override
-    protected Response.StatusType getStatus() {
-        return Response.Status.BAD_REQUEST;
     }
 }

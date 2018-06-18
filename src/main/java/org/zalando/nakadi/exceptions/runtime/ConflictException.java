@@ -1,6 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
-public class ConflictException extends RuntimeException {
+public class ConflictException extends MyNakadiRuntimeException1 {
 
     public ConflictException(final String message) {
         super(message);

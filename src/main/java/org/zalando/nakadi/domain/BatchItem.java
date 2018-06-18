@@ -64,14 +64,14 @@ public class BatchItem {
     private int eventSize;
 
     public BatchItem(
-            final String event,
+            final String rawEvent,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
             final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
-        this.rawEvent = event;
+        this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
-        this.event = new JSONObject(event);
-        this.eventSize = event.getBytes(StandardCharsets.UTF_8).length;
+        this.event = StrictJsonParser.parseObject(rawEvent);
+        this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
         this.response = new BatchItemResponse();
@@ -85,7 +85,7 @@ public class BatchItem {
         if (null == injectionValues) {
             injectionValues = new String[Injection.values().length];
         }
-        injectionValues[type.ordinal()] =value;
+        injectionValues[type.ordinal()] = value;
     }
 
     public JSONObject getEvent() {
@@ -151,7 +151,7 @@ public class BatchItem {
             return null == config ? emptyInjectionConfiguration.position : config.startPos;
         }));
 
-        for (final Injection injectionKey: sortedInjections) {
+        for (final Injection injectionKey : sortedInjections) {
             final String injectionValue = injectionValues[injectionKey.ordinal()];
             if (injectionValue == null) {
                 continue;

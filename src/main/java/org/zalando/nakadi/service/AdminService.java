@@ -11,7 +11,7 @@ import org.zalando.nakadi.domain.AdminResource;
 import org.zalando.nakadi.domain.AllDataAccessResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
