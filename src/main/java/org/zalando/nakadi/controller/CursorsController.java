@@ -50,7 +50,6 @@ import java.util.stream.IntStream;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -77,7 +76,6 @@ public class CursorsController {
 
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionCursor> getCursors(@PathVariable("subscriptionId") final String subscriptionId) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
         try {
             final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId)
                     .stream()
@@ -99,37 +97,34 @@ public class CursorsController {
                 "COMMIT_CURSORS sid:" + subscriptionId + ", size=" + cursorsIn.getItems().size(),
                 "isFeatureEnabled");
         try {
-            featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
-            try {
-                TimeLogger.addMeasure("convertToNakadiCursors");
-                final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
-                if (cursors.isEmpty()) {
-                    throw new CursorsAreEmptyException();
-                }
-                TimeLogger.addMeasure("callService");
-                final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
-
-                TimeLogger.addMeasure("prepareResponse");
-                final boolean allCommited = items.stream().allMatch(item -> item);
-                if (allCommited) {
-                    return noContent().build();
-                } else {
-                    final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
-                            .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
-                            .collect(Collectors.toList());
-                    return ok(new ItemsWrapper<>(body));
-                }
-            } catch (final NoSuchEventTypeException | InvalidCursorException e) {
-                return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
-            } catch (final ServiceTemporarilyUnavailableException e) {
-                LOG.error("Failed to commit cursors", e);
-                return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
-            } catch (final NakadiException e) {
-                LOG.error("Failed to commit cursors", e);
-                return create(e.asProblem(), request);
+            TimeLogger.addMeasure("convertToNakadiCursors");
+            final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
+            if (cursors.isEmpty()) {
+                throw new CursorsAreEmptyException();
             }
-        } finally {
+            TimeLogger.addMeasure("callService");
+            final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
+
+            TimeLogger.addMeasure("prepareResponse");
+            final boolean allCommited = items.stream().allMatch(item -> item);
+            if (allCommited) {
+                return noContent().build();
+            } else {
+                final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
+                        .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
+                        .collect(Collectors.toList());
+                return ok(new ItemsWrapper<>(body));
+            }
+        } catch (final NoSuchEventTypeException | InvalidCursorException e) {
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+        } catch (final ServiceTemporarilyUnavailableException e) {
+            LOG.error("Failed to commit cursors", e);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
+        } catch (final NakadiException e) {
+            LOG.error("Failed to commit cursors", e);
+            return create(e.asProblem(), request);
+        }
+        finally {
             LOG.info(TimeLogger.finishMeasure());
         }
     }
@@ -139,7 +134,6 @@ public class CursorsController {
             @PathVariable("subscriptionId") final String subscriptionId,
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
             return noContent().build();
