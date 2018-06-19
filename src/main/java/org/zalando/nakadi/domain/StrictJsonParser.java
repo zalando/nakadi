@@ -3,8 +3,12 @@ package org.zalando.nakadi.domain;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StrictJsonParser {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StrictJsonParser.class);
 
     private static final String POSSIBLE_NUMBER_DIGITS = "0123456789-+.Ee";
 
@@ -67,7 +71,14 @@ public class StrictJsonParser {
     }
 
     public static JSONObject parse(final String value, final boolean allowMore) throws JSONException {
-        return (JSONObject) parse(value, 0, value.length(), allowMore);
+        try {
+            return (JSONObject) parse(value, 0, value.length(), allowMore);
+        } catch (final JSONException e) {
+            // temporary logging
+            LOG.debug("[STRICT_JSON_FAIL] Failed to parse json with strict parser: {} Error message: {}",
+                    value, e.getMessage());
+            throw e;
+        }
     }
 
     private static Object parse(final String value, final int startIdx, final int endIdx, final boolean allowMore)
