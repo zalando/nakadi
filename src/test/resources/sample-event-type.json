@@ -7,5 +7,5 @@
     "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
   },
-  "event_audience": "external_public"
+  "audience": "external_public"
 }

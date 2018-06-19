@@ -283,7 +283,7 @@ public class EventTypeService {
             authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
-            validateEventAudience(original, eventTypeBase);
+            validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
@@ -427,9 +427,9 @@ public class EventTypeService {
         }
     }
 
-    private void validateEventAudience(final EventType original, final EventTypeBase eventTypeBase) throws
+    private void validateAudience(final EventType original, final EventTypeBase eventTypeBase) throws
             InvalidEventTypeException {
-        if (original.getEventAudience() != null && eventTypeBase.getEventAudience() == null) {
+        if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
         }
     }

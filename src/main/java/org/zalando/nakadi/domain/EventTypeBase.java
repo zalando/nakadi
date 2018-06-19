@@ -58,7 +58,7 @@ public class EventTypeBase {
     private CompatibilityMode compatibilityMode;
 
     @Nullable
-    private EventAudience eventAudience;
+    private Audience audience;
 
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
@@ -103,7 +103,7 @@ public class EventTypeBase {
         this.setOptions(eventType.getOptions());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
-        this.setEventAudience(eventType.getEventAudience());
+        this.setAudience(eventType.getAudience());
     }
 
     public String getName() {
@@ -200,12 +200,12 @@ public class EventTypeBase {
     }
 
     @Nullable
-    public EventAudience getEventAudience() {
-        return eventAudience;
+    public Audience getAudience() {
+        return audience;
     }
 
-    public void setEventAudience(@Nullable final EventAudience eventAudience) {
-        this.eventAudience = eventAudience;
+    public void setAudience(@Nullable final Audience audience) {
+        this.audience = audience;
     }
 
     public void setAuthorization(final ResourceAuthorization authorization) {
