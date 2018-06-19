@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
@@ -58,6 +59,7 @@ public class EventTypeBase {
     private CompatibilityMode compatibilityMode;
 
     @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Audience audience;
 
     public EventTypeBase() {
