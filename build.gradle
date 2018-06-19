@@ -124,7 +124,11 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-jetty:$springBootVersion"
 
     // oauth
-    compile 'org.springframework.security.oauth:spring-security-oauth2:2.3.3.RELEASE'
+    compile ('org.springframework.security.oauth:spring-security-oauth2:2.3.3.RELEASE') {
+        exclude module: 'spring-beans'
+        exclude module: 'spring-core'
+        exclude module: 'spring-context'
+    }
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
