@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.5] - 2018-06-20
+
 ### Changed
 - max.request.size was increased to slightly more than 2MB.
 
