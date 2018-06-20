@@ -59,6 +59,7 @@ nakadi:
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
+    max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
   zookeeper:
