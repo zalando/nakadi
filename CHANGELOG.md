@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.6] - 2018-06-20
+
+### Added
+- Extended event type's definition to support audience attribute
+
 ## [2.7.5] - 2018-06-20
 
 ### Changed
