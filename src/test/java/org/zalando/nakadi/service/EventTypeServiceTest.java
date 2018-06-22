@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.json.JSONObject;
@@ -12,6 +13,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -22,6 +24,7 @@ import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 
 import java.util.ArrayList;
@@ -99,6 +102,33 @@ public class EventTypeServiceTest {
         }
 
         fail("Should have thrown an EventTypeDeletionException");
+    }
+
+    @Test(expected = ConflictException.class)
+    public void whenSubscriptionsExistThenCantDeleteEventType() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+
+        eventTypeService.delete(eventType.getName());
+    }
+
+    @Test
+    public void testFeatureToggleAllowsDeleteEventTypeWithSubscriptions() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
+                .thenReturn(true);
+
+        eventTypeService.delete(eventType.getName());
     }
 
     @Test

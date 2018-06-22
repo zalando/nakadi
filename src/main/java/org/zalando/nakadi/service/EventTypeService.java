@@ -1,7 +1,9 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -23,28 +25,29 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -67,7 +70,9 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
 public class EventTypeService {
@@ -210,13 +215,11 @@ public class EventTypeService {
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
-            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
-            if (!subscriptions.isEmpty()) {
-                throw new ConflictException("Can't remove event type " + eventTypeName
-                        + ", as it has subscriptions");
+            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)) {
+                topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
+            } else {
+                topicsToDelete = deleteEventTypeIfNoSubscriptions(eventTypeName);
             }
-            topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -256,6 +259,51 @@ public class EventTypeService {
                 .put("category", eventType.getCategory())
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
+    }
+
+    private Multimap<TopicRepository, String> deleteEventTypeIfNoSubscriptions(final String eventType) {
+        if (hasSubscriptions(eventType)) {
+            throw new ConflictException("Can't remove event type " + eventType
+                    + ", as it has subscriptions");
+        }
+        return transactionTemplate.execute(action -> deleteEventType(eventType));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
+        return executeWithRetry(() -> {
+                    return transactionTemplate.execute(action -> {
+                        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                                ImmutableSet.of(eventType), Optional.empty(), 0, 100000);
+                        subscriptions.forEach(s -> {
+                            try {
+                                subscriptionRepository.deleteSubscription(s.getId());
+                            } catch (final NoSuchSubscriptionException e) {
+                                // probably somebody deleted subscription just now
+                                LOG.warn("Subscription to be deleted is not found {}", s.getId());
+                            }
+                        });
+                        try {
+                            return deleteEventType(eventType);
+                        } catch (final EventTypeDeletionException e) {
+                            if (hasSubscriptions(eventType)) {
+                                // somebody already created a new subscription before we deleted ET
+                                // we need to return empty value that will cause a retry
+                                return HashMultimap.<TopicRepository, String>create();
+                            } else {
+                                throw e;
+                            }
+                        }
+                    });
+                },
+                new RetryForSpecifiedTimeStrategy<Multimap<TopicRepository, String>>(1000)
+                        .withResultsThatForceRetry(HashMultimap.create()));
+    }
+
+    private boolean hasSubscriptions(final String eventTypeName) {
+        final List<Subscription> subs = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
+        return !subs.isEmpty();
     }
 
     public void update(final String eventTypeName,
@@ -393,7 +441,7 @@ public class EventTypeService {
     }
 
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
-            throws EventTypeUnavailableException, EventTypeDeletionException {
+            throws EventTypeDeletionException {
         try {
             final Multimap<TopicRepository, String> topicsToDelete =
                     timelineService.deleteAllTimelinesForEventType(eventTypeName);
