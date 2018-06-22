@@ -331,6 +331,7 @@ public class EventTypeService {
             authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
+            validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
@@ -471,6 +472,13 @@ public class EventTypeService {
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
             throw new InvalidEventTypeException("path does not match resource name");
+        }
+    }
+
+    private void validateAudience(final EventType original, final EventTypeBase eventTypeBase) throws
+            InvalidEventTypeException {
+        if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
+            throw new InvalidEventTypeException("event audience must not be set back to null");
         }
     }
 

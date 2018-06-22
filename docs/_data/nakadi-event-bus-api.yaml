@@ -2468,6 +2468,21 @@ definitions:
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
 
+      audience:
+        type: string
+        x-extensible-enum:
+          - component_internal
+          - business_unit_internal
+          - company_internal
+          - external_partner
+          - external_public
+        description: |
+          Intended target audience of the event type. Relevant for standards around quality of design and documentation,
+          reviews, discoverability, changeability, and permission granting. See the guidelines
+          https://opensource.zalando.com/restful-api-guidelines/#219
+
+          This attribute adds no functionality and is used only to inform users about the usage scope of the event type.
+
       created_at:
         type: string
         pattern: RFC 3339 date-time
