@@ -129,6 +129,7 @@ public class EventTypeServiceTest {
                 .thenReturn(true);
 
         eventTypeService.delete(eventType.getName());
+        // no exception should be thrown
     }
 
     @Test
