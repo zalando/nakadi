@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Added feature toggle to make it possible to remove event-types together with subscriptions
+
 ## [2.7.6] - 2018-06-20
 
 ### Added
