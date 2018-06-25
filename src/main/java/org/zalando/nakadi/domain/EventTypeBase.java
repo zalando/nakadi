@@ -110,6 +110,7 @@ public class EventTypeBase {
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
         this.setAudience(eventType.getAudience());
+        this.setOrderingKeyFields(eventType.getOrderingKeyFields());
     }
 
     public String getName() {

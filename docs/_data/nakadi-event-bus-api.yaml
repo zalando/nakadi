@@ -2512,7 +2512,6 @@ definitions:
           https://opensource.zalando.com/restful-api-guidelines/#219
 
           This attribute adds no functionality and is used only to inform users about the usage scope of the event type.
->>>>>>> master
 
       created_at:
         type: string
