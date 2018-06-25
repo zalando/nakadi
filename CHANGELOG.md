@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Extended event type's definition to support ordering_key_field attribute
+
 ## [2.7.6] - 2018-06-20
 
 ### Added
