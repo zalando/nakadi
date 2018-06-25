@@ -38,8 +38,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.STRICT_JSON_PARSING;
-
 @Component
 public class EventPublisher {
 
@@ -90,8 +88,7 @@ public class EventPublisher {
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(
-                events, featureToggleService.isFeatureEnabled(STRICT_JSON_PARSING));
+        final List<BatchItem> batch = BatchFactory.from(events);
         try {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 

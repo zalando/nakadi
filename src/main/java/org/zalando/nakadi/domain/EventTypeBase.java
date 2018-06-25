@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
@@ -61,6 +62,10 @@ public class EventTypeBase {
     @NotNull
     private CompatibilityMode compatibilityMode;
 
+    @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Audience audience;
+
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
@@ -104,6 +109,7 @@ public class EventTypeBase {
         this.setOptions(eventType.getOptions());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
+        this.setAudience(eventType.getAudience());
     }
 
     public String getName() {
@@ -205,6 +211,15 @@ public class EventTypeBase {
     @Nullable
     public ResourceAuthorization getAuthorization() {
         return authorization;
+    }
+
+    @Nullable
+    public Audience getAudience() {
+        return audience;
+    }
+
+    public void setAudience(@Nullable final Audience audience) {
+        this.audience = audience;
     }
 
     public void setAuthorization(final ResourceAuthorization authorization) {

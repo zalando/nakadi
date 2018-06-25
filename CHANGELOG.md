@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.6] - 2018-06-20
+
+### Added
+- Extended event type's definition to support audience attribute
+
+## [2.7.5] - 2018-06-20
+
+### Changed
+- max.request.size was increased to slightly more than 2MB.
+
+## [2.7.4] - 2018-06-13
+
+### Changed
+- Switched to strict json parsing
+
 ## [2.7.3] - 2018-06-11
 
 ### Changed

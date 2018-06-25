@@ -10,5 +10,6 @@
   },
   "options" : {
     "retention_time": 86400000
-  }
+  },
+  "audience": "external_public"
 }

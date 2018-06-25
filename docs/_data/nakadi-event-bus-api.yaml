@@ -2471,6 +2471,9 @@ definitions:
       ordering_key_fields:
         type: array
         description: |
+          This is only an informational field. The events are delivered to consumers in the order they were published.
+          No reordering is done by Nakadi.
+
           This field is useful in case the producer wants to communicate the complete order accross all the events
           published to all partitions. This is the case when there is an incremental generator on the producer side,
           for example.
@@ -2490,7 +2493,26 @@ definitions:
             Indicates a single ordering field. This is a dot separated string, which is applied
             onto the whole event object, including the contained metadata and data (in
             case of a data change event) objects.
+
+            The field must be present in the schema. This field can be modified at any moment, but event type owners are
+            expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
+
+      audience:
+        type: string
+        x-extensible-enum:
+          - component_internal
+          - business_unit_internal
+          - company_internal
+          - external_partner
+          - external_public
+        description: |
+          Intended target audience of the event type. Relevant for standards around quality of design and documentation,
+          reviews, discoverability, changeability, and permission granting. See the guidelines
+          https://opensource.zalando.com/restful-api-guidelines/#219
+
+          This attribute adds no functionality and is used only to inform users about the usage scope of the event type.
+>>>>>>> master
 
       created_at:
         type: string

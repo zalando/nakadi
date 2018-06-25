@@ -18,15 +18,19 @@ public class KafkaSettings {
     private final long lingerMs;
     private final boolean enableAutoCommit;
 
+    private final int maxRequestSize;
+
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.linger.ms}") final long lingerMs,
-                         @Value("${nakadi.kafka.enable.auto.commit}") final boolean enableAutoCommit) {
+                         @Value("${nakadi.kafka.enable.auto.commit}") final boolean enableAutoCommit,
+                         @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.lingerMs = lingerMs;
         this.enableAutoCommit = enableAutoCommit;
+        this.maxRequestSize = maxRequestSize;
     }
 
     public int getRequestTimeoutMs() {
@@ -43,5 +47,9 @@ public class KafkaSettings {
 
     public boolean getEnableAutoCommit() {
         return enableAutoCommit;
+    }
+
+    public int getMaxRequestSize() {
+        return maxRequestSize;
     }
 }

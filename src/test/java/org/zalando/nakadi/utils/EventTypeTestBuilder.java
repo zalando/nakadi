@@ -6,6 +6,7 @@ import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ResourceAuthorization;
@@ -38,6 +39,7 @@ public class EventTypeTestBuilder {
     private CompatibilityMode compatibilityMode;
     private DateTime createdAt;
     private DateTime updatedAt;
+    private Audience audience;
     private ResourceAuthorization authorization;
 
 
@@ -57,6 +59,7 @@ public class EventTypeTestBuilder {
         this.createdAt = new DateTime(DateTimeZone.UTC);
         this.updatedAt = this.createdAt;
         this.authorization = null;
+        this.audience = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -140,11 +143,17 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder audience(final Audience audience) {
+        this.audience = audience;
+        return this;
+    }
+
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, compatibilityMode);
         eventTypeBase.setAuthorization(authorization);
+        eventTypeBase.setAudience(audience);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }
