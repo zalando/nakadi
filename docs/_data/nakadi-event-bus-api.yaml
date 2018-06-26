@@ -2479,9 +2479,8 @@ definitions:
           for example.
 
           It differs from `partition_key_fields` in the sense that it's not used for partitioning (known as sharding in
-          some systems). Also, the order of the events published in the same partition is not guaranteed to be
-          monotonically increased as with `partition_key_fields`. For `ordering_key_fields`, the consumer should handle
-          the order based on the value of each event.
+          some systems). The order indicated by `ordering_key_fields` can also differ from the order the events are in
+          each partition, in case of out-of-order submission.
 
           In most cases, this would have just a single item (the path of the field
           by which this is to be ordered), but can have multiple items, in which case
