@@ -52,7 +52,6 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 @RestController
 public class SubscriptionStreamController {
@@ -196,11 +195,6 @@ public class SubscriptionStreamController {
 
         return outputStream -> {
             FlowIdUtils.push(flowId);
-
-            if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-                response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
-                return;
-            }
 
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
