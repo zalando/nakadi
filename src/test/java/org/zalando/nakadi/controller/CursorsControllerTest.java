@@ -2,7 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,7 +15,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -48,7 +46,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
@@ -173,13 +170,6 @@ public class CursorsControllerTest {
     public void whenBodyIsNotJsonThenBadRequest() throws Exception {
         postCursorsString("blah")
                 .andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
-    }
-
-    @Test
-    public void whenGetAndNoFeatureThenNotImplemented() throws Exception {
-        Mockito.doThrow(new FeatureNotAvailableException("Not available", HIGH_LEVEL_API))
-                .when(featureToggleService).checkFeatureOn(eq(HIGH_LEVEL_API));
-        getCursors().andExpect(status().is(HttpStatus.NOT_IMPLEMENTED.value()));
     }
 
     @Test

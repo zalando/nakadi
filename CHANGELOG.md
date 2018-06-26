@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Extended event type's definition to support ordering_key_field attribute
+
+### Removed
+- Removed high-level API feature flag
+
 ### Changed
 - Added feature toggle to make it possible to remove event-types together with subscriptions
 

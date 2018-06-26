@@ -2468,6 +2468,35 @@ definitions:
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
 
+      ordering_key_fields:
+        type: array
+        description: |
+          This is only an informational field. The events are delivered to consumers in the order they were published.
+          No reordering is done by Nakadi.
+
+          This field is useful in case the producer wants to communicate the complete order accross all the events
+          published to all partitions. This is the case when there is an incremental generator on the producer side,
+          for example.
+
+          It differs from `partition_key_fields` in the sense that it's not used for partitioning (known as sharding in
+          some systems). The order indicated by `ordering_key_fields` can also differ from the order the events are in
+          each partition, in case of out-of-order submission.
+
+          In most cases, this would have just a single item (the path of the field
+          by which this is to be ordered), but can have multiple items, in which case
+          those are considered as a compound key, with lexicographic ordering (first
+          item is most significant).
+        items:
+          type: string
+          description: |
+            Indicates a single ordering field. This is a dot separated string, which is applied
+            onto the whole event object, including the contained metadata and data (in
+            case of a data change event) objects.
+
+            The field must be present in the schema. This field can be modified at any moment, but event type owners are
+            expected to notify consumer in advance about the change.
+          example: "data.incremental_counter"
+
       audience:
         type: string
         x-extensible-enum:

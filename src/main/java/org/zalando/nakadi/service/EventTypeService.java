@@ -486,6 +486,8 @@ public class EventTypeService {
                 validatePartitionKeys(schema, eventType);
             }
 
+            validateOrderingKeys(schema, eventType);
+
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
             }
@@ -513,6 +515,16 @@ public class EventTypeService {
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
             throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+        }
+    }
+
+    private void validateOrderingKeys(final Schema schema, final EventTypeBase eventType)
+            throws InvalidEventTypeException, JSONException, SchemaException {
+        final List<String> absentFields = eventType.getOrderingKeyFields().stream()
+                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
+                .collect(Collectors.toList());
+        if (!absentFields.isEmpty()) {
+            throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
         }
     }
 
