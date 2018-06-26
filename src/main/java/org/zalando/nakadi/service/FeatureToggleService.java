@@ -33,7 +33,6 @@ public interface FeatureToggleService {
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
         DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS("delete_event_type_with_subscriptions"),
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
-        HIGH_LEVEL_API("high_level_api"),
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application"),
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),

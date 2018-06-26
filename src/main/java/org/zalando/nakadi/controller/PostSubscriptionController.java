@@ -40,7 +40,6 @@ import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 
 @RestController
@@ -66,8 +65,6 @@ public class PostSubscriptionController {
                                                      final Errors errors,
                                                      final NativeWebRequest request,
                                                      final Client client) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
