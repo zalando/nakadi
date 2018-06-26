@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.7] - 2018-06-26
+
 ### Added
 - Extended event type's definition to support ordering_key_field attribute
 
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Added feature toggle to make it possible to remove event-types together with subscriptions
+- Fixed the way how latest_available_offset is generated for /partitions request for empty timeline
 
 ## [2.7.6] - 2018-06-20
 
