@@ -1,11 +1,6 @@
 import java.util.concurrent.TimeUnit
 
 buildscript {
-    ext {
-        springBootVersion = '1.5.14.RELEASE'
-        springFrameworkVersion = '4.3.18.RELEASE'
-        jacksonVersion = '2.9.6'
-    }
 
     repositories {
         mavenCentral()
