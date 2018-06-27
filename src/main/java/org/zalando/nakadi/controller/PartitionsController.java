@@ -216,7 +216,7 @@ public class PartitionsController {
             final NakadiCursor lastInTimeline = timeline.getLatestPosition()
                     .toNakadiCursor(timeline, first.getPartition());
             if (!lastInTimeline.isInitial()) {
-                return lastInLastTimeline;
+                return lastInTimeline;
             }
         }
         return first.getLast();
