@@ -79,7 +79,7 @@ public class JsonConfig {
 
             try {
                 if (rawClass.equals(Audience.class)) {
-                    return Audience.valueOf(jpValueAsString.toUpperCase().replaceAll("-", "_"));
+                    return Audience.fromString(jpValueAsString);
                 } else {
                     return Enum.valueOf(rawClass, jpValueAsString.toUpperCase());
                 }
@@ -109,7 +109,7 @@ public class JsonConfig {
         public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider)
                 throws IOException {
             if (value.getClass().equals(Audience.class)) {
-                jgen.writeString(value.name().toLowerCase().replaceAll("_", "-"));
+                jgen.writeString(((Audience)value).getText());
             } else {
                 jgen.writeString(value.name().toLowerCase());
             }
