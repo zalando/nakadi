@@ -21,8 +21,8 @@ public class BatchFactory {
         return found ? curPos : -1;
     }
 
-    private static int navigateToObjectEnd(
-            final int from, final int end, final String data, final Consumer<BatchItem> batchItemConsumer) {
+    private static int navigateToObjectEnd(final int from, final int end, final String data,
+                                           final Consumer<BatchItem> batchItemConsumer) {
         int curPos = from;
         int nestingLevel = 0;
         boolean escaped = false;
@@ -149,11 +149,11 @@ public class BatchFactory {
         return pos;
     }
 
-    private static boolean shouldBeSkipped(final char c) {
+    static boolean shouldBeSkipped(final char c) {
         return (c == '\r' || c == '\n' || c == ' ' || c == '\t');
     }
 
-    private static boolean isEmptyCharacter(final char c) {
+    static boolean isEmptyCharacter(final char c) {
         return (c == ' ' || c == '\t' || c == '\n' || c == '\r');
     }
 }

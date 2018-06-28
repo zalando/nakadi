@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
@@ -23,28 +24,29 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -68,6 +70,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
 public class EventTypeService {
@@ -210,13 +213,11 @@ public class EventTypeService {
 
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
-            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
-            if (!subscriptions.isEmpty()) {
-                throw new ConflictException("Can't remove event type " + eventTypeName
-                        + ", as it has subscriptions");
+            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)) {
+                topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
+            } else {
+                topicsToDelete = deleteEventTypeIfNoSubscriptions(eventTypeName);
             }
-            topicsToDelete = transactionTemplate.execute(action -> deleteEventType(eventTypeName));
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -258,6 +259,40 @@ public class EventTypeService {
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
     }
 
+    private Multimap<TopicRepository, String> deleteEventTypeIfNoSubscriptions(final String eventType) {
+        if (hasSubscriptions(eventType)) {
+            throw new ConflictException("Can't remove event type " + eventType
+                    + ", as it has subscriptions");
+        }
+        return transactionTemplate.execute(action -> deleteEventType(eventType));
+    }
+
+    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
+        try {
+            return transactionTemplate.execute(action -> {
+                final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                        ImmutableSet.of(eventType), Optional.empty(), 0, 100000);
+                subscriptions.forEach(s -> {
+                    try {
+                        subscriptionRepository.deleteSubscription(s.getId());
+                    } catch (final NoSuchSubscriptionException e) {
+                        // should not happen as we are inside transaction
+                        throw new InconsistentStateException("Subscription to be deleted is not found", e);
+                    }
+                });
+                return deleteEventType(eventType);
+            });
+        } catch (final TransactionException e) {
+            throw new InconsistentStateException("Failed to delete event-type because of race condition in DB", e);
+        }
+    }
+
+    private boolean hasSubscriptions(final String eventTypeName) {
+        final List<Subscription> subs = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
+        return !subs.isEmpty();
+    }
+
     public void update(final String eventTypeName,
                        final EventTypeBase eventTypeBase)
             throws TopicConfigException,
@@ -283,6 +318,7 @@ public class EventTypeService {
             authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
+            validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
@@ -393,7 +429,7 @@ public class EventTypeService {
     }
 
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
-            throws EventTypeUnavailableException, EventTypeDeletionException {
+            throws EventTypeDeletionException {
         try {
             final Multimap<TopicRepository, String> topicsToDelete =
                     timelineService.deleteAllTimelinesForEventType(eventTypeName);
@@ -426,6 +462,13 @@ public class EventTypeService {
         }
     }
 
+    private void validateAudience(final EventType original, final EventTypeBase eventTypeBase) throws
+            InvalidEventTypeException {
+        if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
+            throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
@@ -442,6 +485,8 @@ public class EventTypeService {
             if (featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
                 validatePartitionKeys(schema, eventType);
             }
+
+            validateOrderingKeys(schema, eventType);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
@@ -470,6 +515,16 @@ public class EventTypeService {
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
             throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+        }
+    }
+
+    private void validateOrderingKeys(final Schema schema, final EventTypeBase eventType)
+            throws InvalidEventTypeException, JSONException, SchemaException {
+        final List<String> absentFields = eventType.getOrderingKeyFields().stream()
+                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
+                .collect(Collectors.toList());
+        if (!absentFields.isEmpty()) {
+            throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
         }
     }
 

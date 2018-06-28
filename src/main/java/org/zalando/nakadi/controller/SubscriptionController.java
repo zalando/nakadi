@@ -33,7 +33,6 @@ import java.util.Set;
 
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -61,7 +60,6 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return WebResult.wrap(
                 () -> subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
@@ -71,16 +69,12 @@ public class SubscriptionController {
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
                                              final NativeWebRequest request) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
         return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
                                                 final NativeWebRequest request) {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
         return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
                 HttpStatus.NO_CONTENT);
     }
@@ -90,8 +84,6 @@ public class SubscriptionController {
             @PathVariable("id") final String subscriptionId,
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
             throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
-        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
-
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }

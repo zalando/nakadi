@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
@@ -17,6 +18,7 @@ import static java.util.Collections.unmodifiableList;
 public class EventTypeBase {
 
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
+    private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed")
@@ -40,6 +42,9 @@ public class EventTypeBase {
     @Nullable
     private List<String> partitionKeyFields;
 
+    @Nullable
+    private List<String> orderingKeyFields;
+
     @Valid
     @NotNull
     private EventTypeSchemaBase schema;
@@ -56,6 +61,10 @@ public class EventTypeBase {
 
     @NotNull
     private CompatibilityMode compatibilityMode;
+
+    @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Audience audience;
 
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
@@ -100,6 +109,8 @@ public class EventTypeBase {
         this.setOptions(eventType.getOptions());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
         this.setAuthorization(eventType.getAuthorization());
+        this.setAudience(eventType.getAudience());
+        this.setOrderingKeyFields(eventType.getOrderingKeyFields());
     }
 
     public String getName() {
@@ -162,6 +173,14 @@ public class EventTypeBase {
         this.partitionKeyFields = partitionKeyFields;
     }
 
+    public List<String> getOrderingKeyFields() {
+        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_ORDERING_KEY_FIELDS);
+    }
+
+    public void setOrderingKeyFields(@Nullable final List<String> orderingKeyFields) {
+        this.orderingKeyFields = orderingKeyFields;
+    }
+
     public List<EnrichmentStrategyDescriptor> getEnrichmentStrategies() {
         return enrichmentStrategies;
     }
@@ -193,6 +212,15 @@ public class EventTypeBase {
     @Nullable
     public ResourceAuthorization getAuthorization() {
         return authorization;
+    }
+
+    @Nullable
+    public Audience getAudience() {
+        return audience;
+    }
+
+    public void setAudience(@Nullable final Audience audience) {
+        this.audience = audience;
     }
 
     public void setAuthorization(final ResourceAuthorization authorization) {

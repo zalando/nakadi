@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
@@ -213,6 +214,23 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTwithNullAudienceThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .audience(Audience.BUSINESS_UNIT_INTERNAL)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
@@ -731,8 +749,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.getSchema().setSchema("invalid-json");
 
         final Problem expectedProblem =
-                createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected token 'invalid' " +
-                        "on line 1, char 1");
+                createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected symbol 'i' at pos 1");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }

@@ -6,6 +6,39 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.7] - 2018-06-26
+
+### Added
+- Extended event type's definition to support ordering_key_field attribute
+
+### Removed
+- Removed high-level API feature flag
+
+### Changed
+- Added feature toggle to make it possible to remove event-types together with subscriptions
+- Fixed the way how latest_available_offset is generated for /partitions request for empty timeline
+
+## [2.7.6] - 2018-06-20
+
+### Added
+- Extended event type's definition to support audience attribute
+
+## [2.7.5] - 2018-06-20
+
+### Changed
+- max.request.size was increased to slightly more than 2MB.
+
+## [2.7.4] - 2018-06-13
+
+### Changed
+- Switched to strict json parsing
+
+## [2.7.3] - 2018-06-11
+
+### Changed
+- Allow to use strict json parsing for event type publishing under feature toggle
+- Reduced logging by merging SLO publishing and ACCESS_LOG fields 
+
 ## [2.7.2] - 2018-05-30
 
 ### Changed

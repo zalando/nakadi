@@ -59,6 +59,7 @@ nakadi:
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
+    max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
   zookeeper:
@@ -137,7 +138,6 @@ nakadi:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
     DISABLE_SUBSCRIPTION_CREATION: false
-    HIGH_LEVEL_API: true
     CHECK_PARTITIONS_KEYS: true
     CHECK_OWNING_APPLICATION: false
     LIMIT_CONSUMERS_NUMBER: true
@@ -166,7 +166,6 @@ nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false
   DISABLE_SUBSCRIPTION_CREATION: false
-  HIGH_LEVEL_API: true
   CHECK_PARTITIONS_KEYS: true
   CHECK_OWNING_APPLICATION: true
   LIMIT_CONSUMERS_NUMBER: true
