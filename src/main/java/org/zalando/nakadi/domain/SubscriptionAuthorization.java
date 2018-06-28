@@ -44,10 +44,14 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        SubscriptionAuthorization that = (SubscriptionAuthorization) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final SubscriptionAuthorization that = (SubscriptionAuthorization) o;
         return Objects.equals(admins, that.admins) &&
                 Objects.equals(readers, that.readers);
     }

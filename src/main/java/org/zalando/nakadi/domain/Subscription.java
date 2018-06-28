@@ -41,6 +41,10 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
+    public SubscriptionResource asResource() {
+        return new SubscriptionResource(id, getAuthorization());
+    }
+
     @Nullable
     public List<SubscriptionEventTypeStats> getStatus() {
         return status;

@@ -59,7 +59,7 @@ public class SubscriptionBase {
         return authorization;
     }
 
-    public void setAuthorization(SubscriptionAuthorization authorization) {
+    public void setAuthorization(final SubscriptionAuthorization authorization) {
         this.authorization = authorization;
     }
 

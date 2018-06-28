@@ -11,7 +11,8 @@ public class SubscriptionResource implements Resource {
     private final String subscriptionId;
     private final SubscriptionAuthorization subscriptionAuthorization;
 
-    public SubscriptionResource(String subscriptionId, SubscriptionAuthorization subscriptionAuthorization) {
+    public SubscriptionResource(
+            final String subscriptionId, final SubscriptionAuthorization subscriptionAuthorization) {
         this.subscriptionId = subscriptionId;
         this.subscriptionAuthorization = subscriptionAuthorization;
     }

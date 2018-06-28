@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface ValidatableAuthorization {
     Map<String, List<AuthorizationAttribute>> asMapValue();
 
-    Optional<List<AuthorizationAttribute>> getAttributesForOperation(final AuthorizationService.Operation operation)
+    Optional<List<AuthorizationAttribute>> getAttributesForOperation(AuthorizationService.Operation operation)
             throws IllegalArgumentException;
 
 }

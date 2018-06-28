@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionResource;
 import org.zalando.nakadi.domain.ValidatableAuthorization;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -111,8 +110,7 @@ public class AuthorizationValidator {
         if (eventType.getAuthorization() == null) {
             return;
         }
-        final EventTypeResource resource = new EventTypeResource(
-                eventType.getName(), eventType.getAuthorization());
+        final EventTypeResource resource = eventType.asResource();
         try {
             final boolean authorized = authorizationService.isAuthorized(
                     AuthorizationService.Operation.WRITE,
@@ -125,7 +123,7 @@ public class AuthorizationValidator {
         }
     }
 
-    private void authorizeResourceAdmin(Resource resource) {
+    private void authorizeResourceAdmin(final Resource resource) {
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
                 if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
@@ -142,7 +140,7 @@ public class AuthorizationValidator {
         if (eventType.getAuthorization() == null) {
             return;
         }
-        authorizeResourceAdmin(new EventTypeResource(eventType.getName(), eventType.getAuthorization()));
+        authorizeResourceAdmin(eventType.asResource());
     }
 
     public void authorizeStreamRead(final EventType eventType) throws AccessDeniedException {
@@ -150,7 +148,7 @@ public class AuthorizationValidator {
             return;
         }
 
-        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
+        final Resource resource = eventType.asResource();
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
                     && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
@@ -163,7 +161,7 @@ public class AuthorizationValidator {
 
     public void authorizeSubscriptionRead(final Subscription subscription) throws AccessDeniedException {
         if (null != subscription.getAuthorization()) {
-            final Resource resource = new SubscriptionResource(subscription.getId(), subscription.getAuthorization());
+            final Resource resource = subscription.asResource();
             try {
                 // In this case operation for read will invoke
                 if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
@@ -186,7 +184,7 @@ public class AuthorizationValidator {
     }
 
     public void authorizeSubscriptionCommit(final Subscription subscription) throws AccessDeniedException {
-        final Resource resource = new SubscriptionResource(subscription.getId(), subscription.getAuthorization());
+        final Resource resource = subscription.asResource();
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
                     && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
@@ -201,7 +199,7 @@ public class AuthorizationValidator {
         if (subscription.getAuthorization() == null) {
             return;
         }
-        authorizeResourceAdmin(new SubscriptionResource(subscription.getId(), subscription.getAuthorization()));
+        authorizeResourceAdmin(subscription.asResource());
     }
 
     public void validateAuthorization(final ValidatableAuthorization oldValue, final ValidatableAuthorization newValue)
