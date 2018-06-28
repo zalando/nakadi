@@ -1915,7 +1915,12 @@ definitions:
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
-
+    schema:
+      oneOf:      
+      - $ref: '#/definitions/BusinessEvent'
+      - $ref: '#/definitions/DataChangeEvent'
+      - $ref: '#/definitions/UndefinedEvent'
+      
   EventMetadata:
     type: object
     description: |
@@ -1990,55 +1995,60 @@ definitions:
         example: '0'
     required:
       - eid
-      - occurred_at
-
+      - occurred_at    
+        
+        
   BusinessEvent:
     description: |
       A Business Event.
 
-      Usually represents a status transition in a Business process.
-    allOf:
-      - $ref: '#/definitions/Event'
-      - type: object
-        properties:
-          metadata:
-              $ref: '#/definitions/EventMetadata'
-        required:
-            - metadata
+      Usually represents a status transition in a Business process.   
+    type: object
+    properties:
+      metadata:
+          $ref: '#/definitions/EventMetadata'
+    required:
+        - metadata
 
   DataChangeEvent:
     description: |
       A Data change Event.
 
       Represents a change on a resource. Also contains indicators for the data
-      type and the type of operation performed.
-    allOf:
-      - $ref: '#/definitions/Event'
-      - type: object
-        properties:
-          data_type:
-            type: string
-            example: 'pennybags:order'
-          data_op:
-            type: string
-            enum: ['C', 'U', 'D', 'S']
-            description: |
-              The type of operation executed on the entity.
-              * C: Creation
-              * U: Update
-              * D: Deletion
-              * S: Snapshot
-          metadata:
-            $ref: '#/definitions/EventMetadata'
-          data:
-            type: object
-            description: |
-                The payload of the type
-        required:
-            - data
-            - metadata
-            - data_type
-            - data_op
+      type and the type of operation performed.    
+    type: object
+    properties:
+      data_type:
+        type: string
+        example: 'pennybags:order'
+      data_op:
+        type: string
+        enum: ['C', 'U', 'D', 'S']
+        description: |
+          The type of operation executed on the entity.
+          * C: Creation
+          * U: Update
+          * D: Deletion
+          * S: Snapshot
+      metadata:
+        $ref: '#/definitions/EventMetadata'
+      data:
+        type: object
+        description: |
+            The payload of the type
+    required:
+        - data
+        - metadata
+        - data_type
+        - data_op
+
+  UndefinedEvent:
+    description: |
+      An Event without any defined category.
+
+      Nakadi will not change any content of this event.   
+    type: object
+
 
   Problem:
     type: object
