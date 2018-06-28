@@ -8,6 +8,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -20,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -28,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -41,16 +44,19 @@ public class SubscriptionValidationService {
     private final TimelineService timelineService;
     private final int maxSubscriptionPartitions;
     private final CursorConverter cursorConverter;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public SubscriptionValidationService(final TimelineService timelineService,
                                          final EventTypeRepository eventTypeRepository,
                                          final NakadiSettings nakadiSettings,
-                                         final CursorConverter cursorConverter) {
+                                         final CursorConverter cursorConverter,
+                                         final AuthorizationValidator authorizationValidator) {
         this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
         this.cursorConverter = cursorConverter;
+        this.authorizationValidator = authorizationValidator;
     }
 
     public void validateSubscription(final SubscriptionBase subscription)
@@ -74,6 +80,27 @@ public class SubscriptionValidationService {
         if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
             validateInitialCursors(subscription, allPartitions);
         }
+        // Verify that subscription authorization object is valid
+        authorizationValidator.validateAuthorization(subscription.getAuthorization());
+    }
+
+    public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue) {
+        if (!Objects.equals(newValue.getConsumerGroup(), old.getConsumerGroup())) {
+            throw new IllegalArgumentException("Not allowed to change subscription consumer group");
+        }
+        if (!Objects.equals(newValue.getEventTypes(), old.getEventTypes())) {
+            throw new IllegalArgumentException("Not allowed to change subscription event types");
+        }
+        if (!Objects.equals(newValue.getOwningApplication(), old.getOwningApplication())) {
+            throw new IllegalArgumentException("Not allowed to change owning application");
+        }
+        if (!Objects.equals(newValue.getReadFrom(), old.getReadFrom())) {
+            throw new IllegalArgumentException("Not allowed to change owning application");
+        }
+        if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
+            throw new IllegalArgumentException("Not allowed to change owning application");
+        }
+        authorizationValidator.validateAuthorization(old.getAuthorization(), newValue.getAuthorization());
     }
 
     public void validatePartitionsToStream(final Subscription subscription, final List<EventTypePartition> partitions) {
@@ -169,5 +196,4 @@ public class SubscriptionValidationService {
                     StringUtils.join(missingEventTypes, "', '")));
         }
     }
-
 }

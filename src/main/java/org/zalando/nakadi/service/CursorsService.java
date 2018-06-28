@@ -50,6 +50,7 @@ public class CursorsService {
     private final CursorConverter cursorConverter;
     private final UUIDGenerator uuidGenerator;
     private final TimelineService timelineService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -58,7 +59,8 @@ public class CursorsService {
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator,
-                          final TimelineService timelineService) {
+                          final TimelineService timelineService,
+                          final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
@@ -66,6 +68,7 @@ public class CursorsService {
         this.cursorConverter = cursorConverter;
         this.uuidGenerator = uuidGenerator;
         this.timelineService = timelineService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     /**
@@ -77,6 +80,9 @@ public class CursorsService {
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
         TimeLogger.addMeasure("getSubscription");
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+
+        TimeLogger.addMeasure("authorize");
+        authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         TimeLogger.addMeasure("validateSubscriptionCursors");
         validateSubscriptionCommitCursors(subscription, cursors);

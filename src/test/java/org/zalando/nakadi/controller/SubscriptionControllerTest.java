@@ -123,7 +123,7 @@ public class SubscriptionControllerTest {
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et");
+                "subscription_log_et", authorizationValidator);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());

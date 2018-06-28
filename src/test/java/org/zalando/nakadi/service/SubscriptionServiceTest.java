@@ -42,11 +42,11 @@ public class SubscriptionServiceTest {
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
-                cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET);
+                cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET, authorizationValidator);
     }
 
     @Test
-    public void whenSubscriptionCreatedThenKPIEventSubmitted() throws Exception {
+    public void whenSubscriptionCreatedThenKPIEventSubmitted() {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .buildSubscriptionBase();
         final Subscription subscription = RandomSubscriptionBuilder.builder()
@@ -63,7 +63,7 @@ public class SubscriptionServiceTest {
     }
 
     @Test
-    public void whenSubscriptionDeletedThenKPIEventSubmitted() throws Exception {
+    public void whenSubscriptionDeletedThenKPIEventSubmitted() {
         subscriptionService.deleteSubscription("my_subscription_id1");
 
         checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,

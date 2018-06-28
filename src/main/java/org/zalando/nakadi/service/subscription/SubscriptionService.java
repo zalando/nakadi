@@ -40,6 +40,7 @@ import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -84,6 +85,7 @@ public class SubscriptionService {
     private final FeatureToggleService featureToggleService;
     private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
+    private final AuthorizationValidator authorizationValidator;
 
     public enum StatsMode {
         LIGHT,
@@ -102,7 +104,8 @@ public class SubscriptionService {
                                final NakadiKpiPublisher nakadiKpiPublisher,
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
-                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType) {
+                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
+                               final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -114,6 +117,7 @@ public class SubscriptionService {
         this.featureToggleService = featureToggleService;
         this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
+        this.authorizationValidator = authorizationValidator;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -133,6 +137,22 @@ public class SubscriptionService {
                 .put("status", "created"));
 
         return subscription;
+    }
+
+    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
+            throws NoSuchSubscriptionException {
+        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
+                    "are blocked by feature flag.");
+        }
+        final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
+
+        authorizationValidator.authorizeSubscriptionAdmin(old);
+
+        subscriptionValidationService.validateSubscriptionChange(old, newValue);
+        old.mergeFrom(newValue);
+        subscriptionRepository.updateSubscription(old);
+        return old;
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
@@ -201,6 +221,8 @@ public class SubscriptionService {
         }
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+
+            authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
             subscriptionRepository.deleteSubscription(subscriptionId);
             final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(

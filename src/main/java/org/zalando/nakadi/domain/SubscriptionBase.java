@@ -40,6 +40,9 @@ public class SubscriptionBase {
     @Valid
     private List<SubscriptionCursorWithoutToken> initialCursors = ImmutableList.of();
 
+    @Nullable
+    private SubscriptionAuthorization authorization;
+
     public SubscriptionBase() {
     }
 
@@ -49,6 +52,15 @@ public class SubscriptionBase {
         this.setConsumerGroup(subscriptionBase.getConsumerGroup());
         this.setReadFrom(subscriptionBase.getReadFrom());
         this.setInitialCursors(subscriptionBase.getInitialCursors());
+        this.setAuthorization(subscriptionBase.getAuthorization());
+    }
+
+    public SubscriptionAuthorization getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(SubscriptionAuthorization authorization) {
+        this.authorization = authorization;
     }
 
     public String getOwningApplication() {
@@ -91,6 +103,10 @@ public class SubscriptionBase {
         this.initialCursors = Optional.ofNullable(initialCursors).orElse(ImmutableList.of());
     }
 
+    public void mergeFrom(final SubscriptionBase newValue) {
+        this.authorization = newValue.getAuthorization();
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -104,6 +120,7 @@ public class SubscriptionBase {
                 && eventTypes.equals(that.eventTypes)
                 && consumerGroup.equals(that.consumerGroup)
                 && readFrom.equals(that.readFrom)
+                && authorization.equals(that.authorization)
                 && initialCursors.equals(that.initialCursors);
     }
 

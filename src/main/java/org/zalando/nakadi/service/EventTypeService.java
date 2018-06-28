@@ -315,7 +315,7 @@ public class EventTypeService {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
             }
-            authorizationValidator.validateAuthorization(original, eventTypeBase);
+            authorizationValidator.validateAuthorization(original.getAuthorization(), eventTypeBase.getAuthorization());
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
