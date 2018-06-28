@@ -90,7 +90,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("name", equalTo(eventTypeName))
                 .body("owning_application", equalTo(owningApp))
                 .body("category", equalTo("undefined"))
-                .body("audience", equalTo("external_public"))
+                .body("audience", equalTo("external-public"))
                 .body("ordering_key_fields", equalTo(Lists.newArrayList("foo", "bar.baz")))
                 .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": " +
