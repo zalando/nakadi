@@ -130,6 +130,7 @@ public class SubscriptionService {
         }
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
+
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()

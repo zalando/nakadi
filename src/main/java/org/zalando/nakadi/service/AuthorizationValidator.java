@@ -123,7 +123,7 @@ public class AuthorizationValidator {
         }
     }
 
-    private void authorizeResourceAdmin(final Resource resource) {
+    private void authorizeResourceAdmin(final Resource resource) throws AccessDeniedException {
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
                 if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
@@ -195,7 +195,7 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeSubscriptionAdmin(final Subscription subscription) {
+    public void authorizeSubscriptionAdmin(final Subscription subscription) throws AccessDeniedException {
         if (subscription.getAuthorization() == null) {
             return;
         }

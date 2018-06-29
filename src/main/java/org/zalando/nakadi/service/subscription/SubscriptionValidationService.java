@@ -94,10 +94,10 @@ public class SubscriptionValidationService {
             throw new IllegalArgumentException("Not allowed to change owning application");
         }
         if (!Objects.equals(newValue.getReadFrom(), old.getReadFrom())) {
-            throw new IllegalArgumentException("Not allowed to change owning application");
+            throw new IllegalArgumentException("Not allowed to change read from");
         }
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
-            throw new IllegalArgumentException("Not allowed to change owning application");
+            throw new IllegalArgumentException("Not allowed to change initial cursors");
         }
         authorizationValidator.validateAuthorization(old.getAuthorization(), newValue.getAuthorization());
     }
