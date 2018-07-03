@@ -2469,6 +2469,44 @@ definitions:
 
           If this is set it MUST be a valid required field as defined in the schema.
 
+      cleanup_policy:
+        type: string
+        x-extensible-enum:
+          - delete
+          - compact
+        default: 'delete'
+        description: |
+          Event type cleanup policy. There are two possible values:
+
+          - 'delete' cleanup policy will delete old events after retention time expires. Nakadi guarantees that each
+          event will be available for at least the retention time period. However Nakadi doesn't guarantee that event
+          will be deleted right after retention time expires.
+
+          - 'compact' cleanup policy will keep only the latest event for each event key. The compaction is performed per
+          partition, there is no compaction across partitions. The key that will be used as a compaction key should be
+          specified in 'partition_compaction_keys' field.
+          The compaction can be not applied to events that were published recently and located at the head of the queue,
+          which means that the actual amount of events recevied by consumers can be different depending on time when the
+          consumption happened.
+          When using 'compact' cleanup policy user should consider that different Nakadi endpoints showing the amount
+          of events will actually show the original amount of events published, not the actual amount of events that are
+          currently there. E.g. subscription /stats endpoint will show the value 'unconsumed_events' - but that may not
+          match with the actual amount of events unconsumed in that subscription as 'compact' cleanup policy may delete
+          older events in the middle of queue if there is a newer event for the same key published.
+
+          It's not possible to change the value of this field for existing event type.
+
+      partition_compaction_keys:
+        type: array
+        items:
+          type: string
+        description: |
+          Indicates the fields used as a key of event for per-partition compaction of this event type.
+          Required when 'cleanup_policy' is set to 'compact'. Must be absent otherwise.
+          If this is set it MUST be a valid required field as defined in the schema.
+          It's not possible to change the value of this field for existing event type.
+        example: ["order_id", "order_data.article_id"]
+
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
 
