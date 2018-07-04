@@ -1,9 +1,19 @@
 package org.zalando.nakadi.repository;
 
-import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.runtime.*;
+import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
 import java.util.List;
