@@ -61,6 +61,7 @@ public class BatchItem {
     private final List<Integer> skipCharacters;
     private String partition;
     private String brokerId;
+    private String eventKey;
     private int eventSize;
 
     public BatchItem(
@@ -99,6 +100,15 @@ public class BatchItem {
     @Nullable
     public String getPartition() {
         return partition;
+    }
+
+    @Nullable
+    public String getEventKey() {
+        return eventKey;
+    }
+
+    public void setEventKey(@Nullable final String eventKey) {
+        this.eventKey = eventKey;
     }
 
     @Nullable

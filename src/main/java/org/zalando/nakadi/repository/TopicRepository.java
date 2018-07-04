@@ -1,18 +1,9 @@
 package org.zalando.nakadi.repository;
 
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionEndStatistics;
-import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.*;
 
 import java.util.Collection;
 import java.util.List;
@@ -38,7 +29,8 @@ public interface TopicRepository {
         }
     }
 
-    String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
+    String createTopic(int partitionCount, Long retentionTimeMs, CleanupPolicy cleanupPolicy)
+            throws TopicCreationException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 

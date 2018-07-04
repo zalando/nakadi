@@ -15,38 +15,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.EventCategory;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
-import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
-import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
-import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.*;
+import org.zalando.nakadi.exceptions.runtime.*;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -155,9 +127,8 @@ public class EventTypeService {
         eventTypeRepository.saveEventType(eventType);
 
         try {
-            timelineService.createDefaultTimeline(eventType.getName(),
-                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
-                    eventType.getOptions().getRetentionTime());
+            timelineService.createDefaultTimeline(eventType,
+                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()));
         } catch (final Exception e) {
             try {
                 eventTypeRepository.removeEventType(eventType.getName());

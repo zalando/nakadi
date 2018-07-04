@@ -19,7 +19,7 @@ import static java.lang.Math.abs;
 @Component
 public class HashPartitionStrategy implements PartitionStrategy {
 
-    private static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
+    public static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
     private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final StringHash stringHash;

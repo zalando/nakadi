@@ -13,9 +13,9 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -47,7 +47,7 @@ public class TimelineServiceTest {
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new DefaultStorage(new Storage()), adminService, featureToggleService);
+            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage");
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
@@ -115,7 +115,7 @@ public class TimelineServiceTest {
         Mockito.when(timelineDbRepository.createTimeline(any()))
                 .thenThrow(new InconsistentStateException("shouldDeleteTopicWhenTimelineCreationFails"));
         try {
-            timelineService.createDefaultTimeline("event_type_1", 1, 1);
+            timelineService.createDefaultTimeline(buildDefaultEventType(), 1);
         } catch (final InconsistentStateException e) {
         }
 

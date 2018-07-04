@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
@@ -27,11 +28,7 @@ import java.util.UUID;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,6 +46,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final Long RETENTION_TIME = 100L;
     private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
+    private static final CleanupPolicy CLEANUP_POLICY = CleanupPolicy.DELETE;
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
@@ -95,7 +93,8 @@ public class KafkaRepositoryAT extends BaseAT {
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME,
+                CLEANUP_POLICY);
 
         // ASSERT //
         executeWithRetry(() -> {
@@ -162,7 +161,8 @@ public class KafkaRepositoryAT extends BaseAT {
     @SuppressWarnings("unchecked")
     public void whenCreateTopicWithRetentionTime() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME,
+                CLEANUP_POLICY);
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(

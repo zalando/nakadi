@@ -1,11 +1,7 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
@@ -14,23 +10,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
-import org.zalando.nakadi.domain.Audience;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.*;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -41,11 +25,7 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -57,24 +37,12 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
-import static org.zalando.nakadi.utils.TestUtils.createInvalidEventTypeExceptionProblem;
-import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
+import static org.zalando.nakadi.utils.TestUtils.*;
 
 public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
@@ -122,7 +90,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostEventTypeThenWarning() throws Exception {
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType).andExpect(status().isCreated()).andExpect(
-                header().string("Warning","299 nakadi \"I am warning you\""));
+                header().string("Warning", "299 nakadi \"I am warning you\""));
     }
 
     @Test
@@ -248,7 +216,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         putEventType(updatedEventType, eventType.getName()).andExpect(
-                header().string("Warning","299 nakadi \"I am warning you\""));
+                header().string("Warning", "299 nakadi \"I am warning you\""));
     }
 
     @Test
@@ -420,7 +388,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
-        when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
+        when(topicRepository.createTopic(anyInt(), any(), any())).thenReturn(randomUUID.toString());
 
         postEventType(eventType).andExpect(status().isCreated());
     }
@@ -627,13 +595,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
         final Timeline timeline = buildTimelineWithTopic("topic1");
-        when(timelineService.createDefaultTimeline(anyString(), anyInt(), anyLong())).thenReturn(timeline);
+        when(timelineService.createDefaultTimeline(any(), anyInt())).thenReturn(timeline);
         doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(timelineService, times(1)).createDefaultTimeline(anyString(), anyInt(), anyLong());
+        verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
     }
 
     @Test
@@ -641,7 +609,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType et = buildDefaultEventType();
         doThrow(TopicCreationException.class).when(timelineService)
-                .createDefaultTimeline(anyString(), anyInt(), anyLong());
+                .createDefaultTimeline(any(), anyInt());
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
 
         postEventType(et).andExpect(status().isServiceUnavailable())
@@ -649,7 +617,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(timelineService, times(1)).createDefaultTimeline(anyString(), anyInt(), anyLong());
+        verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
         verify(eventTypeRepository, times(1)).removeEventType(et.getName());
     }
 

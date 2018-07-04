@@ -19,6 +19,7 @@ public class EventTypeBase {
 
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
     private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
+    private static final List<String> EMPTY_PARTITION_COMPACTION_KEYS = ImmutableList.of();
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed")
@@ -41,6 +42,12 @@ public class EventTypeBase {
 
     @Nullable
     private List<String> partitionKeyFields;
+
+    @NotNull
+    private CleanupPolicy cleanupPolicy;
+
+    @Nullable
+    private List<String> partitionCompactionKeys;
 
     @Nullable
     private List<String> orderingKeyFields;
@@ -72,17 +79,18 @@ public class EventTypeBase {
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.options = new EventTypeOptions();
         this.compatibilityMode = CompatibilityMode.FORWARD;
+        this.cleanupPolicy = CleanupPolicy.DELETE;
     }
 
     public EventTypeBase(final String name, final String owningApplication,
-                     final EventCategory category,
-                     final List<ValidationStrategyConfiguration> validationStrategies,
-                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
-                     final String partitionStrategy,
-                     final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
-                     final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options,
-                     final CompatibilityMode compatibilityMode) {
+                         final EventCategory category,
+                         final List<ValidationStrategyConfiguration> validationStrategies,
+                         final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
+                         final String partitionStrategy,
+                         final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
+                         final EventTypeStatistics defaultStatistic,
+                         final EventTypeOptions options,
+                         final CompatibilityMode compatibilityMode) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -171,6 +179,23 @@ public class EventTypeBase {
 
     public void setPartitionKeyFields(final List<String> partitionKeyFields) {
         this.partitionKeyFields = partitionKeyFields;
+    }
+
+    public CleanupPolicy getCleanupPolicy() {
+        return cleanupPolicy;
+    }
+
+    public void setCleanupPolicy(CleanupPolicy cleanupPolicy) {
+        this.cleanupPolicy = cleanupPolicy;
+    }
+
+    public List<String> getPartitionCompactionKeys() {
+        return unmodifiableList(partitionCompactionKeys != null ? partitionCompactionKeys :
+                EMPTY_PARTITION_COMPACTION_KEYS);
+    }
+
+    public void setPartitionCompactionKeys(@Nullable List<String> partitionCompactionKeys) {
+        this.partitionCompactionKeys = partitionCompactionKeys;
     }
 
     public List<String> getOrderingKeyFields() {

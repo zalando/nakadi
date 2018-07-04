@@ -1,33 +1,21 @@
 package org.zalando.nakadi.service;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.BatchFactory;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.BatchItemResponse;
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.PartitioningException;
-import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
-import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.runtime.EventValidationException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.*;
+import org.zalando.nakadi.exceptions.runtime.*;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -37,6 +25,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.partitioning.HashPartitionStrategy.DATA_PATH_PREFIX;
 
 @Component
 public class EventPublisher {
@@ -99,6 +89,7 @@ public class EventPublisher {
 
             validate(batch, eventType);
             partition(batch, eventType);
+            compact(batch, eventType);
             enrich(batch, eventType);
             submit(batch, eventType);
 
@@ -160,6 +151,30 @@ public class EventPublisher {
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
+            }
+        }
+    }
+
+    private void compact(final List<BatchItem> batch, final EventType eventType) {
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            for (final BatchItem item : batch) {
+                final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent());
+                final List<String> compactionKeys = eventType.getPartitionCompactionKeys().stream()
+                        .map(compactionKeyField -> EventCategory.DATA.equals(eventType.getCategory()) ?
+                                DATA_PATH_PREFIX + compactionKeyField : compactionKeyField)
+                        .map(compactionKeyField -> {
+                            try {
+                                return jsonPath.get(compactionKeyField).toString();
+                            } catch (final InvalidPartitionKeyFieldsException e) {
+                                // this should be never thrown as we force users to make compaction keys to be required,
+                                // so if compaction key is missing we should fail earlier on validation step
+                                throw new InconsistentStateException(
+                                        "Unexpected exception occurred when assembling compaction key", e);
+                            }
+                        })
+                        .collect(Collectors.toList());
+                final String compactionKeyStr = new JSONArray(compactionKeys).toString();
+                item.setEventKey(compactionKeyStr);
             }
         }
     }

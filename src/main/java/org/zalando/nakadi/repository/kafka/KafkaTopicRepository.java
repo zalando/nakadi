@@ -10,31 +10,15 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.NetworkException;
-import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.TopicExistsException;
-import org.apache.kafka.common.errors.UnknownServerException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.apache.kafka.common.errors.*;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionEndStatistics;
-import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.*;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -42,21 +26,8 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -65,10 +36,7 @@ import java.util.stream.Stream;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
+import static org.zalando.nakadi.domain.CursorError.*;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -108,7 +76,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public String createTopic(final int partitionCount, final Long retentionTimeMs)
+    public String createTopic(final int partitionCount, final Long retentionTimeMs, final CleanupPolicy cleanupPolicy)
             throws TopicCreationException {
         if (retentionTimeMs == null) {
             throw new IllegalArgumentException("Retention time can not be null");
@@ -118,18 +86,20 @@ public class KafkaTopicRepository implements TopicRepository {
                 partitionCount,
                 nakadiSettings.getDefaultTopicReplicaFactor(),
                 retentionTimeMs,
-                nakadiSettings.getDefaultTopicRotationMs());
+                nakadiSettings.getDefaultTopicRotationMs(),
+                cleanupPolicy == CleanupPolicy.COMPACT ? "compact" : "delete");
         return topicName;
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
-                             final long retentionMs, final long rotationMs)
+                             final long retentionMs, final long rotationMs, final String cleanupPolicy)
             throws TopicCreationException {
         try {
             doWithZkUtils(zkUtils -> {
                 final Properties topicConfig = new Properties();
                 topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
+                topicConfig.setProperty("cleanup.policy", cleanupPolicy);
                 AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
                         RackAwareMode.Safe$.MODULE$);
             });
@@ -184,7 +154,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getPartition(),
+                    item.getEventKey(),
                     item.dumpEventToString());
 
             circuitBreaker.markStart();
