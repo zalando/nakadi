@@ -85,7 +85,7 @@ public class TimelineService {
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
-                           @Value("${timelines.storage.compacted}") final String compactedStorageName) {
+                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;

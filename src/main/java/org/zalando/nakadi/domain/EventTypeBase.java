@@ -90,7 +90,8 @@ public class EventTypeBase {
                          final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
-                         final CompatibilityMode compatibilityMode) {
+                         final CompatibilityMode compatibilityMode,
+                         final CleanupPolicy cleanupPolicy) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -102,6 +103,7 @@ public class EventTypeBase {
         this.defaultStatistic = defaultStatistic;
         this.options = options;
         this.compatibilityMode = compatibilityMode;
+        this.cleanupPolicy = cleanupPolicy;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
@@ -119,6 +121,8 @@ public class EventTypeBase {
         this.setAuthorization(eventType.getAuthorization());
         this.setAudience(eventType.getAudience());
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
+        this.setCleanupPolicy(eventType.getCleanupPolicy());
+        this.setPartitionCompactionKeys(eventType.getPartitionCompactionKeys());
     }
 
     public String getName() {
@@ -185,7 +189,7 @@ public class EventTypeBase {
         return cleanupPolicy;
     }
 
-    public void setCleanupPolicy(CleanupPolicy cleanupPolicy) {
+    public void setCleanupPolicy(final CleanupPolicy cleanupPolicy) {
         this.cleanupPolicy = cleanupPolicy;
     }
 
@@ -194,7 +198,7 @@ public class EventTypeBase {
                 EMPTY_PARTITION_COMPACTION_KEYS);
     }
 
-    public void setPartitionCompactionKeys(@Nullable List<String> partitionCompactionKeys) {
+    public void setPartitionCompactionKeys(@Nullable final List<String> partitionCompactionKeys) {
         this.partitionCompactionKeys = partitionCompactionKeys;
     }
 
