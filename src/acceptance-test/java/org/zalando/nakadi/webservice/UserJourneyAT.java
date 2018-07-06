@@ -92,6 +92,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("category", equalTo("undefined"))
                 .body("audience", equalTo("external-public"))
                 .body("ordering_key_fields", equalTo(Lists.newArrayList("foo", "bar.baz")))
+                .body("cleanup_policy", equalTo("delete"))
+                .body("partition_compaction_keys", equalTo(ImmutableList.of()))
                 .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": " +
                         "{\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": " +

@@ -36,6 +36,7 @@ import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -48,9 +49,9 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
-    private static final Long RETENTION_TIME = 100L;
+    private static final Long DEFAULT_RETENTION_TIME = 100L;
     private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
-    private static final CleanupPolicy CLEANUP_POLICY = CleanupPolicy.DELETE;
+    private static final CleanupPolicy DEFAULT_CLEANUP_POLICY = CleanupPolicy.DELETE;
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
@@ -97,8 +98,8 @@ public class KafkaRepositoryAT extends BaseAT {
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME,
-                CLEANUP_POLICY);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
+                DEFAULT_CLEANUP_POLICY);
 
         // ASSERT //
         executeWithRetry(() -> {
@@ -165,15 +166,34 @@ public class KafkaRepositoryAT extends BaseAT {
     @SuppressWarnings("unchecked")
     public void whenCreateTopicWithRetentionTime() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME,
-                CLEANUP_POLICY);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
+                DEFAULT_CLEANUP_POLICY);
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(
-                KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL), RETENTION_TIME),
+                KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL), DEFAULT_RETENTION_TIME),
                 new RetryForSpecifiedTimeStrategy<Void>(5000)
                         .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
+    }
+
+    @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
+    public void checkCompactionCleanupPolicySetCorrectly() {
+        setCleanupPolicyAndCheck(CleanupPolicy.DELETE, "delete");
+        setCleanupPolicyAndCheck(CleanupPolicy.COMPACT, "compact");
+    }
+
+    private void setCleanupPolicyAndCheck(final CleanupPolicy cleanupPolicy, final String expectedCleanupPolicy) {
+        // ACT //
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
+                cleanupPolicy);
+
+        // ASSERT //
+        waitFor(() -> {
+            final String actualCleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
+            assertThat(actualCleanupPolicy, equalTo(expectedCleanupPolicy));
+        }, 5000);
     }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {

@@ -105,7 +105,7 @@ nakadi:
   timelines:
     storage:
       default: "default"
-      compacted: "compacted"
+      compacted: "default"
   kpi:
     config:
       batch-collection-timeout: 1000

@@ -7,6 +7,7 @@ import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
@@ -219,6 +220,29 @@ public class EventTypeAT extends BaseAT {
         Assert.assertThat(cleanupTimeDiff, is(newRetentionTime - defaultRetentionTime));
 
         assertRetentionTime(newRetentionTime, eventType.getName());
+    }
+
+    @Test
+    public void whenPostCompactedEventTypeThenOk() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+        eventType.setPartitionCompactionKeys(ImmutableList.of("key1"));
+        eventType.getSchema().setSchema("{\"type\":\"object\",\"properties\":{\"key1\":{\"type\":\"string\"}}}");
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        given().body(body)
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("cleanup_policy", equalTo("compact"))
+                .body("partition_compaction_keys", equalTo(ImmutableList.of("key1")));
     }
 
     @Test
