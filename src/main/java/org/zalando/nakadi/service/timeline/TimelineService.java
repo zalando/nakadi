@@ -33,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
@@ -112,6 +113,10 @@ public class TimelineService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+            }
+            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+                throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
+                        "for event type with 'compact' cleanup_policy");
             }
 
             final Storage storage = storageDbRepository.getStorage(storageId)

@@ -12,14 +12,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
 import org.zalando.nakadi.view.TimelineView;
@@ -66,8 +68,10 @@ public class TimelinesController {
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
+    @ExceptionHandler({
+            NotFoundException.class,
+            TimelinesNotSupportedException.class})
+    public ResponseEntity<Problem> notFound(final MyNakadiRuntimeException1 ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }

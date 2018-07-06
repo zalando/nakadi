@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -148,6 +149,7 @@ public class EventTypeService {
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
+        validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
         authorizationValidator.validateAuthorization(eventType.getAuthorization());
@@ -171,6 +173,19 @@ public class EventTypeService {
                 .put("category", eventType.getCategory())
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
+    }
+
+    private void validateCompaction(final EventTypeBase eventType) {
+        if (eventType.getCleanupPolicy() != CleanupPolicy.COMPACT &&
+                !eventType.getPartitionCompactionKeys().isEmpty()) {
+            throw new InvalidEventTypeException(
+                    "partition_compaction_keys can be only defined when cleanup_policy is 'compact'");
+        }
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT &&
+                eventType.getPartitionCompactionKeys().isEmpty()) {
+            throw new InvalidEventTypeException(
+                    "partition_compaction_keys should be defined when using cleanup_policy 'compact'");
+        }
     }
 
     private String identifyAuthzState(final EventTypeBase eventType) {
@@ -486,6 +501,7 @@ public class EventTypeService {
             }
 
             validateOrderingKeys(schema, eventType);
+            validatePartitionCompactionKeys(schema, eventType);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
@@ -524,6 +540,16 @@ public class EventTypeService {
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
             throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
+        }
+    }
+
+    private void validatePartitionCompactionKeys(final Schema schema, final EventTypeBase eventType)
+            throws InvalidEventTypeException, JSONException, SchemaException {
+        final List<String> absentFields = eventType.getPartitionCompactionKeys().stream()
+                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
+                .collect(Collectors.toList());
+        if (!absentFields.isEmpty()) {
+            throw new InvalidEventTypeException("partition_compaction_keys " + absentFields + " absent in schema");
         }
     }
 
