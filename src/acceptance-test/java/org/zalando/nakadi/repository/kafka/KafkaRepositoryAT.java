@@ -36,7 +36,6 @@ import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -111,6 +110,9 @@ public class KafkaRepositoryAT extends BaseAT {
 
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+
+                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
+                    assertThat(cleanupPolicy, equalTo("delete"));
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -175,25 +177,6 @@ public class KafkaRepositoryAT extends BaseAT {
                 new RetryForSpecifiedTimeStrategy<Void>(5000)
                         .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
-    }
-
-    @Test(timeout = 10000)
-    @SuppressWarnings("unchecked")
-    public void checkCompactionCleanupPolicySetCorrectly() {
-        setCleanupPolicyAndCheck(CleanupPolicy.DELETE, "delete");
-        setCleanupPolicyAndCheck(CleanupPolicy.COMPACT, "compact");
-    }
-
-    private void setCleanupPolicyAndCheck(final CleanupPolicy cleanupPolicy, final String expectedCleanupPolicy) {
-        // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
-                cleanupPolicy);
-
-        // ASSERT //
-        waitFor(() -> {
-            final String actualCleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
-            assertThat(actualCleanupPolicy, equalTo(expectedCleanupPolicy));
-        }, 5000);
     }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {
