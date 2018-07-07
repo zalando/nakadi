@@ -3,6 +3,10 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -222,8 +226,9 @@ public class EventTypeAT extends BaseAT {
         assertRetentionTime(newRetentionTime, eventType.getName());
     }
 
-    @Test
-    public void whenPostCompactedEventTypeThenOk() throws JsonProcessingException {
+    @Test(timeout = 10000)
+    public void whenPostCompactedEventTypeThenOk() throws IOException {
+        // create event type with 'compact' cleanup_policy
         final EventType eventType = buildDefaultEventType();
         eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
         eventType.setPartitionCompactionKeys(ImmutableList.of("key1"));
@@ -236,6 +241,7 @@ public class EventTypeAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);
 
+        // get event type and check that properties are set correctly
         given().body(body)
                 .contentType(JSON)
                 .get(ENDPOINT + "/" + eventType.getName())
@@ -243,6 +249,24 @@ public class EventTypeAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK)
                 .body("cleanup_policy", equalTo("compact"))
                 .body("partition_compaction_keys", equalTo(ImmutableList.of("key1")));
+
+        // assert that created topic in kafka has correct cleanup_policy
+        final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic, ZOOKEEPER_URL);
+        assertThat(cleanupPolicy, equalTo("compact"));
+
+        // publish event to compacted event type
+        publishEvent(eventType.getName(), "{\"key1\":\"v1\"}");
+
+        // assert that key was correctly propagated to event key in kafka
+        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
+        final KafkaConsumer<String, String> consumer = kafkaHelper.createConsumer();
+        final TopicPartition tp = new TopicPartition(topic, 0);
+        consumer.assign(ImmutableList.of(tp));
+        consumer.seek(tp, 0);
+        final ConsumerRecords<String, String> records = consumer.poll(5000);
+        final ConsumerRecord<String, String> record = records.iterator().next();
+        assertThat(record.key(), equalTo("[\"v1\"]"));
     }
 
     @Test

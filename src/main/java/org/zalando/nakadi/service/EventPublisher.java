@@ -59,7 +59,6 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
-    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -68,8 +67,7 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthorizationValidator authValidator,
-                          final FeatureToggleService featureToggleService) {
+                          final AuthorizationValidator authValidator) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -77,7 +75,6 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
-        this.featureToggleService = featureToggleService;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
