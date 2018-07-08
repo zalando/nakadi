@@ -91,7 +91,8 @@ public class EventTypeBase {
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
-                         final CleanupPolicy cleanupPolicy) {
+                         final CleanupPolicy cleanupPolicy,
+                         final List<String> partitionCompactionKeys) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -104,6 +105,7 @@ public class EventTypeBase {
         this.options = options;
         this.compatibilityMode = compatibilityMode;
         this.cleanupPolicy = cleanupPolicy;
+        this.partitionCompactionKeys = partitionCompactionKeys;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {

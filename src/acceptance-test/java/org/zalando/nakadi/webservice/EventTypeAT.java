@@ -227,12 +227,15 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenPostCompactedEventTypeThenOk() throws IOException {
+    public void compactedEventTypeJourney() throws IOException {
         // create event type with 'compact' cleanup_policy
         final EventType eventType = buildDefaultEventType();
         eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
-        eventType.setPartitionCompactionKeys(ImmutableList.of("key1"));
-        eventType.getSchema().setSchema("{\"type\":\"object\",\"properties\":{\"key1\":{\"type\":\"string\"}}}");
+        eventType.setPartitionCompactionKeys(ImmutableList.of("key1", "some_field.key2"));
+        eventType.getSchema().setSchema(
+                "{\"type\":\"object\",\"properties\":{" +
+                        "\"key1\":{\"type\":\"string\"}," +
+                        "\"some_field\":{\"type\":\"object\",\"properties\":{\"key2\":{\"type\":\"integer\"}}}}}");
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
         given().body(body)
@@ -248,7 +251,7 @@ public class EventTypeAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body("cleanup_policy", equalTo("compact"))
-                .body("partition_compaction_keys", equalTo(ImmutableList.of("key1")));
+                .body("partition_compaction_keys", equalTo(ImmutableList.of("key1", "some_field.key2")));
 
         // assert that created topic in kafka has correct cleanup_policy
         final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
@@ -256,7 +259,7 @@ public class EventTypeAT extends BaseAT {
         assertThat(cleanupPolicy, equalTo("compact"));
 
         // publish event to compacted event type
-        publishEvent(eventType.getName(), "{\"key1\":\"v1\"}");
+        publishEvent(eventType.getName(), "{\"key1\":\"v1\",\"some_field\":{\"key2\":2}}");
 
         // assert that key was correctly propagated to event key in kafka
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
@@ -266,7 +269,7 @@ public class EventTypeAT extends BaseAT {
         consumer.seek(tp, 0);
         final ConsumerRecords<String, String> records = consumer.poll(5000);
         final ConsumerRecord<String, String> record = records.iterator().next();
-        assertThat(record.key(), equalTo("[\"v1\"]"));
+        assertThat(record.key(), equalTo("[\"v1\",\"2\"]"));
     }
 
     @Test

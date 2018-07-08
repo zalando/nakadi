@@ -148,8 +148,8 @@ public class EventTypeService {
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
-        validateSchema(eventType);
         validateCompaction(eventType);
+        validateSchema(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
         authorizationValidator.validateAuthorization(eventType.getAuthorization());
@@ -185,6 +185,16 @@ public class EventTypeService {
                 eventType.getPartitionCompactionKeys().isEmpty()) {
             throw new InvalidEventTypeException(
                     "partition_compaction_keys should be defined when using cleanup_policy 'compact'");
+        }
+    }
+
+    private void validateCompactionUpdate(final EventType original, final EventTypeBase updatedET) {
+        validateCompaction(updatedET);
+        if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
+            throw new InvalidEventTypeException("cleanup_policy can not be changed");
+        }
+        if (!original.getPartitionCompactionKeys().equals(updatedET.getPartitionCompactionKeys())) {
+            throw new InvalidEventTypeException("partition_compaction_keys can not be changed");
         }
     }
 
@@ -331,6 +341,7 @@ public class EventTypeService {
             }
             authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
+            validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);

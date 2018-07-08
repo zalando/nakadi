@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -230,6 +231,78 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPostCompactedETWithoutCompactionKeysThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .build();
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenCompactionKeysSpecifiedForNoneCompactedETThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionCompactionKeys(ImmutableList.of("key"))
+                .schema("{\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"}}}")
+                .build();
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenCompactionKeysNotSpecifiedInSchemaThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .partitionCompactionKeys(ImmutableList.of("key"))
+                .build();
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPutEventTypeWithChangedCleanupPolicyThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .partitionCompactionKeys(ImmutableList.of("key"))
+                .schema("{\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"}}}")
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .cleanupPolicy(CleanupPolicy.DELETE)
+                .partitionCompactionKeys(ImmutableList.of("key"))
+                .schema("{\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"}}}")
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPutEventTypeWithChangedCompactionKeysThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .partitionCompactionKeys(ImmutableList.of("key"))
+                .schema("{\"type\":\"object\",\"properties\":{" +
+                        "\"key\":{\"type\":\"string\"}," +
+                        "\"key2\":{\"type\":\"string\"}}}")
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .partitionCompactionKeys(ImmutableList.of("key2"))
+                .schema("{\"type\":\"object\",\"properties\":{" +
+                        "\"key\":{\"type\":\"string\"}," +
+                        "\"key2\":{\"type\":\"string\"}}}")
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isUnprocessableEntity());
     }
 
