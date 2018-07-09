@@ -4,14 +4,18 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
@@ -169,9 +173,15 @@ public class JsonSchemaEnrichment {
         metadataProperties.put("partition", string);
         metadataProperties.put("partition_compaction_key", string);
 
+        final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            metadataProperties.put("partition_compaction_key", string);
+            requiredFields.add("partition_compaction_key");
+        }
+
         metadata.put("type", "object");
         metadata.put("properties", metadataProperties);
-        metadata.put("required", Arrays.asList(new String[]{"eid", "occurred_at"}));
+        metadata.put("required", requiredFields);
         metadata.put("additionalProperties", false);
 
         schema.getJSONObject("properties").put("metadata", metadata);

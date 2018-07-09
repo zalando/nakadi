@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,15 +170,10 @@ public class EventPublisher {
     private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
-                try {
-                    final String compactionKey = item.getEvent()
-                            .getJSONObject("metadata")
-                            .getString("partition_compaction_key");
-                    item.setEventKey(compactionKey);
-                } catch (final JSONException e) {
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "no compaction key found in metadata");
-                    throw new CompactionException("No compaction key found in event metadata");
-                }
+                final String compactionKey = item.getEvent()
+                        .getJSONObject("metadata")
+                        .getString("partition_compaction_key");
+                item.setEventKey(compactionKey);
             }
         }
     }
