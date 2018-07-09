@@ -62,15 +62,15 @@ public class TimelinesController {
                 .collect(Collectors.toList()));
     }
 
-    @ExceptionHandler(UnableProcessException.class)
+    @ExceptionHandler({
+            UnableProcessException.class,
+            TimelinesNotSupportedException.class})
     public ResponseEntity<Problem> unprocessable(final UnableProcessException ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({
-            NotFoundException.class,
-            TimelinesNotSupportedException.class})
+    @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> notFound(final MyNakadiRuntimeException1 ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
