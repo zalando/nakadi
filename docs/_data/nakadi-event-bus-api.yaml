@@ -2001,7 +2001,8 @@ definitions:
         example: '0'
       partition_compaction_key:
         description: |
-          Represents a key of event for per-partition compaction of this event type.
+          Value used for per-partition compaction of the event type. Given two events with the same
+          partition_compaction_key value are published to the same partition, the later overwrites the former.
           Required when 'cleanup_policy' of event type is set to 'compact'. Must be absent otherwise.
 
           When using more than one partition for event type - it will make sense to specify 'partition_compaction_key'
