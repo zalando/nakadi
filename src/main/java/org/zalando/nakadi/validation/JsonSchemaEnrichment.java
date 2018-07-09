@@ -34,9 +34,12 @@ public class JsonSchemaEnrichment {
         }
 
         switch (eventType.getCategory()) {
-            case BUSINESS: return addMetadata(schema, eventType);
-            case DATA: return wrapSchemaInData(schema, eventType);
-            default: return schema;
+            case BUSINESS:
+                return addMetadata(schema, eventType);
+            case DATA:
+                return wrapSchemaInData(schema, eventType);
+            default:
+                return schema;
         }
     }
 
@@ -47,7 +50,7 @@ public class JsonSchemaEnrichment {
         COMPOSED_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.getJSONArray(keyword)
-                        .forEach(object -> enforceStrictValidation((JSONObject)object));
+                        .forEach(object -> enforceStrictValidation((JSONObject) object));
             }
         });
     }
@@ -95,16 +98,16 @@ public class JsonSchemaEnrichment {
                     .ifPresent(object ->
                             object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
                     );
-            });
+        });
     }
 
     private boolean isEmptySchema(final JSONObject schema) {
         return !(
-            OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            schema.has("$ref") ||
-            schema.has("type")
+                OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        schema.has("$ref") ||
+                        schema.has("type")
         );
     }
 
@@ -121,12 +124,12 @@ public class JsonSchemaEnrichment {
 
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
-                .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
+                .put("enum", Arrays.asList(new String[]{"C", "U", "D", "S"})));
         properties.put(DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put("additionalProperties", false);
 
-        addToRequired(wrapper, new String[]{ "data_type", "data_op", "data" });
+        addToRequired(wrapper, new String[]{"data_type", "data_op", "data"});
 
         return wrapper;
     }
@@ -153,7 +156,7 @@ public class JsonSchemaEnrichment {
                 .put("items", uuid);
         final JSONObject eventTypeString = new JSONObject()
                 .put("type", "string")
-                .put("enum", Arrays.asList(new String[] { eventType.getName() }));
+                .put("enum", Arrays.asList(new String[]{eventType.getName()}));
         final JSONObject string = new JSONObject().put("type", "string");
         final JSONObject dateTime = new JSONObject()
                 .put("type", "string");
@@ -164,6 +167,7 @@ public class JsonSchemaEnrichment {
         metadataProperties.put("parent_eids", arrayOfUUIDs);
         metadataProperties.put("flow_id", string);
         metadataProperties.put("partition", string);
+        metadataProperties.put("partition_compaction_key", string);
 
         metadata.put("type", "object");
         metadata.put("properties", metadataProperties);
@@ -172,7 +176,7 @@ public class JsonSchemaEnrichment {
 
         schema.getJSONObject("properties").put("metadata", metadata);
 
-        addToRequired(schema, new String[]{ "metadata" });
+        addToRequired(schema, new String[]{"metadata"});
 
         return schema;
     }
@@ -182,7 +186,7 @@ public class JsonSchemaEnrichment {
 
         final JSONArray currentRequired = schema.getJSONArray("required");
 
-        for(int i = 0; i < currentRequired.length(); i++) {
+        for (int i = 0; i < currentRequired.length(); i++) {
             required.add(currentRequired.getString(i));
         }
 

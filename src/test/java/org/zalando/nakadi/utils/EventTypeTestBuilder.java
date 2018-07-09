@@ -4,18 +4,18 @@ import com.google.common.collect.Lists;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
-import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
@@ -39,7 +39,6 @@ public class EventTypeTestBuilder {
     private EventTypeOptions options;
     private CompatibilityMode compatibilityMode;
     private CleanupPolicy cleanupPolicy;
-    private List<String> partitionCompactionKeys;
     private DateTime createdAt;
     private DateTime updatedAt;
     private Audience audience;
@@ -137,11 +136,6 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder partitionCompactionKeys(final List<String> partitionCompactionKeys) {
-        this.partitionCompactionKeys = partitionCompactionKeys;
-        return this;
-    }
-
     public EventTypeTestBuilder createdAt(final DateTime createdAt) {
         this.createdAt = createdAt;
         return this;
@@ -165,7 +159,7 @@ public class EventTypeTestBuilder {
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
-                defaultStatistic, options, compatibilityMode, cleanupPolicy, partitionCompactionKeys);
+                defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);

@@ -19,7 +19,6 @@ public class EventTypeBase {
 
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
     private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
-    private static final List<String> EMPTY_PARTITION_COMPACTION_KEYS = ImmutableList.of();
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed")
@@ -45,9 +44,6 @@ public class EventTypeBase {
 
     @NotNull
     private CleanupPolicy cleanupPolicy;
-
-    @Nullable
-    private List<String> partitionCompactionKeys;
 
     @Nullable
     private List<String> orderingKeyFields;
@@ -91,8 +87,7 @@ public class EventTypeBase {
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
-                         final CleanupPolicy cleanupPolicy,
-                         final List<String> partitionCompactionKeys) {
+                         final CleanupPolicy cleanupPolicy) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -105,7 +100,6 @@ public class EventTypeBase {
         this.options = options;
         this.compatibilityMode = compatibilityMode;
         this.cleanupPolicy = cleanupPolicy;
-        this.partitionCompactionKeys = partitionCompactionKeys;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
@@ -124,7 +118,6 @@ public class EventTypeBase {
         this.setAudience(eventType.getAudience());
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
-        this.setPartitionCompactionKeys(eventType.getPartitionCompactionKeys());
     }
 
     public String getName() {
@@ -193,15 +186,6 @@ public class EventTypeBase {
 
     public void setCleanupPolicy(final CleanupPolicy cleanupPolicy) {
         this.cleanupPolicy = cleanupPolicy;
-    }
-
-    public List<String> getPartitionCompactionKeys() {
-        return unmodifiableList(partitionCompactionKeys != null ? partitionCompactionKeys :
-                EMPTY_PARTITION_COMPACTION_KEYS);
-    }
-
-    public void setPartitionCompactionKeys(@Nullable final List<String> partitionCompactionKeys) {
-        this.partitionCompactionKeys = partitionCompactionKeys;
     }
 
     public List<String> getOrderingKeyFields() {

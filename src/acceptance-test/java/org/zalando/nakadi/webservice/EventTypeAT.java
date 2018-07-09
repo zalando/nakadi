@@ -12,6 +12,8 @@ import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
@@ -229,14 +231,11 @@ public class EventTypeAT extends BaseAT {
     @Test(timeout = 10000)
     public void compactedEventTypeJourney() throws IOException {
         // create event type with 'compact' cleanup_policy
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
-        eventType.setPartitionCompactionKeys(ImmutableList.of("key1", "some_field.key2"));
-        eventType.getSchema().setSchema(
-                "{\"type\":\"object\",\"properties\":{" +
-                        "\"key1\":{\"type\":\"string\"}," +
-                        "\"some_field\":{\"type\":\"object\",\"properties\":{\"key2\":{\"type\":\"integer\"}}}}}");
-
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .build();
         final String body = MAPPER.writer().writeValueAsString(eventType);
         given().body(body)
                 .contentType(JSON)
@@ -250,8 +249,7 @@ public class EventTypeAT extends BaseAT {
                 .get(ENDPOINT + "/" + eventType.getName())
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .body("cleanup_policy", equalTo("compact"))
-                .body("partition_compaction_keys", equalTo(ImmutableList.of("key1", "some_field.key2")));
+                .body("cleanup_policy", equalTo("compact"));
 
         // assert that created topic in kafka has correct cleanup_policy
         final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
@@ -259,7 +257,10 @@ public class EventTypeAT extends BaseAT {
         assertThat(cleanupPolicy, equalTo("compact"));
 
         // publish event to compacted event type
-        publishEvent(eventType.getName(), "{\"key1\":\"v1\",\"some_field\":{\"key2\":2}}");
+        publishEvent(eventType.getName(), "{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"partition_compaction_key\":\"abc\"}}");
 
         // assert that key was correctly propagated to event key in kafka
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
@@ -269,10 +270,12 @@ public class EventTypeAT extends BaseAT {
         consumer.seek(tp, 0);
         final ConsumerRecords<String, String> records = consumer.poll(5000);
         final ConsumerRecord<String, String> record = records.iterator().next();
-        assertThat(record.key(), equalTo("[\"v1\",\"2\"]"));
+        assertThat(record.key(), equalTo("abc"));
 
         // publish event with missing compaction key and expect 422
-        given().body("[{\"key1\":\"v1\"}]")
+        given().body("[{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
