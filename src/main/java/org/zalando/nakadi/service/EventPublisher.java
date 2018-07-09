@@ -176,7 +176,7 @@ public class EventPublisher {
                             .getJSONObject("metadata")
                             .getString("partition_compaction_key");
                     item.setEventKey(compactionKey);
-                } catch (JSONException e) {
+                } catch (final JSONException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "no compaction key found in metadata");
                     throw new CompactionException("No compaction key found in event metadata");
                 }
