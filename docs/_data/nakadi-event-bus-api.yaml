@@ -1999,6 +1999,16 @@ definitions:
           'user_defined'.
         type: string
         example: '0'
+      partition_compaction_key:
+        description: |
+          Represents a key of event for per-partition compaction of this event type.
+          Required when 'cleanup_policy' of event type is set to 'compact'. Must be absent otherwise.
+
+          When using more than one partition for event type - it will make sense to specify 'partition_compaction_key'
+          and partitioning parameters in a way that events with the same partition_compaction_key are published to the
+          same partition and therefore compacted in a proper way (as compaction is performed per partition).
+        type: string
+        example: '329ed3d2-8366-11e8-adc0-fa7ae01bbebc'
     required:
       - eid
       - occurred_at    
@@ -2493,7 +2503,8 @@ definitions:
 
           - 'compact' cleanup policy will keep only the latest event for each event key. The compaction is performed per
             partition, there is no compaction across partitions. The key that will be used as a compaction key should be
-            specified in 'partition_compaction_keys' field.
+            specified in 'partition_compaction_key' field of event metadata. This cleanup policy is not available for
+            'undefined' category of event types.
 
             The compaction can be not applied to events that were published recently and located at the head of the
             queue, which means that the actual amount of events received by consumers can be different depending on time
@@ -2510,23 +2521,6 @@ definitions:
             https://kafka.apache.org/documentation/#compaction, Nakadi currently relies on this implementation.
 
           It's not possible to change the value of this field for existing event type.
-
-      partition_compaction_keys:
-        type: array
-        items:
-          type: string
-        description: |
-          Indicates the fields used as a key of event for per-partition compaction of this event type.
-          Required when 'cleanup_policy' is set to 'compact'. Must be absent otherwise.
-
-          When using 'hash' partitioning strategy for event type - it will make sense to use exactly the same key fields
-          for 'partition_compaction_keys' and 'partition_key_fields' to make sure that events with the same compaction
-          key are published to the same partition and therefore compacted in a proper way (as compaction is performed
-          per partition).
-
-          If this is set it MUST be a valid required field as defined in the schema.
-          It's not possible to change the value of this field for existing event type.
-        example: ["order_id", "order_data.article_id"]
 
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
