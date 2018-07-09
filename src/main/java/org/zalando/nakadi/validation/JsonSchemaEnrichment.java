@@ -175,7 +175,10 @@ public class JsonSchemaEnrichment {
 
         final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
-            metadataProperties.put("partition_compaction_key", string);
+            final JSONObject compactionKey = new JSONObject()
+                    .put("type", "string")
+                    .put("minLength", 1);
+            metadataProperties.put("partition_compaction_key", compactionKey);
             requiredFields.add("partition_compaction_key");
         }
 
