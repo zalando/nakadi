@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Log Compaction functionality.
+
 ## [2.7.7] - 2018-06-26
 
 ### Added
