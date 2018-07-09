@@ -270,6 +270,13 @@ public class EventTypeAT extends BaseAT {
         final ConsumerRecords<String, String> records = consumer.poll(5000);
         final ConsumerRecord<String, String> record = records.iterator().next();
         assertThat(record.key(), equalTo("[\"v1\",\"2\"]"));
+
+        // publish event with missing compaction key and expect 422
+        given().body("[{\"key1\":\"v1\"}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test

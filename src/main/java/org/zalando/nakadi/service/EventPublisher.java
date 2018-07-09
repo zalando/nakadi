@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.CompactionException;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
@@ -27,7 +28,6 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.zalando.nakadi.partitioning.HashPartitionStrategy.DATA_PATH_PREFIX;
 
 @Component
@@ -115,6 +116,9 @@ public class EventPublisher {
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
+        } catch (final CompactionException e) {
+            LOG.debug("Event compaction error: {}", e.getMessage());
+            return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
@@ -170,24 +174,21 @@ public class EventPublisher {
         }
     }
 
-    private void compact(final List<BatchItem> batch, final EventType eventType) {
+    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent());
-                final List<String> compactionKeys = eventType.getPartitionCompactionKeys().stream()
-                        .map(compactionKeyField -> EventCategory.DATA.equals(eventType.getCategory()) ?
-                                DATA_PATH_PREFIX + compactionKeyField : compactionKeyField)
-                        .map(compactionKeyField -> {
-                            try {
-                                return jsonPath.get(compactionKeyField).toString();
-                            } catch (final InvalidPartitionKeyFieldsException e) {
-                                // this should be never thrown as we force users to make compaction keys to be required,
-                                // so if compaction key is missing we should fail earlier on validation step
-                                throw new InconsistentStateException(
-                                        "Unexpected exception occurred when assembling compaction key", e);
-                            }
-                        })
-                        .collect(Collectors.toList());
+                final List<String> compactionKeys = newArrayList();
+                for (final String compactionKey : eventType.getPartitionCompactionKeys()) {
+                    final String compactionKeyField = EventCategory.DATA.equals(eventType.getCategory()) ?
+                            DATA_PATH_PREFIX + compactionKey : compactionKey;
+                    try {
+                        compactionKeys.add(jsonPath.get(compactionKeyField).toString());
+                    } catch (final InvalidPartitionKeyFieldsException e) {
+                        item.updateStatusAndDetail(EventPublishingStatus.FAILED, "no compaction key found");
+                        throw new CompactionException("No compaction key found in event");
+                    }
+                }
                 final String compactionKeyStr = new JSONArray(compactionKeys).toString();
                 item.setEventKey(compactionKeyStr);
             }
