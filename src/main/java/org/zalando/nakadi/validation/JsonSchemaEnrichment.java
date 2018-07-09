@@ -171,7 +171,6 @@ public class JsonSchemaEnrichment {
         metadataProperties.put("parent_eids", arrayOfUUIDs);
         metadataProperties.put("flow_id", string);
         metadataProperties.put("partition", string);
-        metadataProperties.put("partition_compaction_key", string);
 
         final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
