@@ -15,7 +15,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
@@ -71,7 +70,7 @@ public class TimelinesController {
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final MyNakadiRuntimeException1 ex, final NativeWebRequest request) {
+    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }
