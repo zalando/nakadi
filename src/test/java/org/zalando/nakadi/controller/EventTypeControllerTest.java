@@ -17,6 +17,7 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
@@ -232,6 +233,15 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPostUndefinedEventTypeWithCompactCleanupPolicyThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .category(EventCategory.UNDEFINED)
+                .build();
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
     }
 
     @Test

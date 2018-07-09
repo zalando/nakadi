@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -148,6 +149,7 @@ public class EventTypeService {
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
+        validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
         authorizationValidator.validateAuthorization(eventType.getAuthorization());
@@ -173,7 +175,17 @@ public class EventTypeService {
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
     }
 
+    private void validateCompaction(final EventTypeBase eventType) throws
+            InvalidEventTypeException {
+        if (eventType.getCategory() == EventCategory.UNDEFINED &&
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            throw new InvalidEventTypeException(
+                    "cleanup_policy 'compact' is not available for 'undefined' event type category");
+        }
+    }
+
     private void validateCompactionUpdate(final EventType original, final EventTypeBase updatedET) {
+        validateCompaction(updatedET);
         if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
             throw new InvalidEventTypeException("cleanup_policy can not be changed");
         }
