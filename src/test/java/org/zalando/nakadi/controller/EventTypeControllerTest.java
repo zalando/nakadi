@@ -448,7 +448,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 ImmutableList.of(new ResourceAuthorizationAttribute("type3", "value3"))));
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
-        when(topicRepository.createTopic(anyInt(), any(), any())).thenReturn(randomUUID.toString());
+        when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
         postEventType(eventType).andExpect(status().isCreated());
     }

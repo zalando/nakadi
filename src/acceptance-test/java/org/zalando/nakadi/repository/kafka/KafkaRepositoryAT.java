@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.webservice.BaseAT;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -68,6 +70,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private ZookeeperSettings zookeeperSettings;
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
+    private NakadiTopicConfig defaultTopicConfig;
+    private KafkaTopicConfigFactory kafkaTopicConfigFactory;
 
     @Before
     public void setup() {
@@ -91,14 +95,17 @@ public class KafkaRepositoryAT extends BaseAT {
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         kafkaTopicRepository = createKafkaTopicRepository();
+        defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
+                Optional.of(DEFAULT_RETENTION_TIME));
+        kafkaTopicConfigFactory = new KafkaTopicConfigFactory(new UUIDGenerator(), DEFAULT_REPLICA_FACTOR,
+                DEFAULT_TOPIC_ROTATION, 1L, 1L, 1L);
     }
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
-                DEFAULT_CLEANUP_POLICY);
+        final String topicName = kafkaTopicRepository.createTopic(defaultTopicConfig);
 
         // ASSERT //
         executeWithRetry(() -> {
@@ -168,8 +175,7 @@ public class KafkaRepositoryAT extends BaseAT {
     @SuppressWarnings("unchecked")
     public void whenCreateTopicWithRetentionTime() throws Exception {
         // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, DEFAULT_RETENTION_TIME,
-                DEFAULT_CLEANUP_POLICY);
+        final String topicName = kafkaTopicRepository.createTopic(defaultTopicConfig);
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(
@@ -210,7 +216,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                new UUIDGenerator());
+                kafkaTopicConfigFactory);
     }
 
 }
