@@ -6,7 +6,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -45,6 +44,9 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int DEFAULT_REPLICA_FACTOR = 1;
     private static final int MAX_TOPIC_PARTITION_COUNT = 10;
     private static final int DEFAULT_TOPIC_ROTATION = 50000000;
+    private static final int COMPACTED_TOPIC_ROTATION = 60000;
+    private static final int COMPACTED_TOPIC_SEGMENT_BYTES = 1000000;
+    private static final int COMPACTED_TOPIC_COMPACTION_LAG = 1000;
     private static final int DEFAULT_COMMIT_TIMEOUT = 60;
     private static final int ZK_SESSION_TIMEOUT = 30000;
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
@@ -94,16 +96,17 @@ public class KafkaRepositoryAT extends BaseAT {
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
-        kafkaTopicRepository = createKafkaTopicRepository();
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));
         kafkaTopicConfigFactory = new KafkaTopicConfigFactory(new UUIDGenerator(), DEFAULT_REPLICA_FACTOR,
-                DEFAULT_TOPIC_ROTATION, 1L, 1L, 1L);
+                DEFAULT_TOPIC_ROTATION, COMPACTED_TOPIC_ROTATION, COMPACTED_TOPIC_SEGMENT_BYTES,
+                COMPACTED_TOPIC_COMPACTION_LAG);
+        kafkaTopicRepository = createKafkaTopicRepository();
     }
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
-    public void whenCreateTopicThenTopicIsCreated() throws Exception {
+    public void whenCreateTopicThenTopicIsCreated() {
         // ACT //
         final String topicName = kafkaTopicRepository.createTopic(defaultTopicConfig);
 
@@ -118,8 +121,51 @@ public class KafkaRepositoryAT extends BaseAT {
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
+                    final Long retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL);
+                    assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
+
                     final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
                     assertThat(cleanupPolicy, equalTo("delete"));
+
+                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
+                    assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
+    }
+
+    @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
+    public void whenCreateCompactedTopicThenTopicIsCreated() {
+        // ACT //
+        final NakadiTopicConfig compactedTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT,
+                CleanupPolicy.COMPACT, Optional.empty());
+        final String topicName = kafkaTopicRepository.createTopic(compactedTopicConfig);
+
+        // ASSERT //
+        executeWithRetry(() -> {
+                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
+
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
+
+                    partitionInfos.forEach(pInfo ->
+                            assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+
+                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
+                    assertThat(cleanupPolicy, equalTo("compact"));
+
+                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
+                    assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
+
+                    final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
+                            "segment.bytes");
+                    assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
+
+                    final String compactionLag = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
+                            "min.compaction.lag.ms");
+                    assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -127,7 +173,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test(timeout = 20000)
     @SuppressWarnings("unchecked")
-    public void whenDeleteTopicThenTopicIsDeleted() throws Exception {
+    public void whenDeleteTopicThenTopicIsDeleted() {
 
         // ARRANGE //
         final String topicName = UUID.randomUUID().toString();
@@ -153,7 +199,7 @@ public class KafkaRepositoryAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
+    public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
@@ -169,20 +215,6 @@ public class KafkaRepositoryAT extends BaseAT {
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         }
-    }
-
-    @Test(timeout = 10000)
-    @SuppressWarnings("unchecked")
-    public void whenCreateTopicWithRetentionTime() throws Exception {
-        // ACT //
-        final String topicName = kafkaTopicRepository.createTopic(defaultTopicConfig);
-
-        // ASSERT //
-        executeWithRetry(() -> Assert.assertEquals(
-                KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL), DEFAULT_RETENTION_TIME),
-                new RetryForSpecifiedTimeStrategy<Void>(5000)
-                        .withExceptionsThatForceRetry(AssertionError.class)
-                        .withWaitBetweenEachTry(500));
     }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {

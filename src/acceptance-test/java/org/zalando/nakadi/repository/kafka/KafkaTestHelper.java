@@ -117,7 +117,7 @@ public class KafkaTestHelper {
         return getTopicProperty(topic, zkPath, "cleanup.policy");
     }
 
-    private static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
+    public static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
         final ZkUtils zkUtils = ZkUtils.apply(zkPath, 30000, 10000, false);
         final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
         return topicConfig.getProperty(propertyName);
