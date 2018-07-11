@@ -6,4 +6,8 @@ public class TopicConfigException extends MyNakadiRuntimeException1 {
         super(message, e);
     }
 
+    public TopicConfigException(final String message) {
+        super(message);
+    }
+
 }

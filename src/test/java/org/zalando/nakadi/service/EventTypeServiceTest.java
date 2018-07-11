@@ -33,8 +33,6 @@ import java.util.Optional;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -135,11 +133,13 @@ public class EventTypeServiceTest {
     @Test
     public void shouldRemoveEventTypeWhenTimelineCreationFails() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        when(timelineService.createDefaultTimeline(anyString(), anyInt(), anyLong()))
+        when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
             eventTypeService.create(eventType);
+            fail("should throw TopicCreationException");
         } catch (final TopicCreationException e) {
+            // expected
         }
 
         verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());

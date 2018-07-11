@@ -42,6 +42,9 @@ public class EventTypeBase {
     @Nullable
     private List<String> partitionKeyFields;
 
+    @NotNull
+    private CleanupPolicy cleanupPolicy;
+
     @Nullable
     private List<String> orderingKeyFields;
 
@@ -72,17 +75,19 @@ public class EventTypeBase {
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.options = new EventTypeOptions();
         this.compatibilityMode = CompatibilityMode.FORWARD;
+        this.cleanupPolicy = CleanupPolicy.DELETE;
     }
 
     public EventTypeBase(final String name, final String owningApplication,
-                     final EventCategory category,
-                     final List<ValidationStrategyConfiguration> validationStrategies,
-                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
-                     final String partitionStrategy,
-                     final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
-                     final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options,
-                     final CompatibilityMode compatibilityMode) {
+                         final EventCategory category,
+                         final List<ValidationStrategyConfiguration> validationStrategies,
+                         final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
+                         final String partitionStrategy,
+                         final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
+                         final EventTypeStatistics defaultStatistic,
+                         final EventTypeOptions options,
+                         final CompatibilityMode compatibilityMode,
+                         final CleanupPolicy cleanupPolicy) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -94,6 +99,7 @@ public class EventTypeBase {
         this.defaultStatistic = defaultStatistic;
         this.options = options;
         this.compatibilityMode = compatibilityMode;
+        this.cleanupPolicy = cleanupPolicy;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
@@ -111,6 +117,7 @@ public class EventTypeBase {
         this.setAuthorization(eventType.getAuthorization());
         this.setAudience(eventType.getAudience());
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
+        this.setCleanupPolicy(eventType.getCleanupPolicy());
     }
 
     public String getName() {
@@ -171,6 +178,14 @@ public class EventTypeBase {
 
     public void setPartitionKeyFields(final List<String> partitionKeyFields) {
         this.partitionKeyFields = partitionKeyFields;
+    }
+
+    public CleanupPolicy getCleanupPolicy() {
+        return cleanupPolicy;
+    }
+
+    public void setCleanupPolicy(final CleanupPolicy cleanupPolicy) {
+        this.cleanupPolicy = cleanupPolicy;
     }
 
     public List<String> getOrderingKeyFields() {
