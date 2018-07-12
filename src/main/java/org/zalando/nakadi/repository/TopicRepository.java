@@ -1,7 +1,6 @@
 package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -39,8 +38,7 @@ public interface TopicRepository {
         }
     }
 
-    String createTopic(int partitionCount, Long retentionTimeMs, CleanupPolicy cleanupPolicy)
-            throws TopicCreationException;
+    String createTopic(NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException, TopicConfigException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 

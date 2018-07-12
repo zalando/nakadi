@@ -34,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
@@ -42,6 +43,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
+import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -56,6 +58,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -128,13 +131,15 @@ public class TimelineService {
             final List<PartitionStatistics> partitionStatistics =
                     currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline));
 
-            final String newTopic = nextTopicRepo.createTopic(partitionStatistics.size(),
-                    eventType.getOptions().getRetentionTime(), eventType.getCleanupPolicy());
+            final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionStatistics.size(),
+                    eventType.getCleanupPolicy(), Optional.ofNullable(eventType.getOptions().getRetentionTime()));
+            final String newTopic = nextTopicRepo.createTopic(nakadiTopicConfig);
             final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 
             switchTimelines(activeTimeline, nextTimeline);
-        } catch (final TopicCreationException | ServiceTemporarilyUnavailableException | InternalNakadiException e) {
+        } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
+                InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
@@ -154,14 +159,17 @@ public class TimelineService {
         }
 
         Storage storage = defaultStorage.getStorage();
+        Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             storage = storageDbRepository.getStorage(compactedStorageName).orElseThrow(() ->
                     new TopicCreationException("No storage defined for compacted topics"));
+            retentionTime = Optional.empty();
         }
 
+        final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionsCount, eventType.getCleanupPolicy(),
+                retentionTime);
         final TopicRepository repository = topicRepositoryHolder.getTopicRepository(storage);
-        final String topic = repository.createTopic(partitionsCount, eventType.getOptions().getRetentionTime(),
-                eventType.getCleanupPolicy());
+        final String topic = repository.createTopic(nakadiTopicConfig);
 
         try {
             final Timeline timeline = Timeline.createTimeline(eventType.getName(), 1, storage, topic, new Date());
