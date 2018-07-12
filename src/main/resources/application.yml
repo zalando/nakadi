@@ -49,7 +49,7 @@ nakadi:
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day
     compacted:
-      rotationMs: 86400000 # 1 hour
+      rotationMs: 86400000 # 1 day
       segmentBytes: 1073741824 # 1 GB
       compactionLagMs: 0
   stream:
