@@ -51,7 +51,7 @@ nakadi:
     compacted:
       rotationMs: 86400000 # 1 day
       segmentBytes: 1073741824 # 1 GB
-      compactionLagMs: 0
+      compactionLagMs: 10800000 # 3h
   stream:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute
