@@ -49,8 +49,8 @@ nakadi:
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day
     compacted:
-      rotationMs: 3600000 # 1 hour
-      segmentBytes: 104857600 # 100 MB
+      rotationMs: 86400000 # 1 hour
+      segmentBytes: 1073741824 # 1 GB
       compactionLagMs: 0
   stream:
     timeoutMs: 31536000000 # 1 year :-P
