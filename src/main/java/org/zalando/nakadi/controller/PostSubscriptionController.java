@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
@@ -108,6 +109,8 @@ public class PostSubscriptionController {
         try {
             subscriptionService.updateSubscription(subscriptionId, subscription);
             return ResponseEntity.noContent().build();
+        } catch (final SubscriptionUpdateConflictException ex) {
+            return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
         } catch (final NoSuchSubscriptionException ex) {
             return Responses.create(ex.asProblem(), request);
         }

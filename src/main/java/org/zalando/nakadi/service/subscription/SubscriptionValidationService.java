@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
@@ -83,21 +84,22 @@ public class SubscriptionValidationService {
         authorizationValidator.validateAuthorization(subscription.getAuthorization());
     }
 
-    public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue) {
+    public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue)
+            throws SubscriptionUpdateConflictException {
         if (!Objects.equals(newValue.getConsumerGroup(), old.getConsumerGroup())) {
-            throw new IllegalArgumentException("Not allowed to change subscription consumer group");
+            throw new SubscriptionUpdateConflictException("Not allowed to change subscription consumer group");
         }
         if (!Objects.equals(newValue.getEventTypes(), old.getEventTypes())) {
-            throw new IllegalArgumentException("Not allowed to change subscription event types");
+            throw new SubscriptionUpdateConflictException("Not allowed to change subscription event types");
         }
         if (!Objects.equals(newValue.getOwningApplication(), old.getOwningApplication())) {
-            throw new IllegalArgumentException("Not allowed to change owning application");
+            throw new SubscriptionUpdateConflictException("Not allowed to change owning application");
         }
         if (!Objects.equals(newValue.getReadFrom(), old.getReadFrom())) {
-            throw new IllegalArgumentException("Not allowed to change read from");
+            throw new SubscriptionUpdateConflictException("Not allowed to change read from");
         }
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
-            throw new IllegalArgumentException("Not allowed to change initial cursors");
+            throw new SubscriptionUpdateConflictException("Not allowed to change initial cursors");
         }
         authorizationValidator.validateAuthorization(old.getAuthorization(), newValue.getAuthorization());
     }
