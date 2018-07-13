@@ -4,14 +4,18 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
@@ -34,9 +38,12 @@ public class JsonSchemaEnrichment {
         }
 
         switch (eventType.getCategory()) {
-            case BUSINESS: return addMetadata(schema, eventType);
-            case DATA: return wrapSchemaInData(schema, eventType);
-            default: return schema;
+            case BUSINESS:
+                return addMetadata(schema, eventType);
+            case DATA:
+                return wrapSchemaInData(schema, eventType);
+            default:
+                return schema;
         }
     }
 
@@ -47,7 +54,7 @@ public class JsonSchemaEnrichment {
         COMPOSED_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.getJSONArray(keyword)
-                        .forEach(object -> enforceStrictValidation((JSONObject)object));
+                        .forEach(object -> enforceStrictValidation((JSONObject) object));
             }
         });
     }
@@ -95,16 +102,16 @@ public class JsonSchemaEnrichment {
                     .ifPresent(object ->
                             object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
                     );
-            });
+        });
     }
 
     private boolean isEmptySchema(final JSONObject schema) {
         return !(
-            OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
-            schema.has("$ref") ||
-            schema.has("type")
+                OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+                        schema.has("$ref") ||
+                        schema.has("type")
         );
     }
 
@@ -121,12 +128,12 @@ public class JsonSchemaEnrichment {
 
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
-                .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
+                .put("enum", Arrays.asList(new String[]{"C", "U", "D", "S"})));
         properties.put(DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put("additionalProperties", false);
 
-        addToRequired(wrapper, new String[]{ "data_type", "data_op", "data" });
+        addToRequired(wrapper, new String[]{"data_type", "data_op", "data"});
 
         return wrapper;
     }
@@ -153,7 +160,7 @@ public class JsonSchemaEnrichment {
                 .put("items", uuid);
         final JSONObject eventTypeString = new JSONObject()
                 .put("type", "string")
-                .put("enum", Arrays.asList(new String[] { eventType.getName() }));
+                .put("enum", Arrays.asList(new String[]{eventType.getName()}));
         final JSONObject string = new JSONObject().put("type", "string");
         final JSONObject dateTime = new JSONObject()
                 .put("type", "string");
@@ -165,14 +172,23 @@ public class JsonSchemaEnrichment {
         metadataProperties.put("flow_id", string);
         metadataProperties.put("partition", string);
 
+        final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            final JSONObject compactionKey = new JSONObject()
+                    .put("type", "string")
+                    .put("minLength", 1);
+            metadataProperties.put("partition_compaction_key", compactionKey);
+            requiredFields.add("partition_compaction_key");
+        }
+
         metadata.put("type", "object");
         metadata.put("properties", metadataProperties);
-        metadata.put("required", Arrays.asList(new String[]{"eid", "occurred_at"}));
+        metadata.put("required", requiredFields);
         metadata.put("additionalProperties", false);
 
         schema.getJSONObject("properties").put("metadata", metadata);
 
-        addToRequired(schema, new String[]{ "metadata" });
+        addToRequired(schema, new String[]{"metadata"});
 
         return schema;
     }
@@ -182,7 +198,7 @@ public class JsonSchemaEnrichment {
 
         final JSONArray currentRequired = schema.getJSONArray("required");
 
-        for(int i = 0; i < currentRequired.length(); i++) {
+        for (int i = 0; i < currentRequired.length(); i++) {
             required.add(currentRequired.getString(i));
         }
 

@@ -68,8 +68,7 @@ public class KafkaTestHelper {
                 .map(cursor -> {
                     if ("0".equals(cursor.getOffset())) {
                         return new Cursor(cursor.getPartition(), "001-0001--1");
-                    }
-                    else {
+                    } else {
                         final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
                         final String offset = StringUtils.leftPad(toNakadiOffset(lastEventOffset),
                                 CURSOR_OFFSET_LENGTH, '0');
@@ -103,8 +102,7 @@ public class KafkaTestHelper {
         try {
             zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
             AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
-        }
-        finally {
+        } finally {
             if (zkUtils != null) {
                 zkUtils.close();
             }
@@ -112,8 +110,16 @@ public class KafkaTestHelper {
     }
 
     public static Long getTopicRetentionTime(final String topic, final String zkPath) {
+        return Long.valueOf(getTopicProperty(topic, zkPath, "retention.ms"));
+    }
+
+    public static String getTopicCleanupPolicy(final String topic, final String zkPath) {
+        return getTopicProperty(topic, zkPath, "cleanup.policy");
+    }
+
+    public static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
         final ZkUtils zkUtils = ZkUtils.apply(zkPath, 30000, 10000, false);
         final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
-        return Long.valueOf(topicConfig.getProperty("retention.ms"));
+        return topicConfig.getProperty(propertyName);
     }
 }

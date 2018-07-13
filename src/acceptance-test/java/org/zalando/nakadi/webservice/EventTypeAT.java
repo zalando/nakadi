@@ -3,10 +3,17 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
@@ -219,6 +226,60 @@ public class EventTypeAT extends BaseAT {
         Assert.assertThat(cleanupTimeDiff, is(newRetentionTime - defaultRetentionTime));
 
         assertRetentionTime(newRetentionTime, eventType.getName());
+    }
+
+    @Test(timeout = 10000)
+    public void compactedEventTypeJourney() throws IOException {
+        // create event type with 'compact' cleanup_policy
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .build();
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        // get event type and check that properties are set correctly
+        given().body(body)
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("cleanup_policy", equalTo("compact"));
+
+        // assert that created topic in kafka has correct cleanup_policy
+        final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic, ZOOKEEPER_URL);
+        assertThat(cleanupPolicy, equalTo("compact"));
+
+        // publish event to compacted event type
+        publishEvent(eventType.getName(), "{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"partition_compaction_key\":\"abc\"}}");
+
+        // assert that key was correctly propagated to event key in kafka
+        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
+        final KafkaConsumer<String, String> consumer = kafkaHelper.createConsumer();
+        final TopicPartition tp = new TopicPartition(topic, 0);
+        consumer.assign(ImmutableList.of(tp));
+        consumer.seek(tp, 0);
+        final ConsumerRecords<String, String> records = consumer.poll(5000);
+        final ConsumerRecord<String, String> record = records.iterator().next();
+        assertThat(record.key(), equalTo("abc"));
+
+        // publish event with missing compaction key and expect 422
+        given().body("[{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test
