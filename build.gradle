@@ -137,8 +137,8 @@ dependencies {
     compile 'org.echocat.jomon:runtime:1.6.3'
 
     // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:0.10.1.0'
-    compile('org.apache.kafka:kafka_2.11:0.10.1.0') {
+    compile 'org.apache.kafka:kafka-clients:1.1.0'
+    compile('org.apache.kafka:kafka_2.12:1.1.0') {
         exclude module: "zookeeper"
     }
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
