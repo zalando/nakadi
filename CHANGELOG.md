@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.8.1]
 
+### Added
+- Log Compaction Feature Toggle
+
 ### Changed
 - Upgraded Kafka client to 1.1.0
 

@@ -39,7 +39,8 @@ public interface FeatureToggleService {
         SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
         KPI_COLLECTION("kpi_collection"),
-        DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations");
+        DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
+        DISABLE_LOG_COMPACTION("disable_log_compaction");
 
         private final String id;
 

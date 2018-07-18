@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
@@ -31,6 +32,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -171,6 +173,15 @@ public final class ExceptionHandling implements ProblemHandling {
         LOG.warn(exception.getMessage());
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
                 "Database is currently in read-only mode", request);
+    }
+
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureNotAvailable(
+            final FeatureNotAvailableException ex,
+            final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
+
     }
 
 }
