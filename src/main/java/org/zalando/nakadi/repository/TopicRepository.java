@@ -4,7 +4,6 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
@@ -17,19 +16,20 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 public interface TopicRepository {
 
     class TimelinePartition {
-        private final Timeline timeline;
+        private final org.zalando.nakadi.domain.Timeline timeline;
         private final String partition;
 
-        public TimelinePartition(final Timeline timeline, final String partition) {
+        public TimelinePartition(final org.zalando.nakadi.domain.Timeline timeline, final String partition) {
             this.timeline = timeline;
             this.partition = partition;
         }
 
-        public Timeline getTimeline() {
+        public org.zalando.nakadi.domain.Timeline getTimeline() {
             return timeline;
         }
 
@@ -46,7 +46,7 @@ public interface TopicRepository {
 
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
-    Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
+    Optional<PartitionStatistics> loadPartitionStatistics(org.zalando.nakadi.domain.Timeline timeline, String partition)
             throws ServiceTemporarilyUnavailableException;
 
     /**
@@ -60,10 +60,10 @@ public interface TopicRepository {
     List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelinePartition> partitions)
             throws ServiceTemporarilyUnavailableException;
 
-    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines)
+    List<PartitionStatistics> loadTopicStatistics(Collection<org.zalando.nakadi.domain.Timeline> timelines)
             throws ServiceTemporarilyUnavailableException;
 
-    List<PartitionEndStatistics> loadTopicEndStatistics(Collection<Timeline> topics)
+    List<PartitionEndStatistics> loadTopicEndStatistics(Collection<org.zalando.nakadi.domain.Timeline> topics)
             throws ServiceTemporarilyUnavailableException;
 
     List<String> listPartitionNames(String topicId);
@@ -75,4 +75,6 @@ public interface TopicRepository {
             ServiceTemporarilyUnavailableException;
 
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
+
+    Properties getStreamingProperties(String applicationId);
 }

@@ -518,4 +518,9 @@ public class KafkaTopicRepository implements TopicRepository {
             }
         }
     }
+
+    @Override
+    public Properties getStreamingProperties(final String applicationId) {
+        return kafkaFactory.getStreamingProperties(applicationId);
+    }
 }

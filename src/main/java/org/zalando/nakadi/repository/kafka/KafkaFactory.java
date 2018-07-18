@@ -149,4 +149,8 @@ public class KafkaFactory {
         return this.getConsumer(properties);
     }
 
+    public Properties getStreamingProperties(final String applicationId) {
+        return kafkaLocationManager.getStreamingProperties(applicationId);
+    }
+
 }
