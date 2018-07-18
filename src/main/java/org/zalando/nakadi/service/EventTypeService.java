@@ -38,6 +38,7 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
@@ -145,6 +146,11 @@ public class EventTypeService {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
+        }
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT
+                && featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION)) {
+            throw new FeatureNotAvailableException("log compaction is not available",
+                    FeatureToggleService.Feature.DISABLE_LOG_COMPACTION);
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);

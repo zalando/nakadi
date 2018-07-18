@@ -9,12 +9,14 @@ import org.junit.Test;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -128,6 +130,17 @@ public class EventTypeServiceTest {
 
         eventTypeService.delete(eventType.getName());
         // no exception should be thrown
+    }
+
+    @Test(expected = FeatureNotAvailableException.class)
+    public void testFeatureToggleDisableLogCompaction() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION))
+                .thenReturn(true);
+
+        eventTypeService.create(eventType);
     }
 
     @Test
