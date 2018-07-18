@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.1]
+
+### Changed
+- Upgraded Kafka client to 1.1.0
+
 ## [2.8.0]
 
 ### Added
