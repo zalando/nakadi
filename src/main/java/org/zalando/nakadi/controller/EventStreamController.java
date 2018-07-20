@@ -78,7 +78,6 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
 public class EventStreamController {
@@ -244,13 +243,11 @@ public class EventStreamController {
                         .build();
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
-                if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
-                    final List<String> partitions = streamConfig.getCursors().stream()
-                            .map(NakadiCursor::getPartition)
-                            .collect(Collectors.toList());
-                    connectionSlots = consumerLimitingService.acquireConnectionSlots(
-                            client.getClientId(), eventTypeName, partitions);
-                }
+                final List<String> partitions = streamConfig.getCursors().stream()
+                        .map(NakadiCursor::getPartition)
+                        .collect(Collectors.toList());
+                connectionSlots = consumerLimitingService.acquireConnectionSlots(
+                        client.getClientId(), eventTypeName, partitions);
 
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
                 consumerCounter.inc();

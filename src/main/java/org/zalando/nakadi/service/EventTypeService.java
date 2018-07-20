@@ -71,7 +71,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
@@ -506,10 +505,7 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            if (featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-                validatePartitionKeys(schema, eventType);
-            }
-
+            validatePartitionKeys(schema, eventType);
             validateOrderingKeys(schema, eventType);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {

@@ -36,7 +36,6 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
 import static org.springframework.http.HttpStatus.OK;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 
 
@@ -65,12 +64,6 @@ public class PostSubscriptionController {
                                                      final Client client) {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
-        }
-
-        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
-                && !applicationService.exists(subscriptionBase.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
         }
 
         try {
