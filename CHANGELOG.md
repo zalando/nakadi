@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.8.1]
 
+### Removed
+- Removed Legacy Feature Toggles
+
 ### Added
 - Log Compaction Feature Toggle
 
