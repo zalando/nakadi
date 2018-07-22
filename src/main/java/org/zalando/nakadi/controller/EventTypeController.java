@@ -95,11 +95,6 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        if (!applicationService.exists(eventType.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
-        }
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }

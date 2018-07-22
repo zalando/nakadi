@@ -66,11 +66,6 @@ public class PostSubscriptionController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        if (!applicationService.exists(subscriptionBase.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
-        }
-
         try {
             return ok(subscriptionService.getExistingSubscription(subscriptionBase));
         } catch (final NoSubscriptionException e) {

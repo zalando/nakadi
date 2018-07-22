@@ -559,20 +559,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenCreateEventTypeWithUnknownApplicationThen422() throws Exception {
-
-        doReturn(false).when(applicationService).exists(any());
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = randomValidEventTypeName();
