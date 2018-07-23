@@ -9,12 +9,14 @@ import org.junit.Test;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -33,8 +35,6 @@ import java.util.Optional;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -132,14 +132,27 @@ public class EventTypeServiceTest {
         // no exception should be thrown
     }
 
+    @Test(expected = FeatureNotAvailableException.class)
+    public void testFeatureToggleDisableLogCompaction() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION))
+                .thenReturn(true);
+
+        eventTypeService.create(eventType);
+    }
+
     @Test
     public void shouldRemoveEventTypeWhenTimelineCreationFails() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        when(timelineService.createDefaultTimeline(anyString(), anyInt(), anyLong()))
+        when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
             eventTypeService.create(eventType);
+            fail("should throw TopicCreationException");
         } catch (final TopicCreationException e) {
+            // expected
         }
 
         verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());

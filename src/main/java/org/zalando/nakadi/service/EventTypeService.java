@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -37,6 +38,7 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
@@ -145,9 +147,15 @@ public class EventTypeService {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
         }
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT
+                && featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION)) {
+            throw new FeatureNotAvailableException("log compaction is not available",
+                    FeatureToggleService.Feature.DISABLE_LOG_COMPACTION);
+        }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
         validateSchema(eventType);
+        validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
         authorizationValidator.validateAuthorization(eventType.getAuthorization());
@@ -155,9 +163,8 @@ public class EventTypeService {
         eventTypeRepository.saveEventType(eventType);
 
         try {
-            timelineService.createDefaultTimeline(eventType.getName(),
-                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
-                    eventType.getOptions().getRetentionTime());
+            timelineService.createDefaultTimeline(eventType,
+                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()));
         } catch (final Exception e) {
             try {
                 eventTypeRepository.removeEventType(eventType.getName());
@@ -172,6 +179,22 @@ public class EventTypeService {
                 .put("category", eventType.getCategory())
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
+    }
+
+    private void validateCompaction(final EventTypeBase eventType) throws
+            InvalidEventTypeException {
+        if (eventType.getCategory() == EventCategory.UNDEFINED &&
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            throw new InvalidEventTypeException(
+                    "cleanup_policy 'compact' is not available for 'undefined' event type category");
+        }
+    }
+
+    private void validateCompactionUpdate(final EventType original, final EventTypeBase updatedET) {
+        validateCompaction(updatedET);
+        if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
+            throw new InvalidEventTypeException("cleanup_policy can not be changed");
+        }
     }
 
     private String identifyAuthzState(final EventTypeBase eventType) {
@@ -317,6 +340,7 @@ public class EventTypeService {
             }
             authorizationValidator.validateAuthorization(original.getAuthorization(), eventTypeBase.getAuthorization());
             validateName(eventTypeName, eventTypeBase);
+            validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);

@@ -38,7 +38,7 @@ public interface TopicRepository {
         }
     }
 
-    String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
+    String createTopic(NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException, TopicConfigException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 

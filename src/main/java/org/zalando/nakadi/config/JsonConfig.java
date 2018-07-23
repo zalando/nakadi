@@ -19,11 +19,12 @@ import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.zalando.nakadi.domain.Audience;
 import org.zalando.problem.ProblemModule;
 
 import java.io.IOException;
 
-import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES;
+import static com.fasterxml.jackson.databind.PropertyNamingStrategy.SNAKE_CASE;
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
@@ -35,7 +36,7 @@ public class JsonConfig {
     @Primary
     public ObjectMapper jacksonObjectMapper() {
         final ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+                .setPropertyNamingStrategy(SNAKE_CASE);
 
         objectMapper.registerModule(enumModule());
         objectMapper.registerModule(new Jdk8Module());
@@ -75,12 +76,24 @@ public class JsonConfig {
             @SuppressWarnings("unchecked")
             final Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
             final String jpValueAsString = jp.getValueAsString();
+
             try {
-                return Enum.valueOf(rawClass, jpValueAsString.toUpperCase());
+                if (rawClass.equals(Audience.class)) {
+                    return Audience.fromString(jpValueAsString);
+                } else {
+                    return Enum.valueOf(rawClass, jpValueAsString.toUpperCase());
+                }
             } catch (final IllegalArgumentException e) {
-                final String possibleValues = stream(rawClass.getEnumConstants())
-                        .map(enumValue -> enumValue.name().toLowerCase())
-                        .collect(joining(", "));
+                final String possibleValues;
+                if (rawClass.equals(Audience.class)) {
+                    possibleValues = stream(rawClass.getEnumConstants())
+                            .map(enumValue -> enumValue.name().toLowerCase().replaceAll("_", "-"))
+                            .collect(joining(", "));
+                } else {
+                    possibleValues = stream(rawClass.getEnumConstants())
+                            .map(enumValue -> enumValue.name().toLowerCase())
+                            .collect(joining(", "));
+                }
                 throw new JsonMappingException("Illegal enum value: '" + jpValueAsString
                         + "'. Possible values: [" + possibleValues + "]");
             }
@@ -95,7 +108,11 @@ public class JsonConfig {
         @Override
         public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider)
                 throws IOException {
-            jgen.writeString(value.name().toLowerCase());
+            if (value.getClass().equals(Audience.class)) {
+                jgen.writeString(((Audience)value).getText());
+            } else {
+                jgen.writeString(value.name().toLowerCase());
+            }
         }
     }
 }

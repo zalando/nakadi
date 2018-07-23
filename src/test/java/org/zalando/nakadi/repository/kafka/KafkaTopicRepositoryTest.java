@@ -27,7 +27,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
@@ -62,6 +61,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
+    private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
@@ -358,7 +358,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    new UUIDGenerator());
+                    kafkaTopicConfigFactory);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

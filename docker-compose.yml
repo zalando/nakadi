@@ -23,6 +23,7 @@ services:
       - NAKADI_FEATURES_DEFAULT_FEATURES_REMOTE_TOKENINFO
       - NAKADI_FEATURES_DEFAULT_FEATURES_KPI_COLLECTION
       - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_DB_WRITE_OPERATIONS
+      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_LOG_COMPACTION
       - NAKADI_ZOOKEEPER_BROKERS=localhost:2181
       - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/local_nakadi_db
       - SPRING_DATASOURCE_USERNAME=nakadi
@@ -48,7 +49,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka:0.10.1.0
+    image: wurstmeister/kafka:1.1.0
     network_mode: "host"
     ports:
       - "9092:9092"

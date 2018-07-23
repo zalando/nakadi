@@ -7,6 +7,6 @@
     "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"
   },
-  "audience": "external_public",
+  "audience": "external-public",
   "ordering_key_fields": ["foo", "bar.baz"]
 }

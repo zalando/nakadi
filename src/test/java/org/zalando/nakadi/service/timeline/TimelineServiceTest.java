@@ -7,15 +7,17 @@ import org.mockito.Mockito;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -34,6 +36,7 @@ import static java.util.stream.IntStream.range;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class TimelineServiceTest {
@@ -47,20 +50,20 @@ public class TimelineServiceTest {
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new DefaultStorage(new Storage()), adminService, featureToggleService);
+            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage");
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
-        Mockito.when(adminService.isAdmin(any())).thenReturn(true);
-        Mockito.when(eventTypeCache.getEventType(any())).thenThrow(new NoSuchEventTypeException(""));
+        when(adminService.isAdmin(any())).thenReturn(true);
+        when(eventTypeCache.getEventType(any())).thenThrow(new NoSuchEventTypeException(""));
 
         timelineService.getTimelines("event_type");
     }
 
     @Test(expected = TimelineException.class)
     public void testGetTimelinesException() throws Exception {
-        Mockito.when(adminService.isAdmin(any())).thenReturn(true);
-        Mockito.when(eventTypeCache.getEventType(any())).thenThrow(new InternalNakadiException(""));
+        when(adminService.isAdmin(any())).thenReturn(true);
+        when(eventTypeCache.getEventType(any())).thenThrow(new InternalNakadiException(""));
 
         timelineService.getTimelines("event_type");
     }
@@ -70,7 +73,7 @@ public class TimelineServiceTest {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Timeline timeline = Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date());
         timeline.setSwitchedAt(new Date());
-        Mockito.when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
+        when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
                 .thenReturn(Collections.singletonList(timeline));
 
         final Timeline actualTimeline = timelineService.getActiveTimeline(eventType);
@@ -85,22 +88,22 @@ public class TimelineServiceTest {
                 .mapToObj(x -> mock(Timeline.class))
                 .collect(Collectors.toList());
 
-        Mockito.when(testTimelines.get(0).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(0).isDeleted()).thenReturn(false);
+        when(testTimelines.get(0).getSwitchedAt()).thenReturn(new Date());
+        when(testTimelines.get(0).isDeleted()).thenReturn(false);
 
-        Mockito.when(testTimelines.get(1).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(1).isDeleted()).thenReturn(false);
+        when(testTimelines.get(1).getSwitchedAt()).thenReturn(new Date());
+        when(testTimelines.get(1).isDeleted()).thenReturn(false);
 
-        Mockito.when(testTimelines.get(2).getSwitchedAt()).thenReturn(null);
-        Mockito.when(testTimelines.get(2).isDeleted()).thenReturn(false);
+        when(testTimelines.get(2).getSwitchedAt()).thenReturn(null);
+        when(testTimelines.get(2).isDeleted()).thenReturn(false);
 
-        Mockito.when(testTimelines.get(3).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(3).isDeleted()).thenReturn(true);
+        when(testTimelines.get(3).getSwitchedAt()).thenReturn(new Date());
+        when(testTimelines.get(3).isDeleted()).thenReturn(true);
 
-        Mockito.when(testTimelines.get(4).getSwitchedAt()).thenReturn(new Date());
-        Mockito.when(testTimelines.get(4).isDeleted()).thenReturn(false);
+        when(testTimelines.get(4).getSwitchedAt()).thenReturn(new Date());
+        when(testTimelines.get(4).isDeleted()).thenReturn(false);
 
-        Mockito.when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName))).thenReturn(testTimelines);
+        when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName))).thenReturn(testTimelines);
 
         final List<Timeline> expectedResult = ImmutableList.of(testTimelines.get(0), testTimelines.get(1),
                 testTimelines.get(4));
@@ -111,11 +114,11 @@ public class TimelineServiceTest {
     @Test
     public void shouldDeleteTopicWhenTimelineCreationFails() throws Exception {
         final TopicRepository repository = mock(TopicRepository.class);
-        Mockito.when(topicRepositoryHolder.getTopicRepository(any())).thenReturn(repository);
-        Mockito.when(timelineDbRepository.createTimeline(any()))
+        when(topicRepositoryHolder.getTopicRepository(any())).thenReturn(repository);
+        when(timelineDbRepository.createTimeline(any()))
                 .thenThrow(new InconsistentStateException("shouldDeleteTopicWhenTimelineCreationFails"));
         try {
-            timelineService.createDefaultTimeline("event_type_1", 1, 1);
+            timelineService.createDefaultTimeline(buildDefaultEventType(), 1);
         } catch (final InconsistentStateException e) {
         }
 
@@ -130,12 +133,23 @@ public class TimelineServiceTest {
         t1.setSwitchedAt(new Date());
         final Timeline t2 = Timeline.createTimeline(eventType.getName(), 2, null, "topic2", new Date());
         t2.setSwitchedAt(new Date());
-        Mockito.when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
+        when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
                 .thenReturn(ImmutableList.of(t1, t2));
 
         timelineService.deleteAllTimelinesForEventType(eventType.getName());
 
         Mockito.verify(timelineDbRepository, Mockito.times(2)).deleteTimeline(Mockito.any());
+    }
+
+    @Test(expected = TimelinesNotSupportedException.class)
+    public void whenCreateTimelineForCompactedEventTypeThenException() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+        when(eventTypeCache.getEventType("et1")).thenReturn(eventType);
+
+        when(adminService.isAdmin(any())).thenReturn(true);
+
+        timelineService.createTimeline("et1", "st1");
     }
 
 }

@@ -6,10 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -31,6 +33,8 @@ import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
@@ -38,6 +42,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
+import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -52,6 +57,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +75,7 @@ public class TimelineService {
     private final DefaultStorage defaultStorage;
     private final AdminService adminService;
     private final FeatureToggleService featureToggleService;
+    private final String compactedStorageName;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -79,7 +86,9 @@ public class TimelineService {
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
-                           final AdminService adminService, final FeatureToggleService featureToggleService) {
+                           final AdminService adminService,
+                           final FeatureToggleService featureToggleService,
+                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -90,6 +99,7 @@ public class TimelineService {
         this.defaultStorage = defaultStorage;
         this.adminService = adminService;
         this.featureToggleService = featureToggleService;
+        this.compactedStorageName = compactedStorageName;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId)
@@ -105,6 +115,10 @@ public class TimelineService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
+            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+                throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
+                        "for event type with 'compact' cleanup_policy");
+            }
 
             final Storage storage = storageDbRepository.getStorage(storageId)
                     .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
@@ -115,22 +129,22 @@ public class TimelineService {
             final List<PartitionStatistics> partitionStatistics =
                     currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline));
 
-            final String newTopic = nextTopicRepo.createTopic(partitionStatistics.size(),
-                    eventType.getOptions().getRetentionTime());
+            final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionStatistics.size(),
+                    eventType.getCleanupPolicy(), Optional.ofNullable(eventType.getOptions().getRetentionTime()));
+            final String newTopic = nextTopicRepo.createTopic(nakadiTopicConfig);
             final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 
             switchTimelines(activeTimeline, nextTimeline);
-        } catch (final TopicCreationException | ServiceTemporarilyUnavailableException | InternalNakadiException e) {
+        } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
+                InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
         }
     }
 
-    public Timeline createDefaultTimeline(final String eventTypeName,
-                                          final int partitionsCount,
-                                          final long retentionTime)
+    public Timeline createDefaultTimeline(final EventTypeBase eventType, final int partitionsCount)
             throws TopicCreationException,
             InconsistentStateException,
             RepositoryProblemException,
@@ -141,15 +155,25 @@ public class TimelineService {
             throw new DbWriteOperationsBlockedException("Cannot create default timeline: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        final TopicRepository repository = topicRepositoryHolder.getTopicRepository(defaultStorage.getStorage());
-        final String topic = repository.createTopic(partitionsCount, retentionTime);
+
+        Storage storage = defaultStorage.getStorage();
+        Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            storage = storageDbRepository.getStorage(compactedStorageName).orElseThrow(() ->
+                    new TopicCreationException("No storage defined for compacted topics"));
+            retentionTime = Optional.empty();
+        }
+
+        final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionsCount, eventType.getCleanupPolicy(),
+                retentionTime);
+        final TopicRepository repository = topicRepositoryHolder.getTopicRepository(storage);
+        final String topic = repository.createTopic(nakadiTopicConfig);
 
         try {
-            final Timeline timeline = Timeline.createTimeline(eventTypeName, 1,
-                    defaultStorage.getStorage(), topic, new Date());
+            final Timeline timeline = Timeline.createTimeline(eventType.getName(), 1, storage, topic, new Date());
             timeline.setSwitchedAt(new Date());
             timelineDbRepository.createTimeline(timeline);
-            eventTypeCache.updated(eventTypeName);
+            eventTypeCache.updated(eventType.getName());
             return timeline;
         } catch (final InconsistentStateException | RepositoryProblemException | DuplicatedTimelineException e) {
             rollbackTopic(repository, topic);

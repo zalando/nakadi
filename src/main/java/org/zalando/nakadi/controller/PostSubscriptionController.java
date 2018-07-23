@@ -18,7 +18,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
@@ -38,7 +37,6 @@ import javax.validation.Valid;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
@@ -137,14 +135,5 @@ public class PostSubscriptionController {
                                                                    final NativeWebRequest request) {
         LOG.debug("Error occurred when working with subscriptions", exception);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureNotAvailable(
-            final FeatureNotAvailableException ex,
-            final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
-
     }
 }

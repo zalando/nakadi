@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.1]
+
+### Added
+- Log Compaction Feature Toggle
+
+### Changed
+- Upgraded Kafka client to 1.1.1
+
+## [2.8.0]
+
+### Added
+- Log Compaction functionality.
+
 ## [2.7.7] - 2018-06-26
 
 ### Added
