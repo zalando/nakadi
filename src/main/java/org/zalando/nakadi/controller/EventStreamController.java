@@ -6,7 +6,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,8 +41,6 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.ConnectionSlot;
-import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -92,7 +89,6 @@ public class EventStreamController {
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
-    private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
@@ -109,7 +105,6 @@ public class EventStreamController {
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
-                                 final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
@@ -123,7 +118,6 @@ public class EventStreamController {
         this.streamMetrics = streamMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
-        this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
@@ -218,7 +212,6 @@ public class EventStreamController {
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
-            final List<ConnectionSlot> connectionSlots = ImmutableList.of();
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
 
             LOG.info("[X-NAKADI-CURSORS] \"{}\" {}", eventTypeName, Optional.ofNullable(cursorsStr).orElse("-"));
@@ -295,7 +288,6 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } finally {
                 connectionReady.set(false);
-                consumerLimitingService.releaseConnectionSlots(connectionSlots);
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }
