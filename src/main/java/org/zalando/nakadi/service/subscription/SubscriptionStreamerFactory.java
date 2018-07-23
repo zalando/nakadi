@@ -54,7 +54,7 @@ public class SubscriptionStreamerFactory {
             final CursorConverter cursorConverter,
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
             final SubscriptionClientFactory zkClientFactory,
-            @Qualifier("binary") final EventStreamWriter eventStreamWriter,
+            final EventStreamWriter eventStreamWriter,
             final AuthorizationValidator authorizationValidator,
             final EventTypeChangeListener eventTypeChangeListener,
             final EventTypeCache eventTypeCache,

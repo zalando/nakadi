@@ -46,7 +46,6 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
@@ -89,7 +88,6 @@ public class EventStreamController {
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
-    private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
@@ -105,7 +103,6 @@ public class EventStreamController {
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
-                                 final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
                                  final EventTypeChangeListener eventTypeChangeListener,
@@ -118,7 +115,6 @@ public class EventStreamController {
         this.streamMetrics = streamMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
-        this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;

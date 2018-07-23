@@ -6,7 +6,6 @@ import org.apache.kafka.common.KafkaException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.metrics.StreamKpiData;
@@ -48,7 +47,7 @@ public class EventStream {
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                       @Qualifier("binary") final EventStreamWriter eventStreamWriter,
+                       final EventStreamWriter eventStreamWriter,
                        final NakadiKpiPublisher kpiPublisher, final String kpiDataStreamedEventType,
                        final long kpiFrequencyMs) {
         this.eventConsumer = eventConsumer;

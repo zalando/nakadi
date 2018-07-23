@@ -2,7 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -24,7 +23,7 @@ public class EventStreamFactory {
     @Autowired
     public EventStreamFactory(
             final CursorConverter cursorConverter,
-            @Qualifier("binary") final EventStreamWriter eventStreamWriter,
+            final EventStreamWriter eventStreamWriter,
             final BlacklistService blacklistService,
             final NakadiKpiPublisher nakadiKpiPublisher,
             @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
