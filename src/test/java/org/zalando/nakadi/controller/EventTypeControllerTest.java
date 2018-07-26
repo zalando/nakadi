@@ -177,7 +177,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithRootElementOfTypeArrayThenReturn422() throws Exception {
         final Problem expectedProblem = createInvalidEventTypeExceptionProblem("\"type\" of root element in"
-                + " schema cannot be \"array\"");
+                + " schema can only be \"object\"");
 
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", \n" +
                 "  \"name\": \"blah-event-type\",\n" +

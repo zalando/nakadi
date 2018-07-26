@@ -501,9 +501,8 @@ public class EventTypeService {
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
 
-            if (schemaAsJson.has("type") && schemaAsJson.getString("type").equals("array")
-                    && eventType.getCategory() != EventCategory.UNDEFINED) {
-                throw new InvalidEventTypeException("\"type\" of root element in schema cannot be \"array\"");
+            if (schemaAsJson.has("type") && !schemaAsJson.getString("type").equals("object")) {
+                throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
             }
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {

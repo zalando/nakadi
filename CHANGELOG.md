@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Removed partition key fields check
 
-### Removed
-- Removed the ability to specify schema root object type to be of type array.
+### Fixed
+- Fixed and added check for schema root object type to be only of type object.
 
 ## [2.8.2] - 2018-07-31
 
