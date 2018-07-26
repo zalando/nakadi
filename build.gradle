@@ -47,8 +47,8 @@ sourceSets {
 
 buildscript {
     ext {
-        springBootVersion = '1.5.3.RELEASE'
-        springFrameworkVersion = '4.3.8.RELEASE'
+        springBootVersion = '1.5.14.RELEASE'
+        springFrameworkVersion = '4.3.18.RELEASE'
     }
 
     repositories {
@@ -60,7 +60,7 @@ buildscript {
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
-        classpath 'org.yaml:snakeyaml:1.17'
+        classpath 'org.yaml:snakeyaml:1.21'
     }
 }
 
@@ -84,7 +84,7 @@ findbugs {
 
 dependencies {
     ext {
-        dropwizardVersion = '3.1.2'
+        dropwizardVersion = '3.1.3'
         curatorVersion = '4.0.1'
         zookeeperVersion = '3.4.10'
     }
@@ -102,37 +102,37 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-jetty:$springBootVersion"
 
     // oauth
-    compile 'org.springframework.security.oauth:spring-security-oauth2:2.1.0.RELEASE'
+    compile 'org.springframework.security.oauth:spring-security-oauth2:2.3.3.RELEASE'
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
 
     // actuator
     compile "org.springframework.boot:spring-boot-starter-actuator:$springBootVersion"
-    compile 'org.zalando.zmon:zmon-actuator:0.9.7'
+    compile 'org.zalando.zmon:zmon-actuator:0.9.8'
 
     // storage
     compile "org.springframework.boot:spring-boot-starter-jdbc:$springBootVersion"
-    compile 'org.postgresql:postgresql:42.1.1'
+    compile 'org.postgresql:postgresql:42.2.2'
 
-    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.3.0.RELEASE'
+    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.4.RELEASE'
 
     // misc
-    compile 'org.apache.httpcomponents:httpclient:4.5.3'
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.19') {
+    compile 'org.apache.httpcomponents:httpclient:4.5.6'
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.21') {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
     compile 'org.zalando:problem:0.5.0'
     compile 'org.zalando:problem-spring-web:0.5.0'
-    compile 'com.google.guava:guava:19.0'
+    compile 'com.google.guava:guava:25.1-jre'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'org.slf4j:slf4j-log4j12:1.7.25'
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
     compile "com.ryantenney.metrics:metrics-spring:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
-    compile 'org.apache.commons:commons-lang3:3.5'
+    compile 'org.apache.commons:commons-lang3:3.7'
     compile 'org.zalando:nakadi-plugin-api:2.0.0'
     compile 'org.echocat.jomon:runtime:1.6.3'
 
@@ -147,16 +147,16 @@ dependencies {
     compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
 
     // json
-    compile('com.github.everit-org.json-schema:org.everit.json.schema:6cb8ae440b0bc34030d7bea85ac609d980d741fb') {
+    compile('com.github.everit-org.json-schema:org.everit.json.schema:1.9.1') {
         exclude module: "json"
     }
-    compile('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
+    compile('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.9.6') {
         exclude module: "json"
     }
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.8.8'
-    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.8'
+    compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.9.6'
+    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.6'
     compile 'org.zalando:twintip-spring-web:1.1.0'
-    compile 'org.json:json:20171018'
+    compile 'org.json:json:20180130'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
