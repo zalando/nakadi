@@ -175,6 +175,17 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
+    public void whenPostWithRootElementOfTypeArrayThenReturn422() throws Exception {
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("\"type\" of root element in"
+                + " schema cannot be \"array\"");
+
+        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", \n" +
+                "  \"name\": \"blah-event-type\",\n" +
+                "  \"schema\": {\"type\": \"json_schema\", \"schema\": \"{\\\"type\\\":\\\"array\\\" }\"}}";
+        postETAndExpect422WithProblem(eventType, expectedProblem);
+    }
+
+    @Test
     public void whenPOSTWithInvalidPartitionStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
