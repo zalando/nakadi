@@ -14,6 +14,9 @@ public class SchemaGeneration {
             if (thisSchema.getString("type").equals(thatSchema.getString("type"))
                     && thisSchema.getString("type").equals("object")) {
                 mergeProperties(thisSchema, thatSchema);
+            } else if (thisSchema.getString("type").equals(thatSchema.getString("type"))
+                    && thisSchema.getString("type").equals("array")) {
+                mergeItems(thisSchema, thatSchema);
             } else {
                 return new JSONObject().put("anyOf", new JSONArray(Lists.newArrayList(thisSchema, thatSchema)));
             }
@@ -21,6 +24,11 @@ public class SchemaGeneration {
         } else {
             return thisSchema;
         }
+    }
+
+    private void mergeItems(final JSONObject thisSchema, final JSONObject thatSchema) {
+        final JSONObject mergedItems = mergeSchema(thisSchema.getJSONObject("items"), thatSchema.getJSONObject("items"));
+        thisSchema.put("items", mergedItems);
     }
 
     private void mergeProperties(final JSONObject thisSchema, final JSONObject thatSchema) {
