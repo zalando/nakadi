@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Fixed and added check for schema root object type to be only of type object.
 
+### Fixed
+- Fixed ISE when parsing number larger than max long
+
 ## [2.8.2] - 2018-07-31
 
 ### Removed

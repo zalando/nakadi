@@ -132,4 +132,13 @@ public class BatchFactoryTest {
             fail();
         } catch (JSONException e) {}
     }
+
+    @Test
+    public void testNumberLargerThanMaxLongInEvents() {
+        final String events = "[{\"number\": 9223372036854775808 }]";
+        try {
+            BatchFactory.from(events);
+            fail();
+        } catch (JSONException e) {}
+    }
 }
