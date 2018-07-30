@@ -128,6 +128,16 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
+    public void whenPostLogCompactedEventTypeThenWarning() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(BUSINESS);
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+        eventType.getSchema().setSchema("{}");
+        postEventType(eventType).andExpect(status().isCreated()).andExpect(
+                header().string("Warning", "299 nakadi \"I am warning you\nI am warning you, even more\""));
+    }
+
+    @Test
     public void whenPostEventTypeWithTooLongNameThen422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
         invalidEventType.setName(TestUtils.randomValidStringOfLength(256));
