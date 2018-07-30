@@ -83,8 +83,6 @@ The default behavior when running the docker containers locally will be for OAut
 
 If you are running a Nakadi server locally outside docker, you can disable token checks by setting the environment variable `NAKADI_OAUTH2_MODE` to `OFF` before starting the server.
 
-Note that, even if OAuth is disabled using the `NAKADI_OAUTH2_MODE` environment variable, the current behavior will be to check a token if one is sent by a client so you might need to configure the client to also not send tokens.
-
 #### I want to send arbitrary JSON, how do I avoid defining a JSON Schema?
 
 The standard workaround is to define an event type with the following category and schema:
