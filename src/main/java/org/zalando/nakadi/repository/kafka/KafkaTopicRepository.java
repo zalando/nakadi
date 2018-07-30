@@ -125,10 +125,13 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + kafkaTopicConfig.getTopicName(), e);
         }
+
+        LOG.info("Waiting for creation of Kafka topic " + kafkaTopicConfig.getTopicName());
+
         // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
         // receive information about topic creation, which in turn will block publishing.
         // This kind of behavior was observed during tests, but may also present on highly loaded event types.
-        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(40);
         final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
                     try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
                         return null != consumer.partitionsFor(kafkaTopicConfig.getTopicName());
