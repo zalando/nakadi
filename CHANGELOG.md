@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.2] - 2018-07-26
+
+### Removed
+- Removed Legacy Feature Toggles
+
 ## [2.8.1]
 
 ### Added
