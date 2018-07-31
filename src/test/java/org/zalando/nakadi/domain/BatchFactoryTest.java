@@ -133,12 +133,9 @@ public class BatchFactoryTest {
         } catch (JSONException e) {}
     }
 
-    @Test
+    @Test(expected = JSONException.class)
     public void testNumberLargerThanMaxLongInEvents() {
         final String events = "[{\"number\": 9223372036854775808 }]";
-        try {
-            BatchFactory.from(events);
-            fail();
-        } catch (JSONException e) {}
+        BatchFactory.from(events);
     }
 }
