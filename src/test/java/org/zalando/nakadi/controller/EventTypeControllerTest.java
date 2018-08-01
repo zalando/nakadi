@@ -188,19 +188,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPUTWithInvalidPartitionStrategyThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Lists.newArrayList("invalid_key")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        putEventType(eventType, eventType.getName())
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
     public void whenPUTwithPartitionStrategyChangeFromRandomToUserDefinedThenOK() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
@@ -569,44 +556,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(status().isConflict())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyToBusinessCategoryFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla"))
-                .category(BUSINESS)
-                .build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
