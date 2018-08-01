@@ -505,7 +505,6 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validatePartitionKeys(schema, eventType);
             validateOrderingKeys(schema, eventType);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
@@ -525,16 +524,6 @@ public class EventTypeService {
             final String errorMessage = incompatibilities.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
             throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
-        }
-    }
-
-    private void validatePartitionKeys(final Schema schema, final EventTypeBase eventType)
-            throws InvalidEventTypeException, JSONException, SchemaException {
-        final List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
-                .collect(Collectors.toList());
-        if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
         }
     }
 

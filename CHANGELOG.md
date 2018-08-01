@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.3] - 2018-08-01
+
+### Fixed
+- Removed partition key fields check
+
 ## [2.8.2] - 2018-07-31
 
 ### Removed
