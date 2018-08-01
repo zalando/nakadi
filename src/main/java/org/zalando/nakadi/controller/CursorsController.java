@@ -93,9 +93,6 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request) {
 
-        TimeLogger.startMeasure(
-                "COMMIT_CURSORS sid:" + subscriptionId + ", size=" + cursorsIn.getItems().size(),
-                "isFeatureEnabled");
         try {
             TimeLogger.addMeasure("convertToNakadiCursors");
             final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
