@@ -4,6 +4,8 @@ import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -60,6 +62,20 @@ public class MetadataEnrichmentStrategyTest {
         strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
+    }
+
+    @Test
+    public void setPartitionCompactionKeyInRoot() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(EventCategory.BUSINESS);
+        eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
+        final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("partition_compaction_key", "example_key");
+        final BatchItem batch = TestUtils.createBatchItem(event);
+
+        strategy.enrich(batch, eventType);
+
+        assertThat(batch.getEvent().getString("partition_compaction_key"), equalTo("example_key"));
     }
 
     @Test

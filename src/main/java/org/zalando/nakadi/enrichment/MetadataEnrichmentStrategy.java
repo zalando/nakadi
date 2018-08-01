@@ -5,6 +5,7 @@ import org.joda.time.DateTimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -21,6 +22,9 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setPartition(metadata, batchItem);
             setVersion(metadata, eventType);
             batchItem.inject(BatchItem.Injection.METADATA, metadata.toString());
+            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+                setPartitionCompactionKeyInRoot(metadata, batchItem);
+            }
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
@@ -28,6 +32,10 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
 
     private void setVersion(final JSONObject metadata, final EventType eventType) {
         metadata.put("version", eventType.getSchema().getVersion().toString());
+    }
+
+    private void setPartitionCompactionKeyInRoot(final JSONObject metadata, final BatchItem batchItem) {
+        batchItem.getEvent().put("partition_compaction_key", metadata.getString("partition_compaction_key"));
     }
 
     private void setFlowId(final JSONObject metadata) {
