@@ -198,7 +198,9 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            log.info("Switching state from " + currentState.getClass().getSimpleName());
+            log.info("Switching state from {} to {}",
+                    currentState.getClass().getSimpleName(),
+                    newState.getClass().getSimpleName());
             // There is a problem with onExit call - it can not throw exceptions, otherwise it won't be possible
             // to finish state correctly. In order to avoid it in future state will be switched even in case of
             // exception.
@@ -207,7 +209,6 @@ public class StreamingContext implements SubscriptionStreamer {
             } finally {
                 currentState = newState;
 
-                log.info("Switching state to " + currentState.getClass().getSimpleName());
                 currentState.setContext(this, loggingPath);
                 currentState.onEnter();
             }
