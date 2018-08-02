@@ -57,7 +57,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
-    private final String loggingPath;
     private final CursorConverter cursorConverter;
     private final Subscription subscription;
     private final MetricRegistry metricRegistry;
@@ -86,8 +85,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.timer = builder.timer;
         this.zkClient = builder.zkClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
-        this.loggingPath = builder.loggingPath + ".stream";
-        this.log = LoggerFactory.getLogger(builder.loggingPath);
+        this.log = LoggerFactory.getLogger(LogPathBuilder.build(builder.subscription.getId(), builder.session.getId()));
         this.connectionReady = builder.connectionReady;
         this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
@@ -209,7 +207,7 @@ public class StreamingContext implements SubscriptionStreamer {
             } finally {
                 currentState = newState;
 
-                currentState.setContext(this, loggingPath);
+                currentState.setContext(this);
                 currentState.onEnter();
             }
         });
@@ -332,7 +330,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private ZkSubscriptionClient zkClient;
         private BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
-        private String loggingPath;
         private AtomicBoolean connectionReady;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
@@ -392,11 +389,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKafkaPollTimeout(final long kafkaPollTimeout) {
             this.kafkaPollTimeout = kafkaPollTimeout;
-            return this;
-        }
-
-        public Builder setLoggingPath(final String loggingPath) {
-            this.loggingPath = loggingPath;
             return this;
         }
 

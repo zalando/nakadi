@@ -170,7 +170,7 @@ public class EventPublisher {
         }
     }
 
-    private void compact(final List<BatchItem> batch, final EventType eventType) {
+    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()

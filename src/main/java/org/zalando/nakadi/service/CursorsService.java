@@ -16,7 +16,6 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
@@ -24,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -87,7 +87,7 @@ public class CursorsService {
         validateSubscriptionCommitCursors(subscription, cursors);
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
-                subscription, "subscription." + subscriptionId + "." + streamId + ".offsets");
+                subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
 
         validateStreamId(cursors, streamId, zkClient);
 
@@ -131,7 +131,7 @@ public class CursorsService {
             throws NakadiException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
-                subscription, "subscription." + subscriptionId + ".get_cursors");
+                subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
 
         Partition[] partitions;
@@ -170,7 +170,7 @@ public class CursorsService {
         }
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
-                subscription, "subscription." + subscriptionId + ".reset_cursors");
+                subscription, LogPathBuilder.build(subscriptionId, "reset_cursors"));
 
         // In case if subscription was never initialized - initialize it
         zkClient.runLocked(() -> StartingState.initializeSubscriptionLocked(
