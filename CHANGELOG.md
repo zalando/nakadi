@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Removed partition key fields check
 - Fixed and added check for schema root object type to be only of type object.
+- Fixed ISE when parsing number larger than max long
 
 ### Added
 - Warn message when creation log compacted event types
