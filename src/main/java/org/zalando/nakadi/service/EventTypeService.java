@@ -499,8 +499,12 @@ public class EventTypeService {
             JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
-            final Schema schema = SchemaLoader.load(schemaAsJson);
 
+            if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
+                throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
+            }
+
+            final Schema schema = SchemaLoader.load(schemaAsJson);
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
