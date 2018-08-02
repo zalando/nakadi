@@ -31,7 +31,6 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -94,15 +93,12 @@ public class CursorsController {
                                            final NativeWebRequest request) {
 
         try {
-            TimeLogger.addMeasure("convertToNakadiCursors");
             final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
             if (cursors.isEmpty()) {
                 throw new CursorsAreEmptyException();
             }
-            TimeLogger.addMeasure("callService");
             final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
-            TimeLogger.addMeasure("prepareResponse");
             final boolean allCommited = items.stream().allMatch(item -> item);
             if (allCommited) {
                 return noContent().build();
@@ -120,8 +116,6 @@ public class CursorsController {
         } catch (final NakadiException e) {
             LOG.error("Failed to commit cursors", e);
             return create(e.asProblem(), request);
-        } finally {
-            LOG.info(TimeLogger.finishMeasure());
         }
     }
 
