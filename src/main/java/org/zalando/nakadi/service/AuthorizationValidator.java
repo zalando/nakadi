@@ -184,6 +184,9 @@ public class AuthorizationValidator {
     }
 
     public void authorizeSubscriptionCommit(final Subscription subscription) throws AccessDeniedException {
+        if (null == subscription.getAuthorization()) {
+            return;
+        }
         final Resource resource = subscription.asResource();
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
