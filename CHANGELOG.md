@@ -6,8 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-- Add partition_compaction_key in root of event for log compacted event type
+### Added
+- Add partition_compaction_key in root of event for log compacted event type (req for KSQL)
 
 ## [2.8.2] - 2018-07-31
 
