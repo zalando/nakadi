@@ -40,7 +40,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
@@ -114,8 +113,7 @@ public class TimelineService {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-                final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
-                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
             if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
                 throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
@@ -340,8 +338,8 @@ public class TimelineService {
     public List<Timeline> getTimelines(final String eventTypeName)
             throws AccessDeniedException, UnableProcessException, TimelineException, NotFoundException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            final Resource resource = new EventTypeResource(eventTypeName, null);
-            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                    new EventTypeResource(eventTypeName, null));
         }
 
         try {

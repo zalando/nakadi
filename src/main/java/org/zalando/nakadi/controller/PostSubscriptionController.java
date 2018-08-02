@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -15,16 +16,17 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.problem.MoreStatus;
@@ -60,8 +62,7 @@ public class PostSubscriptionController {
     @RequestMapping(value = "/subscriptions", method = RequestMethod.POST)
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors,
-                                                     final NativeWebRequest request,
-                                                     final Client client) {
+                                                     final NativeWebRequest request) {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -79,6 +80,30 @@ public class PostSubscriptionController {
             } catch (final DuplicatedSubscriptionException ex) {
                 throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
             }
+        }
+    }
+
+    @RequestMapping(value = "/subscriptions/{subscription_id}", method = RequestMethod.PUT)
+    public ResponseEntity<?> updateSubscription(
+            @PathVariable("subscription_id") final String subscriptionId,
+            @Valid @RequestBody final SubscriptionBase subscription,
+            final Errors errors,
+            final NativeWebRequest request) {
+        if (errors.hasErrors()) {
+            return Responses.create(new ValidationProblem(errors), request);
+        }
+        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
+                && !applicationService.exists(subscription.getOwningApplication())) {
+            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                    "owning_application doesn't exist"), request);
+        }
+        try {
+            subscriptionService.updateSubscription(subscriptionId, subscription);
+            return ResponseEntity.noContent().build();
+        } catch (final SubscriptionUpdateConflictException ex) {
+            return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+        } catch (final NoSuchSubscriptionException ex) {
+            return Responses.create(ex.asProblem(), request);
         }
     }
 

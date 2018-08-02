@@ -1025,6 +1025,41 @@ paths:
       responses:
         '204':
           description: Subscription was deleted
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint only allows to update the authorization section of a subscription. All other properties are
+        immutable. This operation is restricted to subjects with administrative role.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription with modified authorization section.
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+      responses:
+        '204':
+          description: Subscription was updated
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1115,6 +1150,10 @@ paths:
                   $ref: '#/definitions/CursorCommitResult'
             required:
               - items
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1160,6 +1199,10 @@ paths:
       responses:
         '204':
           description: Offsets were reset
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1218,6 +1261,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1230,10 +1277,6 @@ paths:
             already equals the maximum value - the total number of partitions in this subscription.
 
             - Request to reset subscription cursors is still in progress.
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -1361,6 +1404,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1375,10 +1422,6 @@ paths:
             - Request to reset subscription cursors is still in progress.
 
             - It is requested to read from a partition that is already assigned to another stream by direct request.
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -2374,9 +2417,40 @@ definitions:
           status.
         items:
           $ref: '#/definitions/SubscriptionEventTypeStatus'
+      authorization:
+          $ref: '#/definitions/SubscriptionAuthorization'
     required:
       - owning_application
       - event_types
+
+  SubscriptionAuthorization:
+      type: object
+      description: |
+        Authorization section of a Subscription. This section defines two access control lists: one for consuming
+        events and committing cursors ('readers'), and one for administering a subscription ('admins').
+        Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+      properties:
+        admins:
+          type: array
+          description: |
+            An array of subject attributes that are required for updating the subscription. Any one of the attributes
+            defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+            i.e. if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+        readers:
+          type: array
+          description: |
+            An array of subject attributes that are required for reading events and committing cursors to this
+            subscription. Any one of the attributes defined in this array is sufficient to be authorized. The wildcard
+            item takes precedence over all others, i.e., if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+      required:
+        - admins
+        - readers
 
   EventType:
     description: An event type defines the schema and its runtime properties.

@@ -46,4 +46,8 @@ public class EventType extends EventTypeBase {
     public void setCreatedAt(final DateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    public EventTypeResource asResource() {
+        return new EventTypeResource(getName(), getAuthorization());
+    }
 }

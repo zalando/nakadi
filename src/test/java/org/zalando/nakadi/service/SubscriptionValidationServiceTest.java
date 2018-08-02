@@ -84,7 +84,7 @@ public class SubscriptionValidationServiceTest {
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
         subscriptionValidationService = new SubscriptionValidationService(timelineService, etRepo, nakadiSettings,
-                cursorConverter);
+                cursorConverter, null);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
