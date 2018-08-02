@@ -104,7 +104,10 @@ public class EventPublisher {
 
             return ok(batch);
         } catch (final EventValidationException e) {
-            LOG.debug("Event validation error: {}", e.getMessage());
+            LOG.debug(
+                    "Event validation error: {}",
+                    Optional.ofNullable(e.getMessage()).map(s -> s.replaceAll("\n", "; ")).orElse(null)
+            );
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
@@ -167,7 +170,7 @@ public class EventPublisher {
         }
     }
 
-    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
+    private void compact(final List<BatchItem> batch, final EventType eventType) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()
