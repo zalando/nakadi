@@ -36,7 +36,7 @@ public class EventStream {
     private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
-    private final EventStreamWriterProvider writer;
+    private final EventStreamWriter eventStreamWriter;
     private final StreamKpiData kpiData;
     private final String kpiDataStreamedEventType;
     private final long kpiFrequencyMs;
@@ -47,7 +47,7 @@ public class EventStream {
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                       final EventStreamWriterProvider writer,
+                       final EventStreamWriter eventStreamWriter,
                        final NakadiKpiPublisher kpiPublisher, final String kpiDataStreamedEventType,
                        final long kpiFrequencyMs) {
         this.eventConsumer = eventConsumer;
@@ -56,7 +56,7 @@ public class EventStream {
         this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
-        this.writer = writer;
+        this.eventStreamWriter = eventStreamWriter;
         this.kpiPublisher = kpiPublisher;
         this.kpiData = new StreamKpiData();
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
@@ -224,7 +224,7 @@ public class EventStream {
 
     private void sendBatch(final NakadiCursor topicPosition, final List<byte[]> currentBatch)
             throws IOException {
-        final int bytesWritten = writer.getWriter()
+        final int bytesWritten = eventStreamWriter
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
         kpiData.addBytesSent(bytesWritten);

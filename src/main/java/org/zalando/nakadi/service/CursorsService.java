@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
@@ -50,6 +51,7 @@ public class CursorsService {
     private final CursorConverter cursorConverter;
     private final UUIDGenerator uuidGenerator;
     private final TimelineService timelineService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -58,7 +60,8 @@ public class CursorsService {
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator,
-                          final TimelineService timelineService) {
+                          final TimelineService timelineService,
+                          final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
@@ -66,6 +69,7 @@ public class CursorsService {
         this.cursorConverter = cursorConverter;
         this.uuidGenerator = uuidGenerator;
         this.timelineService = timelineService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     /**
@@ -74,9 +78,13 @@ public class CursorsService {
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
                                        final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
-            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException {
+            NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
+            AccessDeniedException {
         TimeLogger.addMeasure("getSubscription");
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+
+        TimeLogger.addMeasure("authorize");
+        authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         TimeLogger.addMeasure("validateSubscriptionCursors");
         validateSubscriptionCommitCursors(subscription, cursors);
@@ -152,6 +160,9 @@ public class CursorsService {
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+
+        authorizationValidator.authorizeSubscriptionAdmin(subscription);
+
         validateCursorsBelongToSubscription(subscription, cursors);
         for (final NakadiCursor cursor : cursors) {
             cursor.checkStorageAvailability();

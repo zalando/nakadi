@@ -50,7 +50,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -115,7 +114,6 @@ public class EventTypeControllerTestCase {
         doReturn(randomUUID).when(uuid).randomUUID();
 
         doReturn(true).when(applicationService).exists(any());
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

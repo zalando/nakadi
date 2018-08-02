@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
@@ -97,12 +96,6 @@ public class EventTypeController {
             DuplicatedEventTypeNameException, InvalidEventTypeException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
-        }
-
-        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
-                && !applicationService.exists(eventType.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
         }
 
         if (errors.hasErrors()) {

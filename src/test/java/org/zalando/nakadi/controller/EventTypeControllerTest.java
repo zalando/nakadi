@@ -185,6 +185,17 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
+    public void whenPostWithRootElementOfTypeArrayThenReturn422() throws Exception {
+        final Problem expectedProblem = createInvalidEventTypeExceptionProblem("\"type\" of root element in"
+                + " schema can only be \"object\"");
+
+        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", \n" +
+                "  \"name\": \"blah-event-type\",\n" +
+                "  \"schema\": {\"type\": \"json_schema\", \"schema\": \"{\\\"type\\\":\\\"array\\\" }\"}}";
+        postETAndExpect422WithProblem(eventType, expectedProblem);
+    }
+
+    @Test
     public void whenPOSTWithInvalidPartitionStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
@@ -193,19 +204,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .validate(any());
 
         postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenPUTWithInvalidPartitionStrategyThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Lists.newArrayList("invalid_key")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
     }
@@ -579,58 +577,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(status().isConflict())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenCreateEventTypeWithUnknownApplicationThen422() throws Exception {
-
-        doReturn(false).when(applicationService).exists(any());
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla")).build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyToBusinessCategoryFieldsThen422() throws Exception {
-
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionKeyFields(Collections.singletonList("blabla"))
-                .category(BUSINESS)
-                .build();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-
-        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test

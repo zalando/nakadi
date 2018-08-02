@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.3] - 2018-08-01
+
+### Fixed
+- Removed partition key fields check
+
+### Fixed
+- Fixed and added check for schema root object type to be only of type object.
+
+## [2.8.2] - 2018-07-31
+
+### Removed
+- Removed Legacy Feature Toggles
+
 ## [2.8.1]
 
 ### Added

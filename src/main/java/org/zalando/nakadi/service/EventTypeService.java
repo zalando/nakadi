@@ -71,7 +71,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
@@ -338,7 +337,7 @@ public class EventTypeService {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
             }
-            authorizationValidator.validateAuthorization(original, eventTypeBase);
+            authorizationValidator.validateAuthorization(original.getAuthorization(), eventTypeBase.getAuthorization());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
@@ -500,14 +499,14 @@ public class EventTypeService {
             JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
-            final Schema schema = SchemaLoader.load(schemaAsJson);
 
-            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
-                throw new InvalidEventTypeException("\"metadata\" property is reserved");
+            if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
+                throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
             }
 
-            if (featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-                validatePartitionKeys(schema, eventType);
+            final Schema schema = SchemaLoader.load(schemaAsJson);
+            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
+                throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
             validateOrderingKeys(schema, eventType);
@@ -529,16 +528,6 @@ public class EventTypeService {
             final String errorMessage = incompatibilities.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
             throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
-        }
-    }
-
-    private void validatePartitionKeys(final Schema schema, final EventTypeBase eventType)
-            throws InvalidEventTypeException, JSONException, SchemaException {
-        final List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
-                .collect(Collectors.toList());
-        if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
         }
     }
 

@@ -73,9 +73,24 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
             return subscription;
         } catch (final JsonProcessingException e) {
-            throw new InconsistentStateException("Serialization problem during persistence of event type", e);
+            throw new InconsistentStateException("Serialization problem during persistence of subscription", e);
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when running database request", e);
+        }
+    }
+
+    public void updateSubscription(final Subscription subscription) {
+        final String keyFieldsHash = hashGenerator.generateSubscriptionKeyFieldsHash(subscription);
+        try {
+            jdbcTemplate.update(
+                    "UPDATE zn_data.subscription set s_subscription_object=?::JSONB, s_key_fields_hash=? WHERE s_id=?",
+                    jsonMapper.writer().writeValueAsString(subscription),
+                    keyFieldsHash,
+                    subscription.getId());
+        } catch (final JsonProcessingException ex) {
+            throw new InconsistentStateException("Serialization problem during persistence of subscription", ex);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("Error occurred when running database request", e);
         }
