@@ -92,11 +92,6 @@ public class PostSubscriptionController {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
-        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
-                && !applicationService.exists(subscription.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
-        }
         try {
             subscriptionService.updateSubscription(subscriptionId, subscription);
             return ResponseEntity.noContent().build();
