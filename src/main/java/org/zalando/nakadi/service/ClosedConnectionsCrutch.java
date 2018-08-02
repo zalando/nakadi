@@ -146,7 +146,7 @@ public class ClosedConnectionsCrutch {
         if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;
         }
-        LOG.debug("Listening for connection to close using crutch (" + address + ":" + port + ")");
+        LOG.debug("Listening for connection to close using crutch ({}:{})", address, port);
         synchronized (toAdd) {
             toAdd.computeIfAbsent(new ConnectionInfo(address, port), tmp -> new ArrayList<>()).add(onCloseListener);
         }
@@ -169,7 +169,7 @@ public class ClosedConnectionsCrutch {
                         .filter(key -> CLOSED_STATES.contains(currentConnections.getOrDefault(key,
                                 ConnectionState.TCP_CLOSE)))
                         .mapToLong(key -> {
-                            LOG.info("Notifying about connection close via crutch: " + key);
+                            LOG.debug("Notifying about connection close via crutch: {}", key);
                             return listeners.remove(key).stream().filter(BooleanSupplier::getAsBoolean).count();
                         }).sum();
         if (closedCount > 0) {
