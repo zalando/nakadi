@@ -1,0 +1,23 @@
+[{
+  "metadata": {
+    "occurred_at": "2018-07-23T10:59:15.120Z",
+    "eid": "[RANDOM_UUID_______________________]",
+    "event_type": "ltt.spp.supplier-facet.event",
+    "flow_id": "BAS_YoB8SyaEwjEfq9sPew",
+    "partition_compaction_key": "[RANDOM_COMPACTION_KEY_______________________]"
+  },
+  "data_op": "U",
+  "data_type": "spp.supplier-facet.event",
+  "id": "AAAAAAA7RNOHY",
+  "partition_compaction_key": "[RANDOM_COMPACTION_KEY_______________________]",
+  "product_id": "1AD73B1M0-Q110038040",
+  "supplier_code": "CDp3x1eu3j",
+  "supplier_article_code": "fancy_number",
+  "product_tier": "Simple",
+  "created": "2018-07-23T10:59:14.862Z",
+  "created_by": "migration",
+  "last_modified": "2018-07-23T10:59:14.862Z",
+  "last_modified_by": "wholesale-articles",
+  "status": "Active"
+}
+]

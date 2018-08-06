@@ -1,0 +1,51 @@
+[{
+  "data_type": "spp:aggregated-relation",
+  "data_op": "U",
+  "metadata": {
+    "occurred_at": "2018-07-23T13:46:31.788Z",
+    "eid": "6d76f27b-1bcc-4e6c-a907-f63b658bffe7",
+    "event_type": "ltt.spp.relations",
+    "flow_id": "6FTSzNSvdRyEfIw6qqFF8Pxv",
+    "partition_compaction_key": "[RANDOM_COMPACTION_KEY_______________________]"
+  },
+  "eid": "6d76f27b-1bcc-4e6c-a907-f63b658bffe7",
+  "partition_compaction_key": "[RANDOM_COMPACTION_KEY_______________________]",
+  "occurred_at": "2018-07-23T13:46:29.231Z",
+  "relation": {
+    "owner_id": "810d1d00-4312-43e5-bd31-d8373fdd24c7",
+    "attributes": {
+      "target_group_set": [
+        "ARTICLE_DOMAIN_DEFAULT",
+        "GENDER_FEMALE",
+        "AGE_GROUP_ADULT"
+      ],
+      "primary_product_id": "NA621D03Z-C11"
+    },
+    "id": "cd85a5f3-7191-3448-b026-dd65b9a16cfd",
+    "status": "active",
+    "members": [
+      {
+        "id": "MF921N02C-K11"
+      },
+      {
+        "id": "AN611A0EH-A11"
+      },
+      {
+        "id": "OLA31G005-S11"
+      },
+      {
+        "id": "TO721E0AM-K11"
+      },
+      {
+        "id": "NA621D03Z-C11"
+      }
+    ],
+    "created_at": "2018-07-23T13:46:29.214Z",
+    "type": {
+      "label": "shop_the_look",
+      "version": "1"
+    }
+  },
+  "event_type": "update"
+}
+]
