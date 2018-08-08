@@ -1,0 +1,1 @@
+ALTER TABLE zn_data.timeline ADD UNIQUE (st_id, tl_topic);
