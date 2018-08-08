@@ -9,7 +9,8 @@ CREATE TABLE zn_data.timeline (
   tl_cleanup_at      TIMESTAMP WITH TIME ZONE DEFAULT NULL,
   tl_latest_position JSONB                    DEFAULT NULL,
   tl_deleted         BOOLEAN                  DEFAULT FALSE,
-  UNIQUE (et_name, tl_order)
+  UNIQUE (et_name, tl_order),
+  UNIQUE (st_id, tl_topic)
 );
 
 CREATE INDEX ON zn_data.timeline (et_name);

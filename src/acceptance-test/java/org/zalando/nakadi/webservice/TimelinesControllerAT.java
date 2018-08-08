@@ -71,32 +71,12 @@ public class TimelinesControllerAT extends RealEnvironmentAT {
                 .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
                 .build();
 
-        // This event type is created only so that it creates a topic which we will use as an existent topic for the
-        // new timeline. That's not how this feature will work on production, since topics are not shared between
-        // event types, but this is a simple way to create a topic. Otherwise we would have to instantiate
-        // KafkaRepository to create a dummy topic.
-        final EventType dummyEventType = EventTypeTestBuilder.builder()
-                .cleanupPolicy(CleanupPolicy.COMPACT)
-                .category(EventCategory.BUSINESS)
-                .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
-                .build();
-
         NakadiTestUtils.createEventTypeInNakadi(eventType);
-        NakadiTestUtils.createEventTypeInNakadi(dummyEventType);
 
-
-        final List<TimelineView> retrievedTimeline = MAPPER.readValue(requestSpec()
-                .contentType(JSON)
-                .header("accept", "application/json")
-                .get("/event-types/" + dummyEventType.getName() + "/timelines")
-                .getBody()
-                .asString(),
-                new TypeReference<ArrayList<TimelineView>>() { });
-
-        final String existentTopic = retrievedTimeline.get(0).getTopic();
+        final String existingTopic = "existing-topic";
 
         RestAssured.given()
-                .body(new JSONObject().put("storage_id", "default").put("topic", existentTopic))
+                .body(new JSONObject().put("storage_id", "default").put("topic", existingTopic))
                 .header("Content-type", "application/json")
                 .post("event-types/{et_name}/timelines", eventType.getName())
                 .then()
@@ -111,7 +91,7 @@ public class TimelinesControllerAT extends RealEnvironmentAT {
                 .body("[1].event_type", equalTo(eventType.getName()))
                 .body("[1].order", Matchers.is(2))
                 .body("[1].storage_id", equalTo("default"))
-                .body("[1].topic", equalTo(existentTopic))
+                .body("[1].topic", equalTo(existingTopic))
                 .body("[1].cleaned_up_at", nullValue());
     }
 }
