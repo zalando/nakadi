@@ -432,7 +432,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                                 }
                             }
                             if (!currentMaxCursor.getOffset().equals(currentMaxOffset)) {
-                                getLog().info("Committing {} to {}", currentMaxCursor.getOffset(), offsetPath);
+                                getLog().info("Committing {} to {}/{}",
+                                        currentMaxCursor.getOffset(),
+                                        entry.getKey().getEventType(),
+                                        entry.getKey().getPartition());
+
                                 getCurator()
                                         .setData()
                                         .withVersion(stat.getVersion())

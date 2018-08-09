@@ -228,7 +228,7 @@ public class SubscriptionService {
 
             subscriptionRepository.deleteSubscription(subscriptionId);
             final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
-                    subscription, "subscription." + subscriptionId + ".delete_subscription");
+                    subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"));
             zkSubscriptionClient.deleteSubscription();
 
             nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
@@ -279,7 +279,7 @@ public class SubscriptionService {
             throws ServiceTemporarilyUnavailableException {
         try {
             return subscriptionClientFactory.createClient(subscription,
-                    "subscription." + subscription.getId() + ".stats");
+                    LogPathBuilder.build(subscription.getId(), "stats"));
         } catch (final InternalNakadiException | NoSuchEventTypeException e) {
             throw new ServiceTemporarilyUnavailableException(e);
         }
