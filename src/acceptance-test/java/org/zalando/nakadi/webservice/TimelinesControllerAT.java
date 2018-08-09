@@ -58,7 +58,7 @@ public class TimelinesControllerAT extends RealEnvironmentAT {
     }
 
     @Test
-    public void testCreatTimelineOnExistentTopic() throws Exception {
+    public void testCreateTimelineOnExistingTopic() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .cleanupPolicy(CleanupPolicy.COMPACT)
                 .category(EventCategory.BUSINESS)
