@@ -1,6 +1,5 @@
 package org.zalando.nakadi.webservice;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
@@ -15,20 +14,15 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.view.TimelineView;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 
-import static com.jayway.restassured.http.ContentType.JSON;
 import static java.time.temporal.ChronoUnit.DAYS;
 import static java.time.temporal.ChronoUnit.MINUTES;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.equalTo;
 import static org.zalando.nakadi.util.DateWithinMatcher.dateWithin;
-import static org.zalando.nakadi.webservice.BaseAT.MAPPER;
 
 public class TimelinesControllerAT extends RealEnvironmentAT {
 
