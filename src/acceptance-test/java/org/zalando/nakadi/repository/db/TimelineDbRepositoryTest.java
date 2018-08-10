@@ -118,12 +118,13 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     private Timeline insertTimeline(final int order) {
         return tRepository.createTimeline(createTimeline(
-                storage, UUID.randomUUID(), order, "test_topic", testEt.getName(),
+                storage, UUID.randomUUID(), order, UUID.randomUUID().toString(), testEt.getName(),
                 new Date(), null, null, null));
     }
 
     private Timeline insertTimeline(final Date cleanupDate, final boolean deleted, final int order) {
-        final Timeline timeline = createTimeline(storage, UUID.randomUUID(), order, "test_topic", testEt.getName(),
+        final Timeline timeline = createTimeline(storage, UUID.randomUUID(), order, UUID.randomUUID().toString(),
+                testEt.getName(),
                 new Date(), new Date(), cleanupDate, null);
         timeline.setDeleted(deleted);
         return tRepository.createTimeline(timeline);
