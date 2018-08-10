@@ -51,6 +51,7 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.view.TimelineRequest;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -102,7 +103,7 @@ public class TimelineService {
         this.compactedStorageName = compactedStorageName;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId)
+    public void createTimeline(final String eventTypeName, final TimelineRequest timelineRequest)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException, DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -115,13 +116,14 @@ public class TimelineService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
-            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT && timelineRequest.getTopic() == null) {
                 throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
                         "for event type with 'compact' cleanup_policy");
             }
 
-            final Storage storage = storageDbRepository.getStorage(storageId)
-                    .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
+            final Storage storage = storageDbRepository.getStorage(timelineRequest.getStorageId())
+                    .orElseThrow(() ->
+                            new UnableProcessException("No storage with id: " + timelineRequest.getStorageId()));
             final Timeline activeTimeline = getActiveTimeline(eventType);
             final TopicRepository currentTopicRepo =
                     topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
@@ -131,7 +133,14 @@ public class TimelineService {
 
             final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionStatistics.size(),
                     eventType.getCleanupPolicy(), Optional.ofNullable(eventType.getOptions().getRetentionTime()));
-            final String newTopic = nextTopicRepo.createTopic(nakadiTopicConfig);
+
+            final String newTopic;
+            if (timelineRequest.getTopic() == null) {
+                newTopic = nextTopicRepo.createTopic(nakadiTopicConfig);
+            } else {
+                newTopic = timelineRequest.getTopic();
+            }
+
             final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 

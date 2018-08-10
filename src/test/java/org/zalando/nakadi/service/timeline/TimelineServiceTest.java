@@ -26,6 +26,7 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.view.TimelineRequest;
 
 import java.util.Collections;
 import java.util.Date;
@@ -149,7 +150,10 @@ public class TimelineServiceTest {
 
         when(adminService.isAdmin(any())).thenReturn(true);
 
-        timelineService.createTimeline("et1", "st1");
+        final TimelineRequest timelineRequest = new TimelineRequest();
+        timelineRequest.setStorageId("st1");
+
+        timelineService.createTimeline("et1", timelineRequest);
     }
 
 }

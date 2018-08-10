@@ -1838,6 +1838,12 @@ paths:
             properties:
               storage_id:
                 type: string
+              topic:
+                type: string
+                description: |
+                  When provided, this field creates a timeline based on an existing topic in the given storage.
+
+                  Only administrator accounts are authorized to use this field.
             required:
               - storage_id
           required: true

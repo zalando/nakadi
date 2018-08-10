@@ -50,7 +50,7 @@ public class TimelinesController {
                                             @RequestBody final TimelineRequest timelineRequest)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
-        timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());
+        timelineService.createTimeline(eventTypeName, timelineRequest);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
