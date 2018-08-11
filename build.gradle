@@ -1,14 +1,35 @@
 import java.util.concurrent.TimeUnit
 
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'eclipse'
-apply plugin: 'application'
-apply plugin: 'spring-boot'
-apply plugin: "jacoco"
-apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
-apply plugin: 'project-report'
+buildscript {
+    ext {
+        springBootVersion = '1.5.3.RELEASE'
+        springFrameworkVersion = '4.3.8.RELEASE'
+    }
+    
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:$springBootVersion"
+        classpath 'org.yaml:snakeyaml:1.21'
+    }
+}
+
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'eclipse'
+    id 'application'
+    id 'jacoco'
+    id 'findbugs'
+    id 'checkstyle'
+    id 'project-report'
+    id 'org.springframework.boot' version "1.5.3.RELEASE"
+}
 
 group 'org.zalando'
 sourceCompatibility = 1.8
@@ -42,25 +63,6 @@ sourceSets {
             runtimeClasspath += main.output
             srcDir file('src/db-migration/java')
         }
-    }
-}
-
-buildscript {
-    ext {
-        springBootVersion = '1.5.3.RELEASE'
-        springFrameworkVersion = '4.3.8.RELEASE'
-    }
-
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-
-    dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
-        classpath 'org.yaml:snakeyaml:1.17'
     }
 }
 
