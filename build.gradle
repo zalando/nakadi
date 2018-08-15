@@ -2,9 +2,7 @@ import java.util.concurrent.TimeUnit
 
 buildscript {
     ext {
-        springBootVersion = '1.5.14.RELEASE'
-        springFrameworkVersion = '4.3.18.RELEASE'
-        jacksonVersion = '2.9.6'
+        springBootVersion = '1.5.15.RELEASE'
     }
 
     repositories {
@@ -29,7 +27,7 @@ plugins {
     id 'findbugs'
     id 'checkstyle'
     id 'project-report'
-    id 'org.springframework.boot' version "1.5.14.RELEASE"
+    id 'org.springframework.boot'
 }
 
 apply plugin: 'io.spring.dependency-management'
@@ -42,9 +40,6 @@ mainClassName = 'org.zalando.nakadi.Application'
 springBoot {
     layout = "ZIP"
 }
-
-def dockerGroup = "aruha"
-def dockerApplicationName = "nakadi"
 
 repositories {
     mavenCentral()
@@ -98,7 +93,6 @@ dependencies {
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
     ext['postgresql.version'] = '42.2.2'
-    ext['spring-security-oauth2.version'] = '2.3.3.RELEASE'
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
@@ -109,7 +103,6 @@ dependencies {
     compile "org.springframework:spring-context"
     compile "org.springframework:spring-web"
     compile "org.springframework:spring-webmvc"
-    compile "org.springframework.boot:spring-boot-test"
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
@@ -130,11 +123,11 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-jdbc"
     compile 'org.postgresql:postgresql'
 
-    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.4.RELEASE'
+    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
 
     // misc
     compile 'org.apache.httpcomponents:httpclient'
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.21') {
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.22') {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
