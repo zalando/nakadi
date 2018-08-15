@@ -1,7 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 
 public class ErrorGettingCursorTimeLagException extends NakadiRuntimeBaseException {
 
