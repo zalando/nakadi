@@ -13,23 +13,20 @@ buildscript {
     }
 
     dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin"
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
     }
 }
 
-plugins {
-    id 'java'
-    id 'groovy'
-    id 'eclipse'
-    id 'application'
-    id 'jacoco'
-    id 'findbugs'
-    id 'checkstyle'
-    id 'project-report'
-    id 'org.springframework.boot'
-}
-
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'eclipse'
+apply plugin: 'application'
+apply plugin: 'jacoco'
+apply plugin: 'findbugs'
+apply plugin: 'checkstyle'
+apply plugin: 'project-report'
+apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
 group 'org.zalando'
@@ -106,7 +103,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
-    compile ('org.springframework.security.oauth:spring-security-oauth2') {
+    compile('org.springframework.security.oauth:spring-security-oauth2') {
         exclude module: 'spring-beans'
         exclude module: 'spring-core'
         exclude module: 'spring-context'
