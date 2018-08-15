@@ -22,7 +22,6 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -32,6 +31,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
@@ -43,7 +43,6 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.Result;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -55,6 +54,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -134,7 +134,8 @@ public class EventTypeController {
             InconsistentStateException,
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
-            UnableProcessException {
+            UnableProcessException,
+            NoSuchPartitionStrategyException{
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -184,7 +185,7 @@ public class EventTypeController {
     public ResponseEntity<Problem> unableProcess(final UnableProcessException exception,
                                                  final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     @ExceptionHandler(ConflictException.class)
@@ -215,10 +216,10 @@ public class EventTypeController {
     }
 
     @ExceptionHandler(NoSuchPartitionStrategyException.class)
-    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NakadiException exception,
+    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NoSuchPartitionStrategyException exception,
                                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(exception.asProblem(), request);
+        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(DuplicatedEventTypeNameException.class)
@@ -232,13 +233,13 @@ public class EventTypeController {
     public ResponseEntity<Problem> invalidEventTypeException(final InvalidEventTypeException exception,
                                                              final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(EventTypeOptionsValidationException.class)
     public ResponseEntity<Problem> unableProcess(final EventTypeOptionsValidationException exception,
                                                  final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 }
