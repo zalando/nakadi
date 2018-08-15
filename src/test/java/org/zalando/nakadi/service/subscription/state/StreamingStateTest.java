@@ -86,7 +86,7 @@ public class StreamingStateTest {
         );
         when(contextMock.getParameters()).thenReturn(spMock);
 
-        state.setContext(contextMock, "test");
+        state.setContext(contextMock);
     }
 
     @Test

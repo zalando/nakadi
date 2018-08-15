@@ -27,7 +27,6 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
@@ -62,6 +61,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
+    private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
@@ -221,7 +221,7 @@ public class KafkaTopicRepositoryTest {
     @Test
     public void whenPostEventTimesOutThenUpdateItemStatus() {
         final BatchItem item = new BatchItem(
-                "{}", true,
+                "{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
@@ -248,7 +248,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() {
-        final BatchItem item = new BatchItem("{}", true,
+        final BatchItem item = new BatchItem("{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
@@ -276,11 +276,11 @@ public class KafkaTopicRepositoryTest {
     @Test
     public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() {
 
-        final BatchItem firstItem = new BatchItem("{}", true, BatchItem.EmptyInjectionConfiguration.build(1, true),
+        final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         firstItem.setPartition("1");
-        final BatchItem secondItem = new BatchItem("{}", true, BatchItem.EmptyInjectionConfiguration.build(1, true),
+        final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
         secondItem.setPartition("2");
@@ -329,7 +329,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                final BatchItem batchItem = new BatchItem("{}", true,
+                final BatchItem batchItem = new BatchItem("{}",
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
                         new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                         Collections.emptyList());
@@ -358,7 +358,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    new UUIDGenerator());
+                    kafkaTopicConfigFactory);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

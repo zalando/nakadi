@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
@@ -89,9 +90,13 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("name", equalTo(eventTypeName))
                 .body("owning_application", equalTo(owningApp))
                 .body("category", equalTo("undefined"))
+                .body("audience", equalTo("external-public"))
+                .body("ordering_key_fields", equalTo(Lists.newArrayList("foo", "bar.baz")))
+                .body("cleanup_policy", equalTo("delete"))
                 .body("schema.type", equalTo("json_schema"))
-                .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": " +
-                        "{\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
+                .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": " +
+                        "{\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": " +
+                        "{\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"));
 
         // list event types
         jsonRequestSpec()
@@ -322,6 +327,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .when()
                 .post("/event-types")
                 .then()
+                .body(equalTo(""))
                 .statusCode(CREATED.value());
     }
 

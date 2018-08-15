@@ -4,16 +4,18 @@ import com.google.common.collect.Lists;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.Audience;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
@@ -36,8 +38,10 @@ public class EventTypeTestBuilder {
     private EventTypeStatistics defaultStatistic;
     private EventTypeOptions options;
     private CompatibilityMode compatibilityMode;
+    private CleanupPolicy cleanupPolicy;
     private DateTime createdAt;
     private DateTime updatedAt;
+    private Audience audience;
     private ResourceAuthorization authorization;
 
 
@@ -54,9 +58,11 @@ public class EventTypeTestBuilder {
         this.options = new EventTypeOptions();
         this.options.setRetentionTime(172800000L);
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;
+        this.cleanupPolicy = CleanupPolicy.DELETE;
         this.createdAt = new DateTime(DateTimeZone.UTC);
         this.updatedAt = this.createdAt;
         this.authorization = null;
+        this.audience = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -125,6 +131,11 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder cleanupPolicy(final CleanupPolicy cleanupPolicy) {
+        this.cleanupPolicy = cleanupPolicy;
+        return this;
+    }
+
     public EventTypeTestBuilder createdAt(final DateTime createdAt) {
         this.createdAt = createdAt;
         return this;
@@ -140,11 +151,17 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder audience(final Audience audience) {
+        this.audience = audience;
+        return this;
+    }
+
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
-                defaultStatistic, options, compatibilityMode);
+                defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
+        eventTypeBase.setAudience(audience);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }

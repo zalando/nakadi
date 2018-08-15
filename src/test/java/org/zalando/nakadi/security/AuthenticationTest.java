@@ -45,8 +45,8 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeService;
-import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
@@ -76,7 +76,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes=Application.class, webEnvironment= WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = Application.class, webEnvironment = WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = AFTER_CLASS)
 @ActiveProfiles("test")
 public abstract class AuthenticationTest {
@@ -165,6 +165,7 @@ public abstract class AuthenticationTest {
         public SubscriptionDbRepository mockSubscriptionDbRepo() {
             return mock(SubscriptionDbRepository.class);
         }
+
         @Bean
         public EventTypeCache eventTypeCache() {
             return mock(EventTypeCache.class);
@@ -265,7 +266,7 @@ public abstract class AuthenticationTest {
     }
 
     protected static final ResultMatcher STATUS_NOT_401_OR_403 = status().is(not(
-                isOneOf(UNAUTHORIZED.value(), FORBIDDEN.value())));
+            isOneOf(UNAUTHORIZED.value(), FORBIDDEN.value())));
 
     protected static final String TOKEN_WITH_UID_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_NAKADI_ADMIN_SCOPE = randomUUID();

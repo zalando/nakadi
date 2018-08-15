@@ -48,6 +48,11 @@ nakadi:
       replicaFactor: 1
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day
+    compacted:
+      rotationMs: 10800000 # 3 hours
+      segmentBytes: 1073741824 # 1 GB
+      compactionLagMs: 10800000 # 3 hours
+      warnMessage: ""
   stream:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute
@@ -59,6 +64,7 @@ nakadi:
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
+    max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
   zookeeper:
@@ -96,12 +102,14 @@ nakadi:
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
     consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
   http.pool.connection:
-      max.total: 20
-      max.per.route: 10
-      request.timeout: 2000
-      connect.timeout: 1000
-      socket.timeout: 2000
-  timelines.storage.default: "default"
+    max.total: 20
+    max.per.route: 10
+    request.timeout: 2000
+    connect.timeout: 1000
+    socket.timeout: 2000
+  timelines.storage:
+    default: "default"
+    compacted: "default"
   kpi:
     config:
       batch-collection-timeout: 1000
@@ -137,11 +145,6 @@ nakadi:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
     DISABLE_SUBSCRIPTION_CREATION: false
-    HIGH_LEVEL_API: true
-    CHECK_PARTITIONS_KEYS: true
-    CHECK_OWNING_APPLICATION: false
-    LIMIT_CONSUMERS_NUMBER: true
-    SEND_BATCH_VIA_OUTPUT_STREAM: true
     REMOTE_TOKENINFO: true
     KPI_COLLECTION: false
     DISABLE_DB_WRITE_OPERATIONS: false
@@ -166,11 +169,6 @@ nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false
   DISABLE_SUBSCRIPTION_CREATION: false
-  HIGH_LEVEL_API: true
-  CHECK_PARTITIONS_KEYS: true
-  CHECK_OWNING_APPLICATION: true
-  LIMIT_CONSUMERS_NUMBER: true
-  SEND_BATCH_VIA_OUTPUT_STREAM: true
   REMOTE_TOKENINFO: true
   KPI_COLLECTION: false
   DISABLE_DB_WRITE_OPERATIONS: false

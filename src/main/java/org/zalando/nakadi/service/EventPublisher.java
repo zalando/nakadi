@@ -9,12 +9,14 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.CompactionException;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -38,8 +40,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.STRICT_JSON_PARSING;
-
 @Component
 public class EventPublisher {
 
@@ -53,7 +53,6 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
-    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -62,8 +61,7 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthorizationValidator authValidator,
-                          final FeatureToggleService featureToggleService) {
+                          final AuthorizationValidator authValidator) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -71,7 +69,6 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
-        this.featureToggleService = featureToggleService;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -90,8 +87,7 @@ public class EventPublisher {
             AccessDeniedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
-        final List<BatchItem> batch = BatchFactory.from(
-                events, featureToggleService.isFeatureEnabled(STRICT_JSON_PARSING));
+        final List<BatchItem> batch = BatchFactory.from(events);
         try {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
@@ -102,15 +98,22 @@ public class EventPublisher {
 
             validate(batch, eventType);
             partition(batch, eventType);
+            compact(batch, eventType);
             enrich(batch, eventType);
             submit(batch, eventType);
 
             return ok(batch);
         } catch (final EventValidationException e) {
-            LOG.debug("Event validation error: {}", e.getMessage());
+            LOG.debug(
+                    "Event validation error: {}",
+                    Optional.ofNullable(e.getMessage()).map(s -> s.replaceAll("\n", "; ")).orElse(null)
+            );
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
+            return aborted(EventPublishingStep.PARTITIONING, batch);
+        } catch (final CompactionException e) {
+            LOG.debug("Event compaction error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
@@ -163,6 +166,17 @@ public class EventPublisher {
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
+            }
+        }
+    }
+
+    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            for (final BatchItem item : batch) {
+                final String compactionKey = item.getEvent()
+                        .getJSONObject("metadata")
+                        .getString("partition_compaction_key");
+                item.setEventKey(compactionKey);
             }
         }
     }

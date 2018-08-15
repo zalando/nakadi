@@ -5,6 +5,7 @@ import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Objects;
 
 public class Subscription extends SubscriptionBase {
 
@@ -41,6 +42,10 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
+    public SubscriptionResource asResource() {
+        return new SubscriptionResource(id, getAuthorization());
+    }
+
     @Nullable
     public List<SubscriptionEventTypeStats> getStatus() {
         return status;
@@ -59,7 +64,7 @@ public class Subscription extends SubscriptionBase {
             return false;
         }
         final Subscription that = (Subscription) o;
-        return super.equals(that) && id.equals(that.id) && createdAt.equals(that.createdAt);
+        return super.equals(that) && Objects.equals(id, that.id) && Objects.equals(createdAt, that.createdAt);
     }
 
     @Override

@@ -43,27 +43,8 @@ springBoot {
     layout = "ZIP"
 }
 
-
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
-
-/* config parameters */
-def dockerImageName = "$dockerGroup/$dockerApplicationName"
-if (project.hasProperty("dockerImageName")) {
-    dockerImageName = project.property("dockerImageName")
-}
-def dockerImageVersion = "AUTOBUILD"
-if (project.hasProperty("dockerImageVersion")) {
-    dockerImageVersion = project.property("dockerImageVersion")
-}
-def dockerImageTag = "$dockerImageName:$dockerImageVersion"
-
-def dockerBuildTimeout = 300
-
-def dockerFile = "Dockerfile"
-if (project.hasProperty('dockerFile')) {
-    dockerFile = project.property("dockerFile")
-}
 
 repositories {
     mavenCentral()
@@ -170,8 +151,8 @@ dependencies {
     compile 'org.echocat.jomon:runtime:1.6.3'
 
     // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:0.10.1.0'
-    compile('org.apache.kafka:kafka_2.11:0.10.1.0') {
+    compile 'org.apache.kafka:kafka-clients:1.1.1'
+    compile('org.apache.kafka:kafka_2.12:1.1.1') {
         exclude module: "zookeeper"
     }
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
@@ -225,56 +206,6 @@ tasks.withType(FindBugs) {
     reports {
         xml.enabled = false
         html.enabled = true
-    }
-}
-
-task generateScmSourceJson() {
-    def rev = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "rev-parse", "HEAD"
-        standardOutput = rev
-    }
-    rev = rev.toString().trim()
-
-    def url = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "config", "--get", "remote.origin.url"
-        standardOutput = url
-    }
-    url = url.toString().trim()
-
-    def status = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "status", "--porcelain"
-        standardOutput = status
-    }
-    status = status.toString().trim().replaceAll("[\n\r]", "\\\\n")
-    if (status) {
-        rev = "$rev (locally modified)"
-    }
-    def scmSource = new FileOutputStream("scm-source.json")
-    scmSource.write("{\"url\": \"git:${url}\", \"revision\":\"${rev}\", \"author\": \"${System.getenv()['USER']}\", \"status\": \"${status}\"}".getBytes())
-    scmSource.close()
-}
-
-task buildDockerImage {
-    dependsOn bootRepackage, generateScmSourceJson
-    doLast {
-        println "Building docker image with tag: $dockerImageTag from dockerfile: $dockerFile"
-        if (execAndWait("docker build -t " + dockerImageTag + " -f " + dockerFile + " .", dockerBuildTimeout) != 0) {
-            throw new GradleException("docker build failed.")
-        }
-    }
-    outputs.upToDateWhen { false }
-}
-
-task pushDockerImage {
-    dependsOn buildDockerImage
-    doLast {
-        println "Pushing docker image with tag: $dockerImageTag"
-        if (execAndWait("docker push " + dockerImageTag, dockerBuildTimeout) != 0) {
-            throw new GradleException("docker push failed.")
-        }
     }
 }
 

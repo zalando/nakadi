@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Upgraded dependencies
 
+## [2.8.3] - 2018-08-01
+
+### Fixed
+- Removed partition key fields check
+- Fixed and added check for schema root object type to be only of type object.
+- Fixed ISE when parsing number larger than max long
+
+### Added
+- Warn message when creation log compacted event types
+
+## [2.8.2] - 2018-07-31
+
+### Removed
+- Removed Legacy Feature Toggles
+
+## [2.8.1]
+
+### Added
+- Log Compaction Feature Toggle
+
+### Changed
+- Upgraded Kafka client to 1.1.1
+
+## [2.8.0]
+
+### Added
+- Log Compaction functionality.
+
+## [2.7.7] - 2018-06-26
+
+### Added
+- Extended event type's definition to support ordering_key_field attribute
+
+### Removed
+- Removed high-level API feature flag
+
+### Changed
+- Added feature toggle to make it possible to remove event-types together with subscriptions
+- Fixed the way how latest_available_offset is generated for /partitions request for empty timeline
+
+## [2.7.6] - 2018-06-20
+
+### Added
+- Extended event type's definition to support audience attribute
+
+## [2.7.5] - 2018-06-20
+
+### Changed
+- max.request.size was increased to slightly more than 2MB.
+
+## [2.7.4] - 2018-06-13
+
+### Changed
+- Switched to strict json parsing
+
 ## [2.7.3] - 2018-06-11
 
 ### Changed

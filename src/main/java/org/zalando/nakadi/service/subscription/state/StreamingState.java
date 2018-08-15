@@ -19,6 +19,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -359,7 +360,7 @@ class StreamingState extends State {
                         final SubscriptionCursorWithoutToken remembered =
                                 getContext().getCursorConverter().convertToNoToken(v.getValue().getCommitOffset());
                         final SubscriptionCursorWithoutToken real = realCommitted.get(v.getKey());
-                        return real.getOffset().compareTo(remembered.getOffset())> 0;
+                        return real.getOffset().compareTo(remembered.getOffset()) > 0;
                     })
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
@@ -627,7 +628,8 @@ class StreamingState extends State {
                 getComparator(),
                 subscription,
                 cursor,
-                LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()),
+                LoggerFactory.getLogger(LogPathBuilder.build(
+                        getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
                 System.currentTimeMillis());
 
         offsets.put(partition.getKey(), pd);

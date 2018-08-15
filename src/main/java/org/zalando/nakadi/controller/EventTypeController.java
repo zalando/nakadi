@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,25 +16,26 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
-import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -48,9 +50,9 @@ import org.zalando.problem.spring.web.advice.Responses;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
@@ -96,19 +98,13 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
-                && !applicationService.exists(eventType.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    "owning_application doesn't exist"), request);
-        }
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
         eventTypeService.create(eventType);
 
-        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders()).build();
+        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
@@ -145,7 +141,7 @@ public class EventTypeController {
 
         eventTypeService.update(name, eventType);
 
-        return status(HttpStatus.OK).headers(generateWarningHeaders()).build();
+        return status(HttpStatus.OK).headers(generateWarningHeaders(eventType)).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
@@ -157,12 +153,23 @@ public class EventTypeController {
         return status(HttpStatus.OK).body(result.getValue());
     }
 
-    private HttpHeaders generateWarningHeaders() {
+    private HttpHeaders generateWarningHeaders(final EventTypeBase eventType) {
         final HttpHeaders headers = new HttpHeaders();
-        if (!nakadiSettings.getWarnAllDataAccessMessage().isEmpty()) {
-            headers.add(HttpHeaders.WARNING,
-                    String.format("299 nakadi \"%s\"", nakadiSettings.getWarnAllDataAccessMessage()));
+
+        final List<String> warnings = Lists.newArrayList(nakadiSettings.getWarnAllDataAccessMessage());
+
+        if (eventType.getCleanupPolicy().equals(CleanupPolicy.COMPACT)) {
+            warnings.add(nakadiSettings.getLogCompactionWarnMessage());
         }
+
+        final String warningMessage = warnings.stream()
+                .filter(s -> !s.isEmpty()).collect(Collectors.joining("\n"));
+
+        if (!warnings.isEmpty()) {
+            headers.add(HttpHeaders.WARNING,
+                    String.format("299 nakadi \"%s\"", warningMessage));
+        }
+
         return headers;
     }
 
