@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -83,7 +83,7 @@ public class CursorOperationsController {
                 final Long distance = cursorOperationsService.calculateDistance(initialCursor, finalCursor);
                 query.setDistance(distance);
             } catch (InternalNakadiException | ServiceTemporarilyUnavailableException e) {
-                throw new MyNakadiRuntimeException1("problem calculating cursors distance", e);
+                throw new NakadiRuntimeBaseException("problem calculating cursors distance", e);
             } catch (final NoSuchEventTypeException e) {
                 throw new NotFoundException("event type not found", e);
             } catch (final InvalidCursorException e) {
@@ -151,7 +151,7 @@ public class CursorOperationsController {
                     "have matching partitions.";
             default:
                 LOG.error("Unexpected invalid cursor operation reason " + reason);
-                throw new MyNakadiRuntimeException1();
+                throw new NakadiRuntimeBaseException();
         }
     }
 

@@ -23,7 +23,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -163,7 +163,7 @@ public class PartitionsController {
                 .stream()
                 .findFirst()
                 .map(this::toCursorLag)
-                .orElseThrow(MyNakadiRuntimeException1::new);
+                .orElseThrow(NakadiRuntimeBaseException::new);
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)

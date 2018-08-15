@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -214,7 +214,7 @@ public interface ZkSubscriptionClient {
                     }
                 }
                 if (selectedIdx < 0) {
-                    throw new MyNakadiRuntimeException1(
+                    throw new NakadiRuntimeBaseException(
                             "Failed to find partition " + newValue.getKey() + " in " + this);
                 }
                 resultPartitions[selectedIdx] = newValue;

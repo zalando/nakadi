@@ -20,7 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -120,8 +120,8 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(MyNakadiRuntimeException1.class)
-    public ResponseEntity<Problem> handleInternalError(final MyNakadiRuntimeException1 exception,
+    @ExceptionHandler(NakadiRuntimeBaseException.class)
+    public ResponseEntity<Problem> handleInternalError(final NakadiRuntimeBaseException exception,
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
