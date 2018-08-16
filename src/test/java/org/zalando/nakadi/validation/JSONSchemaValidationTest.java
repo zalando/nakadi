@@ -38,6 +38,27 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
+    public void validationOfBusinessEventShouldAllowSpanCtxtInMetadata() {
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema(basicSchema()).build();
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = new JSONObject("{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"span_ctx\": {" +
+                "      \"ot-tracer-spanid\": \"b268f901d5f2b865\"," +
+                "      \"ot-tracer-traceid\": \"e9435c17dabe8238\"," +
+                "      \"ot-baggage-foo\": \"bar\"" +
+                "}}," +
+                "\"foo\": \"bar\"}");
+
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
+    }
+
+    @Test
     public void validationOfDataChangeEventRequiresExtraFields() {
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
                 .schema(basicSchema()).build();
