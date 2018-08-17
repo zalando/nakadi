@@ -258,10 +258,9 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         public FirewalledRequest getFirewalledRequest(HttpServletRequest request) throws RequestRejectedException {
             rejectedBlacklistedUrls(request);
 
-            // ONLY THIS PART IS REMOVED, ALL OTHER CODE IS THE SAME AS IN StrictHttpFirewall
-            //if (!isNormalized(request)) {
-            //    throw new RequestRejectedException("The request was rejected because the URL was not normalized.");
-            //}
+            if (!isNormalized(request)) {
+                throw new RequestRejectedException("The request was rejected because the URL was not normalized.");
+            }
 
             String requestUri = request.getRequestURI();
             if (!containsOnlyPrintableAsciiCharacters(requestUri)) {
@@ -272,6 +271,49 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                 public void reset() {
                 }
             };
+        }
+
+        private static boolean isNormalized(HttpServletRequest request) {
+            if (!isNormalized(request.getRequestURI())) {
+                return false;
+            }
+            if (!isNormalized(request.getContextPath())) {
+                return false;
+            }
+            if (!isNormalized(request.getServletPath())) {
+                return false;
+            }
+            if (!isNormalized(request.getPathInfo())) {
+                return false;
+            }
+            return true;
+        }
+
+        private static boolean isNormalized(String path) {
+            if (path == null) {
+                return true;
+            }
+
+            // ONLY THIS PART IS REMOVED, ALL OTHER CODE IS THE SAME AS IN StrictHttpFirewall
+            // if (path.indexOf("//") > -1) {
+            //     return false;
+            // }
+
+            for (int j = path.length(); j > 0;) {
+                int i = path.lastIndexOf('/', j - 1);
+                int gap = j - i;
+
+                if (gap == 2 && path.charAt(i + 1) == '.') {
+                    // ".", "/./" or "/."
+                    return false;
+                } else if (gap == 3 && path.charAt(i + 1) == '.' && path.charAt(i + 2) == '.') {
+                    return false;
+                }
+
+                j = i;
+            }
+
+            return true;
         }
 
         private void rejectedBlacklistedUrls(HttpServletRequest request) {
