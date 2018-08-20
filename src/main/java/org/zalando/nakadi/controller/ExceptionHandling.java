@@ -10,7 +10,6 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CompactionException;
@@ -20,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
@@ -42,6 +42,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 import javax.ws.rs.core.Response;
 
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
@@ -117,9 +118,8 @@ public final class ExceptionHandling implements ProblemHandling {
     public ResponseEntity<Problem> handleExceptionWrapper(final NakadiRuntimeException exception,
                                                           final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
-        if (cause instanceof NakadiException) {
-            final NakadiException ne = (NakadiException) cause;
-            return Responses.create(ne.asProblem(), request);
+        if (cause instanceof InternalNakadiException) {
+            return Responses.create(INTERNAL_SERVER_ERROR, exception.getMessage(), request);
         }
         throw exception.getException();
     }
@@ -143,9 +143,8 @@ public final class ExceptionHandling implements ProblemHandling {
                                                            final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         final Throwable cause = exception.getCause();
-        if (cause instanceof NakadiException) {
-            final NakadiException ne = (NakadiException) cause;
-            return Responses.create(ne.asProblem(), request);
+        if (cause instanceof InternalNakadiException) {
+            return Responses.create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
         }
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }

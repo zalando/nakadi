@@ -25,13 +25,12 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.nakadi.metrics.MetricUtils;
@@ -276,9 +275,9 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getMessage());
             } catch (final InvalidLimitException e) {
                 writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY, e.getMessage());
-            } catch (final NakadiException e) {
+            } catch (final InternalNakadiException e) {
                 LOG.error("Error while trying to stream events.", e);
-                writeProblemResponse(response, outputStream, e.asProblem());
+                writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final AccessDeniedException e) {

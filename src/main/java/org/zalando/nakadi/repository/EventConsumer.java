@@ -5,7 +5,6 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
 
 import java.io.Closeable;
 import java.util.Collection;
@@ -23,6 +22,6 @@ public interface EventConsumer extends Closeable {
     interface ReassignableEventConsumer extends EventConsumer {
         Set<EventTypePartition> getAssignment();
 
-        void reassign(Collection<NakadiCursor> newValues) throws NakadiException, InvalidCursorException;
+        void reassign(Collection<NakadiCursor> newValues) throws InvalidCursorException;
     }
 }

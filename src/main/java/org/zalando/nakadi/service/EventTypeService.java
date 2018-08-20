@@ -25,12 +25,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -40,8 +35,12 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
@@ -358,7 +357,7 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Unable to update event type", e);
             throw new NakadiRuntimeException(e);
         } finally {
@@ -378,7 +377,7 @@ public class EventTypeService {
                 .put("compatibility_mode", eventTypeBase.getCompatibilityMode()));
     }
 
-    private void updateRetentionTime(final EventType original, final EventType eventType) throws NakadiException {
+    private void updateRetentionTime(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
         if (oldRetentionTime == null) {
