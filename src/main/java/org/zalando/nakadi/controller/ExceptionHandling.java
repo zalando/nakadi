@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -230,6 +231,13 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(NoSuchEventTypeException.class)
     public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
                                                                final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchSchemaException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchSchemaException exception,
+                                                                  final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
