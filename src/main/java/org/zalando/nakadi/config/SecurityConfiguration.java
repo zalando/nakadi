@@ -210,21 +210,22 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
         private static final String ENCODED_PERCENT = "%25";
         private static final String PERCENT = "%";
-        private static final List<String> FORBIDDEN_ENCODED_PERIOD = Collections.unmodifiableList(Arrays.asList("%2e", "%2E"));
+        private static final List<String> FORBIDDEN_ENCODED_PERIOD =
+                Collections.unmodifiableList(Arrays.asList("%2e", "%2E"));
         private Set<String> encodedUrlBlacklist = new HashSet<>();
         private Set<String> decodedUrlBlacklist = new HashSet<>();
 
-        public AllowForwardSlashesStrictHttpFirewall() {
+        AllowForwardSlashesStrictHttpFirewall() {
             super();
             this.encodedUrlBlacklist.add(ENCODED_PERCENT);
             this.encodedUrlBlacklist.addAll(FORBIDDEN_ENCODED_PERIOD);
             this.decodedUrlBlacklist.add(PERCENT);
         }
 
-        private static boolean containsOnlyPrintableAsciiCharacters(String uri) {
-            int length = uri.length();
+        private static boolean containsOnlyPrintableAsciiCharacters(final String uri) {
+            final int length = uri.length();
             for (int i = 0; i < length; i++) {
-                char c = uri.charAt(i);
+                final char c = uri.charAt(i);
                 if (c < '\u0020' || c > '\u007e') {
                     return false;
                 }
@@ -233,14 +234,14 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             return true;
         }
 
-        private static boolean encodedUrlContains(HttpServletRequest request, String value) {
+        private static boolean encodedUrlContains(final HttpServletRequest request, final String value) {
             if (valueContains(request.getContextPath(), value)) {
                 return true;
             }
             return valueContains(request.getRequestURI(), value);
         }
 
-        private static boolean decodedUrlContains(HttpServletRequest request, String value) {
+        private static boolean decodedUrlContains(final HttpServletRequest request, final String value) {
             if (valueContains(request.getServletPath(), value)) {
                 return true;
             }
@@ -250,21 +251,23 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             return false;
         }
 
-        private static boolean valueContains(String value, String contains) {
+        private static boolean valueContains(final String value, final String contains) {
             return value != null && value.contains(contains);
         }
 
         @Override
-        public FirewalledRequest getFirewalledRequest(HttpServletRequest request) throws RequestRejectedException {
+        public FirewalledRequest getFirewalledRequest(final HttpServletRequest request)
+                throws RequestRejectedException {
             rejectedBlacklistedUrls(request);
 
             if (!isNormalized(request)) {
                 throw new RequestRejectedException("The request was rejected because the URL was not normalized.");
             }
 
-            String requestUri = request.getRequestURI();
+            final String requestUri = request.getRequestURI();
             if (!containsOnlyPrintableAsciiCharacters(requestUri)) {
-                throw new RequestRejectedException("The requestURI was rejected because it can only contain printable ASCII characters.");
+                throw new RequestRejectedException("The requestURI was rejected because it can only " +
+                        "contain printable ASCII characters.");
             }
             return new FirewalledRequest(request) {
                 @Override
@@ -273,7 +276,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             };
         }
 
-        private static boolean isNormalized(HttpServletRequest request) {
+        private static boolean isNormalized(final HttpServletRequest request) {
             if (!isNormalized(request.getRequestURI())) {
                 return false;
             }
@@ -289,7 +292,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             return true;
         }
 
-        private static boolean isNormalized(String path) {
+        private static boolean isNormalized(final String path) {
             if (path == null) {
                 return true;
             }
@@ -300,8 +303,8 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             // }
 
             for (int j = path.length(); j > 0;) {
-                int i = path.lastIndexOf('/', j - 1);
-                int gap = j - i;
+                final int i = path.lastIndexOf('/', j - 1);
+                final int gap = j - i;
 
                 if (gap == 2 && path.charAt(i + 1) == '.') {
                     // ".", "/./" or "/."
@@ -316,15 +319,17 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             return true;
         }
 
-        private void rejectedBlacklistedUrls(HttpServletRequest request) {
-            for (String forbidden : this.encodedUrlBlacklist) {
+        private void rejectedBlacklistedUrls(final HttpServletRequest request) {
+            for (final String forbidden : this.encodedUrlBlacklist) {
                 if (encodedUrlContains(request, forbidden)) {
-                    throw new RequestRejectedException("The request was rejected because the URL contained a potentially malicious String \"" + forbidden + "\"");
+                    throw new RequestRejectedException("The request was rejected because the URL contained " +
+                            "a potentially malicious String \"" + forbidden + "\"");
                 }
             }
-            for (String forbidden : this.decodedUrlBlacklist) {
+            for (final String forbidden : this.decodedUrlBlacklist) {
                 if (decodedUrlContains(request, forbidden)) {
-                    throw new RequestRejectedException("The request was rejected because the URL contained a potentially malicious String \"" + forbidden + "\"");
+                    throw new RequestRejectedException("The request was rejected because the URL contained " +
+                            "a potentially malicious String \"" + forbidden + "\"");
                 }
             }
         }
