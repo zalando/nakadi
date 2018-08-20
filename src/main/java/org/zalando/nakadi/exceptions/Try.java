@@ -1,6 +1,7 @@
 package org.zalando.nakadi.exceptions;
 
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 
 import java.util.Optional;
 import java.util.concurrent.Callable;
