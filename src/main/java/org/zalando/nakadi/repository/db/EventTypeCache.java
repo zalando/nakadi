@@ -5,6 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -161,7 +162,7 @@ public class EventTypeCache {
             throws NoSuchEventTypeException, InternalNakadiException {
         try {
             return Optional.ofNullable(eventTypeCache.get(name));
-        } catch (final ExecutionException e) {
+        } catch (final UncheckedExecutionException | ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {
                 throw (NoSuchEventTypeException) e.getCause();
             } else {
