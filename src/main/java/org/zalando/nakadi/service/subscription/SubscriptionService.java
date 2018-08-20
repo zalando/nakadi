@@ -22,17 +22,15 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
@@ -125,7 +123,7 @@ public class SubscriptionService {
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
@@ -160,7 +158,7 @@ public class SubscriptionService {
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
-            throws InconsistentStateException, NoSubscriptionException, RepositoryProblemException {
+            throws InconsistentStateException, NoSuchSubscriptionException, RepositoryProblemException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),

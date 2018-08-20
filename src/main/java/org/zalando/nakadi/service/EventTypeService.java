@@ -25,7 +25,6 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -37,7 +36,7 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
@@ -217,7 +216,7 @@ public class EventTypeService {
     }
 
     public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
-            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
+            NoSuchEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete event type: write operations on DB " +
@@ -231,7 +230,7 @@ public class EventTypeService {
 
             final Optional<EventType> eventTypeOpt = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventTypeOpt.isPresent()) {
-                throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
+                throw new NoSuchEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             eventType = eventTypeOpt.get();
 

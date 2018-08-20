@@ -19,7 +19,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -29,7 +28,8 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
@@ -110,7 +110,7 @@ public class EventTypeController {
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName)
             throws EventTypeDeletionException,
             AccessDeniedException,
-            NoEventTypeException,
+            NoSuchEventTypeException,
             ConflictException,
             ServiceTemporarilyUnavailableException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)
@@ -191,13 +191,6 @@ public class EventTypeController {
     public ResponseEntity<Problem> conflict(final ConflictException exception, final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.CONFLICT, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(NoEventTypeException.class)
-    public ResponseEntity<Problem> noEventType(final NoEventTypeException exception,
-                                               final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
     }
 
     @ExceptionHandler(EventTypeUnavailableException.class)
