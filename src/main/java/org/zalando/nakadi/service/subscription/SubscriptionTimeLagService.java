@@ -12,7 +12,7 @@ import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
@@ -88,8 +88,8 @@ public class SubscriptionTimeLagService {
         } catch (final TimeoutException e) {
             throw new TimeLagStatsTimeoutException("Timeout exceeded for time lag statistics", e);
         } catch (final ExecutionException e) {
-            if (e.getCause() instanceof NakadiRuntimeBaseException) {
-                throw (NakadiRuntimeBaseException) e.getCause();
+            if (e.getCause() instanceof NakadiBaseException) {
+                throw (NakadiBaseException) e.getCause();
             } else {
                 throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag",
                         e.getCause());

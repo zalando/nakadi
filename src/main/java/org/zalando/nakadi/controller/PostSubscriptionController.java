@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
@@ -121,7 +121,7 @@ public class PostSubscriptionController {
     @ExceptionHandler({
             WrongInitialCursorsException.class,
             TooManyPartitionsException.class})
-    public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiRuntimeBaseException exception,
+    public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiBaseException exception,
                                                                    final NativeWebRequest request) {
         LOG.debug("Error occurred when working with subscriptions", exception);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);

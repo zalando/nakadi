@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class PartitioningException extends NakadiRuntimeBaseException {
+public class PartitioningException extends NakadiBaseException {
     public PartitioningException(final String message) {
         super(message);
     }

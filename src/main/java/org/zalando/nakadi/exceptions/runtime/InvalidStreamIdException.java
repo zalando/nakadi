@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class InvalidStreamIdException extends NakadiRuntimeBaseException {
+public class InvalidStreamIdException extends NakadiBaseException {
 
     private final String streamId;
 

@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class UnknownStorageTypeException extends NakadiRuntimeBaseException {
+public class UnknownStorageTypeException extends NakadiBaseException {
 
     public UnknownStorageTypeException(final String message) {
         super(message);

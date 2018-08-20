@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class InternalNakadiException extends NakadiRuntimeBaseException {
+public class InternalNakadiException extends NakadiBaseException {
     public InternalNakadiException(final String message) {
         super(message);
     }

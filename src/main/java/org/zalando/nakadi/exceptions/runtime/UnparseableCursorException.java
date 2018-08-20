@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class UnparseableCursorException extends NakadiRuntimeBaseException {
+public class UnparseableCursorException extends NakadiBaseException {
     private final String cursors;
 
     public UnparseableCursorException(final String msg, final Exception cause, final String cursors) {

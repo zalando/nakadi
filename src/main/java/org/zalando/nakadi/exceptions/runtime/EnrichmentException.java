@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class EnrichmentException extends NakadiRuntimeBaseException {
+public class EnrichmentException extends NakadiBaseException {
     public EnrichmentException(final String msg, final Exception cause) {
         super(msg, cause);
     }

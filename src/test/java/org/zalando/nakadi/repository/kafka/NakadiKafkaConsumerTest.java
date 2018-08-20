@@ -177,7 +177,7 @@ public class NakadiKafkaConsumerTest {
             }
         }
 
-        assertThat("We should get a NakadiRuntimeBaseException for every call",
+        assertThat("We should get a NakadiBaseException for every call",
                 numberOfNakadiRuntimeBaseExceptions,
                 equalTo(exceptions.size()));
     }

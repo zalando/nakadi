@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class EventTypeUnavailableException extends NakadiRuntimeBaseException {
+public class EventTypeUnavailableException extends NakadiBaseException {
 
 
     public EventTypeUnavailableException(final String message) {

@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class NoSuchSchemaException extends NakadiRuntimeBaseException {
+public class NoSuchSchemaException extends NakadiBaseException {
 
     public NoSuchSchemaException(final String message) {
         super(message);

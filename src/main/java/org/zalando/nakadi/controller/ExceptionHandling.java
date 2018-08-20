@@ -21,7 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -125,8 +125,8 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(NakadiRuntimeBaseException.class)
-    public ResponseEntity<Problem> handleInternalError(final NakadiRuntimeBaseException exception,
+    @ExceptionHandler(NakadiBaseException.class)
+    public ResponseEntity<Problem> handleInternalError(final NakadiBaseException exception,
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
