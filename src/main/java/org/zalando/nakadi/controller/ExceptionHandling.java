@@ -10,28 +10,29 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-import org.zalando.nakadi.exceptions.runtime.CompactionException;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
-import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.CompactionException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -40,6 +41,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
@@ -248,5 +250,12 @@ public final class ExceptionHandling implements ProblemHandling {
                                                                      final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoStreamingSlotsAvailable.class)
+    public ResponseEntity<Problem> handleNoStreamingSlotsAvailable(final NoStreamingSlotsAvailable exception,
+                                                                   final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(CONFLICT, exception.getMessage(), request);
     }
 }
