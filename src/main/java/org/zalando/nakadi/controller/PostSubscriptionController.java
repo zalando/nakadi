@@ -16,7 +16,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
@@ -37,6 +37,7 @@ import javax.validation.Valid;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 
@@ -98,7 +99,7 @@ public class PostSubscriptionController {
         } catch (final SubscriptionUpdateConflictException ex) {
             return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
         } catch (final NoSuchSubscriptionException ex) {
-            return Responses.create(ex.asProblem(), request);
+            return Responses.create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
         }
     }
 

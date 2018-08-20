@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
@@ -110,6 +112,9 @@ public class CursorsController {
             }
         } catch (final NoSuchEventTypeException | InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+        } catch (final NoSuchSubscriptionException e) {
+            LOG.error("Subscription not found", e);
+            return create(Problem.valueOf(NOT_FOUND, e.getMessage()), request);
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Failed to commit cursors", e);
             return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);

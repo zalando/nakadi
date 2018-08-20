@@ -14,6 +14,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.CompactionException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -236,8 +237,15 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(NoSuchSchemaException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchSchemaException exception,
-                                                                  final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
+                                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchSubscriptionException.class)
+    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
+                                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
