@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -83,7 +84,8 @@ public class SubscriptionController {
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId,
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
-            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws NakadiException, InconsistentStateException,
+            NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }

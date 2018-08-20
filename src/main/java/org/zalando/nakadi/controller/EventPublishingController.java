@@ -17,7 +17,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -35,6 +35,7 @@ import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -110,7 +111,7 @@ public class EventPublishingController {
             return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Event type not found.", e.getMessage());
-            return create(e.asProblem(), nativeWebRequest);
+            return create(Problem.valueOf(NOT_FOUND, e.getMessage()), nativeWebRequest);
         } catch (final EventTypeTimeoutException e) {
             LOG.debug("Failed to publish batch", e);
             return create(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()), nativeWebRequest);

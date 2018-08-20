@@ -1,5 +1,7 @@
 package org.zalando.nakadi.exceptions;
 
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
+
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -95,6 +97,8 @@ public abstract class Try<T> {
         public T getOrThrow() {
             if (exception instanceof NakadiRuntimeException) {
                 throw (NakadiRuntimeException) exception;
+            } else if (exception instanceof NakadiRuntimeBaseException) {
+                throw (NakadiRuntimeBaseException) exception;
             }
             throw new NakadiRuntimeException(exception);
         }

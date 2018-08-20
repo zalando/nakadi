@@ -23,8 +23,8 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -68,6 +68,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Component
 public class SubscriptionService {
@@ -244,13 +246,14 @@ public class SubscriptionService {
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
         } catch (final NoSuchEventTypeException | InternalNakadiException e) {
             LOG.error("Exception can not occur", e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         }
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
                                                                         final StatsMode statsMode)
-            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
+            throws InconsistentStateException, NoSuchEventTypeException,
+            NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
@@ -263,7 +266,7 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
                                                                     final StatsMode statsMode)
-            throws InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
@@ -285,7 +288,8 @@ public class SubscriptionService {
         }
     }
 
-    private List<EventType> getEventTypesForSubscription(final Subscription subscription) {
+    private List<EventType> getEventTypesForSubscription(final Subscription subscription)
+            throws NoSuchEventTypeException {
         return subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)

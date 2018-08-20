@@ -1,7 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.base.Preconditions;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 

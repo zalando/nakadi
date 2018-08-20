@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.CompactionException;
@@ -37,6 +38,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
@@ -85,7 +87,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(NoEventTypeException.class)
     public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
                                                         final NativeWebRequest request) {
-        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -225,4 +227,10 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(NoSuchEventTypeException.class)
+    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
+                                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
 }
