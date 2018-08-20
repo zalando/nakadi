@@ -25,7 +25,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -72,6 +72,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
@@ -251,7 +252,7 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type " + eventTypeName
                     + " is currently in maintenance, please repeat request");
-        } catch (final NakadiException | ServiceTemporarilyUnavailableException e) {
+        } catch (final InternalNakadiException | ServiceTemporarilyUnavailableException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         } finally {
@@ -401,13 +402,13 @@ public class EventTypeService {
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
-                                     final Long oldRetentionTime) throws NakadiException {
-        final NakadiException exception = transactionTemplate.execute(action -> {
+                                     final Long oldRetentionTime) throws InternalNakadiException {
+        final InternalNakadiException exception = transactionTemplate.execute(action -> {
             try {
                 updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
                 eventTypeRepository.update(eventType);
                 return null;
-            } catch (final NakadiException e) {
+            } catch (final InternalNakadiException e) {
                 return e;
             }
         });
@@ -449,7 +450,7 @@ public class EventTypeService {
             return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + eventTypeName, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
     }
 
@@ -463,7 +464,7 @@ public class EventTypeService {
         } catch (TimelineException | NotFoundException e) {
             LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
-        } catch (NakadiException e) {
+        } catch (InternalNakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         }

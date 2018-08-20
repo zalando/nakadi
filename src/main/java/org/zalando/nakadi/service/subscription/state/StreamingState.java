@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
@@ -590,7 +591,7 @@ class StreamingState extends State {
                     try {
                         // get oldest active timeline
                         return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
-                    } catch (final NakadiException e) {
+                    } catch (final InternalNakadiException e) {
                         throw new NakadiRuntimeException(e);
                     }
                 })

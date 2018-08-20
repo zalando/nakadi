@@ -20,7 +20,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -225,7 +225,7 @@ public class TimelineService {
             }
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }

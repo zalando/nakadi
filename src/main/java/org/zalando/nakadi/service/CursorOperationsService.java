@@ -11,7 +11,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeBaseException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -107,7 +107,7 @@ public class CursorOperationsService {
                         );
                     }).collect(Collectors.toList());
 
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             throw new NakadiRuntimeBaseException("error", e);
         }
     }
@@ -202,7 +202,7 @@ public class CursorOperationsService {
         final List<Timeline> timelines;
         try {
             timelines = timelineService.getAllTimelinesOrdered(eventTypeName);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             throw new RuntimeException(e);
         }
         return timelines.stream()

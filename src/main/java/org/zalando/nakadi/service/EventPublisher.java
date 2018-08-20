@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.CompactionException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
