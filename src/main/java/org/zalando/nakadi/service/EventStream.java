@@ -136,7 +136,7 @@ public class EventStream {
                             .get();
                     sendBatch(latestOffsets.get(heaviestPartition.getKey()), heaviestPartition.getValue());
                     final long freed = heaviestPartition.getValue().stream().mapToLong(v -> v.length).sum();
-                    LOG.warn("Memory limit reached for event type {}: {} bytes. Freed: {} bytes, {} messages",
+                    LOG.info("Memory limit reached for event type {}: {} bytes. Freed: {} bytes, {} messages",
                             config.getEtName(), bytesInMemory, freed, heaviestPartition.getValue().size());
                     bytesInMemory -= freed;
                     // Init new batch for subscription

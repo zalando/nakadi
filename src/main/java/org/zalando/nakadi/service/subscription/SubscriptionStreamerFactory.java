@@ -86,7 +86,6 @@ public class SubscriptionStreamerFactory {
             final BlacklistService blacklistService)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1, streamParameters.getPartitions());
-        final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
@@ -94,10 +93,10 @@ public class SubscriptionStreamerFactory {
                 .setParameters(streamParameters)
                 .setSession(session)
                 .setTimer(executorService)
-                .setZkClient(zkClientFactory.createClient(subscription, loggingPath))
+                .setZkClient(zkClientFactory.createClient(
+                        subscription, LogPathBuilder.build(subscription.getId(), session.getId())))
                 .setRebalancer(new SubscriptionRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
-                .setLoggingPath(loggingPath)
                 .setConnectionReady(connectionReady)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
