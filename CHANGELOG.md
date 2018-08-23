@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.5] - 2018-08-22
+
 ### Fixed
 - Upgraded dependencies
 
