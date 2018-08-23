@@ -17,16 +17,17 @@ before_cache:
   - >
     mkdir -p $HOME/docker && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
     | xargs -n 2 -t sh -c 'test -e $HOME/docker/$1.tar.gz || docker save $0 | gzip -2 > $HOME/docker/$1.tar.gz'
-
-#  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-#  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-#  - rm -f  $HOME/.cache/pip/log/debug.log
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+  - rm -f  $HOME/.cache/pip/log/debug.log
 
 cache:
+  bundler: true
   directories:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
     - $HOME/.cache/pip
+    - $HOME/docker
 
 before_install:
   - docker --version
@@ -39,27 +40,17 @@ before_install:
   - pip install --user codecov
   - sudo curl -L https://github.com/codacy/codacy-coverage-reporter/releases/download/1.0.13/codacy-coverage-reporter-assembly-1.0.5.jar > /opt/codacy-coverage-reporter.jar
 
-install:
-  - ./gradlew compileJava compileTestJava assemble
-
 before_script:
   - sudo /etc/init.d/postgresql stop
-
-cache:
-  bundler: true
-  directories:
-    - $HOME/docker
 
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.7.1"
-  matrix:
-    - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
-    - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
-    - TEST_SUITE="./gradlew fullAcceptanceTest --stacktrace"          # acceptances tests
 
 # run test suits in parallel
-script: "$TEST_SUITE"
+#script: "$TEST_SUITE"
+script:
+  - ./gradlew travis --stacktrace
 
 after_success:
   # only testWithReport generates coverage report

@@ -270,6 +270,11 @@ task acceptanceTest(type: Test) {
     maxParallelForks = Runtime.runtime.availableProcessors()
 }
 
+task travis(type: GradleBuild) {
+    tasks = ['checkstyle', 'testWithReport', 'bootRepackage', 'testInitNakadi', 'acceptanceTest']
+    finalizedBy jacocoTestReport
+}
+
 test {
     testLogging {
         events "passed", "skipped", "failed"
