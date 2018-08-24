@@ -1,10 +1,9 @@
-version: '3.7'
+version: '3.4'
 services:
-
   nakadi:
     build: .
     ports:
-     - "127.0.0.1:8080:8080"
+     - "8080:8080"
     depends_on:
      - postgres
      - zookeeper
@@ -24,12 +23,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db
       - SPRING_DATASOURCE_USERNAME=nakadi
       - SPRING_DATASOURCE_PASSWORD=nakadi
-    network_mode: "host"
 
   postgres:
     image: postgres:9.5
-    expose:
-      - "5432"
+    ports:
+      - "5432:5432"
     volumes:
       - "./database/nakadi:/docker-entrypoint-initdb.d"
     environment:
@@ -39,13 +37,13 @@ services:
 
   zookeeper:
     image: wurstmeister/zookeeper:3.4.6
-    expose:
-      - "2181"
+    ports:
+      - "2181:2181"
 
   kafka:
     image: wurstmeister/kafka:1.1.0
-    expose:
-      - "9092"
+    ports:
+      - "9092:9092"
     depends_on:
       - zookeeper
     environment:
