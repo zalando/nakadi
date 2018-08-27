@@ -36,7 +36,7 @@ nakadi:
   admin.default:
     dataType: service
     value: stups_nakadi
-  authz.warnAllDataAccessMessage: ""
+  authz.warnAllDataAccessMessage: "Data access warning"
   topic:
     min:
       retentionMs: 86400000 # 1 days
@@ -52,7 +52,7 @@ nakadi:
       rotationMs: 10800000 # 3 hours
       segmentBytes: 1073741824 # 1 GB
       compactionLagMs: 10800000 # 3 hours
-      warnMessage: ""
+      warnMessage: "Compaction warning"
   stream:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute
