@@ -2,6 +2,7 @@ version: '3.4'
 services:
   nakadi:
     build: .
+    container_name: nakadi
     ports:
      - "8080:8080"
     depends_on:
@@ -26,6 +27,7 @@ services:
 
   postgres:
     image: postgres:9.5
+    container_name: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -38,17 +40,16 @@ services:
   zookeeper:
     image: zookeeper:3.4.9
     hostname: zookeeper
+    container_name: zookeeper
     ports:
     - "2181:2181"
     environment:
       ZOO_MY_ID: 1
-    volumes:
-    - ./zk-kafka/zookeeper/data:/data
-    - ./zk-kafka/zookeeper/datalog:/datalog
 
   kafka:
-    image: confluentinc/cp-kafka:5.0.0
+    image: wurstmeister/kafka:1.1.0
     hostname: kafka
+    container_name: kafka
     ports:
     - "9092:9092"
     environment:
