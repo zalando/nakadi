@@ -163,7 +163,7 @@ public class EventTypeController {
         }
 
         final String warningMessage = warnings.stream()
-                .filter(s -> !s.isEmpty()).collect(Collectors.joining("\n"));
+                .filter(s -> !s.isEmpty()).collect(Collectors.joining(". "));
 
         if (!warnings.isEmpty()) {
             headers.add(HttpHeaders.WARNING,
