@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
@@ -10,6 +11,7 @@ import static com.jayway.restassured.http.ContentType.JSON;
 
 public class StorageControllerAT extends BaseAT {
 
+    @Ignore("Temporary ignore this test (zk_address should be passed as an env argument)")
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
         given()
