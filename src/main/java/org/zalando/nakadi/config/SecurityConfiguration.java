@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -20,22 +19,13 @@ import org.springframework.security.oauth2.provider.error.DefaultOAuth2Exception
 import org.springframework.security.oauth2.provider.error.OAuth2AccessDeniedHandler;
 import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.springframework.security.web.firewall.FirewalledRequest;
-import org.springframework.security.web.firewall.HttpFirewall;
-import org.springframework.security.web.firewall.RequestRejectedException;
-import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
