@@ -3,7 +3,6 @@ package org.zalando.nakadi.partitioning;
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.Try;
@@ -12,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -75,21 +73,6 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
-    @Ignore("This might be useful to play around with for future implementations of PartitionStrategies")
-    public void partitionsAreEvenlyDistributedUsingRandomEvents() {
-        // This is a probabilistic test.
-        // The probability that it fails is approx. 0.577%
-
-        fillPartitionsWithRandomEvents(simpleEventType, partitions, 10000);
-
-        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0)
-                .toArray();
-        final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
-
-        assertThat(variance, lessThan(1.5));
-    }
-
-    @Test
     public void partitionsAreEvenlyDistributed() throws IOException {
         loadEventSamples();
 
@@ -110,16 +93,6 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
-    @Ignore("Run this to create a new set of event samples")
-    public void createSampleSet() {
-        final List<JSONObject> events = generateRandomEvents(10000);
-
-        for (final JSONObject event : events) {
-            System.out.println(event.toString());
-        }
-    }
-
-    @Test
     public void canHandleComplexKeys() throws Exception {
         final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
 
@@ -129,37 +102,6 @@ public class HashPartitionStrategyTest {
         final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
-    }
-
-    @Test
-    @Ignore("Tests the variance used in the tests here")
-    public void testVariance() {
-        final SecureRandom random = new SecureRandom();
-
-        final int numberOfSamples = 100000;
-        final int numberOfRuns = 1000;
-        final double threshold = 1.5;
-
-        double failProbability = 0;
-
-        for (int run = 0; run < numberOfRuns; run++) {
-            final double[] dist = new double[8];
-            for (int i = 0; i < numberOfSamples; i++) {
-                dist[random.nextInt(dist.length)]++;
-            }
-            final double variance = calculateVarianceOfUniformDistribution(dist);
-            //System.out.println(Arrays.toString(dist) + " = " + variance);
-
-            if (variance > threshold) {
-                failProbability += (1.0 / numberOfRuns);
-            }
-
-            if (((run * 100.0) / numberOfRuns) % 1 == 0) {
-                System.out.println((int) ((run * 100.0) / numberOfRuns) + "%");
-            }
-        }
-
-        System.out.println("probability to fail the test: " + failProbability);
     }
 
     @Test
