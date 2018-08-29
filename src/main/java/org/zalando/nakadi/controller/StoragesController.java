@@ -11,11 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import java.util.List;
 
@@ -41,15 +40,12 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
-    public ResponseEntity<?> listStorages(final NativeWebRequest request) {
+    public ResponseEntity<?> listStorages(final NativeWebRequest request) throws InternalNakadiException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
-        final Result<List<Storage>> result = storageService.listStorages();
-        if (result.isSuccessful()) {
-            return status(OK).body(result.getValue());
-        }
-        return Responses.create(result.getProblem(), request);
+        final List<Storage> storages = storageService.listStorages();
+        return status(OK).body(storages);
     }
 
     @RequestMapping(value = "/storages", method = RequestMethod.POST)
@@ -58,11 +54,8 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
-        final Result<Void> result = storageService.createStorage(new JSONObject(storage));
-        if (result.isSuccessful()) {
-            return status(CREATED).build();
-        }
-        return Responses.create(result.getProblem(), request);
+        storageService.createStorage(new JSONObject(storage));
+        return status(CREATED).build();
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.GET)
@@ -70,11 +63,8 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
-        final Result<Storage> result = storageService.getStorage(id);
-        if (result.isSuccessful()) {
-            return status(OK).body(result.getValue());
-        }
-        return Responses.create(result.getProblem(), request);
+        final Storage storage = storageService.getStorage(id);
+        return status(OK).body(storage);
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.DELETE)
@@ -82,11 +72,8 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
-        final Result<Void> result = storageService.deleteStorage(id);
-        if (result.isSuccessful()) {
-            return status(NO_CONTENT).build();
-        }
-        return Responses.create(result.getProblem(), request);
+        storageService.deleteStorage(id);
+        return status(NO_CONTENT).build();
     }
 
     @RequestMapping(value = "/storages/default/{id}", method = RequestMethod.PUT)
@@ -94,10 +81,7 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
-        final Result<Storage> result = storageService.setDefaultStorage(id);
-        if (result.isSuccessful()) {
-            return status(OK).body(result.getValue());
-        }
-        return Responses.create(result.getProblem(), request);
+        final Storage storage = storageService.setDefaultStorage(id);
+        return status(OK).body(storage);
     }
 }

@@ -15,6 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.CompactionException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
@@ -29,12 +30,16 @@ import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -45,6 +50,7 @@ import javax.ws.rs.core.Response;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
@@ -277,5 +283,45 @@ public final class ExceptionHandling implements ProblemHandling {
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(DuplicatedStorageException.class)
+    public ResponseEntity<Problem> handleDuplicatedStorageException(
+            final DuplicatedStorageException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(CONFLICT, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnknownStorageTypeException.class)
+    public ResponseEntity<Problem> handleUnknownStorageTypeException(
+            final UnknownStorageTypeException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnprocessableEntityException.class)
+    public ResponseEntity<Problem> handleUnprocessableEntityException(
+            final UnprocessableEntityException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoSuchStorageException.class)
+    public ResponseEntity<Problem> handleNoSuchStorageException(
+            final NoSuchStorageException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(StorageIsUsedException.class)
+    public ResponseEntity<Problem> handleStorageIsUsedException(
+            final StorageIsUsedException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(FORBIDDEN, exception.getMessage(), request);
     }
 }
