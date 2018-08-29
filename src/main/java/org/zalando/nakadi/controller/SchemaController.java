@@ -33,10 +33,7 @@ public class SchemaController {
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             final NativeWebRequest request) {
-        final Result<EventType> eventTypeResult = eventTypeService.get(name);
-        if (!eventTypeResult.isSuccessful()) {
-            return Responses.create(eventTypeResult.getProblem(), request);
-        }
+        final EventType eventType = eventTypeService.get(name);
 
         final Result result = schemaService.getSchemas(name, offset, limit);
         if (result.isSuccessful()) {
@@ -50,12 +47,9 @@ public class SchemaController {
                                               @PathVariable("version") final String version,
                                               final NativeWebRequest request) {
         if (version.equals("latest")) { // latest schema might be cached with the event type
-            final Result<EventType> eventTypeResult = eventTypeService.get(name);
-            if (!eventTypeResult.isSuccessful()) {
-                return Responses.create(eventTypeResult.getProblem(), request);
-            }
+            final EventType eventType = eventTypeService.get(name);
 
-            return ResponseEntity.status(HttpStatus.OK).body(eventTypeResult.getValue().getSchema());
+            return ResponseEntity.status(HttpStatus.OK).body(eventType.getSchema());
         }
 
         final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);

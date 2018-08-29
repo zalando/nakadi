@@ -41,7 +41,6 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.Result;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -146,11 +145,8 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
-        final Result<EventType> result = eventTypeService.get(name);
-        if (!result.isSuccessful()) {
-            return Responses.create(result.getProblem(), request);
-        }
-        return status(HttpStatus.OK).body(result.getValue());
+        final EventType eventType = eventTypeService.get(name);
+        return status(HttpStatus.OK).body(eventType);
     }
 
     private HttpHeaders generateWarningHeaders(final EventTypeBase eventType) {
