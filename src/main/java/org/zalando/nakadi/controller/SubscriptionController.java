@@ -3,7 +3,6 @@ package org.zalando.nakadi.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +21,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
 import org.zalando.problem.Problem;
@@ -34,6 +32,9 @@ import java.util.Set;
 
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -62,22 +63,22 @@ public class SubscriptionController {
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
 
-        return WebResult.wrap(
-                () -> subscriptionService.listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset),
-                request);
+        return status(OK)
+                .body(subscriptionService
+                        .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset));
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
                                              final NativeWebRequest request) {
-        return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
+        return status(OK).body(subscriptionService.getSubscription(subscriptionId));
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
                                                 final NativeWebRequest request) {
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId), request,
-                HttpStatus.NO_CONTENT);
+        subscriptionService.deleteSubscription(subscriptionId);
+        return status(NO_CONTENT).build();
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)

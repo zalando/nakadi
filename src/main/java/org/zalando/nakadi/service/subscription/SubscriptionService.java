@@ -29,6 +29,7 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -44,7 +45,6 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
-import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -52,10 +52,8 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,8 +64,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Component
 public class SubscriptionService {
@@ -169,18 +165,18 @@ public class SubscriptionService {
         return SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
     }
 
-    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
-                                    final boolean showStatus, final int limit, final int offset) {
+    public PaginationWrapper<Subscription> listSubscriptions(@Nullable final String owningApplication,
+                                                             @Nullable final Set<String> eventTypes,
+                                                             final boolean showStatus,
+                                                             final int limit,
+                                                             final int offset)
+            throws InvalidLimitException {
         if (limit < 1 || limit > 1000) {
-            final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
-                    "'limit' parameter should have value from 1 to 1000");
-            return Result.problem(problem);
+            throw new InvalidLimitException("'limit' parameter should have value between 1 and 1000");
         }
 
         if (offset < 0) {
-            final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
-                    "'offset' parameter can't be lower than 0");
-            return Result.problem(problem);
+            throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
 
         try {
@@ -196,27 +192,21 @@ public class SubscriptionService {
                 final List<Subscription> items = paginationWrapper.getItems();
                 items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
             }
-            return Result.ok(paginationWrapper);
+            return paginationWrapper;
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
+            throw e;
         }
     }
 
-    public Result<Subscription> getSubscription(final String subscriptionId) {
-        try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            return Result.ok(subscription);
-        } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId);
-            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
-        } catch (final ServiceTemporarilyUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
-        }
+    public Subscription getSubscription(final String subscriptionId)
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
+        return subscriptionRepository.getSubscription(subscriptionId);
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId) throws DbWriteOperationsBlockedException {
+    public void deleteSubscription(final String subscriptionId)
+            throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
+            ServiceTemporarilyUnavailableException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
                     "are blocked by feature flag.");
@@ -235,16 +225,10 @@ public class SubscriptionService {
                     .put("subscription_id", subscriptionId)
                     .put("status", "deleted"));
 
-            return Result.ok();
-        } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
-            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
-        } catch (final ServiceTemporarilyUnavailableException e) {
-            LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
-        } catch (final NoSuchEventTypeException | InternalNakadiException e) {
+            return;
+        } catch (final InternalNakadiException e) {
             LOG.error("Exception can not occur", e);
-            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
+            throw e;
         }
     }
 
