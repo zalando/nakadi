@@ -2635,6 +2635,22 @@ definitions:
             expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
 
+      ordering_instance_ids:
+        type: array
+        description: |
+          This is only an informational field.
+
+          Specifies array of fields that are used to be event identifier.
+
+          This field can be modified at any moment, but event type owners are expected to notify consumer in advance
+          about the change.
+        items:
+          type: string
+          description: |
+            Indicates a single instance id field. This is a dot separated string, which is applied onto the whole event
+            object, including the contained metadata and data (in case of data change event).
+
+            The field must be present in the schema.
       audience:
         type: string
         x-extensible-enum:

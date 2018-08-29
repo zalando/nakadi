@@ -509,7 +509,8 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validateOrderingKeys(schema, eventType);
+            validateFieldsInSchema("ordering_key_fields", eventType.getOrderingKeyFields(), schema);
+            validateFieldsInSchema("ordering_instance_ids", eventType.getOrderingInstanceIds(), schema);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
@@ -531,15 +532,15 @@ public class EventTypeService {
         }
     }
 
-    private void validateOrderingKeys(final Schema schema, final EventTypeBase eventType)
-            throws InvalidEventTypeException, JSONException, SchemaException {
-        final List<String> absentFields = eventType.getOrderingKeyFields().stream()
+    private void validateFieldsInSchema(final String fieldName, final List<String> fields, final Schema schema) {
+        final List<String> absentFields = fields.stream()
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
+            throw new InvalidEventTypeException(fieldName + " " + absentFields + " absent in schema");
         }
     }
+
 
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");
