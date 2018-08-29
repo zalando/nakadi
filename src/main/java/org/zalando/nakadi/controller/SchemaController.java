@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.service.EventTypeService;
-import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.problem.spring.web.advice.Responses;
 
 @RestController
 public class SchemaController {
@@ -32,14 +32,11 @@ public class SchemaController {
             @PathVariable("name") final String name,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
-            final NativeWebRequest request) {
+            final NativeWebRequest request) throws InvalidLimitException {
         final EventType eventType = eventTypeService.get(name);
 
-        final Result result = schemaService.getSchemas(name, offset, limit);
-        if (result.isSuccessful()) {
-            return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
-        }
-        return Responses.create(result.getProblem(), request);
+        final PaginationWrapper schemas = schemaService.getSchemas(name, offset, limit);
+        return ResponseEntity.status(HttpStatus.OK).body(schemas);
     }
 
     @RequestMapping("/event-types/{name}/schemas/{version}")
@@ -52,11 +49,7 @@ public class SchemaController {
             return ResponseEntity.status(HttpStatus.OK).body(eventType.getSchema());
         }
 
-        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);
-        if (!result.isSuccessful()) {
-            return Responses.create(result.getProblem(), request);
-        }
-
-        return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
+        final EventTypeSchema result = schemaService.getSchemaVersion(name, version);
+        return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 }

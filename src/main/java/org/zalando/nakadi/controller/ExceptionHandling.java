@@ -19,7 +19,9 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -41,6 +43,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -258,5 +261,21 @@ public final class ExceptionHandling implements ProblemHandling {
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidLimitException.class)
+    public ResponseEntity<Problem> handleInvalidLimitException(
+            final InvalidLimitException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidVersionNumberException.class)
+    public ResponseEntity<Problem> handleInvalidVersionNumberException(
+            final InvalidVersionNumberException exception,
+            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
     }
 }
