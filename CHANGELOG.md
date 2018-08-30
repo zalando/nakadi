@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Upgraded dependencies
 - Refactored exceptions
+- Moved Problem creation to controller
 
 ## [2.8.3] - 2018-08-01
 
