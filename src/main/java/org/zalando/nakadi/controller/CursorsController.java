@@ -27,7 +27,6 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -53,17 +52,14 @@ public class CursorsController extends NakadiProblemControllerAdvice {
     private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
 
     private final CursorsService cursorsService;
-    private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final CursorTokenService cursorTokenService;
 
     @Autowired
     public CursorsController(final CursorsService cursorsService,
-                             final FeatureToggleService featureToggleService,
                              final CursorConverter cursorConverter,
                              final CursorTokenService cursorTokenService) {
         this.cursorsService = cursorsService;
-        this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.cursorTokenService = cursorTokenService;
     }

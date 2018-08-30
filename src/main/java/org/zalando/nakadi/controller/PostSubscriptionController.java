@@ -1,7 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
-import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
@@ -40,18 +37,13 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 @RestController
 public class PostSubscriptionController extends NakadiProblemControllerAdvice {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PostSubscriptionController.class);
-
     private final FeatureToggleService featureToggleService;
-    private final ApplicationService applicationService;
     private final SubscriptionService subscriptionService;
 
     @Autowired
     public PostSubscriptionController(final FeatureToggleService featureToggleService,
-                                      final ApplicationService applicationService,
                                       final SubscriptionService subscriptionService) {
         this.featureToggleService = featureToggleService;
-        this.applicationService = applicationService;
         this.subscriptionService = subscriptionService;
     }
 

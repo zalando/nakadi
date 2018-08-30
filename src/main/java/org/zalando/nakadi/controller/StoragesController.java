@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -27,14 +26,11 @@ import static org.springframework.http.ResponseEntity.status;
 @RestController
 public class StoragesController {
 
-    private final SecuritySettings securitySettings;
     private final StorageService storageService;
     private final AdminService adminService;
 
     @Autowired
-    public StoragesController(final SecuritySettings securitySettings, final StorageService storageService,
-                              final AdminService adminService) {
-        this.securitySettings = securitySettings;
+    public StoragesController(final StorageService storageService, final AdminService adminService) {
         this.storageService = storageService;
         this.adminService = adminService;
     }

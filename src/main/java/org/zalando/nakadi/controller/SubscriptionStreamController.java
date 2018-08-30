@@ -28,7 +28,6 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -60,7 +59,6 @@ public class SubscriptionStreamController extends NakadiProblemControllerAdvice 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
-    private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
@@ -71,7 +69,6 @@ public class SubscriptionStreamController extends NakadiProblemControllerAdvice 
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
-                                        final FeatureToggleService featureToggleService,
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
@@ -80,7 +77,6 @@ public class SubscriptionStreamController extends NakadiProblemControllerAdvice 
                                         final SubscriptionDbRepository subscriptionDbRepository,
                                         final SubscriptionValidationService subscriptionValidationService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
-        this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;

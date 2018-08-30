@@ -110,7 +110,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", eventTypeOptionsValidator, adminService);
         final EventTypeController controller = new EventTypeController(eventTypeService,featureToggleService,
-                applicationService, adminService, nakadiSettings);
+                adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();
 
         doReturn(true).when(applicationService).exists(any());

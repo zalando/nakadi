@@ -124,7 +124,7 @@ public class SubscriptionControllerTest {
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 "subscription_log_et", mock(AuthorizationValidator.class));
-        final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
+        final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
 

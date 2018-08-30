@@ -41,7 +41,7 @@ public class StoragesControllerTest {
 
     @Before
     public void before() {
-        final StoragesController controller = new StoragesController(securitySettings, storageService, adminService);
+        final StoragesController controller = new StoragesController(storageService, adminService);
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();

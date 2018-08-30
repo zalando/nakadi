@@ -1,8 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,7 +30,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.AdminService;
@@ -51,23 +48,18 @@ import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EV
 @RequestMapping(value = "/event-types")
 public class EventTypeController extends NakadiProblemControllerAdvice {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TimelinesController.class);
-
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
-    private final ApplicationService applicationService;
     private final AdminService adminService;
     private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
-                               final ApplicationService applicationService,
                                final AdminService adminService,
                                final NakadiSettings nakadiSettings) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
-        this.applicationService = applicationService;
         this.adminService = adminService;
         this.nakadiSettings = nakadiSettings;
     }

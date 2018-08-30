@@ -1,7 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,7 +14,6 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
 
@@ -32,15 +29,10 @@ import static org.springframework.http.ResponseEntity.status;
 @RequestMapping(value = "/subscriptions")
 public class SubscriptionController extends NakadiProblemControllerAdvice {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionController.class);
-
-    private final FeatureToggleService featureToggleService;
     private final SubscriptionService subscriptionService;
 
     @Autowired
-    public SubscriptionController(final FeatureToggleService featureToggleService,
-                                  final SubscriptionService subscriptionService) {
-        this.featureToggleService = featureToggleService;
+    public SubscriptionController(final SubscriptionService subscriptionService) {
         this.subscriptionService = subscriptionService;
     }
 

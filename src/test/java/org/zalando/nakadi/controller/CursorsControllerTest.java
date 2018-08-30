@@ -94,8 +94,7 @@ public class CursorsControllerTest {
         final CursorTokenService tokenService = mock(CursorTokenService.class);
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
-        final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
-                cursorConverter, tokenService);
+        final CursorsController controller = new CursorsController(cursorsService, cursorConverter, tokenService);
 
         final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();

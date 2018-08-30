@@ -63,7 +63,7 @@ public class PostSubscriptionControllerTest {
         when(subscriptionService.getSubscriptionUri(any())).thenCallRealMethod();
 
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
-                applicationService, subscriptionService);
+                subscriptionService);
 
         mockMvcBuilder = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
