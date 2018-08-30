@@ -169,6 +169,8 @@ To stop the running Nakadi:
 
 Please read the [manual](https://zalando.github.io/nakadi/manual.html) for the full API usage details.
 
+If your Nakadi server is started, you can also use the interactive OpenAPI documentation by opening http://petstore.swagger.io/?url=http://localhost:8080/api
+
 ### Creating Event Types
 
 The Nakadi API allows the publishing and consuming of _events_ over HTTP. 
