@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,32 +17,28 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
-import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.apache.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 
 @RestController
-public class PostSubscriptionController {
+public class PostSubscriptionController extends NakadiProblemControllerAdvice {
 
     private static final Logger LOG = LoggerFactory.getLogger(PostSubscriptionController.class);
 
@@ -65,15 +60,15 @@ public class PostSubscriptionController {
                                                      final Errors errors,
                                                      final NativeWebRequest request) {
         if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
+            return create(new ValidationProblem(errors), request);
         }
 
         try {
             return ok(subscriptionService.getExistingSubscription(subscriptionBase));
         } catch (final NoSuchSubscriptionException e) {
             if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
-                return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
-                        "Subscription creation is temporarily unavailable", request);
+                return create(Problem.valueOf(SERVICE_UNAVAILABLE,
+                        "Subscription creation is temporarily unavailable"), request);
             }
             try {
                 final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
@@ -93,15 +88,15 @@ public class PostSubscriptionController {
             final Errors errors,
             final NativeWebRequest request) {
         if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
+            return create(new ValidationProblem(errors), request);
         }
         try {
             subscriptionService.updateSubscription(subscriptionId, subscription);
             return ResponseEntity.noContent().build();
         } catch (final SubscriptionUpdateConflictException ex) {
-            return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
         } catch (final NoSuchSubscriptionException ex) {
-            return Responses.create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
+            return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
         }
     }
 
@@ -114,16 +109,7 @@ public class PostSubscriptionController {
         final UriComponents location = subscriptionService.getSubscriptionUri(subscription);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .location(location.toUri())
-                .header(HttpHeaders.CONTENT_LOCATION, location.toString())
+                .header(CONTENT_LOCATION, location.toString())
                 .body(subscription);
-    }
-
-    @ExceptionHandler({
-            WrongInitialCursorsException.class,
-            TooManyPartitionsException.class})
-    public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiBaseException exception,
-                                                                   final NativeWebRequest request) {
-        LOG.debug("Error occurred when working with subscriptions", exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 }

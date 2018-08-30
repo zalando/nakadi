@@ -23,7 +23,6 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -49,6 +48,7 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class EventTypeAT extends BaseAT {
 
@@ -346,7 +346,7 @@ public class EventTypeAT extends BaseAT {
                 .put("/event-types/" + eventType.getName())
                 .then()
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-                .body(equalTo(MAPPER.writer().writeValueAsString(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                .body(equalTo(MAPPER.writer().writeValueAsString(Problem.valueOf(UNPROCESSABLE_ENTITY,
                         "Changing authorization object to `null` is not possible due to existing one"))));
     }
 

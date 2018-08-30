@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -20,7 +19,6 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
@@ -33,31 +31,27 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class PartitionsController {
+public class PartitionsController extends NakadiProblemControllerAdvice {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
     private final TimelineService timelineService;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
-    private static final String INVALID_CURSOR_MESSAGE = "invalid consumed_offset or partition";
     private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
 
@@ -136,22 +130,9 @@ public class PartitionsController {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
             return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
         } catch (final InvalidCursorException e) {
-            return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
                     request);
         }
-    }
-
-    @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
-    }
-
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)

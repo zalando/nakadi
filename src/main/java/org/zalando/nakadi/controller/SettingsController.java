@@ -5,35 +5,27 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.UnknownOperationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
 
 @RestController
 @RequestMapping(value = "/settings")
-public class SettingsController {
+public class SettingsController extends NakadiProblemControllerAdvice {
 
     private static final Logger LOG = LoggerFactory.getLogger(SettingsController.class);
     private final BlacklistService blacklistService;
@@ -114,21 +106,6 @@ public class SettingsController {
         }
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();
-    }
-
-    @ExceptionHandler(UnknownOperationException.class)
-    public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException ex,
-                                                                   final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE,
-                "There was a problem processing your request.", request);
-    }
-
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
-                                                                final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
     private boolean isNotAdmin(final Client client) {

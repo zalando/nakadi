@@ -15,15 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -34,28 +31,24 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class CursorsController {
+public class CursorsController extends NakadiProblemControllerAdvice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
 
@@ -152,39 +145,19 @@ public class CursorsController {
         return nakadiCursors;
     }
 
-    @ExceptionHandler(InvalidStreamIdException.class)
-    public ResponseEntity<Problem> handleInvalidStreamId(final InvalidStreamIdException ex,
-                                                         final NativeWebRequest request) {
-        LOG.warn("Stream id {} is not found: {}", ex.getStreamId(), ex.getMessage());
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
-    }
-
+    @Override
     @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException ex,
+    public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException ex,
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(SERVICE_UNAVAILABLE, ex.getMessage(), request);
+        return create(Problem.valueOf(SERVICE_UNAVAILABLE, ex.getMessage()), request);
     }
 
-    @ExceptionHandler(RequestInProgressException.class)
-    public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
-                                                                    final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
-    }
-
+    @Override
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Problem> handleMethodArgumentNotValidException(final MethodArgumentNotValidException ex,
-                                                                         final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
+                                                                final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
+        return create(new ValidationProblem(ex.getBindingResult()), request);
     }
-
-    @ExceptionHandler(FeatureNotAvailableException.class)
-    public ResponseEntity<Problem> handleFeatureNotAllowed(final FeatureNotAvailableException ex,
-                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
-    }
-
 }

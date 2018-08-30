@@ -32,9 +32,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorDistance;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.ShiftedCursor;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -43,9 +41,10 @@ import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class CursorOperationsController {
+public class CursorOperationsController extends NakadiProblemControllerAdvice {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorOperationsController.class);
 
@@ -132,12 +131,13 @@ public class CursorOperationsController {
                 .collect(Collectors.toList());
     }
 
+    @Override
     @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                clientErrorMessage(e.getReason())), request);
+    public ResponseEntity<?> handleInvalidCursorOperation(final InvalidCursorOperation exception,
+                                                          final NativeWebRequest request) {
+        LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY,
+                clientErrorMessage(exception.getReason())), request);
     }
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {

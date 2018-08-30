@@ -24,10 +24,11 @@ import org.springframework.security.web.firewall.FirewalledRequest;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.RequestRejectedException;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
+import org.zalando.problem.Status;
+import org.zalando.problem.StatusType;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -41,6 +42,8 @@ import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.UNAUTHORIZED;
 
 @EnableResourceServer
 @Configuration
@@ -156,15 +159,15 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                 final OAuth2Exception oae = (OAuth2Exception) object;
                 if (oae.getCause() != null) {
                     if (oae.getCause() instanceof AuthenticationException) {
-                        return new ProblemResponse(Response.Status.UNAUTHORIZED, oae.getCause().getMessage());
+                        return new ProblemResponse(UNAUTHORIZED, oae.getCause().getMessage());
                     }
-                    return new ProblemResponse(Response.Status.INTERNAL_SERVER_ERROR, oae.getMessage());
+                    return new ProblemResponse(INTERNAL_SERVER_ERROR, oae.getMessage());
                 }
 
-                return new ProblemResponse(Response.Status.fromStatusCode(oae.getHttpErrorCode()), oae.getMessage());
+                return new ProblemResponse(fromStatusCode(oae.getHttpErrorCode()), oae.getMessage());
             }
 
-            return new ProblemResponse(Response.Status.INTERNAL_SERVER_ERROR,
+            return new ProblemResponse(INTERNAL_SERVER_ERROR,
                     "Unrecognized error happened in authentication path");
         }
     }
@@ -175,7 +178,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         private final int status;
         private final String detail;
 
-        ProblemResponse(final Response.StatusType status, final String detail) {
+        ProblemResponse(final StatusType status, final String detail) {
             this.type = "https://httpstatus.es/" + status.getStatusCode();
             this.title = status.getReasonPhrase();
             this.status = status.getStatusCode();
@@ -334,6 +337,15 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             }
         }
 
+    }
+
+    private static Status fromStatusCode(final int code) {
+        for (final Status status: Status.values()) {
+            if (status.getStatusCode() == code) {
+                return status;
+            }
+        }
+        return null;
     }
 
 }

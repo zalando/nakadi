@@ -10,21 +10,21 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.problem.Problem;
 
-public class ExceptionHandlingTest {
+public class NakadiProblemHandlingTest {
 
     private static final String OAUTH2_SCOPE_WRITE = "oauth2.scope.write";
 
     @Test
     public void testIllegalClientIdException() {
-        final ExceptionHandling exceptionHandling = new ExceptionHandling();
+        final NakadiProblemHandling nakadiProblemHandling = new NakadiProblemControllerAdvice();
         final NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
         Mockito.when(mockedRequest.getHeader(Matchers.any())).thenReturn("");
 
-        final ResponseEntity<Problem> problemResponseEntity = exceptionHandling.handleIllegalClientIdException(
+        final ResponseEntity<Problem> problemResponseEntity = nakadiProblemHandling.handleIllegalClientIdException(
                 new IllegalClientIdException("You don't have access to this event type"), mockedRequest);
 
         Assert.assertEquals(problemResponseEntity.getStatusCode(), HttpStatus.FORBIDDEN);
-        Assert.assertEquals(problemResponseEntity.getBody().getDetail().get(),
+        Assert.assertEquals(problemResponseEntity.getBody().getDetail(),
                 "You don't have access to this event type");
     }
 }

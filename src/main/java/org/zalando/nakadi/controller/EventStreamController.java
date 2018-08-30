@@ -49,13 +49,12 @@ import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+import org.zalando.problem.StatusType;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -67,14 +66,15 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.PRECONDITION_FAILED;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.TOO_MANY_REQUESTS;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -202,7 +202,7 @@ public class EventStreamController {
 
             if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
-                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
+                        Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                 return;
             }
 
@@ -269,7 +269,7 @@ public class EventStreamController {
             } catch (final NoConnectionSlotsException e) {
                 LOG.debug("Connection creation failed due to exceeding max connection count");
                 writeProblemResponse(response, outputStream,
-                        Problem.valueOf(MoreStatus.TOO_MANY_REQUESTS, e.getMessage()));
+                        Problem.valueOf(TOO_MANY_REQUESTS, e.getMessage()));
             } catch (final ServiceTemporarilyUnavailableException e) {
                 LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getMessage());
@@ -314,7 +314,7 @@ public class EventStreamController {
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-                                      final Response.StatusType statusCode, final String message) throws IOException {
+                                      final StatusType statusCode, final String message) throws IOException {
         writeProblemResponse(response, outputStream, Problem.valueOf(statusCode, message));
     }
 

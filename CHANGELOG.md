@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Upgraded dependencies
 - Refactored exceptions
 - Moved Problem creation to controller
+- Upgraded Zalando-problem libraries
 
 ## [2.8.3] - 2018-08-01
 
