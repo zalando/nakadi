@@ -133,7 +133,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
         eventType.getSchema().setSchema("{}");
         postEventType(eventType).andExpect(status().isCreated()).andExpect(
-                header().string("Warning", "299 nakadi \"I am warning you\nI am warning you, even more\""));
+                header().string("Warning", "299 nakadi \"I am warning you. I am warning you, even more\""));
     }
 
     @Test
