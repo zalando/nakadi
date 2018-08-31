@@ -3,9 +3,8 @@ package org.zalando.nakadi.controller;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeResource;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -41,7 +40,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     @Test
     public void whenPUTNotAuthorizedThen403() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
-        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
+        final Resource resource = eventType.asResource();
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
@@ -50,7 +49,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
-                        "Access on ADMIN event-type:"+ eventType.getName() + " denied"))));
+                        "Access on ADMIN event-type:" + eventType.getName() + " denied"))));
     }
 
     @Test
@@ -98,7 +97,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     @Test
     public void whenDELETENotAuthorized200() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
-        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
+        final Resource resource = eventType.asResource();
 
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(any());
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))

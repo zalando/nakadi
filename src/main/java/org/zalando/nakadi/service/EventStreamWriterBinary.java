@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.view.Cursor;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
-@Qualifier("binary")
 class EventStreamWriterBinary implements EventStreamWriter {
     private static final byte[] B_BATCH_SEPARATOR = BATCH_SEPARATOR.getBytes(UTF_8);
 

@@ -115,16 +115,6 @@ public class PostSubscriptionControllerTest {
     }
 
     @Test
-    public void whenCreateSubscriptionWithUnknownApplicationThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(applicationService.exists(any())).thenReturn(false);
-
-        postSubscription(subscriptionBase)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-    }
-
-    @Test
     public void whenCreateSubscriptionWithEmptyConsumerGroupThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = builder()
                 .withConsumerGroup("")

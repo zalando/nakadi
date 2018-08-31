@@ -66,6 +66,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final String DEFAULT_ADMIN_DATA_TYPE = "service";
     private static final String DEFAULT_ADMIN_VALUE = "nakadi";
     private static final String DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE = "";
+    private static final String DEFAULT_WARN_LOG_COMPACTION_MESSAGE = "";
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -91,7 +92,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS,
                 DEFAULT_ADMIN_DATA_TYPE,
                 DEFAULT_ADMIN_VALUE,
-                DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE);
+                DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
+                DEFAULT_WARN_LOG_COMPACTION_MESSAGE);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
