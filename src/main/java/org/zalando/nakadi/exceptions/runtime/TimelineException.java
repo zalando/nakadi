@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class TimelineException extends MyNakadiRuntimeException1 {
+public class TimelineException extends NakadiBaseException {
 
     public TimelineException(final String message) {
         super(message);

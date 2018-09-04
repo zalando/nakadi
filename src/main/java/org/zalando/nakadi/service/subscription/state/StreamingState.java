@@ -9,9 +9,9 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
@@ -553,7 +553,7 @@ class StreamingState extends State {
             // removing all the current assignments for real consumer.
             try {
                 eventConsumer.reassign(Collections.emptyList());
-            } catch (final NakadiException | InvalidCursorException ex) {
+            } catch (final InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
@@ -577,7 +577,7 @@ class StreamingState extends State {
                         .collect(Collectors.toList());
 
                 eventConsumer.reassign(cursors);
-            } catch (NakadiException | InvalidCursorException ex) {
+            } catch (InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
@@ -590,7 +590,7 @@ class StreamingState extends State {
                     try {
                         // get oldest active timeline
                         return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
-                    } catch (final NakadiException e) {
+                    } catch (final InternalNakadiException e) {
                         throw new NakadiRuntimeException(e);
                     }
                 })

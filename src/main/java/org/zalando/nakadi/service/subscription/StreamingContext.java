@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;

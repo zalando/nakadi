@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;

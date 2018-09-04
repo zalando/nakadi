@@ -14,10 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -83,16 +84,10 @@ public class SubscriptionController {
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId,
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
-            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws InconsistentStateException,
+            NoSuchEventTypeException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
-    }
-
-    @ExceptionHandler(NakadiException.class)
-    public ResponseEntity<Problem> handleNakadiException(final NakadiException ex,
-                                                         final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(ex.asProblem(), request);
     }
 
     @ExceptionHandler(FeatureNotAvailableException.class)

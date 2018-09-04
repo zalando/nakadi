@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class NoConnectionSlotsException extends MyNakadiRuntimeException1 {
+public class NoConnectionSlotsException extends NakadiBaseException {
 
     public NoConnectionSlotsException(final String msg, final Exception cause) {
         super(msg, cause);
