@@ -19,16 +19,10 @@ import org.springframework.security.oauth2.provider.error.DefaultOAuth2Exception
 import org.springframework.security.oauth2.provider.error.OAuth2AccessDeniedHandler;
 import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.springframework.security.web.firewall.FirewalledRequest;
-import org.springframework.security.web.firewall.HttpFirewall;
-import org.springframework.security.web.firewall.RequestRejectedException;
-import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.zalando.problem.Status;
 import org.zalando.problem.StatusType;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -196,6 +190,15 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         public String getDetail() {
             return detail;
         }
+    }
+
+    private static Status fromStatusCode(final int code) {
+        for (final Status status: Status.values()) {
+            if (status.getStatusCode() == code) {
+                return status;
+            }
+        }
+        return null;
     }
 
 }
