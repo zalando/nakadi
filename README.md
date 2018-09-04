@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/zalando/nakadi.svg?branch=master)](https://travis-ci.org/zalando/nakadi)
 [![codecov.io](https://codecov.io/github/zalando/nakadi/coverage.svg?branch=master)](https://codecov.io/github/zalando/nakadi?branch=master)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/785ccd4ab5e34867b760a8b07c3b62f1)](https://www.codacy.com/app/aruha/nakadi?utm_source=www.github.com&amp;utm_medium=referral&amp;utm_content=zalando/nakadi&amp;utm_campaign=Badge_Grade)
+[![Code Quality: Java](https://img.shields.io/lgtm/grade/java/g/zalando/nakadi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zalando/nakadi/context:java)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/zalando/nakadi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zalando/nakadi/alerts)
 
 ## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
 
