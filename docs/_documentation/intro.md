@@ -33,7 +33,7 @@ The goal of Nakadi (**ნაკადი** means "stream" in Georgian) is to pro
 Read more to understand *The big picture* 
 [Architecture for data integration](https://zalando.github.io/nakadi/manual.html#data_integration_at_zalando) 
 
-Watch the talk [Data Integration in the World of Microservices](https://clusterhq.com/2016/05/20/microservices-zalando/) 
+Watch the talk [Data Integration in the World of Microservices](https://www.youtube.com/watch?v=SbVQBHRAFXA) 
 
 ### Development status
 
