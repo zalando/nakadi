@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.security.Client;
 
 import javax.annotation.Nullable;
@@ -198,13 +198,13 @@ public class EventStreamConfig {
         }
 
 
-        public EventStreamConfig build() throws UnprocessableEntityException {
+        public EventStreamConfig build() throws InvalidLimitException {
             if (streamLimit != 0 && streamLimit < batchLimit) {
-                throw new UnprocessableEntityException("stream_limit can't be lower than batch_limit");
+                throw new InvalidLimitException("stream_limit can't be lower than batch_limit");
             } else if (streamTimeout != 0 && streamTimeout < batchTimeout) {
-                throw new UnprocessableEntityException("stream_timeout can't be lower than batch_flush_timeout");
+                throw new InvalidLimitException("stream_timeout can't be lower than batch_flush_timeout");
             } else if (batchLimit < 1) {
-                throw new UnprocessableEntityException("batch_limit can't be lower than 1");
+                throw new InvalidLimitException("batch_limit can't be lower than 1");
             }
             return new EventStreamConfig(cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
                     streamKeepAliveLimit, etName, consumingClient, maxMemoryUsageBytes);

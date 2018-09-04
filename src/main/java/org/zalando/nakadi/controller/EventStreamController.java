@@ -25,12 +25,12 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.nakadi.metrics.MetricUtils;
@@ -74,6 +74,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -272,9 +273,11 @@ public class EventStreamController {
             } catch (final ServiceTemporarilyUnavailableException e) {
                 LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getMessage());
-            } catch (final NakadiException e) {
+            } catch (final InvalidLimitException e) {
+                writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY, e.getMessage());
+            } catch (final InternalNakadiException e) {
                 LOG.error("Error while trying to stream events.", e);
-                writeProblemResponse(response, outputStream, e.asProblem());
+                writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final AccessDeniedException e) {

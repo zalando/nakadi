@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class NotFoundException extends MyNakadiRuntimeException1 {
+public class NotFoundException extends NakadiBaseException {
 
     public NotFoundException(final String message) {
         super(message);
