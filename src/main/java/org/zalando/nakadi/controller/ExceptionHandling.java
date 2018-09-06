@@ -113,9 +113,10 @@ public final class ExceptionHandling implements ProblemHandling {
                                                           final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
         if (cause instanceof InternalNakadiException) {
-            return Responses.create(INTERNAL_SERVER_ERROR, exception.getMessage(), request);
+            return Responses.create(INTERNAL_SERVER_ERROR, cause.getMessage(), request);
         }
-        throw exception.getException();
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
     @ExceptionHandler(RepositoryProblemException.class)
