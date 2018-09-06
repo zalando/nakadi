@@ -10,7 +10,7 @@ One of the most prominent use case of Nakadi is to enable decoupling of micro-se
 
 Main users of nakadi are developers and analysts. Nakadi provides features like REST based integration, multi consumer, ordered delivery, interactive UI, fully managed, security, ensuring data quality, abstraction of big data technology, and push model based consumption.
 
-Nakadi is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
+Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
@@ -40,20 +40,18 @@ The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to pro
     The consumer connection has keepalive controls and support for managing stream offsets using
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
+### Development status
+
+- Nakadi is high-load production ready. 
+- Zalando uses Nakadi as its central Event Bus Service. 
+- Nakadi reliably handles the traffic from thousands event types with the throughput of more than hundreds gigabytes per second.
+- The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)    
 
 ### Presentations
 
 - [Watch the talk on Nakadi at Fosdem](https://archive.fosdem.org/2018/schedule/event/nakadi/)
 - [Background on the Zalando Microservices platform](https://www.youtube.com/watch?v=gEeHZwjwehs)
 
-
-### Development status
-
-- Nakadi is high-load production ready. 
-- Zalando uses Nakadi as its central Event Bus Service. 
-- Nakadi reliably handles the traffic from thousands event types with  the throughput of more than hundreds gigabytes per second.
-- The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)   
-  
 #### Features
 
 * Stream:    
