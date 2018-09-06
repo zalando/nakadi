@@ -14,7 +14,6 @@ Nakadi is in active developement and is currently in production inside Zalando a
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
-
 More detailed information can be found on our [website](http://zalando.github.io/nakadi/).
 
 ### Project goal
@@ -101,14 +100,16 @@ Read more about latest development in our [CHANGELOG.md](CHANGELOG.md)
 The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
 like
 
-* Client libraries
+* [Use Nakadi with a client in your language of choice](https://nakadi.io/manual.html#using_clients)
 * SDK
-* GUI
+* [GUI](https://github.com/zalando-incubator/nakadi-ui)
 * DevOps tools and more
 
-## Quickstart
 
-You can run the project locally using [Docker](https://www.docker.com/). 
+
+## How to contribute to Nakadi
+
+Read our [contribution guidelines]() on how to submit issues and pull requests, then get Nakadi up and running locally using Docker:
 
 ### Dependencies
 
@@ -166,13 +167,14 @@ This will build the project and run docker compose with 4 services:
 - Kafka (9092)
 - Zookeeper (2181)
 
-To stop the running Nakadi:
+To stop the running Nakadi server:
 
 ```sh
 ./gradlew stopNakadi
 ```
 
-## API Usage Quickstart
+
+## Using Nakadi and its API
 
 Please read the [manual](https://zalando.github.io/nakadi/manual.html) for the full API usage details.
 
@@ -181,7 +183,6 @@ Please read the [manual](https://zalando.github.io/nakadi/manual.html) for the f
 The Nakadi API allows the publishing and consuming of _events_ over HTTP. 
 To do this the producer must register an _event type_ with the Nakadi schema 
 registry. 
-
 
 This example shows minimal `undefined` category event type with a wilcard schema -
 
