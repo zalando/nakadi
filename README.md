@@ -109,7 +109,7 @@ like
 
 ## How to contribute to Nakadi
 
-Read our [contribution guidelines]() on how to submit issues and pull requests, then get Nakadi up and running locally using Docker:
+Read our [contribution guidelines](contribute.md) on how to submit issues and pull requests, then get Nakadi up and running locally using Docker:
 
 ### Dependencies
 
