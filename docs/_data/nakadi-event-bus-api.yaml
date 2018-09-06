@@ -2062,6 +2062,8 @@ definitions:
           to inspect or effectively use the payload, apart from the tracer implementation, can lead to vendor lock-in
           which should be avoided.
         type: object
+        additionalProperties:
+          type: string
     required:
       - eid
       - occurred_at    

@@ -2,6 +2,7 @@ package org.zalando.nakadi.validation;
 
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -40,7 +41,7 @@ public class JSONSchemaValidationTest {
     @Test
     public void validationOfBusinessEventShouldAllowSpanCtxtInMetadata() {
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
-                .schema(basicSchema()).build();
+                .schema(basicSchema()).compatibilityMode(CompatibilityMode.COMPATIBLE).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = new JSONObject("{\"metadata\":{" +
