@@ -1,4 +1,4 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 /* This exception is meant to be caught and unwrap the real excpetion */
 public class NakadiRuntimeException extends RuntimeException {

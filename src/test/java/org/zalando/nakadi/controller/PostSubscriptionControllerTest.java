@@ -16,13 +16,13 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.security.NakadiClient;
-import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
@@ -74,7 +74,7 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenSubscriptionCreationIsDisabledThenCreationFails() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)).thenReturn(true);
 
         postSubscription(subscriptionBase).andExpect(status().isServiceUnavailable());
@@ -103,7 +103,7 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
 
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(subscriptionService.createSubscription(any())).thenReturn(subscription);
 
         postSubscription(subscriptionBase)
@@ -152,7 +152,7 @@ public class PostSubscriptionControllerTest {
 
     @Test
     public void whenMoreThanAllowedEventTypeThenUnprocessableEntity() throws Exception {
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(subscriptionService.createSubscription(any())).thenThrow(new TooManyPartitionsException("msg"));
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
 
@@ -178,8 +178,8 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoSuchEventTypeException("msg"));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "msg");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
@@ -192,7 +192,7 @@ public class PostSubscriptionControllerTest {
                 subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenReturn(existingSubscription);
-        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoSuchEventTypeException("msg"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())

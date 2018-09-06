@@ -2,7 +2,7 @@ package org.zalando.nakadi.exceptions.runtime;
 
 import org.zalando.nakadi.service.FeatureToggleService;
 
-public class FeatureNotAvailableException extends MyNakadiRuntimeException1 {
+public class FeatureNotAvailableException extends NakadiBaseException {
     private final FeatureToggleService.Feature feature;
 
     public FeatureNotAvailableException(final String message, final FeatureToggleService.Feature feature) {

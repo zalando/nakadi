@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
-import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
@@ -152,7 +152,7 @@ public class StorageService {
         }
         try {
             storageDbRepository.deleteStorage(id);
-        } catch (final NoStorageException e) {
+        } catch (final NoSuchStorageException e) {
             return Result.notFound("No storage with ID " + id);
         } catch (final StorageIsUsedException e) {
             return Result.forbidden("Storage " + id + " is in use");

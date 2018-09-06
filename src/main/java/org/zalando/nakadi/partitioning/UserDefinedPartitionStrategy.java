@@ -3,7 +3,7 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
 

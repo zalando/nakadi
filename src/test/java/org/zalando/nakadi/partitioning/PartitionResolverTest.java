@@ -7,10 +7,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -32,7 +31,7 @@ public class PartitionResolverTest {
     private TimelineService timelineService;
 
     @Before
-    public void before() throws NakadiException {
+    public void before() {
         final TopicRepository topicRepository = Mockito.mock(TopicRepository.class);
         when(topicRepository.listPartitionNames(any(String.class))).thenReturn(ImmutableList.of("0"));
         timelineService = Mockito.mock(TimelineService.class);
@@ -42,7 +41,7 @@ public class PartitionResolverTest {
     }
 
     @Test
-    public void whenResolvePartitionWithKnownStrategyThenOk() throws NakadiException {
+    public void whenResolvePartitionWithKnownStrategyThenOk() {
 
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy(RANDOM_STRATEGY);
@@ -57,7 +56,7 @@ public class PartitionResolverTest {
     }
 
     @Test(expected = PartitioningException.class)
-    public void whenResolvePartitionWithUnknownStrategyThenPartitioningException() throws NakadiException {
+    public void whenResolvePartitionWithUnknownStrategyThenPartitioningException() {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy("blah_strategy");
 

@@ -1,4 +1,4 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class ConnectionSlotOccupiedException extends MyNakadiRuntimeException1 {
+public class ConnectionSlotOccupiedException extends NakadiBaseException {
 }

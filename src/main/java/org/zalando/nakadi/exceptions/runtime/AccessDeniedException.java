@@ -3,7 +3,7 @@ package org.zalando.nakadi.exceptions.runtime;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
-public class AccessDeniedException extends MyNakadiRuntimeException1 {
+public class AccessDeniedException extends NakadiBaseException {
     private final Resource resource;
     private final AuthorizationService.Operation operation;
 
