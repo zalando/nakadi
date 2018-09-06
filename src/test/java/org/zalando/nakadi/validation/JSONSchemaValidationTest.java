@@ -44,7 +44,7 @@ public class JSONSchemaValidationTest {
                 .schema(basicSchema()).compatibilityMode(CompatibilityMode.COMPATIBLE).build();
         et.setCategory(EventCategory.BUSINESS);
 
-        final JSONObject event = new JSONObject("{\"metadata\":{" +
+        final JSONObject validEvent = new JSONObject("{\"metadata\":{" +
                 "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
                 "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
                 "\"span_ctx\": {" +
@@ -54,9 +54,24 @@ public class JSONSchemaValidationTest {
                 "}}," +
                 "\"foo\": \"bar\"}");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> noError = EventValidation.forType(et).validate(validEvent);
 
-        assertThat(error, isAbsent());
+        assertThat(noError, isAbsent());
+
+        final JSONObject invalidEvent = new JSONObject("{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"span_ctx\": {" +
+                "      \"ot-tracer-spanid\": 42," +
+                "      \"ot-tracer-traceid\": \"e9435c17dabe8238\"," +
+                "      \"ot-baggage-foo\": \"bar\"" +
+                "}}," +
+                "\"foo\": \"bar\"}");
+
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(invalidEvent);
+
+        assertThat(error.get().getMessage(),
+                equalTo("#/metadata/span_ctx/ot-tracer-spanid: expected type: String, found: Integer"));
     }
 
     @Test
