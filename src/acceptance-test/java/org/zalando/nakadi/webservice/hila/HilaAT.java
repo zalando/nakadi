@@ -101,6 +101,24 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(SC_NO_CONTENT, statusCode);
     }
 
+    @Test(timeout = 10000)
+    public void whenStreamTimeoutReachedThenEventsFlushed() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(),
+                        "batch_flush_timeout=600&batch_limit=1000&stream_timeout=2&max_uncommitted_events=1000")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        publishEvents(eventType.getName(), 4, x -> "{\"foo\":\"bar\"}");
+
+        // when stream_timeout is reached we should get 2 batches:
+        // first one containing 4 events, second one with debug message
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
+        assertThat(client.getBatches().get(0).getEvents(), hasSize(4));
+        assertThat(client.getBatches().get(1).getEvents(), hasSize(0));
+        System.out.println(client.getBatches());
+    }
+
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
@@ -304,6 +322,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 15L,
+                                null,
                                 client.getSessionId(),
                                 AUTO)))
                 );
@@ -322,6 +341,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 5L,
+                                null,
                                 client.getSessionId(),
                                 AUTO)))
                 );
@@ -349,6 +369,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 0L,
+                                null,
                                 client.getSessionId(),
                                 DIRECT
                         ))))));
@@ -382,6 +403,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 1L,
+                                null,
                                 client.getSessionId(),
                                 AUTO
                         ))))))
@@ -391,6 +413,7 @@ public class HilaAT extends BaseAT {
                                 "0",
                                 "assigned",
                                 2L,
+                                null,
                                 client.getSessionId(),
                                 AUTO
                         ))))));

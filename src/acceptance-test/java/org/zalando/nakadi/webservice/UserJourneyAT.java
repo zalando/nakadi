@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
@@ -31,6 +32,7 @@ import static com.jayway.restassured.http.ContentType.JSON;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -88,9 +90,13 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("name", equalTo(eventTypeName))
                 .body("owning_application", equalTo(owningApp))
                 .body("category", equalTo("undefined"))
+                .body("audience", equalTo("external-public"))
+                .body("ordering_key_fields", equalTo(Lists.newArrayList("foo", "bar.baz")))
+                .body("cleanup_policy", equalTo("delete"))
                 .body("schema.type", equalTo("json_schema"))
-                .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": " +
-                        "{\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
+                .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": " +
+                        "{\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": " +
+                        "{\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"));
 
         // list event types
         jsonRequestSpec()
@@ -280,10 +286,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // as we didn't commit, there should be still 4 unconsumed events
         jsonRequestSpec()
-                .get("/subscriptions/{sid}/stats", subscription.getId())
+                .get("/subscriptions/{sid}/stats?show_time_lag=true", subscription.getId())
                 .then()
                 .statusCode(OK.value())
-                .body("items[0].partitions[0].unconsumed_events", equalTo(4));
+                .body("items[0].partitions[0].unconsumed_events", equalTo(4))
+                .body("items[0].partitions[0].consumer_lag_seconds", greaterThanOrEqualTo(0));
 
         // commit cursor of latest event
         final StreamBatch lastBatch = batches.get(batches.size() - 1);
@@ -293,10 +300,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // now there should be 0 unconsumed events
         jsonRequestSpec()
-                .get("/subscriptions/{sid}/stats", subscription.getId())
+                .get("/subscriptions/{sid}/stats?show_time_lag=true", subscription.getId())
                 .then()
                 .statusCode(OK.value())
-                .body("items[0].partitions[0].unconsumed_events", equalTo(0));
+                .body("items[0].partitions[0].unconsumed_events", equalTo(0))
+                .body("items[0].partitions[0].consumer_lag_seconds", equalTo(0));
 
         // get cursors
         jsonRequestSpec()
@@ -319,6 +327,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .when()
                 .post("/event-types")
                 .then()
+                .body(equalTo(""))
                 .statusCode(CREATED.value());
     }
 

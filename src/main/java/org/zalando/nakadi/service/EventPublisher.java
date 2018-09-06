@@ -9,20 +9,22 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.EventValidationException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.CompactionException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -96,15 +98,22 @@ public class EventPublisher {
 
             validate(batch, eventType);
             partition(batch, eventType);
+            compact(batch, eventType);
             enrich(batch, eventType);
             submit(batch, eventType);
 
             return ok(batch);
         } catch (final EventValidationException e) {
-            LOG.debug("Event validation error: {}", e.getMessage());
+            LOG.debug(
+                    "Event validation error: {}",
+                    Optional.ofNullable(e.getMessage()).map(s -> s.replaceAll("\n", "; ")).orElse(null)
+            );
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
+            return aborted(EventPublishingStep.PARTITIONING, batch);
+        } catch (final CompactionException e) {
+            LOG.debug("Event compaction error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
@@ -161,6 +170,17 @@ public class EventPublisher {
         }
     }
 
+    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            for (final BatchItem item : batch) {
+                final String compactionKey = item.getEvent()
+                        .getJSONObject("metadata")
+                        .getString("partition_compaction_key");
+                item.setEventKey(compactionKey);
+            }
+        }
+    }
+
     private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
             InternalNakadiException, NoSuchEventTypeException {
         for (final BatchItem item : batch) {
@@ -186,7 +206,7 @@ public class EventPublisher {
         final Optional<ValidationError> validationError = validator.validate(event);
 
         if (validationError.isPresent()) {
-            throw new EventValidationException(validationError.get());
+            throw new EventValidationException(validationError.get().getMessage());
         }
     }
 

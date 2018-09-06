@@ -27,6 +27,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -173,6 +174,10 @@ public class TestUtils {
         final Errors errors = mock(Errors.class);
         when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
         return new ValidationProblem(errors);
+    }
+
+    public static Problem createInvalidEventTypeExceptionProblem(final String message) {
+        return Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, message);
     }
 
     public static void waitFor(final Runnable runnable) {

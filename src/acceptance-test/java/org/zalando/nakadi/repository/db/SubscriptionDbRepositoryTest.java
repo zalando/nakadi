@@ -8,9 +8,9 @@ import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -105,7 +105,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListSubscriptionsByOwningApplicationAndEventTypeThenOk() throws ServiceUnavailableException {
+    public void whenListSubscriptionsByOwningApplicationAndEventTypeThenOk()
+            throws ServiceTemporarilyUnavailableException {
 
         final String owningApp = TestUtils.randomUUID();
         final String owningApp2 = TestUtils.randomUUID();
@@ -133,7 +134,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListSubscriptionsByMultipleEventTypesThenOk() throws ServiceUnavailableException {
+    public void whenListSubscriptionsByMultipleEventTypesThenOk() throws ServiceTemporarilyUnavailableException {
         final String et1 = TestUtils.randomUUID();
         final String et2 = TestUtils.randomUUID();
         final String et3 = TestUtils.randomUUID();
@@ -159,7 +160,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListSubscriptionsLimitAndOffsetAreRespected() throws ServiceUnavailableException {
+    public void whenListSubscriptionsLimitAndOffsetAreRespected() throws ServiceTemporarilyUnavailableException {
         final String owningApp = TestUtils.randomUUID();
         final List<Subscription> testSubscriptions = createRandomSubscriptions(10, owningApp);
         testSubscriptions.forEach(this::insertSubscriptionToDB);
@@ -173,7 +174,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenDeleteSubscriptionThenOk() throws ServiceUnavailableException, NoSuchSubscriptionException {
+    public void whenDeleteSubscriptionThenOk()
+            throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException {
         final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         insertSubscriptionToDB(subscription);
 
@@ -185,7 +187,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test(expected = NoSuchSubscriptionException.class)
-    public void whenDeleteNoneExistingConnectionThenNoSuchSubscriptionException() throws ServiceUnavailableException,
+    public void whenDeleteNoneExistingConnectionThenNoSuchSubscriptionException()
+            throws ServiceTemporarilyUnavailableException,
             NoSuchSubscriptionException {
         repository.deleteSubscription("some-dummy-id");
     }

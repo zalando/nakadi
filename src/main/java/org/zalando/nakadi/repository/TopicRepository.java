@@ -5,13 +5,12 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
@@ -38,7 +37,7 @@ public interface TopicRepository {
         }
     }
 
-    String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
+    String createTopic(NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException, TopicConfigException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 
@@ -47,7 +46,7 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
-            throws ServiceUnavailableException;
+            throws ServiceTemporarilyUnavailableException;
 
     /**
      * Returns partitions statistics about requested partitions. The order and the amount of response items is exactly
@@ -55,22 +54,24 @@ public interface TopicRepository {
      *
      * @param partitions Partitions to query data for
      * @return List of statistics.
-     * @throws ServiceUnavailableException In case when there was a problem communicating with storage
+     * @throws ServiceTemporarilyUnavailableException In case when there was a problem communicating with storage
      */
     List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelinePartition> partitions)
-            throws ServiceUnavailableException;
+            throws ServiceTemporarilyUnavailableException;
 
-    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;
+    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines)
+            throws ServiceTemporarilyUnavailableException;
 
-    List<PartitionEndStatistics> loadTopicEndStatistics(Collection<Timeline> topics) throws ServiceUnavailableException;
+    List<PartitionEndStatistics> loadTopicEndStatistics(Collection<Timeline> topics)
+            throws ServiceTemporarilyUnavailableException;
 
     List<String> listPartitionNames(String topicId);
 
     EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
-            throws NakadiException, InvalidCursorException;
+            throws InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
-            ServiceUnavailableException;
+            ServiceTemporarilyUnavailableException;
 
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 }

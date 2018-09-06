@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
@@ -12,7 +12,7 @@ import static org.zalando.nakadi.service.EventStreamConfig.MAX_STREAM_TIMEOUT;
 public class EventStreamConfigBuilderTest {
 
     @Test
-    public void batchLimitZeroValueTest() throws UnprocessableEntityException {
+    public void batchLimitZeroValueTest() throws InvalidLimitException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withBatchLimit(1)
@@ -23,7 +23,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void batchLimitDefaultValueTest() throws UnprocessableEntityException {
+    public void batchLimitDefaultValueTest() throws InvalidLimitException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withBatchLimit(1)
@@ -33,7 +33,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void batchLimitSpecifiedValueTest() throws UnprocessableEntityException {
+    public void batchLimitSpecifiedValueTest() throws InvalidLimitException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withBatchLimit(1)
@@ -43,8 +43,8 @@ public class EventStreamConfigBuilderTest {
         assertThat(config.getBatchTimeout(), is(29));
     }
 
-    @Test(expected = UnprocessableEntityException.class)
-    public void streamLimitLessThenBatchLimit() throws UnprocessableEntityException {
+    @Test(expected = InvalidLimitException.class)
+    public void streamLimitLessThenBatchLimit() throws InvalidLimitException {
         EventStreamConfig
                 .builder()
                 .withBatchLimit(10)
@@ -52,8 +52,8 @@ public class EventStreamConfigBuilderTest {
                 .build();
     }
 
-    @Test(expected = UnprocessableEntityException.class)
-    public void streamTimeoutLessThenBatchTimeout() throws UnprocessableEntityException {
+    @Test(expected = InvalidLimitException.class)
+    public void streamTimeoutLessThenBatchTimeout() throws InvalidLimitException {
         EventStreamConfig
                 .builder()
                 .withBatchTimeout(10)
@@ -62,7 +62,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void streamTimeoutHigherThanMax() throws UnprocessableEntityException {
+    public void streamTimeoutHigherThanMax() throws InvalidLimitException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withStreamTimeout(MAX_STREAM_TIMEOUT + 100)
@@ -72,7 +72,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void unlimitedStreamTimeout() throws UnprocessableEntityException {
+    public void unlimitedStreamTimeout() throws InvalidLimitException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withStreamTimeout(0)

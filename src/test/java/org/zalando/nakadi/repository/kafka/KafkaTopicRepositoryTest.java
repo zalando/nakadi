@@ -23,12 +23,10 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
@@ -63,6 +61,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
+    private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
@@ -115,13 +114,13 @@ public class KafkaTopicRepositoryTest {
 
 
     @Test
-    public void canListAllTopics() throws Exception {
+    public void canListAllTopics() {
         final List<String> allTopics = allTopics().stream().collect(toList());
         assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
     }
 
     @Test
-    public void canDetermineIfTopicExists() throws NakadiException {
+    public void canDetermineIfTopicExists() {
         assertThat(kafkaTopicRepository.topicExists(MY_TOPIC), is(true));
         assertThat(kafkaTopicRepository.topicExists(ANOTHER_TOPIC), is(true));
 
@@ -136,7 +135,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void validateValidCursors() throws NakadiException, InvalidCursorException {
+    public void validateValidCursors() throws InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
@@ -155,7 +154,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void invalidateInvalidCursors() throws NakadiException {
+    public void invalidateInvalidCursors() {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
@@ -182,7 +181,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void canLoadPartitionStatistics() throws Exception {
+    public void canLoadPartitionStatistics() {
         final Timeline t1 = mock(Timeline.class);
         when(t1.getTopic()).thenReturn(MY_TOPIC);
         final Timeline t2 = mock(Timeline.class);
@@ -201,7 +200,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void canLoadPartitionEndStatistics() throws Exception {
+    public void canLoadPartitionEndStatistics() {
         final Timeline t1 = mock(Timeline.class);
         when(t1.getTopic()).thenReturn(MY_TOPIC);
         final Timeline t2 = mock(Timeline.class);
@@ -220,7 +219,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
+    public void whenPostEventTimesOutThenUpdateItemStatus() {
         final BatchItem item = new BatchItem(
                 "{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
@@ -248,7 +247,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
+    public void whenPostEventOverflowsBufferThenUpdateItemStatus() {
         final BatchItem item = new BatchItem("{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
@@ -275,7 +274,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
+    public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() {
 
         final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
@@ -314,7 +313,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws Exception {
+    public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
 
@@ -359,7 +358,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    new UUIDGenerator());
+                    kafkaTopicConfigFactory);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

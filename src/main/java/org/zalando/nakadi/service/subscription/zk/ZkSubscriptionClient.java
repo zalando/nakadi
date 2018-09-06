@@ -3,9 +3,8 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -82,7 +81,7 @@ public interface ZkSubscriptionClient {
     Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException;
 
-    boolean isActiveSession(String streamId) throws ServiceUnavailableException;
+    boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
     /**
      * List partitions
@@ -145,12 +144,12 @@ public interface ZkSubscriptionClient {
             throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
-     * Retrieves subscription data like partitions and sessions from ZK under lock.
-     *
+     * Retrieves subscription data like partitions and sessions from ZK without a lock
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    Optional<ZkSubscriptionNode> getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
+    Optional<ZkSubscriptionNode> getZkSubscriptionNode()
+            throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
      * Subscribes to cursor reset event.
@@ -215,7 +214,7 @@ public interface ZkSubscriptionClient {
                     }
                 }
                 if (selectedIdx < 0) {
-                    throw new MyNakadiRuntimeException1(
+                    throw new NakadiBaseException(
                             "Failed to find partition " + newValue.getKey() + " in " + this);
                 }
                 resultPartitions[selectedIdx] = newValue;

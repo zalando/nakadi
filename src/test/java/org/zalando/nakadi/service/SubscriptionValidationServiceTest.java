@@ -10,12 +10,12 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -84,7 +84,7 @@ public class SubscriptionValidationServiceTest {
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
         subscriptionValidationService = new SubscriptionValidationService(timelineService, etRepo, nakadiSettings,
-                cursorConverter);
+                cursorConverter, null);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
@@ -104,8 +104,8 @@ public class SubscriptionValidationServiceTest {
 
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase);
-            fail("NoEventTypeException expected");
-        } catch (final NoEventTypeException e) {
+            fail("NoSuchEventTypeException expected");
+        } catch (final NoSuchEventTypeException e) {
             final String expectedMessage =
                     String.format("Failed to create subscription, event type(s) not found: '%s', '%s'", ET1, ET3);
             assertThat(e.getMessage(), equalTo(expectedMessage));
@@ -192,7 +192,7 @@ public class SubscriptionValidationServiceTest {
         ));
         final NakadiCursor cursor = mockCursorWithTimeline();
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
-        doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
+        doThrow(new ServiceTemporarilyUnavailableException("")).when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 

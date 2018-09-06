@@ -5,6 +5,8 @@
   "compatibility_mode": "compatible",
   "schema": {
     "type": "json_schema",
-    "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
-  }
+    "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"
+  },
+  "audience": "external-public",
+  "ordering_key_fields": ["foo", "bar.baz"]
 }

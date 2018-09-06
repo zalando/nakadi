@@ -585,6 +585,9 @@ paths:
         Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
         a client has read some batches and wants to be sure that all delivered events have been correctly processed.
 
+        If the event type uses 'compact' cleanup policy - then the actual number of events for consumption can be lower
+        than the distance reported by this endpoint.
+
         If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
         - name: name
@@ -635,6 +638,9 @@ paths:
         in the stream its application is lagging.
 
         It provides the number of unconsumed events for each cursor's partition.
+
+        If the event type uses 'compact' cleanup policy - then the actual number of unconsumed events can be lower than
+        the one reported by this endpoint.
 
         If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
@@ -964,6 +970,11 @@ paths:
           required: false
           default: 0
           minimum: 0
+        - name: show_status
+          in: query
+          description: show subscription status
+          type: boolean
+          default: false
       responses:
         '200':
           description: OK
@@ -1014,6 +1025,41 @@ paths:
       responses:
         '204':
           description: Subscription was deleted
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint only allows to update the authorization section of a subscription. All other properties are
+        immutable. This operation is restricted to subjects with administrative role.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription with modified authorization section.
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+      responses:
+        '204':
+          description: Subscription was updated
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1104,6 +1150,10 @@ paths:
                   $ref: '#/definitions/CursorCommitResult'
             required:
               - items
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1149,6 +1199,10 @@ paths:
       responses:
         '204':
           description: Offsets were reset
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1207,6 +1261,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1219,10 +1277,6 @@ paths:
             already equals the maximum value - the total number of partitions in this subscription.
 
             - Request to reset subscription cursors is still in progress.
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -1350,6 +1404,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1366,10 +1424,6 @@ paths:
             - It is requested to read from a partition that is already assigned to another stream by direct request.
           schema:
             $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
-          schema:
-            $ref: '#/definitions/Problem'
         '422':
           description: At least one of specified partitions doesn't belong to this subscription.
           schema:
@@ -1384,6 +1438,11 @@ paths:
       description: exposes statistics of specified subscription
       parameters:
         - $ref: '#/parameters/SubscriptionId'
+        - name: show_time_lag
+          in: query
+          description: show consumer time lag
+          type: boolean
+          default: false
       responses:
         '200':
           description: Ok
@@ -1905,7 +1964,12 @@ definitions:
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
-
+    schema:
+      oneOf:      
+      - $ref: '#/definitions/BusinessEvent'
+      - $ref: '#/definitions/DataChangeEvent'
+      - $ref: '#/definitions/UndefinedEvent'
+      
   EventMetadata:
     type: object
     description: |
@@ -1978,57 +2042,73 @@ definitions:
           'user_defined'.
         type: string
         example: '0'
+      partition_compaction_key:
+        description: |
+          Value used for per-partition compaction of the event type. Given two events with the same
+          partition_compaction_key value are published to the same partition, the later overwrites the former.
+          Required when 'cleanup_policy' of event type is set to 'compact'. Must be absent otherwise.
+
+          When using more than one partition for event type - it will make sense to specify 'partition_compaction_key'
+          and partitioning parameters in a way that events with the same partition_compaction_key are published to the
+          same partition and therefore compacted in a proper way (as compaction is performed per partition).
+        type: string
+        example: '329ed3d2-8366-11e8-adc0-fa7ae01bbebc'
     required:
       - eid
-      - occurred_at
-
+      - occurred_at    
+        
+        
   BusinessEvent:
     description: |
       A Business Event.
 
-      Usually represents a status transition in a Business process.
-    allOf:
-      - $ref: '#/definitions/Event'
-      - type: object
-        properties:
-          metadata:
-              $ref: '#/definitions/EventMetadata'
-        required:
-            - metadata
+      Usually represents a status transition in a Business process.   
+    type: object
+    properties:
+      metadata:
+          $ref: '#/definitions/EventMetadata'
+    required:
+        - metadata
 
   DataChangeEvent:
     description: |
       A Data change Event.
 
       Represents a change on a resource. Also contains indicators for the data
-      type and the type of operation performed.
-    allOf:
-      - $ref: '#/definitions/Event'
-      - type: object
-        properties:
-          data_type:
-            type: string
-            example: 'pennybags:order'
-          data_op:
-            type: string
-            enum: ['C', 'U', 'D', 'S']
-            description: |
-              The type of operation executed on the entity.
-              * C: Creation
-              * U: Update
-              * D: Deletion
-              * S: Snapshot
-          metadata:
-            $ref: '#/definitions/EventMetadata'
-          data:
-            type: object
-            description: |
-                The payload of the type
-        required:
-            - data
-            - metadata
-            - data_type
-            - data_op
+      type and the type of operation performed.    
+    type: object
+    properties:
+      data_type:
+        type: string
+        example: 'pennybags:order'
+      data_op:
+        type: string
+        enum: ['C', 'U', 'D', 'S']
+        description: |
+          The type of operation executed on the entity.
+          * C: Creation
+          * U: Update
+          * D: Deletion
+          * S: Snapshot
+      metadata:
+        $ref: '#/definitions/EventMetadata'
+      data:
+        type: object
+        description: |
+            The payload of the type
+    required:
+        - data
+        - metadata
+        - data_type
+        - data_op
+
+  UndefinedEvent:
+    description: |
+      An Event without any defined category.
+
+      Nakadi will not change any content of this event.   
+    type: object
+
 
   Problem:
     type: object
@@ -2106,6 +2186,9 @@ definitions:
         description: |
           Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
           monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
+
+          If the event type uses 'compact' cleanup policy - then the actual number of unconsumed events in this
+          partition can be lower than the one reported in this field.
         type: number
         format: int64
 
@@ -2327,9 +2410,47 @@ definitions:
           List of cursors to start reading from. This property is required when `read_from` = `cursors`.
           The initial cursors should cover all partitions of subscription.
           Clients will get events starting from next offset positions.
+      status:
+        type: array
+        description: |
+          Subscription status. This data is only available when querying the subscriptions endpoint for
+          status.
+        items:
+          $ref: '#/definitions/SubscriptionEventTypeStatus'
+      authorization:
+          $ref: '#/definitions/SubscriptionAuthorization'
     required:
       - owning_application
       - event_types
+
+  SubscriptionAuthorization:
+      type: object
+      description: |
+        Authorization section of a Subscription. This section defines two access control lists: one for consuming
+        events and committing cursors ('readers'), and one for administering a subscription ('admins').
+        Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+      properties:
+        admins:
+          type: array
+          description: |
+            An array of subject attributes that are required for updating the subscription. Any one of the attributes
+            defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+            i.e. if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+        readers:
+          type: array
+          description: |
+            An array of subject attributes that are required for reading events and committing cursors to this
+            subscription. Any one of the attributes defined in this array is sufficient to be authorized. The wildcard
+            item takes precedence over all others, i.e., if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+      required:
+        - admins
+        - readers
 
   EventType:
     description: An event type defines the schema and its runtime properties.
@@ -2442,6 +2563,40 @@ definitions:
 
           If this is set it MUST be a valid required field as defined in the schema.
 
+      cleanup_policy:
+        type: string
+        x-extensible-enum:
+          - delete
+          - compact
+        default: 'delete'
+        description: |
+          Event type cleanup policy. There are two possible values:
+
+          - 'delete' cleanup policy will delete old events after retention time expires. Nakadi guarantees that each
+            event will be available for at least the retention time period. However Nakadi doesn't guarantee that event
+            will be deleted right after retention time expires.
+
+          - 'compact' cleanup policy will keep only the latest event for each event key. The compaction is performed per
+            partition, there is no compaction across partitions. The key that will be used as a compaction key should be
+            specified in 'partition_compaction_key' field of event metadata. This cleanup policy is not available for
+            'undefined' category of event types.
+
+            The compaction can be not applied to events that were published recently and located at the head of the
+            queue, which means that the actual amount of events received by consumers can be different depending on time
+            when the consumption happened.
+
+            When using 'compact' cleanup policy user should consider that different Nakadi endpoints showing the amount
+            of events will actually show the original amount of events published, not the actual amount of events that
+            are currently there.
+            E.g. subscription /stats endpoint will show the value 'unconsumed_events' - but that may not match with the
+            actual amount of events unconsumed in that subscription as 'compact' cleanup policy may delete older events
+            in the middle of queue if there is a newer event for the same key published.
+
+            For more details about compaction implementation please read the documentation of Log Compaction in Kafka
+            https://kafka.apache.org/documentation/#compaction, Nakadi currently relies on this implementation.
+
+          It's not possible to change the value of this field for existing event type.
+
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
 
@@ -2450,6 +2605,50 @@ definitions:
 
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
+
+      ordering_key_fields:
+        type: array
+        description: |
+          This is only an informational field. The events are delivered to consumers in the order they were published.
+          No reordering is done by Nakadi.
+
+          This field is useful in case the producer wants to communicate the complete order accross all the events
+          published to all partitions. This is the case when there is an incremental generator on the producer side,
+          for example.
+
+          It differs from `partition_key_fields` in the sense that it's not used for partitioning (known as sharding in
+          some systems). The order indicated by `ordering_key_fields` can also differ from the order the events are in
+          each partition, in case of out-of-order submission.
+
+          In most cases, this would have just a single item (the path of the field
+          by which this is to be ordered), but can have multiple items, in which case
+          those are considered as a compound key, with lexicographic ordering (first
+          item is most significant).
+        items:
+          type: string
+          description: |
+            Indicates a single ordering field. This is a dot separated string, which is applied
+            onto the whole event object, including the contained metadata and data (in
+            case of a data change event) objects.
+
+            The field must be present in the schema. This field can be modified at any moment, but event type owners are
+            expected to notify consumer in advance about the change.
+          example: "data.incremental_counter"
+
+      audience:
+        type: string
+        x-extensible-enum:
+          - component-internal
+          - business-unit-internal
+          - company-internal
+          - external-partner
+          - external-public
+        description: |
+          Intended target audience of the event type. Relevant for standards around quality of design and documentation,
+          reviews, discoverability, changeability, and permission granting. See the guidelines
+          https://opensource.zalando.com/restful-api-guidelines/#219
+
+          This attribute adds no functionality and is used only to inform users about the usage scope of the event type.
 
       created_at:
         type: string
@@ -2608,40 +2807,40 @@ definitions:
       - partition
 
   AdminAuthorization:
-      type: object
-      description: |
-        Authorization section for admin operations. This section defines three access control lists: one for writing
-        to admin endpoints and producing events ('writers'), one for reading from admin endpoints and consuming events
-        ('readers'), and one for updating the list of administrators ('admins').
-      properties:
-        admins:
-          type: array
-          description: |
-            An array of subject attributes that are required for updating the list of administrators. Any one of the
-            attributes defined in this array is sufficient to be authorized.
-          items:
-            $ref: '#/definitions/AuthorizationAttribute'
-          minItems: 1
-        readers:
-          type: array
-          description: |
-            An array of subject attributes that are required for reading from admin endpoints. Any one of the
-            attributes defined in this array is sufficient to be authorized.
-          items:
-            $ref: '#/definitions/AuthorizationAttribute'
-          minItems: 1
-        writers:
-          type: array
-          description: |
-            An array of subject attributes that are required for writing to admin endpoints. Any one of the
-            attributes defined in this array is sufficient to be authorized.
-          items:
-            $ref: '#/definitions/AuthorizationAttribute'
-          minItems: 1
-      required:
-        - admins
-        - readers
-        - writers
+    type: object
+    description: |
+      Authorization section for admin operations. This section defines three access control lists: one for writing
+      to admin endpoints and producing events ('writers'), one for reading from admin endpoints and consuming events
+      ('readers'), and one for updating the list of administrators ('admins').
+    properties:
+      admins:
+        type: array
+        description: |
+          An array of subject attributes that are required for updating the list of administrators. Any one of the
+          attributes defined in this array is sufficient to be authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      readers:
+        type: array
+        description: |
+          An array of subject attributes that are required for reading from admin endpoints. Any one of the
+          attributes defined in this array is sufficient to be authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      writers:
+        type: array
+        description: |
+          An array of subject attributes that are required for writing to admin endpoints. Any one of the
+          attributes defined in this array is sufficient to be authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+    required:
+      - admins
+      - readers
+      - writers
 
   AuthorizationAttribute:
     type: object
@@ -2677,6 +2876,7 @@ definitions:
           properties:
             partition:
               type: string
+              description: the partition id
             state:
               type: string
               description: |
@@ -2690,6 +2890,54 @@ definitions:
                 The amount of events in this partition that are not yet consumed within this subscription.
                 The property may be absent at the moment when no events were yet consumed from the partition in this
                 subscription (In case of `read_from` is `BEGIN` or `END`)
+
+                If the event type uses 'compact' cleanup policy - then the actual number of unconsumed events can be
+                lower than the one reported in this field.
+            consumer_lag_seconds:
+              type: number
+              description: |
+                Subscription consumer lag for this partition in seconds. Measured as the age of the oldest event of
+                this partition that is not yet consumed within this subscription.
+            stream_id:
+              type: string
+              description: the id of the stream that consumes data from this partition
+            assignment_type:
+              type: string
+              description: |
+                - `direct`: partition can't be transferred to another stream until the stream is closed;
+                - `auto`: partition can be transferred to another stream in case of rebalance, or if another stream
+                  requests to read from this partition.
+          required:
+            - partition
+            - state
+    required:
+      - event_type
+      - partitions
+
+  SubscriptionEventTypeStatus:
+    type: object
+    description: Status of one event-type within a context of subscription
+    properties:
+      event_type:
+        type: string
+        description: event-type name
+      partitions:
+        type: array
+        description: status of partitions of this event-type
+        items:
+          type: object
+          description: status of partition within a subscription context
+          properties:
+            partition:
+              type: string
+              description: The partition id
+            state:
+              type: string
+              description: |
+                The state of this partition in current subscription. Currently following values are possible:
+                - `unassigned`: the partition is currently not assigned to any client;
+                - `reassigning`: the partition is currently reasssigning from one client to another;
+                - `assigned`: the partition is assigned to a client.
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition

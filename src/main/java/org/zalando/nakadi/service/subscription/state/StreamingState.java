@@ -9,16 +9,17 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -63,6 +64,7 @@ class StreamingState extends State {
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
     private Closeable cursorResetSubscription;
     private IdleStreamWatcher idleStreamWatcher;
+    private boolean commitTimeoutReached = false;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -95,9 +97,10 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         scheduleTask(() -> {
+                    streamToOutput(true);
                     final String debugMessage = "Stream timeout reached";
-                    this.sendMetadata(debugMessage);
-                    this.shutdownGracefully(debugMessage);
+                    sendMetadata(debugMessage);
+                    shutdownGracefully(debugMessage);
                 }, getParameters().streamTimeoutMillis,
                 TimeUnit.MILLISECONDS);
 
@@ -128,6 +131,7 @@ class StreamingState extends State {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
                 final String debugMessage = "Commit timeout reached";
+                this.commitTimeoutReached = true;
                 sendMetadata(debugMessage);
                 shutdownGracefully(debugMessage);
             } else {
@@ -221,6 +225,10 @@ class StreamingState extends State {
     }
 
     private void streamToOutput() {
+        streamToOutput(false);
+    }
+
+    private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         final boolean wasCommitted = isEverythingCommitted();
@@ -231,7 +239,8 @@ class StreamingState extends State {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
-                    getParameters().batchTimeoutMillis))) {
+                    getParameters().batchTimeoutMillis,
+                    streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
@@ -328,8 +337,45 @@ class StreamingState extends State {
 
             batchesSent++;
         } catch (final IOException e) {
-            getLog().error("Failed to write data to output.", e);
+            getLog().warn("Failed to write data to output: {}", e.getMessage());
             shutdownGracefully("Failed to write data to output");
+        }
+    }
+
+    public void logExtendedCommitInformation() {
+        // We need to log situation when commit timeout was reached, and check that current committed offset is the
+        // same as it is in zk.
+        if (!commitTimeoutReached) {
+            return;
+        }
+        final List<EventTypePartition> toCheck = offsets.entrySet().stream()
+                .filter(e -> !e.getValue().isCommitted())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        try {
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> realCommitted = getZk().getOffsets(toCheck);
+            final List<EventTypePartition> bustedPartitions = offsets.entrySet().stream()
+                    .filter(v -> realCommitted.containsKey(v.getKey()))
+                    .filter(v -> {
+                        final SubscriptionCursorWithoutToken remembered =
+                                getContext().getCursorConverter().convertToNoToken(v.getValue().getCommitOffset());
+                        final SubscriptionCursorWithoutToken real = realCommitted.get(v.getKey());
+                        return real.getOffset().compareTo(remembered.getOffset()) > 0;
+                    })
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+            if (!bustedPartitions.isEmpty()) {
+                final String bustedData = bustedPartitions.stream().map(etp -> {
+                    final PartitionData pd = offsets.get(etp);
+                    return "(ETP: " + etp +
+                            ", StreamCommitted: " + pd.getCommitOffset() +
+                            ", StreamSent: " + pd.getSentOffset() +
+                            ", ZkCommitted: " + realCommitted.get(etp) + ")";
+                }).collect(Collectors.joining(", "));
+                getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
+            }
+        } catch (NakadiRuntimeException ex) {
+            getLog().warn("Failed to get nakadi cursors for logging purposes.");
         }
     }
 
@@ -340,7 +386,7 @@ class StreamingState extends State {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
 
         getContext().getSubscription().getEventTypes().stream().forEach(et -> publishKpi(et));
-
+        logExtendedCommitInformation();
         if (null != topologyChangeSubscription) {
             try {
                 topologyChangeSubscription.close();
@@ -507,7 +553,7 @@ class StreamingState extends State {
             // removing all the current assignments for real consumer.
             try {
                 eventConsumer.reassign(Collections.emptyList());
-            } catch (final NakadiException | InvalidCursorException ex) {
+            } catch (final InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
@@ -531,7 +577,7 @@ class StreamingState extends State {
                         .collect(Collectors.toList());
 
                 eventConsumer.reassign(cursors);
-            } catch (NakadiException | InvalidCursorException ex) {
+            } catch (InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);
             }
         }
@@ -544,7 +590,7 @@ class StreamingState extends State {
                     try {
                         // get oldest active timeline
                         return getContext().getTimelineService().getActiveTimelinesOrdered(et).get(0);
-                    } catch (final NakadiException e) {
+                    } catch (final InternalNakadiException e) {
                         throw new NakadiRuntimeException(e);
                     }
                 })
@@ -555,7 +601,7 @@ class StreamingState extends State {
                     try {
                         return getContext().getTimelineService().getTopicRepository(timelines.get(0))
                                 .loadTopicStatistics(timelines).stream();
-                    } catch (final ServiceUnavailableException e) {
+                    } catch (final ServiceTemporarilyUnavailableException e) {
                         throw new NakadiRuntimeException(e);
                     }
                 })
@@ -582,7 +628,8 @@ class StreamingState extends State {
                 getComparator(),
                 subscription,
                 cursor,
-                LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey()),
+                LoggerFactory.getLogger(LogPathBuilder.build(
+                        getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
                 System.currentTimeMillis());
 
         offsets.put(partition.getKey(), pd);
@@ -649,6 +696,7 @@ class StreamingState extends State {
     /**
      * If stream doesn't have any partitions - start timer that will close this session
      * in commitTimeout*2 if it doesn't get any partitions during that time
+     *
      * @param topology the new topology
      */
     private void trackIdleness(final ZkSubscriptionClient.Topology topology) {

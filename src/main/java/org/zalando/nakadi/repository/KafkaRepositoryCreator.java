@@ -7,15 +7,15 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;
+import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.Comparator;
 import java.util.List;
@@ -27,19 +27,19 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
     private final ZookeeperSettings zookeeperSettings;
-    private final UUIDGenerator uuidGenerator;
+    private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final MetricRegistry metricRegistry;
 
     @Autowired
     public KafkaRepositoryCreator(final NakadiSettings nakadiSettings,
                                   final KafkaSettings kafkaSettings,
                                   final ZookeeperSettings zookeeperSettings,
-                                  final UUIDGenerator uuidGenerator,
+                                  final KafkaTopicConfigFactory kafkaTopicConfigFactory,
                                   final MetricRegistry metricRegistry) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
-        this.uuidGenerator = uuidGenerator;
+        this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.metricRegistry = metricRegistry;
     }
 
@@ -55,7 +55,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
-                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, uuidGenerator);
+                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, kafkaTopicConfigFactory);
             // check that it does work
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;

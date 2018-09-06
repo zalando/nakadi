@@ -12,14 +12,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.ConflictException;
-import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.TimelineException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.TimelineException;
+import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
 import org.zalando.nakadi.view.TimelineView;
@@ -60,7 +61,9 @@ public class TimelinesController {
                 .collect(Collectors.toList()));
     }
 
-    @ExceptionHandler(UnableProcessException.class)
+    @ExceptionHandler({
+            UnableProcessException.class,
+            TimelinesNotSupportedException.class})
     public ResponseEntity<Problem> unprocessable(final UnableProcessException ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);

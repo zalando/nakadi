@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
@@ -57,7 +57,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
-    private final String loggingPath;
     private final CursorConverter cursorConverter;
     private final Subscription subscription;
     private final MetricRegistry metricRegistry;
@@ -86,8 +85,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.timer = builder.timer;
         this.zkClient = builder.zkClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
-        this.loggingPath = builder.loggingPath + ".stream";
-        this.log = LoggerFactory.getLogger(builder.loggingPath);
+        this.log = LoggerFactory.getLogger(LogPathBuilder.build(builder.subscription.getId(), builder.session.getId()));
         this.connectionReady = builder.connectionReady;
         this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
@@ -198,7 +196,9 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            log.info("Switching state from " + currentState.getClass().getSimpleName());
+            log.info("Switching state from {} to {}",
+                    currentState.getClass().getSimpleName(),
+                    newState.getClass().getSimpleName());
             // There is a problem with onExit call - it can not throw exceptions, otherwise it won't be possible
             // to finish state correctly. In order to avoid it in future state will be switched even in case of
             // exception.
@@ -207,8 +207,7 @@ public class StreamingContext implements SubscriptionStreamer {
             } finally {
                 currentState = newState;
 
-                log.info("Switching state to " + currentState.getClass().getSimpleName());
-                currentState.setContext(this, loggingPath);
+                currentState.setContext(this);
                 currentState.onEnter();
             }
         });
@@ -331,7 +330,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private ZkSubscriptionClient zkClient;
         private BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
-        private String loggingPath;
         private AtomicBoolean connectionReady;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
@@ -391,11 +389,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKafkaPollTimeout(final long kafkaPollTimeout) {
             this.kafkaPollTimeout = kafkaPollTimeout;
-            return this;
-        }
-
-        public Builder setLoggingPath(final String loggingPath) {
-            this.loggingPath = loggingPath;
             return this;
         }
 

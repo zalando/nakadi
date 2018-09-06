@@ -137,12 +137,14 @@ public class NakadiKafkaConsumerTest {
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
                 consumedEvents.get(0),
                 equalTo(new ConsumedEvent(event1,
-                        new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline))));
+                        new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline),
+                        0)));
 
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
                 consumedEvents.get(1),
                 equalTo(new ConsumedEvent(event2,
-                        new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline))));
+                        new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline),
+                        0)));
 
         assertThat("The kafka poll should be called with timeout we defined", pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
@@ -150,13 +152,13 @@ public class NakadiKafkaConsumerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenReadEventsThenNakadiException() {
+    public void whenReadEventsThenNakadiRuntimeBaseException() {
 
         // ARRANGE //
         final ImmutableList<RuntimeException> exceptions = ImmutableList.of(new NoOffsetForPartitionException(
                 new TopicPartition("", 0)), new KafkaException());
 
-        int numberOfNakadiExceptions = 0;
+        int numberOfNakadiRuntimeBaseExceptions = 0;
         for (final Exception exception : exceptions) {
             final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
             when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
@@ -171,11 +173,12 @@ public class NakadiKafkaConsumerTest {
                 // ASSERT //
                 fail("An Exception was expected to be be thrown");
             } catch (final Exception e) {
-                numberOfNakadiExceptions++;
+                numberOfNakadiRuntimeBaseExceptions++;
             }
         }
 
-        assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions,
+        assertThat("We should get a NakadiBaseException for every call",
+                numberOfNakadiRuntimeBaseExceptions,
                 equalTo(exceptions.size()));
     }
 

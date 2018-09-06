@@ -11,10 +11,10 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
@@ -86,7 +86,7 @@ public class StreamingStateTest {
         );
         when(contextMock.getParameters()).thenReturn(spMock);
 
-        state.setContext(contextMock, "test");
+        state.setContext(contextMock);
     }
 
     @Test
@@ -115,7 +115,7 @@ public class StreamingStateTest {
 
     @Test
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed()
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
             InvalidCursorException {
         final ZkSubscription<SubscriptionCursorWithoutToken> offsetSubscription = mock(ZkSubscription.class);
 

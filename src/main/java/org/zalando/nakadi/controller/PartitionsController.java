@@ -15,16 +15,16 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NotFoundException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
@@ -45,6 +45,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -99,22 +100,23 @@ public class PartitionsController {
                         eventTypeName,
                         first.getPartition(),
                         cursorConverter.convert(first.getFirst()).getOffset(),
-                        cursorConverter.convert(last.getLast()).getOffset());
+                        cursorConverter.convert(selectLast(timelines, last, first)).getOffset());
             }).collect(Collectors.toList());
             return ok().body(result);
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
         }
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
-    public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
-                                          @PathVariable("partition") final String partition,
-                                          @Nullable @RequestParam(value = "consumed_offset", required = false)
-                                              final String consumedOffset, final NativeWebRequest request) {
+    public ResponseEntity<?> getPartition(
+            @PathVariable("name") final String eventTypeName,
+            @PathVariable("partition") final String partition,
+            @Nullable @RequestParam(value = "consumed_offset", required = false) final String consumedOffset,
+            final NativeWebRequest request) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
@@ -130,9 +132,9 @@ public class PartitionsController {
             }
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(e.asProblem(), request);
+            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), request);
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
                     request);
@@ -154,37 +156,40 @@ public class PartitionsController {
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceUnavailableException {
+            ServiceTemporarilyUnavailableException {
         final Cursor consumedCursor = new Cursor(partition, consumedOffset);
         final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
         return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
                 .stream()
                 .findFirst()
                 .map(this::toCursorLag)
-                .orElseThrow(MyNakadiRuntimeException1::new);
+                .orElseThrow(NakadiBaseException::new);
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
-            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final Optional<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                 .loadPartitionStatistics(timelines.get(0), partition);
         if (!firstStats.isPresent()) {
             throw new NotFoundException("partition not found");
         }
-        final PartitionStatistics lastStats;
+        final NakadiCursor newest;
         if (timelines.size() == 1) {
-            lastStats = firstStats.get();
-        } else  {
-            lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
-                    .loadPartitionStatistics(timelines.get(timelines.size() - 1), partition).get();
+            newest = firstStats.get().getLast();
+        } else {
+            final PartitionStatistics lastStats = timelineService
+                    .getTopicRepository(timelines.get(timelines.size() - 1))
+                    .loadPartitionStatistics(timelines.get(timelines.size() - 1), partition)
+                    .get();
+            newest = selectLast(timelines, lastStats, firstStats.get());
         }
 
         return new EventTypePartitionView(
                 eventTypeName,
-                lastStats.getPartition(),
+                partition,
                 cursorConverter.convert(firstStats.get().getFirst()).getOffset(),
-                cursorConverter.convert(lastStats.getLast()).getOffset());
+                cursorConverter.convert(newest).getOffset());
     }
 
     private CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag) {
@@ -195,4 +200,26 @@ public class PartitionsController {
                 nakadiCursorLag.getLag()
         );
     }
+
+
+    private static NakadiCursor selectLast(final List<Timeline> activeTimelines, final PartitionEndStatistics last,
+                                           final PartitionStatistics first) {
+        final NakadiCursor lastInLastTimeline = last.getLast();
+        if (!lastInLastTimeline.isInitial()) {
+            return lastInLastTimeline;
+        }
+        // There may be a situation, when there is no data in all the timelines after first, but any cursor from the
+        // next after first timelines is greater then the cursor in first timeline. Therefore we need to roll pointer
+        // to the end back till the very beginning or to the end of first timeline with data.
+        for (int idx = activeTimelines.size() - 2; idx > 0; --idx) {
+            final Timeline timeline = activeTimelines.get(idx);
+            final NakadiCursor lastInTimeline = timeline.getLatestPosition()
+                    .toNakadiCursor(timeline, first.getPartition());
+            if (!lastInTimeline.isInitial()) {
+                return lastInTimeline;
+            }
+        }
+        return first.getLast();
+    }
+
 }

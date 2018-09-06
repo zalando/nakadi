@@ -2,10 +2,10 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Preconditions;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -27,13 +27,16 @@ public interface CursorConverter {
 
     // Convert from view to model
     NakadiCursor convert(String eventTypeName, Cursor cursor) throws
-            InternalNakadiException, NoSuchEventTypeException, InvalidCursorException, ServiceUnavailableException;
+            InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
+            ServiceTemporarilyUnavailableException;
 
     NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
-            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
+            InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
+            InvalidCursorException;
 
     List<NakadiCursor> convert(Collection<SubscriptionCursorWithoutToken> cursor) throws
-            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
+            InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
+            InvalidCursorException;
 
 
     int VERSION_LENGTH = 3;

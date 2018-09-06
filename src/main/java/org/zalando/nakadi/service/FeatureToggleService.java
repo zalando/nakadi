@@ -31,15 +31,12 @@ public interface FeatureToggleService {
         CONNECTION_CLOSE_CRUTCH("close_crutch"),
         DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
+        DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS("delete_event_type_with_subscriptions"),
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
-        HIGH_LEVEL_API("high_level_api"),
-        CHECK_PARTITIONS_KEYS("check_partitions_keys"),
-        CHECK_OWNING_APPLICATION("check_owning_application"),
-        LIMIT_CONSUMERS_NUMBER("limit_consumers_number"),
-        SEND_BATCH_VIA_OUTPUT_STREAM("send_batch_via_output_stream"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
         KPI_COLLECTION("kpi_collection"),
-        DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations");
+        DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
+        DISABLE_LOG_COMPACTION("disable_log_compaction");
 
         private final String id;
 

@@ -18,12 +18,11 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -73,7 +72,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
             return subscription;
         } catch (final JsonProcessingException e) {
-            throw new InconsistentStateException("Serialization problem during persistence of event type", e);
+            throw new InconsistentStateException("Serialization problem during persistence of subscription", e);
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
         } catch (final DataAccessException e) {
@@ -81,8 +80,23 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
+    public void updateSubscription(final Subscription subscription) {
+        final String keyFieldsHash = hashGenerator.generateSubscriptionKeyFieldsHash(subscription);
+        try {
+            jdbcTemplate.update(
+                    "UPDATE zn_data.subscription set s_subscription_object=?::JSONB, s_key_fields_hash=? WHERE s_id=?",
+                    jsonMapper.writer().writeValueAsString(subscription),
+                    keyFieldsHash,
+                    subscription.getId());
+        } catch (final JsonProcessingException ex) {
+            throw new InconsistentStateException("Serialization problem during persistence of subscription", ex);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when running database request", e);
+        }
+    }
+
     public Subscription getSubscription(final String id) throws NoSuchSubscriptionException,
-            ServiceUnavailableException {
+            ServiceTemporarilyUnavailableException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
@@ -90,11 +104,12 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
         } catch (final DataAccessException e) {
             LOG.error("Database error when getting subscription", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
+            throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
         }
     }
 
-    public void deleteSubscription(final String id) throws NoSuchSubscriptionException, ServiceUnavailableException {
+    public void deleteSubscription(final String id)
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         try {
             final int rowsDeleted = jdbcTemplate.update("DELETE FROM zn_data.subscription WHERE s_id = ?", id);
             if (rowsDeleted == 0) {
@@ -102,12 +117,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             }
         } catch (final DataAccessException e) {
             LOG.error("Database error when deleting subscription", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
+            throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
         }
     }
 
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
-                                                final int offset, final int limit) throws ServiceUnavailableException {
+                                                final int offset, final int limit)
+            throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription ");
         final List<String> clauses = Lists.newArrayList();
@@ -138,13 +154,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
         } catch (final DataAccessException e) {
             LOG.error("Database error when listing subscriptions", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
+            throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
         }
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
                                         final String consumerGroup)
-            throws InconsistentStateException, NoSubscriptionException, RepositoryProblemException {
+            throws InconsistentStateException, NoSuchSubscriptionException, RepositoryProblemException {
 
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
@@ -157,7 +173,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final JsonProcessingException e) {
             throw new InconsistentStateException("Deserialization problem during reading subscription from DB", e);
         } catch (final EmptyResultDataAccessException e) {
-            throw new NoSubscriptionException("Subscription does not exist", e);
+            throw new NoSuchSubscriptionException("Subscription does not exist", e);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("Error occurred when reading subscription from DB", e);
         }

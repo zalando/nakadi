@@ -113,9 +113,9 @@ Read our [contribution guidelines](CONTRIBUTING.md) on how to submit issues and 
 
 ### Dependencies
 
-The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boot/) application. 
-It uses [Kafka 0.10.2](http://kafka.apache.org/0102/documentation.html) as its broker and
- [PostgreSQL 9.5](http://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
+The Nakadi server is a Java 8 [Spring Boot](https://projects.spring.io/spring-boot/) application. 
+It uses [Kafka 1.1.1](https://kafka.apache.org/11/documentation.html) as its broker and
+ [PostgreSQL 9.5](https://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
 Nakadi requires recent versions of docker and docker-compose. In
 particular, docker-compose >= v1.7.0 is required. See [Install Docker
@@ -231,9 +231,9 @@ Events for an event type can be published by posting to its "events" collection:
 curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
  -H "Content-type: application/json" \
  -d '[{
-    "order_number": "24873243241",    
+    "order_number": "24873243241"
   }, {
-    "order_number": "24873243242",    
+    "order_number": "24873243242"
   }]'
 
 

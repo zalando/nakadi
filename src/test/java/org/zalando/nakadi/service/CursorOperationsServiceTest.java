@@ -11,11 +11,11 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;
+import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -325,7 +325,7 @@ public class CursorOperationsServiceTest {
                 mock(NakadiSettings.class),
                 mock(KafkaSettings.class),
                 mock(ZookeeperSettings.class),
-                mock(UUIDGenerator.class));
+                mock(KafkaTopicConfigFactory.class));
         when(timelineService.getTopicRepository(timeline)).thenReturn(repository);
         return timeline;
     }

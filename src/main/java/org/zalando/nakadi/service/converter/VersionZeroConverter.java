@@ -5,10 +5,10 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -42,7 +42,8 @@ public class VersionZeroConverter implements VersionedConverter {
     }
 
     public List<NakadiCursor> convertBatched(final List<SubscriptionCursorWithoutToken> cursors) throws
-            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
+            InvalidCursorException, InternalNakadiException, NoSuchEventTypeException,
+            ServiceTemporarilyUnavailableException {
         final NakadiCursor[] result = new NakadiCursor[cursors.size()];
         for (int idx = 0; idx < cursors.size(); ++idx) {
             final SubscriptionCursorWithoutToken cursor = cursors.get(idx);
@@ -97,7 +98,8 @@ public class VersionZeroConverter implements VersionedConverter {
 
     @Override
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor) throws
-            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
+            InternalNakadiException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException,
+            InvalidCursorException {
         final String offset = cursor.getOffset();
         if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(offset)) {
             final Timeline timeline = timelineService.getActiveTimelinesOrdered(eventTypeStr).get(0);
