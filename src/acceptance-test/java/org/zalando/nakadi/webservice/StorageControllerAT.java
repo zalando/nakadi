@@ -12,10 +12,13 @@ public class StorageControllerAT extends BaseAT {
 
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
+        final String defaultConfig = given()
+                .accept(JSON)
+                .get("/storages/default")
+                .print();
+
         given()
-                .body("{\"id\": \"default-test\",\"kafka_configuration\": {\"exhibitor_address\": null," +
-                        "\"exhibitor_port\": 0,\"zk_address\": \"127.0.0.1:2181\",\"zk_path\": \"\"}," +
-                        "\"storage_type\": \"kafka\"}")
+                .body(defaultConfig.replace("default", "default-test"))
                 .contentType(JSON).post("/storages");
 
         NakadiTestUtils.createEventTypeInNakadi(EventTypeTestBuilder.builder().name("event_a").build());
