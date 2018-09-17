@@ -114,7 +114,7 @@ Read our [contribution guidelines](CONTRIBUTING.md) on how to submit issues and 
 ### Dependencies
 
 The Nakadi server is a Java 8 [Spring Boot](https://projects.spring.io/spring-boot/) application. 
-It uses [Kafka 1.1.1](https://kafka.apache.org/11/documentation.html) as its broker and
+It uses [Kafka](https://kafka.apache.org/20/documentation.html)  >= 1.0.0 as its broker and
  [PostgreSQL 9.5](https://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
 Nakadi requires recent versions of docker and docker-compose. In
