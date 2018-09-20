@@ -34,7 +34,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.SubscriptionValidationException;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
@@ -201,13 +200,7 @@ public final class ExceptionHandling implements ProblemHandling {
         LOG.debug(exception.getMessage());
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
- @ExceptionHandler(SubscriptionValidationException.class)
-    public ResponseEntity<Problem> handleSubscriptionValidationException(final
-                                                                          SubscriptionValidationException exception,
-                                                                         final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
+
     @ExceptionHandler(NoSuchPartitionStrategyException.class)
     public ResponseEntity<Problem> handleNoSuchPartitionStrategyException(
             final NoSuchPartitionStrategyException exception,

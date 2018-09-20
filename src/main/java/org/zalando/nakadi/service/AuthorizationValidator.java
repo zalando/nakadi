@@ -49,9 +49,27 @@ public class AuthorizationValidator {
             ServiceTemporarilyUnavailableException {
         if (auth != null) {
             final Map<String, List<AuthorizationAttribute>> authorization = auth.asMapValue();
+            checkAuthAttributesEmpty(authorization);
             checkAuthAttributesAreValid(authorization);
             checkAuthAttributesNoDuplicates(authorization);
         }
+    }
+
+    private void checkAuthAttributesEmpty(final Map<String, List<AuthorizationAttribute>> allAttributes)
+            throws UnableProcessException, ServiceTemporarilyUnavailableException {
+        try {
+            final String
+                    emptyValErrMessage = allAttributes.entrySet().stream()
+                    .filter(attr -> ((attr.getKey() == null)|| (attr.getValue() == null)))
+                    .map(attr -> String.format("Authorization attribute %s:%s is Null",
+                            attr.getKey(), attr.getValue()))
+                    .collect(Collectors.joining(", "));
+            if (!Strings.isNullOrEmpty(emptyValErrMessage)) {
+                throw new UnableProcessException(emptyValErrMessage);
+            }
+        } catch (final PluginException e) {
+        throw new ServiceTemporarilyUnavailableException("Error calling Null check plugin", e);
+    }
     }
 
     private void checkAuthAttributesNoDuplicates(final Map<String, List<AuthorizationAttribute>> allAttributes)
