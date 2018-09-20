@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionValidationException;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -31,8 +32,14 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
                                      @JsonProperty("readers") final List<AuthorizationAttribute> readers) {
         // actually these three properties should never be null but the validation framework first creates an object
         // and then uses getters to check if values are null or not, so we need to do this check to avoid exception
-        this.admins = admins == null ? null : Collections.unmodifiableList(admins);
-        this.readers = readers == null ? null : Collections.unmodifiableList(readers);
+        if(admins == null ){
+            throw new SubscriptionValidationException("Admin cannot be null!!");
+        }
+        if(readers== null){
+            throw new SubscriptionValidationException("Reader cannot be null!!");
+        }
+        this.admins =  Collections.unmodifiableList(admins);
+        this.readers =  Collections.unmodifiableList(readers);
     }
 
     public List<AuthorizationAttribute> getAdmins() {
