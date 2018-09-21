@@ -28,10 +28,9 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
     private final List<AuthorizationAttribute> readers;
 
     public SubscriptionAuthorization(@JsonProperty("admins") final List<AuthorizationAttribute> admins,
-                                     @JsonProperty("readers") final List<AuthorizationAttribute> readers)   {
+                                     @JsonProperty("readers") final List<AuthorizationAttribute> readers){
         // actually these three properties should never be null but the validation framework first creates an object
         // and then uses getters to check if values are null or not, so we need to do this check to avoid exception
-
         this.admins = admins == null ? null : Collections.unmodifiableList(admins);
         this.readers = readers == null ? null : Collections.unmodifiableList(readers);
     }
