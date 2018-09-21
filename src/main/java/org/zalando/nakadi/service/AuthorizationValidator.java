@@ -56,8 +56,7 @@ public class AuthorizationValidator {
     }
 
     private void checkAuthAttributesEmpty(final Map<String, List<AuthorizationAttribute>> allAttributes)
-            throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        try {
+            throws UnableProcessException{
             final String
                     emptyValErrMessage = allAttributes.entrySet().stream()
                     .filter(attr -> ((attr.getKey() == null)|| (attr.getValue() == null)))
@@ -67,9 +66,6 @@ public class AuthorizationValidator {
             if (!Strings.isNullOrEmpty(emptyValErrMessage)) {
                 throw new UnableProcessException(emptyValErrMessage);
             }
-        } catch (final PluginException e) {
-        throw new ServiceTemporarilyUnavailableException("Error calling Null check plugin", e);
-    }
     }
 
     private void checkAuthAttributesNoDuplicates(final Map<String, List<AuthorizationAttribute>> allAttributes)
