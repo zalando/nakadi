@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Possibility to set Kafka bootstrap servers by configuration property `nakadi.kafka.bootstrap-servers`. Default is to fetch them from Zookeeper.
+
 ### Fixed
 - Upgraded dependencies
 - Refactored exceptions
