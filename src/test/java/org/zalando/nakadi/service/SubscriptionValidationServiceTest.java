@@ -23,7 +23,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.nakadi.domain.SubscriptionAuthorization;
+
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -90,7 +90,6 @@ public class SubscriptionValidationServiceTest {
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
         subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.CURSORS);
-        subscriptionBase.setAuthorization(new SubscriptionAuthorization(null, null));
     }
 
     @Test(expected = InconsistentStateException.class)
