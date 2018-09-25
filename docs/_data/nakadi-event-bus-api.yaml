@@ -309,6 +309,8 @@ paths:
       responses:
         '200':
           description: EventType is successfuly removed
+        '404':
+          description: EventType is not found in nakadi
         '401':
           description: Client is not authenticated
           schema:
@@ -2640,17 +2642,22 @@ definitions:
         description: |
           This is only an informational field.
 
-          Specifies array of fields that are used to be event identifier.
+          Indicates which field represents the data instance identifier and scope in which ordering_key_fields
+          provides a strict order. It is typically a single field, but multiple fields for compound identifier
+          keys are also supported.
+
+          This is an informational-only event type attribute without specific Nakadi semantics for specification of
+          application level ordering. It only can be used in combination with ordering_key_fields.
 
           This field can be modified at any moment, but event type owners are expected to notify consumer in advance
           about the change.
         items:
           type: string
           description: |
-            Indicates a single instance id field. This is a dot separated string, which is applied onto the whole event
-            object, including the contained metadata and data (in case of data change event).
-
-            The field must be present in the schema.
+            Indicates a single key field. It is a simple path (dot separated) to the JSON leaf element of the whole
+            event object, including the contained metadata and data (in case of a data change event) objects, and it
+            must be present in the schema.
+          example: "data.order_number"
       audience:
         type: string
         x-extensible-enum:
