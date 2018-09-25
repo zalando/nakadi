@@ -8,7 +8,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringUtils;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
@@ -16,6 +15,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaLocationManager {
 
@@ -23,22 +25,23 @@ public class KafkaLocationManager {
     private static final String BROKERS_IDS_PATH = "/brokers/ids";
 
     private final ZooKeeperHolder zkFactory;
-    private final Properties kafkaProperties;
+    private final Properties kafkaProperties = new Properties();
     private final KafkaSettings kafkaSettings;
 
     public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
+        this.kafkaSettings = kafkaSettings;
         if (StringUtils.isEmpty(kafkaSettings.getBootstrapServers())) {
-            this.kafkaProperties = buildKafkaProperties(fetchBrokers());
+            updateBrokers();
+            final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+            executor.scheduleWithFixedDelay(this::updateBrokers,30, 30, TimeUnit.SECONDS);
         } else {
-            this.kafkaProperties = new Properties();
-            this.kafkaProperties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
                     kafkaSettings.getBootstrapServers());
         }
-        this.kafkaSettings = kafkaSettings;
     }
 
-    static class Broker {
+    private static class Broker {
         final String host;
         final Integer port;
 
@@ -47,7 +50,7 @@ public class KafkaLocationManager {
             this.port = port;
         }
 
-        static Broker fromByteJson(final byte[] data) throws JSONException {
+        private static Broker fromByteJson(final byte[] data) throws JSONException {
             final JSONObject json = new JSONObject(new String(data, StandardCharsets.UTF_8));
             final String host = json.getString("host");
             final Integer port = json.getInt("port");
@@ -84,20 +87,11 @@ public class KafkaLocationManager {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    private static Properties buildKafkaProperties(final List<Broker> brokers) {
-        final Properties props = new Properties();
-        props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, buildBootstrapServers(brokers));
-        return props;
-    }
-
-    @Scheduled(fixedDelay = 30000)
     private void updateBrokers() {
-        if (StringUtils.isEmpty(kafkaSettings.getBootstrapServers()) && kafkaProperties != null) {
-            final List<Broker> brokers = fetchBrokers();
-            if (!brokers.isEmpty()) {
-                kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-                        buildBootstrapServers(brokers));
-            }
+        final List<Broker> brokers = fetchBrokers();
+        if (!brokers.isEmpty()) {
+            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+                    buildBootstrapServers(brokers));
         }
     }
 
