@@ -48,7 +48,6 @@ public class AuthorizationValidator {
     public void validateAuthorization(@Nullable final ValidatableAuthorization auth) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
         if (auth != null) {
-
             final Map<String, List<AuthorizationAttribute>> authorization = auth.asMapValue();
             checkAuthAttributesEmpty(authorization);
             checkAuthAttributesAreValid(authorization);
@@ -56,15 +55,13 @@ public class AuthorizationValidator {
         }
     }
 
-    public void checkAuthAttributesEmpty(final Map<String, List<AuthorizationAttribute>> allAttributes)
+    private void checkAuthAttributesEmpty(final Map<String, List<AuthorizationAttribute>> allAttributes)
             throws UnableProcessException{
-           final String
-                    emptyValErrMessage = allAttributes.entrySet().stream()
+           final String emptyValErrMessage = allAttributes.entrySet().stream()
                     .filter(attr -> ((attr.getKey().length() == 0) || (attr.getValue().isEmpty())))
                     .map(attr -> String.format("authorization attribute %s:%s is null",
                             attr.getKey(), attr.getValue()))
                     .collect(Collectors.joining(", "));
-
            if (!Strings.isNullOrEmpty(emptyValErrMessage)) {
                 throw new UnableProcessException(emptyValErrMessage);
             }

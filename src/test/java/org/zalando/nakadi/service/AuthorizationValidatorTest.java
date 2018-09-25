@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-
 import com.google.common.collect.ImmutableList;
 
 import org.junit.Test;
@@ -32,7 +31,6 @@ public class AuthorizationValidatorTest {
     private final AuthorizationAttribute attr2 = new ResourceAuthorizationAttribute("type2", "value2");
     private final AuthorizationAttribute attr3 = new ResourceAuthorizationAttribute("type3", "value3");
     private final AuthorizationAttribute attr4 = new ResourceAuthorizationAttribute("type4", "value4");
-    private final AuthorizationAttribute attr5 = new ResourceAuthorizationAttribute(null, null);
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
