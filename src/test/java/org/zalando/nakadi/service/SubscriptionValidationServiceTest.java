@@ -49,7 +49,6 @@ public class SubscriptionValidationServiceTest {
     public static final String ET3 = "et3";
     public static final String P0 = "p0";
 
-
     private TopicRepository topicRepository;
     private EventTypeRepository etRepo;
     private SubscriptionValidationService subscriptionValidationService;

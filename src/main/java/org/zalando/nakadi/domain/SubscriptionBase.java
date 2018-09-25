@@ -42,6 +42,7 @@ public class SubscriptionBase {
     private List<SubscriptionCursorWithoutToken> initialCursors = ImmutableList.of();
 
     @Nullable
+    @Valid
     private SubscriptionAuthorization authorization;
 
     public SubscriptionBase() {
