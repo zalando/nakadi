@@ -67,6 +67,7 @@ nakadi:
     max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
+    bootstrap-servers: # kept empty to fetch bootstrap servers from Zookeeper (default)
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181

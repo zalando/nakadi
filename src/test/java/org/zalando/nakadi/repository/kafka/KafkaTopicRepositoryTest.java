@@ -1,8 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -34,6 +32,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -99,7 +98,6 @@ public class KafkaTopicRepositoryTest {
 
     private final KafkaTopicRepository kafkaTopicRepository;
     private final KafkaProducer<String, String> kafkaProducer;
-    private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
@@ -107,16 +105,13 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
-
-        kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
+        kafkaTopicRepository = createKafkaRepository(createKafkaFactory());
     }
 
 
     @Test
     public void canListAllTopics() {
-        final List<String> allTopics = allTopics().stream().collect(toList());
-        assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
+        assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics().toArray()));
     }
 
     @Test
@@ -353,7 +348,7 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(),
+            return new KafkaTopicRepository(mock(ZooKeeperHolder.class),
                     kafkaFactory,
                     nakadiSettings,
                     kafkaSettings,
@@ -364,22 +359,6 @@ public class KafkaTopicRepositoryTest {
         }
     }
 
-    private ZooKeeperHolder createZooKeeperHolder() throws Exception {
-        // GetChildrenBuilder
-        final GetChildrenBuilder getChildrenBuilder = mock(GetChildrenBuilder.class);
-        when(getChildrenBuilder.forPath("/brokers/topics")).thenReturn(allTopics());
-
-        // Curator Framework
-        final CuratorFramework curatorFramework = mock(CuratorFramework.class);
-        when(curatorFramework.getChildren()).thenReturn(getChildrenBuilder);
-
-        // ZooKeeperHolder
-        final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
-        when(zkHolder.get()).thenReturn(curatorFramework);
-
-        return zkHolder;
-    }
-
     private static List<String> allTopics() {
         return PARTITIONS.stream().map(p -> p.topic).distinct().collect(toList());
     }
@@ -388,6 +367,10 @@ public class KafkaTopicRepositoryTest {
     private KafkaFactory createKafkaFactory() {
         // Consumer
         final Consumer consumer = mock(Consumer.class);
+
+        final Map<String, List<PartitionInfo>> consumerTopics =
+                allTopics().stream().collect(Collectors.toMap(it -> it, it -> new ArrayList<>()));
+        when(consumer.listTopics()).thenReturn(consumerTopics);
 
         allTopics().forEach(
                 topic -> when(consumer.partitionsFor(topic)).thenReturn(partitionsOfTopic(topic)));

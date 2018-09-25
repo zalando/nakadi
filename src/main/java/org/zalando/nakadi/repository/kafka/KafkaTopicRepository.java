@@ -96,11 +96,11 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
-    public List<String> listTopics() throws TopicRepositoryException {
+    public Set<String> listTopics() throws TopicRepositoryException {
         try {
-            return zkFactory.get()
-                    .getChildren()
-                    .forPath("/brokers/topics");
+            return kafkaFactory.getConsumer()
+                    .listTopics()
+                    .keySet();
         } catch (final Exception e) {
             throw new TopicRepositoryException("Failed to list topics", e);
         }
@@ -235,7 +235,7 @@ public class KafkaTopicRepository implements TopicRepository {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
+                        item.getBrokerId(), HystrixKafkaCircuitBreaker::new);
                 if (circuitBreaker.allowRequest()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {
