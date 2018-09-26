@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
-
 import com.google.common.collect.ImmutableList;
+
 import org.junit.Test;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;

@@ -36,6 +36,10 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
+import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -65,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -328,10 +333,17 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
         final Collection<NakadiCursor> committedPositions = getCommittedPositions(subscriptionNode, client);
         final List<PartitionEndStatistics> stats = loadPartitionEndStatistics(eventTypes);
-
-        final Map<EventTypePartition, Duration> timeLags = statsMode == StatsMode.TIMELAG ?
-                subscriptionTimeLagService.getTimeLags(committedPositions, stats) :
-                ImmutableMap.of();
+        Map<EventTypePartition, Duration> timeLags = new HashMap<>();
+        try {
+            timeLags = statsMode == StatsMode.TIMELAG ?
+                    subscriptionTimeLagService.getTimeLags(committedPositions, stats) :
+                    ImmutableMap.of();
+        }
+        catch (LimitReachedException|TimeLagStatsTimeoutException|InconsistentStateException e) {
+            LOG.info("Cannot fetch TimeLag!");
+        }catch (NakadiBaseException e ){
+            LOG.info("Cannot fetch TimeLag!");
+        }
 
         for (final EventType eventType : eventTypes) {
             final List<PartitionBaseStatistics> statsForEventType = stats.stream()
