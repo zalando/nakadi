@@ -15,6 +15,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
@@ -31,6 +32,8 @@ import org.zalando.problem.spring.web.advice.Responses;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 
 @RestController
 @RequestMapping(value = "/event-types/{name}/timelines", produces = MediaType.APPLICATION_JSON)
@@ -81,4 +84,14 @@ public class TimelinesController {
         return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(TimelineException.class)
+    public ResponseEntity<Problem> handleTimelineException(final TimelineException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        final Throwable cause = exception.getCause();
+        if (cause instanceof InternalNakadiException) {
+            return Responses.create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
+        }
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
 }

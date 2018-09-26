@@ -187,4 +187,10 @@ public class CursorsController {
         return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
     }
 
+    @ExceptionHandler(CursorsAreEmptyException.class)
+    public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+    }
 }

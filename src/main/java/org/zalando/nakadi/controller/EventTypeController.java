@@ -224,4 +224,11 @@ public class EventTypeController {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
+
+    @ExceptionHandler(TopicCreationException.class)
+    public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
 }
