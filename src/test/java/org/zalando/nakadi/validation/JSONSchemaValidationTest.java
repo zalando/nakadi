@@ -2,6 +2,7 @@ package org.zalando.nakadi.validation;
 
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -35,6 +36,42 @@ public class JSONSchemaValidationTest {
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#: required key [metadata] not found"));
+    }
+
+    @Test
+    public void validationOfBusinessEventShouldAllowSpanCtxtInMetadata() {
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema(basicSchema()).compatibilityMode(CompatibilityMode.COMPATIBLE).build();
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject validEvent = new JSONObject("{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"span_ctx\": {" +
+                "      \"ot-tracer-spanid\": \"b268f901d5f2b865\"," +
+                "      \"ot-tracer-traceid\": \"e9435c17dabe8238\"," +
+                "      \"ot-baggage-foo\": \"bar\"" +
+                "}}," +
+                "\"foo\": \"bar\"}");
+
+        final Optional<ValidationError> noError = EventValidation.forType(et).validate(validEvent);
+
+        assertThat(noError, isAbsent());
+
+        final JSONObject invalidEvent = new JSONObject("{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"," +
+                "\"span_ctx\": {" +
+                "      \"ot-tracer-spanid\": 42," +
+                "      \"ot-tracer-traceid\": \"e9435c17dabe8238\"," +
+                "      \"ot-baggage-foo\": \"bar\"" +
+                "}}," +
+                "\"foo\": \"bar\"}");
+
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(invalidEvent);
+
+        assertThat(error.get().getMessage(),
+                equalTo("#/metadata/span_ctx/ot-tracer-spanid: expected type: String, found: Integer"));
     }
 
     @Test

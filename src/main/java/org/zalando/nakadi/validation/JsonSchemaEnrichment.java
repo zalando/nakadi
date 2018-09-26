@@ -162,6 +162,7 @@ public class JsonSchemaEnrichment {
                 .put("type", "string")
                 .put("enum", Arrays.asList(new String[]{eventType.getName()}));
         final JSONObject string = new JSONObject().put("type", "string");
+        final JSONObject stringMap = new JSONObject().put("type", "object").put("additionalProperties", string);
         final JSONObject dateTime = new JSONObject()
                 .put("type", "string");
 
@@ -171,6 +172,7 @@ public class JsonSchemaEnrichment {
         metadataProperties.put("parent_eids", arrayOfUUIDs);
         metadataProperties.put("flow_id", string);
         metadataProperties.put("partition", string);
+        metadataProperties.put("span_ctx", stringMap);
 
         final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
