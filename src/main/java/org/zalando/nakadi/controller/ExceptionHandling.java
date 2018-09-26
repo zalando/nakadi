@@ -11,21 +11,17 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.CompactionException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
@@ -148,35 +144,6 @@ public final class ExceptionHandling implements ProblemHandling {
             final NativeWebRequest request) {
         LOG.debug(ex.getMessage());
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
-    }
-
-    @ExceptionHandler(CompactionException.class)
-    public ResponseEntity<Problem> handleCompactionException(final CompactionException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(EnrichmentException.class)
-    public ResponseEntity<Problem> handleEnrichmentException(final EnrichmentException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(PartitioningException.class)
-    public ResponseEntity<Problem> handlePartitioningException(final PartitioningException exception,
-                                                               final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(InvalidPartitionKeyFieldsException.class)
-    public ResponseEntity<Problem> handleInvalidPartitionKeyFieldsException(
-            final InvalidPartitionKeyFieldsException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     @ExceptionHandler(NoSuchEventTypeException.class)
