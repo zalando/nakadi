@@ -24,7 +24,6 @@ import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
