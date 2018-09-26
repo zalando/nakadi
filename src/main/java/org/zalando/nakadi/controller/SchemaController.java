@@ -11,7 +11,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 
@@ -32,7 +36,8 @@ public class SchemaController {
             @PathVariable("name") final String name,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
-            final NativeWebRequest request) throws InvalidLimitException {
+            final NativeWebRequest request)
+            throws InvalidLimitException, NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeService.get(name);
 
         final PaginationWrapper schemas = schemaService.getSchemas(name, offset, limit);
@@ -42,7 +47,9 @@ public class SchemaController {
     @RequestMapping("/event-types/{name}/schemas/{version}")
     public ResponseEntity<?> getSchemaVersion(@PathVariable("name") final String name,
                                               @PathVariable("version") final String version,
-                                              final NativeWebRequest request) {
+                                              final NativeWebRequest request)
+            throws NoSuchEventTypeException, InternalNakadiException,
+            NoSuchSchemaException, InvalidVersionNumberException {
         if (version.equals("latest")) { // latest schema might be cached with the event type
             final EventType eventType = eventTypeService.get(name);
 

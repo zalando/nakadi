@@ -70,7 +70,7 @@ public class StorageService {
         }
     }
 
-    public List<Storage> listStorages() {
+    public List<Storage> listStorages() throws InternalNakadiException {
         final List<Storage> storages;
         try {
             storages = storageDbRepository.listStorages();
@@ -81,7 +81,7 @@ public class StorageService {
         return storages;
     }
 
-    public Storage getStorage(final String id) {
+    public Storage getStorage(final String id) throws NoSuchStorageException, InternalNakadiException {
         final Optional<Storage> storage;
         try {
             storage = storageDbRepository.getStorage(id);
@@ -136,11 +136,11 @@ public class StorageService {
             LOG.error("DB error occurred when creating storage", e);
             throw new InternalNakadiException(e.getMessage());
         }
-        return;
     }
 
     public void deleteStorage(final String id)
-            throws DbWriteOperationsBlockedException, NoSuchStorageException, StorageIsUsedException {
+            throws DbWriteOperationsBlockedException, NoSuchStorageException,
+            StorageIsUsedException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete storage: write operations on DB " +
                     "are blocked by feature flag.");
@@ -154,10 +154,10 @@ public class StorageService {
             LOG.error("Error with transaction handling when deleting storage", e);
             throw new InternalNakadiException("Transaction error occurred when deleting storage");
         }
-        return;
     }
 
-    public Storage setDefaultStorage(final String defaultStorageId) {
+    public Storage setDefaultStorage(final String defaultStorageId)
+            throws NoSuchStorageException, InternalNakadiException {
         final Storage storage = getStorage(defaultStorageId);
             try {
                 curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));

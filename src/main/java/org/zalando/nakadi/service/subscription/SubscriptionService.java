@@ -84,12 +84,6 @@ public class SubscriptionService {
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
 
-    public enum StatsMode {
-        LIGHT,
-        NORMAL,
-        TIMELAG
-    }
-
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final SubscriptionClientFactory subscriptionClientFactory,
@@ -170,7 +164,7 @@ public class SubscriptionService {
                                                              final boolean showStatus,
                                                              final int limit,
                                                              final int offset)
-            throws InvalidLimitException {
+            throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         if (limit < 1 || limit > 1000) {
             throw new InvalidLimitException("'limit' parameter should have value between 1 and 1000");
         }
@@ -179,24 +173,19 @@ public class SubscriptionService {
             throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
 
-        try {
-            final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
-            final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-            final List<Subscription> subscriptions =
-                    subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
-            final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                    owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
-            final PaginationWrapper<Subscription> paginationWrapper =
-                    new PaginationWrapper<>(subscriptions, paginationLinks);
-            if (showStatus) {
-                final List<Subscription> items = paginationWrapper.getItems();
-                items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
-            }
-            return paginationWrapper;
-        } catch (final ServiceTemporarilyUnavailableException e) {
-            LOG.error("Error occurred during listing of subscriptions", e);
-            throw e;
+        final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
+        final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
+        final List<Subscription> subscriptions =
+                subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
+        final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
+                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
+        final PaginationWrapper<Subscription> paginationWrapper =
+                new PaginationWrapper<>(subscriptions, paginationLinks);
+        if (showStatus) {
+            final List<Subscription> items = paginationWrapper.getItems();
+            items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
         }
+        return paginationWrapper;
     }
 
     public Subscription getSubscription(final String subscriptionId)
@@ -206,30 +195,23 @@ public class SubscriptionService {
 
     public void deleteSubscription(final String subscriptionId)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
-            ServiceTemporarilyUnavailableException {
+            ServiceTemporarilyUnavailableException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
-            authorizationValidator.authorizeSubscriptionAdmin(subscription);
+        authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
-            subscriptionRepository.deleteSubscription(subscriptionId);
-            final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
-                    subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"));
-            zkSubscriptionClient.deleteSubscription();
+        subscriptionRepository.deleteSubscription(subscriptionId);
+        final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
+                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"));
+        zkSubscriptionClient.deleteSubscription();
 
-            nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
-                    .put("subscription_id", subscriptionId)
-                    .put("status", "deleted"));
-
-            return;
-        } catch (final InternalNakadiException e) {
-            LOG.error("Exception can not occur", e);
-            throw e;
-        }
+        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
+                .put("subscription_id", subscriptionId)
+                .put("status", "deleted"));
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
@@ -439,6 +421,12 @@ public class SubscriptionService {
         } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException e) {
             throw new ServiceTemporarilyUnavailableException(e);
         }
+    }
+
+    public enum StatsMode {
+        LIGHT,
+        NORMAL,
+        TIMELAG
     }
 
 }

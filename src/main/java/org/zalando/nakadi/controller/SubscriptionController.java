@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -61,8 +64,8 @@ public class SubscriptionController {
             @RequestParam(value = "show_status", required = false, defaultValue = "false") final boolean showStatus,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
-            final NativeWebRequest request) {
-
+            final NativeWebRequest request)
+            throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return status(OK)
                 .body(subscriptionService
                         .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset));
@@ -70,13 +73,16 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
-                                             final NativeWebRequest request) {
+                                             final NativeWebRequest request)
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         return status(OK).body(subscriptionService.getSubscription(subscriptionId));
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request) {
+                                                final NativeWebRequest request)
+            throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
+            ServiceTemporarilyUnavailableException, InternalNakadiException {
         subscriptionService.deleteSubscription(subscriptionId);
         return status(NO_CONTENT).build();
     }
