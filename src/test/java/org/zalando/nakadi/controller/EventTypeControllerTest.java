@@ -25,9 +25,8 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
@@ -677,19 +676,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPUTRepoNakadiExceptionThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
-
-        doThrow(UnprocessableEntityException.class).when(eventTypeRepository).findByName(eventType.getName());
-
-        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }

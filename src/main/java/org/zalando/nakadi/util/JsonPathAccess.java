@@ -2,7 +2,7 @@ package org.zalando.nakadi.util;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 
 /*
  One could use JsonPath Lib instead: https://github.com/jayway/JsonPath

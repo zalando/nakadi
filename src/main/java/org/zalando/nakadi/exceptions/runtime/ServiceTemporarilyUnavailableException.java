@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class ServiceTemporarilyUnavailableException extends MyNakadiRuntimeException1 {
+public class ServiceTemporarilyUnavailableException extends NakadiBaseException {
     public ServiceTemporarilyUnavailableException(final Exception cause) {
         super(cause.getMessage(), cause);
     }

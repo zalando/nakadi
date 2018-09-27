@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class InvalidCursorOperation extends MyNakadiRuntimeException1 {
+public class InvalidCursorOperation extends NakadiBaseException {
     private final Reason reason;
 
     public enum Reason {

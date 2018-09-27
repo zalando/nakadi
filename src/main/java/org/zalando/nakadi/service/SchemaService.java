@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.problem.Problem;
 
@@ -57,7 +57,7 @@ public class SchemaService {
             return Result.ok(schema);
         } catch (final NoSuchSchemaException e) {
             LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, e.getMessage()));
         }
     }
 }

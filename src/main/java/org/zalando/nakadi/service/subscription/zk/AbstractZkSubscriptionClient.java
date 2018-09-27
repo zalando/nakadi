@@ -12,9 +12,9 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
@@ -112,7 +112,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 throw releaseException;
             }
             return result;
-        } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
+        } catch (final NakadiRuntimeException | NakadiBaseException e) {
             throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);

@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -20,22 +19,13 @@ import org.springframework.security.oauth2.provider.error.DefaultOAuth2Exception
 import org.springframework.security.oauth2.provider.error.OAuth2AccessDeniedHandler;
 import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.springframework.security.web.firewall.FirewalledRequest;
-import org.springframework.security.web.firewall.HttpFirewall;
-import org.springframework.security.web.firewall.RequestRejectedException;
-import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
@@ -197,143 +187,6 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         public String getDetail() {
             return detail;
         }
-    }
-
-    // TODO: REMOVE IT AFTER EVERYONE HAS NORMALIZED THEIR URLS
-    @Bean
-    public HttpFirewall allowUrlEncodedSlashHttpFirewall() {
-        return new AllowForwardSlashesStrictHttpFirewall();
-    }
-
-    // TODO: REMOVE IT AFTER EVERYONE HAS NORMALIZED THEIR URLS
-    private static class AllowForwardSlashesStrictHttpFirewall extends StrictHttpFirewall {
-
-        private static final String ENCODED_PERCENT = "%25";
-        private static final String PERCENT = "%";
-        private static final List<String> FORBIDDEN_ENCODED_PERIOD =
-                Collections.unmodifiableList(Arrays.asList("%2e", "%2E"));
-        private Set<String> encodedUrlBlacklist = new HashSet<>();
-        private Set<String> decodedUrlBlacklist = new HashSet<>();
-
-        AllowForwardSlashesStrictHttpFirewall() {
-            super();
-            this.encodedUrlBlacklist.add(ENCODED_PERCENT);
-            this.encodedUrlBlacklist.addAll(FORBIDDEN_ENCODED_PERIOD);
-            this.decodedUrlBlacklist.add(PERCENT);
-        }
-
-        private static boolean containsOnlyPrintableAsciiCharacters(final String uri) {
-            final int length = uri.length();
-            for (int i = 0; i < length; i++) {
-                final char c = uri.charAt(i);
-                if (c < '\u0020' || c > '\u007e') {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static boolean encodedUrlContains(final HttpServletRequest request, final String value) {
-            if (valueContains(request.getContextPath(), value)) {
-                return true;
-            }
-            return valueContains(request.getRequestURI(), value);
-        }
-
-        private static boolean decodedUrlContains(final HttpServletRequest request, final String value) {
-            if (valueContains(request.getServletPath(), value)) {
-                return true;
-            }
-            if (valueContains(request.getPathInfo(), value)) {
-                return true;
-            }
-            return false;
-        }
-
-        private static boolean valueContains(final String value, final String contains) {
-            return value != null && value.contains(contains);
-        }
-
-        @Override
-        public FirewalledRequest getFirewalledRequest(final HttpServletRequest request)
-                throws RequestRejectedException {
-            rejectedBlacklistedUrls(request);
-
-            if (!isNormalized(request)) {
-                throw new RequestRejectedException("The request was rejected because the URL was not normalized.");
-            }
-
-            final String requestUri = request.getRequestURI();
-            if (!containsOnlyPrintableAsciiCharacters(requestUri)) {
-                throw new RequestRejectedException("The requestURI was rejected because it can only " +
-                        "contain printable ASCII characters.");
-            }
-            return new FirewalledRequest(request) {
-                @Override
-                public void reset() {
-                }
-            };
-        }
-
-        private static boolean isNormalized(final HttpServletRequest request) {
-            if (!isNormalized(request.getRequestURI())) {
-                return false;
-            }
-            if (!isNormalized(request.getContextPath())) {
-                return false;
-            }
-            if (!isNormalized(request.getServletPath())) {
-                return false;
-            }
-            if (!isNormalized(request.getPathInfo())) {
-                return false;
-            }
-            return true;
-        }
-
-        private static boolean isNormalized(final String path) {
-            if (path == null) {
-                return true;
-            }
-
-            // ONLY THIS PART IS REMOVED, ALL OTHER CODE IS THE SAME AS IN StrictHttpFirewall
-            // if (path.indexOf("//") > -1) {
-            //     return false;
-            // }
-
-            for (int j = path.length(); j > 0;) {
-                final int i = path.lastIndexOf('/', j - 1);
-                final int gap = j - i;
-
-                if (gap == 2 && path.charAt(i + 1) == '.') {
-                    // ".", "/./" or "/."
-                    return false;
-                } else if (gap == 3 && path.charAt(i + 1) == '.' && path.charAt(i + 2) == '.') {
-                    return false;
-                }
-
-                j = i;
-            }
-
-            return true;
-        }
-
-        private void rejectedBlacklistedUrls(final HttpServletRequest request) {
-            for (final String forbidden : this.encodedUrlBlacklist) {
-                if (encodedUrlContains(request, forbidden)) {
-                    throw new RequestRejectedException("The request was rejected because the URL contained " +
-                            "a potentially malicious String \"" + forbidden + "\"");
-                }
-            }
-            for (final String forbidden : this.decodedUrlBlacklist) {
-                if (decodedUrlContains(request, forbidden)) {
-                    throw new RequestRejectedException("The request was rejected because the URL contained " +
-                            "a potentially malicious String \"" + forbidden + "\"");
-                }
-            }
-        }
-
     }
 
 }

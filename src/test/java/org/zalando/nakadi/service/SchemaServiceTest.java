@@ -8,7 +8,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 
 import javax.ws.rs.core.Response;

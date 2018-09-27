@@ -11,7 +11,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.view.Cursor;

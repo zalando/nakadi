@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -94,7 +94,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         assertFalse(repository.getStorage(storage.getId()).isPresent());
     }
 
-    @Test(expected = NoStorageException.class)
+    @Test(expected = NoSuchStorageException.class)
     public void testDeleteNoneExistingStorage() throws Exception {
         repository.deleteStorage(randomUUID());
     }

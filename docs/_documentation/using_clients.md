@@ -17,6 +17,7 @@ Nakadi does not ship with a client, but there are some open source clients avail
 | nakadi-client   | Haskell            | <https://nakadi-client.haskell.silverratio.net>                 |
 | go-nakadi       | Go                 | <https://github.com/stoewer/go-nakadi>                          |
 | nakacli         | CLI                | <https://github.com/amrhassan/nakacli>                          |
+| pyNakadi        | Python             | <https://github.com/eiunkar/pyNakadi>                           |
 
 
 More Nakadi related projects can be found here [https://github.com/zalando-nakadi](https://github.com/zalando-nakadi)

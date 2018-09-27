@@ -128,7 +128,7 @@ nakadi:
 
 twintip:
   mapping: /api
-  yaml: "file:nakadi-event-bus-api.yaml"
+  yaml: "file:api/nakadi-event-bus-api.yaml"
 ---
 
 spring:
@@ -156,9 +156,6 @@ kpi:
 
 spring:
   profiles: test
-twintip:
-  mapping: /api
-  yaml: "file:api/nakadi-event-bus-api.yaml"
 
 ---
 

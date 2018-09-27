@@ -4,8 +4,7 @@ import com.codahale.metrics.Meter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.OutputStream;
@@ -38,7 +37,7 @@ public class EventStreamFactory {
 
     public EventStream createEventStream(final OutputStream outputStream, final EventConsumer eventConsumer,
                                          final EventStreamConfig config, final Meter bytesFlushedMeter)
-            throws NakadiException, InvalidCursorException {
+            throws InvalidCursorException {
         return new EventStream(
                 eventConsumer,
                 outputStream,

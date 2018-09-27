@@ -2,8 +2,8 @@ package org.zalando.nakadi.service.subscription.state;
 
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -37,7 +37,7 @@ class ClosingState extends State {
     public void onExit() {
         try {
             freePartitions(new HashSet<>(listeners.keySet()));
-        } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 ex) {
+        } catch (final NakadiRuntimeException | NakadiBaseException ex) {
             // In order not to stuck here one will just log this exception, without rethrowing
             getLog().error("Failed to transfer partitions when leaving ClosingState", ex);
         } finally {

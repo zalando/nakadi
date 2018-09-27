@@ -7,7 +7,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
 import java.util.HashSet;

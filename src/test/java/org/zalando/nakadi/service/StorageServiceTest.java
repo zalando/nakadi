@@ -5,7 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -64,7 +64,7 @@ public class StorageServiceTest {
 
     @Test
     public void testDeleteNonExistingStorage() throws Exception {
-        doThrow(new NoStorageException("")).when(storageDbRepository).deleteStorage("s");
+        doThrow(new NoSuchStorageException("")).when(storageDbRepository).deleteStorage("s");
 
         final Result<Void> result = storageService.deleteStorage("s");
 

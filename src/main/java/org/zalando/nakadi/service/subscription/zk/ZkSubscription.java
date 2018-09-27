@@ -1,6 +1,6 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 
 import java.io.Closeable;
 

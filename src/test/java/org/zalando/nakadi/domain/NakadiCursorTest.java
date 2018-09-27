@@ -2,7 +2,7 @@ package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;

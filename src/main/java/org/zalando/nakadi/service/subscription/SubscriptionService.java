@@ -22,17 +22,15 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
@@ -68,6 +66,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Component
 public class SubscriptionService {
@@ -123,7 +123,7 @@ public class SubscriptionService {
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
@@ -158,7 +158,7 @@ public class SubscriptionService {
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
-            throws InconsistentStateException, NoSubscriptionException, RepositoryProblemException {
+            throws InconsistentStateException, NoSuchSubscriptionException, RepositoryProblemException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),
@@ -209,7 +209,7 @@ public class SubscriptionService {
             return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
@@ -238,19 +238,20 @@ public class SubscriptionService {
             return Result.ok();
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
             return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, e.getMessage()));
         } catch (final NoSuchEventTypeException | InternalNakadiException e) {
             LOG.error("Exception can not occur", e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
         }
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
                                                                         final StatsMode statsMode)
-            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
+            throws InconsistentStateException, NoSuchEventTypeException,
+            NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
@@ -263,7 +264,7 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription,
                                                                     final StatsMode statsMode)
-            throws InconsistentStateException, ServiceTemporarilyUnavailableException {
+            throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
@@ -285,7 +286,8 @@ public class SubscriptionService {
         }
     }
 
-    private List<EventType> getEventTypesForSubscription(final Subscription subscription) {
+    private List<EventType> getEventTypesForSubscription(final Subscription subscription)
+            throws NoSuchEventTypeException {
         return subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)

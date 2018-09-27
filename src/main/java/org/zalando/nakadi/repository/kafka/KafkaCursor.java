@@ -2,7 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 
 import java.util.Objects;
 

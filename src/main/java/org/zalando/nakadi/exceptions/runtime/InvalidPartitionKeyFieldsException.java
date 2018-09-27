@@ -1,4 +1,4 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 public class InvalidPartitionKeyFieldsException extends PartitioningException {
     public InvalidPartitionKeyFieldsException(final String message) {
@@ -9,7 +9,4 @@ public class InvalidPartitionKeyFieldsException extends PartitioningException {
         super(msg, cause);
     }
 
-    public InvalidPartitionKeyFieldsException(final String msg, final String problemMessage, final Exception cause) {
-        super(msg, problemMessage, cause);
-    }
 }

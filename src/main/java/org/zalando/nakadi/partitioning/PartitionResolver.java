@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 

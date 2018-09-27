@@ -13,7 +13,6 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
@@ -82,7 +81,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 15000)
-    public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
+    public void whenIOExceptionThenStreamIsClosed() throws InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -111,7 +110,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 10000)
-    public void whenCrutchWorkedThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
+    public void whenCrutchWorkedThenStreamIsClosed() throws InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -139,7 +138,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 10000)
-    public void whenAuthorizationChangedStreamClosed() throws NakadiException, InterruptedException, IOException {
+    public void whenAuthorizationChangedStreamClosed() throws InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -181,7 +180,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 5000)
-    public void whenStreamTimeoutIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
+    public void whenStreamTimeoutIsSetThenStreamIsClosed() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withBatchLimit(1)
@@ -199,7 +198,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 3000)
-    public void whenStreamLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
+    public void whenStreamLimitIsSetThenStreamIsClosed() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -216,7 +215,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 5000)
-    public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
+    public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -234,7 +233,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 15000)
-    public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
+    public void whenNoEventsToReadThenKeepAliveIsSent() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "000000000000000000")))
@@ -261,7 +260,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 10000)
-    public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
+    public void whenBatchSizeIsSetThenGetEventsInBatches() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", String.format("%18d", 0))))
@@ -291,7 +290,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 10000)
-    public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
+    public void whenReadingEventsTheOrderIsCorrect() throws IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
@@ -332,7 +331,7 @@ public class EventStreamTest {
 
     @Test(timeout = 10000)
     public void whenReadFromMultiplePartitionsThenGroupedInBatchesAccordingToPartition()
-            throws NakadiException, IOException, InterruptedException {
+            throws IOException, InterruptedException {
 
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -373,13 +372,13 @@ public class EventStreamTest {
                 Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
-    private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
+    private static NakadiKafkaConsumer emptyConsumer() {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         when(nakadiKafkaConsumer.readEvents()).thenReturn(Collections.emptyList());
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) throws NakadiException {
+    private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         when(nakadiKafkaConsumer.readEvents())
                 .thenReturn(Collections.singletonList(
@@ -387,8 +386,7 @@ public class EventStreamTest {
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer nCountDummyConsumerForPartition(final int eventNum, final String partition)
-            throws NakadiException {
+    private static NakadiKafkaConsumer nCountDummyConsumerForPartition(final int eventNum, final String partition) {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         final AtomicInteger eventsToCreate = new AtomicInteger(eventNum);
         when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
@@ -403,8 +401,7 @@ public class EventStreamTest {
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer predefinedConsumer(final List<ConsumedEvent> events)
-            throws NakadiException {
+    private static NakadiKafkaConsumer predefinedConsumer(final List<ConsumedEvent> events) {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         final AtomicBoolean sent = new AtomicBoolean(false);
         when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
@@ -418,7 +415,7 @@ public class EventStreamTest {
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer endlessDummyConsumer() throws NakadiException {
+    private static NakadiKafkaConsumer endlessDummyConsumer() {
         return endlessDummyConsumerForPartition("0");
     }
 

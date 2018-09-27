@@ -262,7 +262,7 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 5000)
-    public void whenGetEventsWithUknownTopicThenTopicNotFound() {
+    public void whenGetEventsWithUnknownTopicThenTopicNotFound() {
         given()
                 .when()
                 .get(createStreamEndpointUrl("blah-topic"))

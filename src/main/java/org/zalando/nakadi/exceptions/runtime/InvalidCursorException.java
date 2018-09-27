@@ -1,10 +1,10 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.view.Cursor;
 
-public class InvalidCursorException extends Exception {
+public class InvalidCursorException extends NakadiBaseException {
 
     private final CursorError error;
     private final Cursor cursor;

@@ -1,8 +1,8 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.base.Preconditions;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 import java.util.Objects;
@@ -118,7 +118,7 @@ public abstract class NakadiCursor {
             case KAFKA:
                 return new NakadiKafkaCursor(timeline, partition, offset);
             default:
-                throw new MyNakadiRuntimeException1(
+                throw new NakadiBaseException(
                         "Cursor storage type " + timeline.getStorage().getType() + " not supported");
         }
     }

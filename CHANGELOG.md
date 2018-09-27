@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Upgraded dependencies
+- Refactored exceptions
 
 ## [2.8.3] - 2018-08-01
 
