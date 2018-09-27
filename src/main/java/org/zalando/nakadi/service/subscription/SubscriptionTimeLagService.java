@@ -2,6 +2,8 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -39,7 +41,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 @Component
 public class SubscriptionTimeLagService {
-
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionTimeLagService.class);
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
     private static final int REQUEST_TIMEOUT_MS = 30000;
     private static final int MAX_THREADS_PER_REQUEST = 20;
@@ -71,7 +73,12 @@ public class SubscriptionTimeLagService {
                 if (isCursorAtTail(cursor, endPositions)) {
                     timeLags.put(cursor.getEventTypePartition(), Duration.ZERO);
                 } else {
-                    final CompletableFuture<Duration> timeLagFuture = timeLagHandler.getCursorTimeLagFuture(cursor);
+                    CompletableFuture<Duration> timeLagFuture = new CompletableFuture<>();
+                    try {
+                        timeLagFuture   = timeLagHandler.getCursorTimeLagFuture(cursor);
+                    } catch (TimeoutException e) {
+                        LOG.error("Time lag request timed out");
+                    }
                     futureTimeLags.put(cursor.getEventTypePartition(), timeLagFuture);
                 }
             }
