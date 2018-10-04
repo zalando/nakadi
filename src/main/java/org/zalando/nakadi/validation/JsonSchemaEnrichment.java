@@ -128,10 +128,10 @@ public class JsonSchemaEnrichment {
 
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
-                .put("enum", Arrays.asList(new String[]{"C", "U", "D", "S"})));
+                .put("enum", Arrays.asList("C", "U", "D", "S")));
         properties.put(DATA_CHANGE_WRAP_FIELD, schema);
 
-        wrapper.put("additionalProperties", false);
+        wrapper.put(ADDITIONAL_PROPERTIES, false);
 
         addToRequired(wrapper, new String[]{"data_type", "data_op", "data"});
 

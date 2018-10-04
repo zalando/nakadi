@@ -221,7 +221,7 @@ public class EventTypeService {
         }
         Closeable deletionCloser = null;
         final EventType eventType;
-        Multimap<TopicRepository, String> topicsToDelete = null;
+        final Multimap<TopicRepository, String> topicsToDelete;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
@@ -499,7 +499,14 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validateOrderingKeys(schema, eventType);
+            final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
+            final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
+            if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
+                throw new InvalidEventTypeException(
+                        "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
+            }
+            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, schema);
+            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, schema);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
@@ -521,15 +528,15 @@ public class EventTypeService {
         }
     }
 
-    private void validateOrderingKeys(final Schema schema, final EventTypeBase eventType)
-            throws InvalidEventTypeException, JSONException, SchemaException {
-        final List<String> absentFields = eventType.getOrderingKeyFields().stream()
+    private void validateFieldsInSchema(final String fieldName, final List<String> fields, final Schema schema) {
+        final List<String> absentFields = fields.stream()
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
+            throw new InvalidEventTypeException(fieldName + " " + absentFields + " absent in schema");
         }
     }
+
 
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");
