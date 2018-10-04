@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -111,25 +112,14 @@ public class SubscriptionController {
         return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
     }
 
-    @ExceptionHandler(InconsistentStateException.class)
-    public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException ex,
-                                                           final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
+    @ExceptionHandler({InconsistentStateException.class, ServiceTemporarilyUnavailableException.class})
+    public ResponseEntity<Problem> handleServiceUnavailableResponses(final NakadiBaseException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
         return Responses.create(
                 Problem.valueOf(
                         SERVICE_UNAVAILABLE,
-                        ex.getMessage()),
-                request);
-    }
-
-    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporarilyUnavailable(final ServiceTemporarilyUnavailableException ex,
-                                                                       final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(
-                Problem.valueOf(
-                        SERVICE_UNAVAILABLE,
-                        ex.getMessage()),
+                        exception.getMessage()),
                 request);
     }
 

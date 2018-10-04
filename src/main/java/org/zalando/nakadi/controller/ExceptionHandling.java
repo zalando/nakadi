@@ -33,9 +33,11 @@ import org.zalando.problem.spring.web.advice.Responses;
 import javax.ws.rs.core.Response;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -81,15 +83,21 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
-                                                         final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.explain(), request);
+    public ResponseEntity<Problem> handleAccessDeniedException(final AccessDeniedException exception,
+                                                               final NativeWebRequest request) {
+        return Responses.create(FORBIDDEN, exception.explain(), request);
+    }
+    @ExceptionHandler(IllegalClientIdException.class)
+    public ResponseEntity<Problem> handleForbiddenRequests(final NakadiBaseException exception,
+                                                           final NativeWebRequest request) {
+        return Responses.create(FORBIDDEN, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(IllegalClientIdException.class)
-    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
-                                                                  final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    @ExceptionHandler({RepositoryProblemException.class, ServiceTemporarilyUnavailableException.class})
+    public ResponseEntity<Problem> handleServiceUnavailableResponses(final NakadiBaseException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler
@@ -102,25 +110,11 @@ public final class ExceptionHandling implements ProblemHandling {
         throw exception.getException();
     }
 
-    @ExceptionHandler(RepositoryProblemException.class)
-    public ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
-                                                           final NativeWebRequest request) {
-        LOG.error("Repository problem occurred", exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
     @ExceptionHandler(NakadiBaseException.class)
     public ResponseEntity<Problem> handleInternalError(final NakadiBaseException exception,
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler(LimitReachedException.class)
@@ -146,32 +140,16 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
     }
 
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
-                                                               final NativeWebRequest request) {
+    @ExceptionHandler({NoSuchEventTypeException.class, NoSuchSubscriptionException.class})
+    public ResponseEntity<Problem> handleNotFoundRequests(final NakadiBaseException exception,
+                                                          final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(NoSuchSubscriptionException.class)
-    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
-                                                                     final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(InvalidLimitException.class)
-    public ResponseEntity<Problem> handleInvalidLimitException(
-            final InvalidLimitException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(InvalidVersionNumberException.class)
-    public ResponseEntity<Problem> handleInvalidVersionNumberException(
-            final InvalidVersionNumberException exception,
-            final NativeWebRequest request) {
+    @ExceptionHandler({InvalidLimitException.class, InvalidVersionNumberException.class})
+    public ResponseEntity<Problem> handleBadRequests(final NakadiBaseException exception,
+                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(BAD_REQUEST, exception.getMessage(), request);
     }

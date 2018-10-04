@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -98,24 +99,11 @@ public class EventPublishingController {
         }
     }
 
-    @ExceptionHandler(EnrichmentException.class)
-    public ResponseEntity<Problem> handleEnrichmentException(final EnrichmentException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(PartitioningException.class)
-    public ResponseEntity<Problem> handlePartitioningException(final PartitioningException exception,
-                                                               final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(InvalidPartitionKeyFieldsException.class)
-    public ResponseEntity<Problem> handleInvalidPartitionKeyFieldsException(
-            final InvalidPartitionKeyFieldsException exception,
-            final NativeWebRequest request) {
+    @ExceptionHandler({EnrichmentException.class,
+            PartitioningException.class,
+            InvalidPartitionKeyFieldsException.class})
+    public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
+                                                                      final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }

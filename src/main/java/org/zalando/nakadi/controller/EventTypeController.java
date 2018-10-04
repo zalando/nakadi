@@ -28,6 +28,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -170,6 +171,16 @@ public class EventTypeController {
         return headers;
     }
 
+    @ExceptionHandler({UnableProcessException.class,
+            NoSuchPartitionStrategyException.class,
+            InvalidEventTypeException.class,
+            EventTypeOptionsValidationException.class})
+    public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
+                                                                      final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(EventTypeDeletionException.class)
     public ResponseEntity<Problem> deletion(final EventTypeDeletionException exception,
                                             final NativeWebRequest request) {
@@ -177,58 +188,17 @@ public class EventTypeController {
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> unableProcess(final UnableProcessException exception,
-                                                 final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<Problem> conflict(final ConflictException exception, final NativeWebRequest request) {
+    @ExceptionHandler({ConflictException.class, DuplicatedEventTypeNameException.class})
+    public ResponseEntity<Problem> handleConflictResponses(final NakadiBaseException exception,
+                                                           final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.CONFLICT, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(EventTypeUnavailableException.class)
-    public ResponseEntity<Problem> eventTypeUnavailable(final EventTypeUnavailableException exception,
-                                                        final NativeWebRequest request) {
+    @ExceptionHandler({EventTypeUnavailableException.class, TopicCreationException.class})
+    public ResponseEntity<Problem> handleServiceUnavailableResponses(final NakadiBaseException exception,
+                                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(NoSuchPartitionStrategyException.class)
-    public ResponseEntity<Problem> noSuchPartitionStrategyException(final NoSuchPartitionStrategyException exception,
-                                                                    final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(DuplicatedEventTypeNameException.class)
-    public ResponseEntity<Problem> duplicatedEventTypeNameException(final DuplicatedEventTypeNameException exception,
-                                                                    final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Problem.valueOf(Response.Status.CONFLICT, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(InvalidEventTypeException.class)
-    public ResponseEntity<Problem> invalidEventTypeException(final InvalidEventTypeException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(EventTypeOptionsValidationException.class)
-    public ResponseEntity<Problem> unableProcess(final EventTypeOptionsValidationException exception,
-                                                 final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(TopicCreationException.class)
-    public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
-                                                                final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 }
