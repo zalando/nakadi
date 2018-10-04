@@ -9,9 +9,6 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.SubscriptionTimeLagService;
@@ -79,24 +76,10 @@ public class SubscriptionTimeLagServiceTest {
     }
 
 
-    @Test(expected = InconsistentStateException.class)
+    @Test()
     @SuppressWarnings("unchecked")
-    public void whenNakadiRuntimeExceptionThenInconsistentStateExceptionIsThrown()
-            throws InvalidCursorException {
-        when(timelineService.createEventConsumer(any(), any())).thenThrow(NakadiRuntimeException.class);
-
-        final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
-        final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
-
-        timeLagService.getTimeLags(ImmutableList.of(committedCursor1), ImmutableList.of());
-    }
-
-    @Test(expected = ErrorGettingCursorTimeLagException.class)
-    @SuppressWarnings("unchecked")
-    public void whenInvalidCursorThenErrorGettingCursorTimeLagExceptionIsThrown()
-            throws InvalidCursorException {
-        when(timelineService.createEventConsumer(any(), any())).thenThrow(InvalidCursorException.class);
-
+    public void whenNoSubscriptionThenReturnNull() {
+        when(timelineService.createEventConsumer(any(), any())).thenReturn(null);
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
 

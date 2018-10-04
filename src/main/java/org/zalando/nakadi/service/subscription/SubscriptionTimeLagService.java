@@ -14,7 +14,6 @@ import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
@@ -73,12 +72,7 @@ public class SubscriptionTimeLagService {
                 if (isCursorAtTail(cursor, endPositions)) {
                     timeLags.put(cursor.getEventTypePartition(), Duration.ZERO);
                 } else {
-                    CompletableFuture<Duration> timeLagFuture = new CompletableFuture<>();
-                    try {
-                        timeLagFuture   = timeLagHandler.getCursorTimeLagFuture(cursor);
-                    } catch (TimeoutException e) {
-                        LOG.error("Time lag request timed out");
-                    }
+                    final CompletableFuture<Duration> timeLagFuture = timeLagHandler.getCursorTimeLagFuture(cursor);
                     futureTimeLags.put(cursor.getEventTypePartition(), timeLagFuture);
                 }
             }
@@ -89,21 +83,12 @@ public class SubscriptionTimeLagService {
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
-            return timeLags;
-        } catch (final RejectedExecutionException e) {
-            throw new LimitReachedException("Time lag statistics thread pool exhausted", e);
-        } catch (final TimeoutException e) {
-            throw new TimeLagStatsTimeoutException("Timeout exceeded for time lag statistics", e);
-        } catch (final ExecutionException e) {
-            if (e.getCause() instanceof NakadiBaseException) {
-                throw (NakadiBaseException) e.getCause();
-            } else {
-                throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag",
-                        e.getCause());
-            }
-        } catch (final Throwable e) {
-            throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag", e);
+        } catch (RejectedExecutionException|TimeoutException | ExecutionException  e) {
+            LOG.warn("caught exception the timelag stats are not complete");
+        } catch (Throwable e){
+            LOG.warn("caught throwable the timelag stats are not complete");
         }
+        return timeLags;
     }
 
     private boolean isCursorAtTail(final NakadiCursor cursor, final List<PartitionEndStatistics> endPositions) {
