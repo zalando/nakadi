@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -77,13 +78,14 @@ public class SubscriptionTimeLagServiceTest {
 
 
     @Test()
-    @SuppressWarnings("unchecked")
-    public void whenNoSubscriptionThenReturnNull() {
+    public void whenNoSubscriptionThenReturnSizeZeroMap() {
         when(timelineService.createEventConsumer(any(), any())).thenReturn(null);
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
 
-        timeLagService.getTimeLags(ImmutableList.of(committedCursor1), ImmutableList.of());
+        final Map<EventTypePartition, Duration>  result = timeLagService.getTimeLags
+                (ImmutableList.of(committedCursor1), ImmutableList.of());
+        assertThat(result.size(), is(0));
     }
 
     private PartitionEndStatistics mockEndStats(final NakadiCursor nakadiCursor) {
