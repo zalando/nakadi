@@ -98,7 +98,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("detail", equalTo("topic not found"));
+                .body("detail", equalTo("EventType \"not-existing-topic\" does not exist."));
     }
 
     @Test
@@ -145,7 +145,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("detail", equalTo("topic not found"));
+                .body("detail", equalTo("EventType \"not-existing-topic\" does not exist."));
     }
 
     @Test
