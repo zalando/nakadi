@@ -13,8 +13,6 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -60,9 +58,7 @@ public class SubscriptionTimeLagService {
     }
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
-                                                         final List<PartitionEndStatistics> endPositions)
-            throws ErrorGettingCursorTimeLagException, InconsistentStateException, LimitReachedException,
-            TimeLagStatsTimeoutException {
+                                                         final List<PartitionEndStatistics> endPositions) {
 
         final TimeLagRequestHandler timeLagHandler = new TimeLagRequestHandler(timelineService, threadPool);
         final Map<EventTypePartition, Duration> timeLags = new HashMap<>();
@@ -84,9 +80,9 @@ public class SubscriptionTimeLagService {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
         } catch (RejectedExecutionException|TimeoutException | ExecutionException  e) {
-            LOG.warn("caught exception the timelag stats are not complete");
+            LOG.warn("caught exception the timelag stats are not complete - " + e);
         } catch (Throwable e){
-            LOG.warn("caught throwable the timelag stats are not complete");
+            LOG.warn("caught throwable the timelag stats are not complete" + e);
         }
         return timeLags;
     }
