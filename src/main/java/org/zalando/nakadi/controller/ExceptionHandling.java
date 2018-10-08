@@ -20,7 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
@@ -162,13 +161,6 @@ public final class ExceptionHandling implements ProblemHandling {
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(LimitReachedException.class)
-    public ResponseEntity<Problem> handleLimitReachedException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.warn(exception.getMessage());
-        return Responses.create(MoreStatus.TOO_MANY_REQUESTS, exception.getMessage(), request);
     }
 
     @ExceptionHandler(DbWriteOperationsBlockedException.class)
