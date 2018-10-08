@@ -8,6 +8,7 @@ import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -94,7 +95,7 @@ public class PartitionsControllerTest {
         timelineService = Mockito.mock(TimelineService.class);
         cursorOperationsService = Mockito.mock(CursorOperationsService.class);
         when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
-                .thenThrow(NoSuchEventTypeException.class);
+                .thenThrow(new NoSuchEventTypeException("topic not found"));
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenReturn(Collections.singletonList(TIMELINE));
         when(timelineService.getAllTimelinesOrdered(eq(TEST_EVENT_TYPE)))
@@ -111,7 +112,7 @@ public class PartitionsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new NakadiProblemControllerAdvice())
+                .setControllerAdvice(new NakadiProblemHandling())
                 .build();
     }
 
@@ -233,7 +234,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
+        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE))
+                .thenThrow(new NoSuchEventTypeException("topic not found"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
 
         mockMvc.perform(

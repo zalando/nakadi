@@ -17,25 +17,22 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.SubscriptionCreationDisabledException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
-import org.zalando.nakadi.problem.ValidationProblem;
+import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
 
 import static org.apache.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-import static org.zalando.problem.Status.NOT_FOUND;
-import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 
 @RestController
-public class PostSubscriptionController extends NakadiProblemControllerAdvice {
+public class PostSubscriptionController {
 
     private final FeatureToggleService featureToggleService;
     private final SubscriptionService subscriptionService;
@@ -50,17 +47,20 @@ public class PostSubscriptionController extends NakadiProblemControllerAdvice {
     @RequestMapping(value = "/subscriptions", method = RequestMethod.POST)
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors,
-                                                     final NativeWebRequest request) {
+                                                     final NativeWebRequest request)
+            throws ValidationException,
+            UnprocessableSubscriptionException,
+            InconsistentStateException,
+            SubscriptionCreationDisabledException {
         if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), request);
+            throw new ValidationException(errors);
         }
 
         try {
             return ok(subscriptionService.getExistingSubscription(subscriptionBase));
         } catch (final NoSuchSubscriptionException e) {
             if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
-                return create(Problem.valueOf(SERVICE_UNAVAILABLE,
-                        "Subscription creation is temporarily unavailable"), request);
+                throw new SubscriptionCreationDisabledException("Subscription creation is temporarily unavailable");
             }
             try {
                 final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
@@ -78,18 +78,14 @@ public class PostSubscriptionController extends NakadiProblemControllerAdvice {
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final SubscriptionBase subscription,
             final Errors errors,
-            final NativeWebRequest request) {
+            final NativeWebRequest request)
+            throws NoSuchSubscriptionException, ValidationException, SubscriptionUpdateConflictException {
         if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), request);
+            throw new ValidationException(errors);
         }
-        try {
-            subscriptionService.updateSubscription(subscriptionId, subscription);
-            return ResponseEntity.noContent().build();
-        } catch (final SubscriptionUpdateConflictException ex) {
-            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()), request);
-        } catch (final NoSuchSubscriptionException ex) {
-            return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
-        }
+        subscriptionService.updateSubscription(subscriptionId, subscription);
+        return ResponseEntity.noContent().build();
+
     }
 
     private ResponseEntity<?> ok(final Subscription existingSubscription) {

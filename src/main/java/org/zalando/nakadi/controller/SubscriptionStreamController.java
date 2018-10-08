@@ -54,7 +54,7 @@ import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
-public class SubscriptionStreamController extends NakadiProblemControllerAdvice {
+public class SubscriptionStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 

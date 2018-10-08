@@ -13,8 +13,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
@@ -26,7 +26,7 @@ import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
 
 @RestController
 @RequestMapping(value = "/settings")
-public class SettingsController extends NakadiProblemControllerAdvice {
+public class SettingsController {
 
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
@@ -102,12 +102,12 @@ public class SettingsController extends NakadiProblemControllerAdvice {
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
                                           final Errors errors,
-                                          final NativeWebRequest request) {
+                                          final NativeWebRequest request) throws ValidationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), request);
+            throw new ValidationException(errors);
         }
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();

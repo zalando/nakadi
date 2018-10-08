@@ -7,13 +7,15 @@ import org.junit.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
+import org.zalando.nakadi.controller.advice.PostSubscriptionHandler;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -45,7 +47,7 @@ public class PostSubscriptionControllerTest {
 
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
 
-    private final StandaloneMockMvcBuilder mockMvcBuilder;
+    private final MockMvc mockMvc;
 
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -65,10 +67,11 @@ public class PostSubscriptionControllerTest {
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
                 subscriptionService);
 
-        mockMvcBuilder = standaloneSetup(controller)
+        mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setControllerAdvice(new NakadiProblemControllerAdvice())
-                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
+                .setControllerAdvice(new PostSubscriptionHandler(), new NakadiProblemHandling())
+                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver())
+                .build();
     }
 
     @Test
@@ -217,7 +220,7 @@ public class PostSubscriptionControllerTest {
         final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions")
                 .contentType(APPLICATION_JSON)
                 .content(subscription);
-        return mockMvcBuilder.build().perform(requestBuilder);
+        return mockMvc.perform(requestBuilder);
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {

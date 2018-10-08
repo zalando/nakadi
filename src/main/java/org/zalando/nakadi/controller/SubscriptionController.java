@@ -27,7 +27,7 @@ import static org.springframework.http.ResponseEntity.status;
 
 @RestController
 @RequestMapping(value = "/subscriptions")
-public class SubscriptionController extends NakadiProblemControllerAdvice {
+public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
 

@@ -7,6 +7,7 @@ import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.problem.Problem;
 
@@ -16,7 +17,7 @@ public class NakadiProblemHandlingTest {
 
     @Test
     public void testIllegalClientIdException() {
-        final NakadiProblemHandling nakadiProblemHandling = new NakadiProblemControllerAdvice();
+        final NakadiProblemHandling nakadiProblemHandling = new NakadiProblemHandling();
         final NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
         Mockito.when(mockedRequest.getHeader(Matchers.any())).thenReturn("");
 

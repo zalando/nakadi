@@ -23,7 +23,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @RestController
 @RequestMapping(value = "/event-types/{name}/timelines", produces = APPLICATION_JSON_VALUE)
-public class TimelinesController extends NakadiProblemControllerAdvice {
+public class TimelinesController {
 
     private final TimelineService timelineService;
 

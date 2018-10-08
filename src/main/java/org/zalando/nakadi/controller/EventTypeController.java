@@ -30,8 +30,8 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -46,7 +46,7 @@ import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EV
 
 @RestController
 @RequestMapping(value = "/event-types")
-public class EventTypeController extends NakadiProblemControllerAdvice {
+public class EventTypeController {
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
@@ -76,13 +76,13 @@ public class EventTypeController extends NakadiProblemControllerAdvice {
                                     final Errors errors,
                                     final NativeWebRequest request)
             throws TopicCreationException, InternalNakadiException, NoSuchPartitionStrategyException,
-            DuplicatedEventTypeNameException, InvalidEventTypeException {
+            DuplicatedEventTypeNameException, InvalidEventTypeException, ValidationException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
         if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), request);
+            throw new ValidationException(errors);
         }
 
         eventTypeService.create(eventType);
@@ -118,9 +118,10 @@ public class EventTypeController extends NakadiProblemControllerAdvice {
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
-            NoSuchPartitionStrategyException{
+            NoSuchPartitionStrategyException,
+            ValidationException {
         if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), request);
+            throw new ValidationException(errors);
         }
 
         eventTypeService.update(name, eventType);
