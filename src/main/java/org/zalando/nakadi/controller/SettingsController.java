@@ -1,7 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,13 +8,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -46,18 +44,19 @@ public class SettingsController {
     }
 
     @RequestMapping(path = "/blacklist", method = RequestMethod.GET)
-    public ResponseEntity<?> getBlacklist() {
+    public ResponseEntity<?> getBlacklist() throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         return ResponseEntity.ok(blacklistService.getBlacklist());
     }
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.PUT)
     public ResponseEntity blacklist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                    @PathVariable("name") final String name) {
+                                    @PathVariable("name") final String name)
+            throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         blacklistService.blacklist(name, blacklistType);
         return ResponseEntity.noContent().build();
@@ -65,55 +64,53 @@ public class SettingsController {
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.DELETE)
     public ResponseEntity whitelist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                    @PathVariable("name") final String name) {
+                                    @PathVariable("name") final String name)
+            throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         blacklistService.whitelist(name, blacklistType);
         return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(path = "/features", method = RequestMethod.GET)
-    public ResponseEntity<?> getFeatures(final Client client) {
+    public ResponseEntity<?> getFeatures()
+            throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         return ResponseEntity.ok(new ItemsWrapper<>(featureToggleService.getFeatures()));
     }
 
     @RequestMapping(path = "/features", method = RequestMethod.POST)
-    public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper,
-                                        final Client client) {
+    public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper)
+            throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         featureToggleService.setFeature(featureWrapper);
         return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.GET)
-    public ResponseEntity<?> getAdmins() {
+    public ResponseEntity<?> getAdmins() throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         return ResponseEntity.ok(ResourceAuthorization.fromPermissionsList(adminService.getAdmins()));
     }
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
-                                          final Errors errors,
-                                          final NativeWebRequest request) throws ValidationException {
+                                          final Errors errors)
+            throws ValidationException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();
-    }
-
-    private boolean isNotAdmin(final Client client) {
-        return !client.getClientId().equals(securitySettings.getAdminClientId());
     }
 }

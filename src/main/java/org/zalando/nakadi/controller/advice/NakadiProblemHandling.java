@@ -25,6 +25,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -495,5 +496,12 @@ public class NakadiProblemHandling implements ProblemHandling {
     public ResponseEntity<Problem> handleValidationException(final ValidationException exception,
                                                              final NativeWebRequest request) {
         return create(new ValidationProblem(exception.getErrors()), request);
+    }
+
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<Problem> handleForbiddenOperationException(final ForbiddenOperationException exception,
+                                                                     final NativeWebRequest request) {
+        LOG.error(exception.getMessage());
+        return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
     }
 }

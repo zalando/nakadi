@@ -200,5 +200,4 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         }
         return null;
     }
-
 }

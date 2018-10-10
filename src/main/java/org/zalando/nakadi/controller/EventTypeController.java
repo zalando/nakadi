@@ -20,6 +20,8 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
@@ -76,9 +78,10 @@ public class EventTypeController {
                                     final Errors errors,
                                     final NativeWebRequest request)
             throws TopicCreationException, InternalNakadiException, NoSuchPartitionStrategyException,
-            DuplicatedEventTypeNameException, InvalidEventTypeException, ValidationException {
+            DuplicatedEventTypeNameException, InvalidEventTypeException, ValidationException,
+            FeatureNotAvailableException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
-            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+            throw new FeatureNotAvailableException("Event Type creation is disabled", DISABLE_EVENT_TYPE_CREATION);
         }
 
         if (errors.hasErrors()) {
@@ -99,7 +102,7 @@ public class EventTypeController {
             ServiceTemporarilyUnavailableException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)
                 && !adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            throw new ForbiddenOperationException("Event Type deletion is disabled");
         }
 
         eventTypeService.delete(eventTypeName);

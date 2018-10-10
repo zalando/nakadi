@@ -1,7 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,15 +107,6 @@ public class EventPublishingController {
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
 
             return response(result);
-        } catch (final JSONException e) {
-            LOG.debug("Problem parsing event", e);
-            throw e;
-        } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Event type not found.", e.getMessage());
-            throw e;
-        } catch (final EventTypeTimeoutException e) {
-            LOG.debug("Failed to publish batch", e);
-            throw e;
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }
