@@ -77,13 +77,13 @@ public class SubscriptionTimeLagServiceTest {
     }
 
 
-    @Test()
+    @Test
     public void whenNoSubscriptionThenReturnSizeZeroMap() {
         when(timelineService.createEventConsumer(any(), any())).thenReturn(null);
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
 
-        final Map<EventTypePartition, Duration>  result = timeLagService.getTimeLags
+        final Map<EventTypePartition, Duration> result = timeLagService.getTimeLags
                 (ImmutableList.of(committedCursor1), ImmutableList.of());
         assertThat(result.size(), is(0));
     }
