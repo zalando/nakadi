@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
@@ -28,18 +27,15 @@ public class SettingsController {
 
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
-    private final SecuritySettings securitySettings;
     private final AdminService adminService;
 
 
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
-                              final SecuritySettings securitySettings,
                               final AdminService adminService) {
         this.blacklistService = blacklistService;
         this.featureToggleService = featureToggleService;
-        this.securitySettings = securitySettings;
         this.adminService = adminService;
     }
 
