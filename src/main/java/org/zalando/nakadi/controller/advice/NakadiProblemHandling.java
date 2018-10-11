@@ -92,13 +92,6 @@ public class NakadiProblemHandling implements ProblemHandling {
         return create(Problem.valueOf(FORBIDDEN, exception.explain()), request);
     }
 
-    @ExceptionHandler(BlockedException.class)
-    public ResponseEntity<Problem> handleBlockedException(final BlockedException exception,
-                                                          final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
-    }
-
     @ExceptionHandler(DbWriteOperationsBlockedException.class)
     public ResponseEntity<Problem> handleDbWriteOperationsBlockedException(
             final DbWriteOperationsBlockedException exception, final NativeWebRequest request) {
@@ -115,12 +108,6 @@ public class NakadiProblemHandling implements ProblemHandling {
         return create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
     }
 
-    @ExceptionHandler(IllegalClientIdException.class)
-    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
-                                                                  final NativeWebRequest request) {
-        return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
-    }
-
     @ExceptionHandler(InternalNakadiException.class)
     public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException exception,
                                                                  final NativeWebRequest request) {
@@ -128,18 +115,9 @@ public class NakadiProblemHandling implements ProblemHandling {
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(InvalidLimitException.class)
-    public ResponseEntity<Problem> handleInvalidLimitException(
-            final InvalidLimitException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(InvalidVersionNumberException.class)
-    public ResponseEntity<Problem> handleInvalidVersionNumberException(
-            final InvalidVersionNumberException exception,
-            final NativeWebRequest request) {
+    @ExceptionHandler({InvalidLimitException.class, InvalidVersionNumberException.class})
+    public ResponseEntity<Problem> handleBadRequestResponses(final NakadiBaseException exception,
+                                                             final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
     }
@@ -168,23 +146,9 @@ public class NakadiProblemHandling implements ProblemHandling {
         throw exception.getException();
     }
 
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
-                                                                  final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(NoSuchSchemaException.class)
-    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
-                                                               final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(NoSuchSubscriptionException.class)
-    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
-                                                                     final NativeWebRequest request) {
+    @ExceptionHandler({NoSuchEventTypeException.class, NoSuchSchemaException.class, NoSuchSubscriptionException.class})
+    public ResponseEntity<Problem> handleNotFoundResponses(final NakadiBaseException exception,
+                                                           final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
@@ -217,9 +181,9 @@ public class NakadiProblemHandling implements ProblemHandling {
         return create(new ValidationProblem(exception.getErrors()), request);
     }
 
-    @ExceptionHandler(ForbiddenOperationException.class)
-    public ResponseEntity<Problem> handleForbiddenOperationException(final ForbiddenOperationException exception,
-                                                                     final NativeWebRequest request) {
+    @ExceptionHandler({ForbiddenOperationException.class, BlockedException.class, IllegalClientIdException.class})
+    public ResponseEntity<Problem> handleForbiddenResponses(final NakadiBaseException exception,
+                                                            final NativeWebRequest request) {
         LOG.error(exception.getMessage());
         return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
     }

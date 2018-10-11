@@ -21,7 +21,7 @@ public class NakadiProblemHandlingTest {
         final NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
         Mockito.when(mockedRequest.getHeader(Matchers.any())).thenReturn("");
 
-        final ResponseEntity<Problem> problemResponseEntity = nakadiProblemHandling.handleIllegalClientIdException(
+        final ResponseEntity<Problem> problemResponseEntity = nakadiProblemHandling.handleForbiddenResponses(
                 new IllegalClientIdException("You don't have access to this event type"), mockedRequest);
 
         Assert.assertEquals(problemResponseEntity.getStatusCode(), HttpStatus.FORBIDDEN);
