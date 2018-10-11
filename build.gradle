@@ -15,6 +15,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
+        classpath 'org.owasp:dependency-check-gradle:3.3.2'
     }
 }
 
@@ -28,6 +29,7 @@ apply plugin: 'checkstyle'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
+apply plugin: 'org.owasp.dependencycheck'
 
 group 'org.zalando'
 sourceCompatibility = 1.8
