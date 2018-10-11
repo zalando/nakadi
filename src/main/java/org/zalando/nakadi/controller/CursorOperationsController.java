@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class CursorOperationsController {
@@ -138,6 +139,13 @@ public class CursorOperationsController {
         LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
         return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                 clientErrorMessage(e.getReason())), request);
+    }
+
+    @ExceptionHandler(CursorConversionException.class)
+    public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
+                                                                   final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {

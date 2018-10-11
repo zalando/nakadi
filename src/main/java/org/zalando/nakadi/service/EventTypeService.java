@@ -59,7 +59,6 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.problem.Problem;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -70,8 +69,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
@@ -439,17 +436,9 @@ public class EventTypeService {
                         .setRetentionTime(timeline.getTopic(), retentionTime));
     }
 
-    public Result<EventType> get(final String eventTypeName) {
-        try {
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            return Result.ok(eventType);
-        } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Could not find EventType: {}", eventTypeName);
-            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
-        } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type " + eventTypeName, e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
-        }
+    public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        return eventType;
     }
 
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)

@@ -16,15 +16,14 @@ import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.CompactionException;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -74,9 +73,11 @@ public class EventPublisher {
     public EventPublishResult publish(final String events, final String eventTypeName)
             throws NoSuchEventTypeException,
             InternalNakadiException,
+            EnrichmentException,
             EventTypeTimeoutException,
             AccessDeniedException,
-            ServiceTemporarilyUnavailableException {
+            ServiceTemporarilyUnavailableException,
+            PartitioningException{
         return publishInternal(events, eventTypeName, true);
     }
 
@@ -84,7 +85,7 @@ public class EventPublisher {
                                        final String eventTypeName,
                                        final boolean useAuthz)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
-            AccessDeniedException, ServiceTemporarilyUnavailableException {
+            AccessDeniedException, ServiceTemporarilyUnavailableException, EnrichmentException, PartitioningException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -111,9 +112,6 @@ public class EventPublisher {
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
-            return aborted(EventPublishingStep.PARTITIONING, batch);
-        } catch (final CompactionException e) {
-            LOG.debug("Event compaction error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
@@ -157,7 +155,8 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
+    private void partition(final List<BatchItem> batch, final EventType eventType)
+            throws PartitioningException {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
@@ -170,7 +169,7 @@ public class EventPublisher {
         }
     }
 
-    private void compact(final List<BatchItem> batch, final EventType eventType) throws CompactionException {
+    private void compact(final List<BatchItem> batch, final EventType eventType) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()

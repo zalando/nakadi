@@ -20,7 +20,7 @@ public class ExceptionHandlingTest {
         final NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
         Mockito.when(mockedRequest.getHeader(Matchers.any())).thenReturn("");
 
-        final ResponseEntity<Problem> problemResponseEntity = exceptionHandling.handleIllegalClientIdException(
+        final ResponseEntity<Problem> problemResponseEntity = exceptionHandling.handleForbiddenRequests(
                 new IllegalClientIdException("You don't have access to this event type"), mockedRequest);
 
         Assert.assertEquals(problemResponseEntity.getStatusCode(), HttpStatus.FORBIDDEN);

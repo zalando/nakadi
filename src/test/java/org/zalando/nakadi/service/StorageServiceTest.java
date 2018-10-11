@@ -11,9 +11,6 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.utils.TestUtils;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -36,41 +33,32 @@ public class StorageServiceTest {
     }
 
     @Test
-    public void testCreateStorage() throws Exception {
+    public void testCreateStorage() {
         final Storage dbReply = createTestStorage();
 
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
 
         final JSONObject storage = createTestStorageJson("s1");
-        final Result<Void> result = storageService.createStorage(storage);
-        assertTrue(result.isSuccessful());
+        storageService.createStorage(storage);
     }
 
     @Test
     public void testDeleteUnusedStorage() throws Exception {
-        assertTrue(storageService.deleteStorage("s3").isSuccessful());
+        storageService.deleteStorage("s3");
     }
 
-    @Test
+    @Test(expected = StorageIsUsedException.class)
     public void testDeleteStorageInUse() throws Exception {
         doThrow(new StorageIsUsedException("", null)).when(storageDbRepository).deleteStorage("s");
 
-        final Result<Void> result = storageService.deleteStorage("s");
-
-        final Result<Void> expectedResult = Result.forbidden("Storage s is in use");
-        assertThat(result.getProblem().getStatus(), equalTo(expectedResult.getProblem().getStatus()));
-        assertThat(result.getProblem().getDetail(), equalTo(expectedResult.getProblem().getDetail()));
+        storageService.deleteStorage("s");
     }
 
-    @Test
+    @Test(expected = NoSuchStorageException.class)
     public void testDeleteNonExistingStorage() throws Exception {
         doThrow(new NoSuchStorageException("")).when(storageDbRepository).deleteStorage("s");
 
-        final Result<Void> result = storageService.deleteStorage("s");
-
-        final Result<Void> expectedResult = Result.notFound("No storage with ID s");
-        assertThat(result.getProblem().getStatus(), equalTo(expectedResult.getProblem().getStatus()));
-        assertThat(result.getProblem().getDetail(), equalTo(expectedResult.getProblem().getDetail()));
+        storageService.deleteStorage("s");
     }
 
     private JSONObject createTestStorageJson(final String id) {
