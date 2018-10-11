@@ -133,7 +133,8 @@ public class EventTypeController {
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
-    public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
+    public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request)
+            throws NoSuchEventTypeException, InternalNakadiException{
         final EventType eventType = eventTypeService.get(name);
         return status(HttpStatus.OK).body(eventType);
     }

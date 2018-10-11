@@ -36,7 +36,8 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
-    public ResponseEntity<?> listStorages(final NativeWebRequest request) throws InternalNakadiException {
+    public ResponseEntity<?> listStorages(final NativeWebRequest request)
+            throws InternalNakadiException, PluginException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
@@ -46,7 +47,9 @@ public class StoragesController {
 
     @RequestMapping(value = "/storages", method = RequestMethod.POST)
     public ResponseEntity<?> createStorage(@RequestBody final String storage,
-                                           final NativeWebRequest request) {
+                                           final NativeWebRequest request)
+            throws PluginException, DbWriteOperationsBlockedException,
+            DuplicatedStorageException, InternalNakadiException, UnknownStorageTypeException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
@@ -55,7 +58,8 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.GET)
-    public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+    public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request)
+            throws PluginException, NoSuchStorageException, InternalNakadiException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             return status(FORBIDDEN).build();
         }
@@ -64,7 +68,9 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+    public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request)
+            throws PluginException, DbWriteOperationsBlockedException, NoSuchStorageException,
+            StorageIsUsedException, InternalNakadiException{
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }
@@ -73,7 +79,8 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages/default/{id}", method = RequestMethod.PUT)
-    public ResponseEntity<?> setDefaultStorage(@PathVariable("id") final String id, final NativeWebRequest request) {
+    public ResponseEntity<?> setDefaultStorage(@PathVariable("id") final String id, final NativeWebRequest request)
+            throws PluginException, NoSuchStorageException, InternalNakadiException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             return status(FORBIDDEN).build();
         }

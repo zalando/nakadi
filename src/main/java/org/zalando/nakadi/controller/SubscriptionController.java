@@ -43,8 +43,8 @@ public class SubscriptionController {
             @RequestParam(value = "show_status", required = false, defaultValue = "false") final boolean showStatus,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
-            final NativeWebRequest request) {
-
+            final NativeWebRequest request)
+            throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return status(OK)
                 .body(subscriptionService
                         .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset));
@@ -52,13 +52,16 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
-                                             final NativeWebRequest request) {
+                                             final NativeWebRequest request)
+            throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         return status(OK).body(subscriptionService.getSubscription(subscriptionId));
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request) {
+                                                final NativeWebRequest request)
+            throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
+            ServiceTemporarilyUnavailableException, InternalNakadiException {
         subscriptionService.deleteSubscription(subscriptionId);
         return status(NO_CONTENT).build();
     }

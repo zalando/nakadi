@@ -140,6 +140,19 @@ public class SubscriptionAT extends BaseAT {
     }
 
     @Test
+    public void testSubscriptionWithNullAuthorisation() {
+        final  EventType eventType = createEventType();
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\""
+                + eventType.getName() + "\"], \"read_from\": \"end\", \"consumer_group\":\"test\"," +
+                "\"authorization\": {\"admins\": [], \"readers\": []}}";
+        final Response response = given().body(subscription).contentType(JSON).post(SUBSCRIPTIONS_URL);
+        response.then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .contentType(JSON)
+                .body("title", equalTo("Unprocessable Entity"));
+    }
+
+    @Test
     public void testSubscriptionWithManyEventTypesIsCreated() throws IOException {
         final List<String> eventTypes = IntStream.range(0, 10).mapToObj(i -> createEventType())
                 .map(EventTypeBase::getName)
