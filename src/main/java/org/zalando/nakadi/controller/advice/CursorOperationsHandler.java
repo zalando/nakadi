@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.CursorOperationsController;
+import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.problem.Problem;
@@ -25,6 +26,13 @@ public class CursorOperationsHandler implements AdviceTrait {
         LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY,
                 clientErrorMessage(exception.getReason())), request);
+    }
+
+    @ExceptionHandler(CursorConversionException.class)
+    public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
+                                                                   final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
