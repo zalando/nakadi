@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.provider.error.DefaultOAuth2Exception
 import org.springframework.security.oauth2.provider.error.OAuth2AccessDeniedHandler;
 import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+import org.zalando.nakadi.exceptions.runtime.UnknownStatusCodeException;
 import org.zalando.problem.Status;
 import org.zalando.problem.StatusType;
 import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecurityExpressionHandler;
@@ -140,11 +141,11 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
         @Override
         protected void writeInternal(final Object object, final HttpOutputMessage outputMessage)
-                throws IOException, HttpMessageNotWritableException {
+                throws IOException, HttpMessageNotWritableException, UnknownStatusCodeException {
             super.writeInternal(toJsonResponse(object), outputMessage);
         }
 
-        protected Object toJsonResponse(final Object object) {
+        protected Object toJsonResponse(final Object object) throws UnknownStatusCodeException {
             if (object instanceof OAuth2Exception) {
                 final OAuth2Exception oae = (OAuth2Exception) object;
                 if (oae.getCause() != null) {
@@ -192,12 +193,12 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         }
     }
 
-    private static Status fromStatusCode(final int code) {
+    private static Status fromStatusCode(final int code) throws UnknownStatusCodeException {
         for (final Status status: Status.values()) {
             if (status.getStatusCode() == code) {
                 return status;
             }
         }
-        return null;
+        throw new UnknownStatusCodeException("Unknown status code: " + code);
     }
 }
