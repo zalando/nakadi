@@ -29,14 +29,14 @@ public class TimelinesHandler implements AdviceTrait {
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> notFound(final NotFoundException exception, final NativeWebRequest request) {
-        LOG.error(exception.getMessage());
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Problem> handleConflictException(final ConflictException exception,
                                                            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(CONFLICT, exception.getMessage()), request);
     }
 
@@ -54,7 +54,7 @@ public class TimelinesHandler implements AdviceTrait {
     @ExceptionHandler({UnableProcessException.class, TimelinesNotSupportedException.class})
     public ResponseEntity<Problem> handleUnprocessableEntityResponse(final NakadiBaseException exception,
                                                                      final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 }

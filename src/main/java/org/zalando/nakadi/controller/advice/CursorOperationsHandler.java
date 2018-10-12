@@ -31,7 +31,7 @@ public class CursorOperationsHandler implements AdviceTrait {
     @ExceptionHandler(CursorConversionException.class)
     public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
                                                                    final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 

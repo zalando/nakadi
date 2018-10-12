@@ -29,14 +29,14 @@ public class CursorsHandler implements AdviceTrait {
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException exception,
                                                                 final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Problem> handleMethodArgumentNotValid(final MethodArgumentNotValidException exception,
                                                                 final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(new ValidationProblem(exception.getBindingResult()), request);
     }
 
@@ -57,14 +57,14 @@ public class CursorsHandler implements AdviceTrait {
     @ExceptionHandler(InvalidStreamIdException.class)
     public ResponseEntity<Problem> handleInvalidStreamIdException(final InvalidStreamIdException exception,
                                                                   final NativeWebRequest request) {
-        LOG.warn("Stream id {} is not found: {}", exception.getStreamId(), exception.getMessage());
+        LOG.debug("Stream id {} is not found: {}", exception.getStreamId(), exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(RequestInProgressException.class)
     public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException exception,
                                                                     final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(CONFLICT, exception.getMessage()), request);
     }
 

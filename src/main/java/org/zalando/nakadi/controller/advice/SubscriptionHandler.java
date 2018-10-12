@@ -25,14 +25,14 @@ public class SubscriptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleErrorGettingCursorTimeLagException(
             final ErrorGettingCursorTimeLagException exception,
             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
     public ResponseEntity<Problem> handleInconsistentStateExcetpion(final InconsistentStateException exception,
                                                                     final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 

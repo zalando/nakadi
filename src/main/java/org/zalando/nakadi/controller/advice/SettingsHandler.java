@@ -29,7 +29,7 @@ public class SettingsHandler implements AdviceTrait {
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final RuntimeException exception,
                                                                 final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 }

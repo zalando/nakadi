@@ -27,6 +27,7 @@ public class EventPublishingHandler implements AdviceTrait {
     @ExceptionHandler(EventTypeTimeoutException.class)
     public ResponseEntity<Problem> handleEventTypeTimeoutException(final EventTypeTimeoutException exception,
                                                                    final NativeWebRequest request) {
+        LOG.error(exception.getMessage());
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 

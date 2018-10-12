@@ -27,6 +27,7 @@ public class PostSubscriptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleSubscriptionUpdateConflictException(
             final SubscriptionUpdateConflictException exception,
             final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
@@ -34,21 +35,16 @@ public class PostSubscriptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleSubscriptionCreationDisabledException(
             final SubscriptionCreationDisabledException exception,
             final NativeWebRequest request) {
+        LOG.warn(exception.getMessage());
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler({
             WrongInitialCursorsException.class,
-            TooManyPartitionsException.class})
+            TooManyPartitionsException.class,
+            UnprocessableSubscriptionException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiBaseException exception,
                                                                    final NativeWebRequest request) {
-        LOG.debug("Error occurred when working with subscriptions", exception);
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(UnprocessableSubscriptionException.class)
-    public ResponseEntity<Problem> handleUnprocessableSubscriptionException(
-            final UnprocessableSubscriptionException exception, final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }

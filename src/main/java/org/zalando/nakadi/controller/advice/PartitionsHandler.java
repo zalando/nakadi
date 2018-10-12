@@ -24,13 +24,13 @@ public class PartitionsHandler implements AdviceTrait {
     @ExceptionHandler(InvalidCursorOperation.class)
     public ResponseEntity<?> handleInvalidCursorOperation(final InvalidCursorOperation exception,
                                                           final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason(), exception);
+        LOG.debug("User provided invalid cursor for operation. Reason: " + exception.getReason());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
-        return create(Problem.valueOf(NOT_FOUND, ex.getMessage()), request);
+    public ResponseEntity<Problem> notFound(final NotFoundException exception, final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 }

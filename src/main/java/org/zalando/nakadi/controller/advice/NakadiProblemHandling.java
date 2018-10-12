@@ -64,7 +64,7 @@ public class NakadiProblemHandling implements ProblemHandling {
                 + errorTraceId + ")"), request);
     }
 
-    public String generateErrorTraceId() {
+    private String generateErrorTraceId() {
         return "ETI" + RandomStringUtils.randomAlphanumeric(24);
     }
 
@@ -111,7 +111,7 @@ public class NakadiProblemHandling implements ProblemHandling {
     @ExceptionHandler(InternalNakadiException.class)
     public ResponseEntity<Problem> handleInternalNakadiException(final InternalNakadiException exception,
                                                                  final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
 
@@ -125,7 +125,7 @@ public class NakadiProblemHandling implements ProblemHandling {
     @ExceptionHandler(LimitReachedException.class)
     public ResponseEntity<Problem> handleLimitReachedException(
             final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.warn(exception.getMessage());
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(TOO_MANY_REQUESTS, exception.getMessage()), request);
     }
 
@@ -184,7 +184,7 @@ public class NakadiProblemHandling implements ProblemHandling {
     @ExceptionHandler({ForbiddenOperationException.class, BlockedException.class, IllegalClientIdException.class})
     public ResponseEntity<Problem> handleForbiddenResponses(final NakadiBaseException exception,
                                                             final NativeWebRequest request) {
-        LOG.error(exception.getMessage());
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(FORBIDDEN, exception.getMessage()), request);
     }
 }

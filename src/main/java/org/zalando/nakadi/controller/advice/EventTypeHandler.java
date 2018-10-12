@@ -29,27 +29,20 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 @ControllerAdvice(assignableTypes = EventTypeController.class)
 public class EventTypeHandler implements AdviceTrait {
 
-    @ExceptionHandler(NoSuchPartitionStrategyException.class)
-    public ResponseEntity<Problem> handleNoSuchPartitionStrategyException(
-            final NoSuchPartitionStrategyException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
-    }
-
     @ExceptionHandler({InvalidEventTypeException.class,
             UnableProcessException.class,
-            EventTypeOptionsValidationException.class})
+            EventTypeOptionsValidationException.class,
+            NoSuchPartitionStrategyException.class})
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(EventTypeDeletionException.class)
     public ResponseEntity<Problem> handleEventTypeDeletionException(final EventTypeDeletionException exception,
                                                                     final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
 
@@ -63,7 +56,7 @@ public class EventTypeHandler implements AdviceTrait {
     @ExceptionHandler({EventTypeUnavailableException.class, TopicCreationException.class})
     public ResponseEntity<Problem> handleServiceUnavailableResponses(final NakadiBaseException exception,
                                                                      final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 }
