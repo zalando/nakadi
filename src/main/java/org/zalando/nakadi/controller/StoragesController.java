@@ -12,6 +12,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
+import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
@@ -24,7 +25,6 @@ import org.zalando.nakadi.service.StorageService;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
@@ -43,9 +43,9 @@ public class StoragesController {
 
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
     public ResponseEntity<?> listStorages(final NativeWebRequest request)
-            throws InternalNakadiException, PluginException {
+            throws InternalNakadiException, PluginException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            return status(FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
         final List<Storage> storages = storageService.listStorages();
         return status(OK).body(storages);
@@ -55,9 +55,10 @@ public class StoragesController {
     public ResponseEntity<?> createStorage(@RequestBody final String storage,
                                            final NativeWebRequest request)
             throws PluginException, DbWriteOperationsBlockedException,
-            DuplicatedStorageException, InternalNakadiException, UnknownStorageTypeException {
+            DuplicatedStorageException, InternalNakadiException, UnknownStorageTypeException,
+            ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return status(FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
         storageService.createStorage(new JSONObject(storage));
         return status(CREATED).build();
@@ -65,9 +66,9 @@ public class StoragesController {
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request)
-            throws PluginException, NoSuchStorageException, InternalNakadiException {
+            throws PluginException, NoSuchStorageException, InternalNakadiException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            return status(FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
         final Storage storage = storageService.getStorage(id);
         return status(OK).body(storage);
@@ -76,9 +77,9 @@ public class StoragesController {
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request)
             throws PluginException, DbWriteOperationsBlockedException, NoSuchStorageException,
-            StorageIsUsedException, InternalNakadiException{
+            StorageIsUsedException, InternalNakadiException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return status(FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
         storageService.deleteStorage(id);
         return status(NO_CONTENT).build();
@@ -86,9 +87,9 @@ public class StoragesController {
 
     @RequestMapping(value = "/storages/default/{id}", method = RequestMethod.PUT)
     public ResponseEntity<?> setDefaultStorage(@PathVariable("id") final String id, final NativeWebRequest request)
-            throws PluginException, NoSuchStorageException, InternalNakadiException {
+            throws PluginException, NoSuchStorageException, InternalNakadiException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            return status(FORBIDDEN).build();
+            throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
         final Storage storage = storageService.setDefaultStorage(id);
         return status(OK).body(storage);
