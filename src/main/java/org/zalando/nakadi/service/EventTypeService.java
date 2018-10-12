@@ -59,7 +59,6 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.problem.Problem;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -70,8 +69,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 
 @Component
@@ -224,7 +221,7 @@ public class EventTypeService {
         }
         Closeable deletionCloser = null;
         final EventType eventType;
-        Multimap<TopicRepository, String> topicsToDelete = null;
+        final Multimap<TopicRepository, String> topicsToDelete;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
@@ -439,17 +436,9 @@ public class EventTypeService {
                         .setRetentionTime(timeline.getTopic(), retentionTime));
     }
 
-    public Result<EventType> get(final String eventTypeName) {
-        try {
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            return Result.ok(eventType);
-        } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Could not find EventType: {}", eventTypeName);
-            return Result.problem(Problem.valueOf(NOT_FOUND, e.getMessage()));
-        } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type " + eventTypeName, e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
-        }
+    public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        return eventType;
     }
 
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
@@ -510,7 +499,14 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validateOrderingKeys(schema, eventType);
+            final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
+            final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
+            if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
+                throw new InvalidEventTypeException(
+                        "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
+            }
+            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, schema);
+            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, schema);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
@@ -532,15 +528,15 @@ public class EventTypeService {
         }
     }
 
-    private void validateOrderingKeys(final Schema schema, final EventTypeBase eventType)
-            throws InvalidEventTypeException, JSONException, SchemaException {
-        final List<String> absentFields = eventType.getOrderingKeyFields().stream()
+    private void validateFieldsInSchema(final String fieldName, final List<String> fields, final Schema schema) {
+        final List<String> absentFields = fields.stream()
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException("ordering_key_fields " + absentFields + " absent in schema");
+            throw new InvalidEventTypeException(fieldName + " " + absentFields + " absent in schema");
         }
     }
+
 
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");

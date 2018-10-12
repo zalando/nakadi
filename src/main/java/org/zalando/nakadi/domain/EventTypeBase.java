@@ -48,6 +48,9 @@ public class EventTypeBase {
     @Nullable
     private List<String> orderingKeyFields;
 
+    @Nullable
+    private List<String> orderingInstanceIds;
+
     @Valid
     @NotNull
     private EventTypeSchemaBase schema;
@@ -78,12 +81,14 @@ public class EventTypeBase {
         this.cleanupPolicy = CleanupPolicy.DELETE;
     }
 
-    public EventTypeBase(final String name, final String owningApplication,
+    public EventTypeBase(final String name,
+                         final String owningApplication,
                          final EventCategory category,
                          final List<ValidationStrategyConfiguration> validationStrategies,
                          final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
                          final String partitionStrategy,
-                         final List<String> partitionKeyFields, final EventTypeSchemaBase schema,
+                         final List<String> partitionKeyFields,
+                         final EventTypeSchemaBase schema,
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
@@ -117,6 +122,7 @@ public class EventTypeBase {
         this.setAuthorization(eventType.getAuthorization());
         this.setAudience(eventType.getAudience());
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
+        this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
     }
 
@@ -194,6 +200,14 @@ public class EventTypeBase {
 
     public void setOrderingKeyFields(@Nullable final List<String> orderingKeyFields) {
         this.orderingKeyFields = orderingKeyFields;
+    }
+
+    public List<String> getOrderingInstanceIds() {
+        return unmodifiableList(orderingInstanceIds != null ? orderingInstanceIds : EMPTY_ORDERING_KEY_FIELDS);
+    }
+
+    public void setOrderingInstanceIds(@Nullable final List<String> orderingInstanceIds) {
+        this.orderingInstanceIds = orderingInstanceIds;
     }
 
     public List<EnrichmentStrategyDescriptor> getEnrichmentStrategies() {

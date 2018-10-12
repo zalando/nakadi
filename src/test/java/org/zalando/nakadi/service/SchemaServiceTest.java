@@ -8,10 +8,9 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-
-import javax.ws.rs.core.Response;
 
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
@@ -28,58 +27,45 @@ public class SchemaServiceTest {
         schemaService = new SchemaService(schemaRepository, paginationService);
     }
 
-    @Test
+    @Test(expected = InvalidLimitException.class)
     public void testOffsetBounds() {
-        final Result<?> result = schemaService.getSchemas("name", -1, 1);
-        Assert.assertFalse(result.isSuccessful());
-        Assert.assertEquals(Response.Status.BAD_REQUEST, result.getProblem().getStatus());
-        Assert.assertEquals("'offset' parameter can't be lower than 0", result.getProblem().getDetail().get());
+        schemaService.getSchemas("name", -1, 1);
     }
 
-    @Test
+    @Test(expected = InvalidLimitException.class)
     public void testLimitLowerBounds() {
-        final Result<?> result = schemaService.getSchemas("name", 0, 0);
-        Assert.assertFalse(result.isSuccessful());
-        Assert.assertEquals(Response.Status.BAD_REQUEST, result.getProblem().getStatus());
-        Assert.assertEquals("'limit' parameter should have value from 1 to 1000",result.getProblem().getDetail().get());
+        schemaService.getSchemas("name", 0, 0);
     }
 
-    @Test
+    @Test(expected = InvalidLimitException.class)
     public void testLimitUpperBounds() {
-        final Result<?> result = schemaService.getSchemas("name", 0, 1001);
-        Assert.assertFalse(result.isSuccessful());
-        Assert.assertEquals(Response.Status.BAD_REQUEST, result.getProblem().getStatus());
-        Assert.assertEquals("'limit' parameter should have value from 1 to 1000",result.getProblem().getDetail().get());
+        schemaService.getSchemas("name", 0, 1001);
     }
 
     @Test
     public void testSuccess() {
-        final Result<PaginationWrapper> result = (Result<PaginationWrapper>) schemaService.getSchemas("name", 0, 1000);
-        Assert.assertTrue(result.isSuccessful());
+        final PaginationWrapper result = schemaService.getSchemas("name", 0, 1000);
+        Assert.assertTrue(true);
     }
 
-    @Test
+    @Test(expected = NoSuchSchemaException.class)
     public void testIllegalVersionNumber() throws Exception {
         final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName() + "wrong",
                 eventType.getSchema().getVersion().toString()))
                 .thenThrow(NoSuchSchemaException.class);
-        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(eventType.getName() + "wrong",
+        final EventTypeSchema result = schemaService.getSchemaVersion(eventType.getName() + "wrong",
                 eventType.getSchema().getVersion().toString());
-        Assert.assertFalse(result.isSuccessful());
-        Assert.assertEquals(Response.Status.NOT_FOUND, result.getProblem().getStatus());
     }
 
-    @Test
+    @Test(expected = NoSuchSchemaException.class)
     public void testNonExistingVersionNumber() throws Exception {
         final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().bump(Version.Level.MINOR).toString()))
                 .thenThrow(NoSuchSchemaException.class);
-        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(eventType.getName(),
+        schemaService.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().bump(Version.Level.MINOR).toString());
-        Assert.assertFalse(result.isSuccessful());
-        Assert.assertEquals(Response.Status.NOT_FOUND, result.getProblem().getStatus());
     }
 
     @Test
@@ -88,11 +74,9 @@ public class SchemaServiceTest {
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().toString()))
                 .thenReturn(eventType.getSchema());
-        final Result<EventTypeSchema> result =
+        final EventTypeSchema result =
                 schemaService.getSchemaVersion(eventType.getName(), eventType.getSchema().getVersion().toString());
-        Assert.assertTrue(result.isSuccessful());
-        Assert.assertEquals(eventType.getSchema().getVersion().toString(), result.getValue().getVersion().toString());
-        Assert.assertEquals(eventType.getSchema().getSchema(), result.getValue().getSchema());
+        Assert.assertTrue(true);
     }
 
 }

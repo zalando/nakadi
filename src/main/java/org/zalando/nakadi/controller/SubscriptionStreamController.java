@@ -253,4 +253,11 @@ public class SubscriptionStreamController {
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(NoStreamingSlotsAvailable.class)
+    public ResponseEntity<Problem> handleNoStreamingSlotsAvailable(final NoStreamingSlotsAvailable exception,
+                                                                   final NativeWebRequest request) {
+        LOG.debug(exception.getMessage());
+        return Responses.create(CONFLICT, exception.getMessage(), request);
+    }
+
 }

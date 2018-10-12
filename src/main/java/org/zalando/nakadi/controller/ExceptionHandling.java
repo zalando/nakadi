@@ -11,39 +11,31 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.CompactionException;
-import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
-import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.TimelineException;
-import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
-import org.zalando.problem.MoreStatus;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -89,22 +81,21 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
-                                                         final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.explain(), request);
+    public ResponseEntity<Problem> handleAccessDeniedException(final AccessDeniedException exception,
+                                                               final NativeWebRequest request) {
+        return Responses.create(FORBIDDEN, exception.explain(), request);
     }
-
     @ExceptionHandler(IllegalClientIdException.class)
-    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
-                                                                  final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    public ResponseEntity<Problem> handleForbiddenRequests(final NakadiBaseException exception,
+                                                           final NativeWebRequest request) {
+        return Responses.create(FORBIDDEN, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(CursorsAreEmptyException.class)
-    public ResponseEntity<Problem> handleCursorsUnavailableException(final RuntimeException ex,
+    @ExceptionHandler({RepositoryProblemException.class, ServiceTemporarilyUnavailableException.class})
+    public ResponseEntity<Problem> handleServiceUnavailableResponses(final NakadiBaseException exception,
                                                                      final NativeWebRequest request) {
-        LOG.debug(ex.getMessage(), ex);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler
@@ -117,50 +108,11 @@ public final class ExceptionHandling implements ProblemHandling {
         throw exception.getException();
     }
 
-    @ExceptionHandler(RepositoryProblemException.class)
-    public ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
-                                                           final NativeWebRequest request) {
-        LOG.error("Repository problem occurred", exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
     @ExceptionHandler(NakadiBaseException.class)
     public ResponseEntity<Problem> handleInternalError(final NakadiBaseException exception,
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(TimelineException.class)
-    public ResponseEntity<Problem> handleTimelineException(final TimelineException exception,
-                                                           final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        final Throwable cause = exception.getCause();
-        if (cause instanceof InternalNakadiException) {
-            return Responses.create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
-        }
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(TopicCreationException.class)
-    public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
-                                                                final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(CursorConversionException.class)
-    public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
-                                                                   final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler(DbWriteOperationsBlockedException.class)
@@ -179,74 +131,23 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
     }
 
-    @ExceptionHandler(CompactionException.class)
-    public ResponseEntity<Problem> handleCompactionException(final CompactionException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(EnrichmentException.class)
-    public ResponseEntity<Problem> handleEnrichmentException(final EnrichmentException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(NoSuchPartitionStrategyException.class)
-    public ResponseEntity<Problem> handleNoSuchPartitionStrategyException(
-            final NoSuchPartitionStrategyException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(PartitioningException.class)
-    public ResponseEntity<Problem> handlePartitioningException(final PartitioningException exception,
-                                                               final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(InvalidPartitionKeyFieldsException.class)
-    public ResponseEntity<Problem> handleInvalidPartitionKeyFieldsException(
-            final InvalidPartitionKeyFieldsException exception,
-            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(NoSuchEventTypeException.class)
-    public ResponseEntity<Problem> handleNoSuchEventTypeException(final NoSuchEventTypeException exception,
-                                                               final NativeWebRequest request) {
+    @ExceptionHandler({NoSuchEventTypeException.class, NoSuchSubscriptionException.class})
+    public ResponseEntity<Problem> handleNotFoundRequests(final NakadiBaseException exception,
+                                                          final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(NOT_FOUND, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(NoSuchSchemaException.class)
-    public ResponseEntity<Problem> handleNoSuchSchemaException(final NoSuchSchemaException exception,
-                                                               final NativeWebRequest request) {
+    @ExceptionHandler({InvalidLimitException.class, InvalidVersionNumberException.class})
+    public ResponseEntity<Problem> handleBadRequests(final NakadiBaseException exception,
+                                                     final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
+        return Responses.create(BAD_REQUEST, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(NoSuchSubscriptionException.class)
-    public ResponseEntity<Problem> handleNoSuchSubscriptionException(final NoSuchSubscriptionException exception,
-                                                                     final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(NOT_FOUND, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(NoStreamingSlotsAvailable.class)
-    public ResponseEntity<Problem> handleNoStreamingSlotsAvailable(final NoStreamingSlotsAvailable exception,
-                                                                   final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(CONFLICT, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(UnprocessableSubscriptionException.class)
-    public ResponseEntity<Problem> handleUnprocessableSubscriptionException(
-            final UnprocessableSubscriptionException exception,
+    @ExceptionHandler(UnprocessableEntityException.class)
+    public ResponseEntity<Problem> handleUnprocessableEntityException(
+            final UnprocessableEntityException exception,
             final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);

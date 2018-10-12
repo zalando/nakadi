@@ -120,7 +120,8 @@ public class PostSubscriptionController {
 
     @ExceptionHandler({
             WrongInitialCursorsException.class,
-            TooManyPartitionsException.class})
+            TooManyPartitionsException.class,
+            UnprocessableSubscriptionException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiBaseException exception,
                                                                    final NativeWebRequest request) {
         LOG.debug("Error occurred when working with subscriptions", exception);

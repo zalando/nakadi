@@ -203,7 +203,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
-                "'limit' parameter should have value from 1 to 1000");
+                "'limit' parameter should have value between 1 and 1000");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
     }
 

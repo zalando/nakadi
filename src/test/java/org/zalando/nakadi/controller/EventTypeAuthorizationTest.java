@@ -95,7 +95,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenDELETENotAuthorized200() throws Exception {
+    public void whenDELETENotAuthorizedThen403() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Resource resource = eventType.asResource();
 
