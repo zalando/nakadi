@@ -8,8 +8,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.controller.advice.CursorsHandler;
-import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
+import org.zalando.nakadi.controller.advice.CursorsExceptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -105,7 +105,7 @@ public class CursorsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new NakadiProblemHandling(), new CursorsHandler())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new CursorsExceptionHandler())
                 .build();
     }
 

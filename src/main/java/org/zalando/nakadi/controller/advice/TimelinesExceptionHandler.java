@@ -25,7 +25,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = TimelinesController.class)
-public class TimelinesHandler implements AdviceTrait {
+public class TimelinesExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Problem> notFound(final NotFoundException exception, final NativeWebRequest request) {

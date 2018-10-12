@@ -11,8 +11,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
-import org.zalando.nakadi.controller.advice.EventTypeHandler;
-import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
+import org.zalando.nakadi.controller.advice.EventTypeExceptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Timeline;
@@ -120,7 +120,7 @@ public class EventTypeControllerTestCase {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new NakadiProblemHandling(), new EventTypeHandler())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventTypeExceptionHandler())
                 .build();
     }
 

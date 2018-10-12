@@ -17,7 +17,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = SettingsController.class)
-public class SettingsHandler implements AdviceTrait {
+public class SettingsExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(UnknownOperationException.class)
     public ResponseEntity<Problem> handleUnknownOperationException(final RuntimeException exception,

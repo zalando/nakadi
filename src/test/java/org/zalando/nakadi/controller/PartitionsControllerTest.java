@@ -8,8 +8,8 @@ import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
-import org.zalando.nakadi.controller.advice.PartitionsHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.PartitionsExceptionHandler;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -113,7 +113,7 @@ public class PartitionsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new NakadiProblemHandling(), new PartitionsHandler())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new PartitionsExceptionHandler())
                 .build();
     }
 

@@ -19,7 +19,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = SubscriptionController.class)
-public class SubscriptionHandler implements AdviceTrait {
+public class SubscriptionExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(ErrorGettingCursorTimeLagException.class)
     public ResponseEntity<Problem> handleErrorGettingCursorTimeLagException(

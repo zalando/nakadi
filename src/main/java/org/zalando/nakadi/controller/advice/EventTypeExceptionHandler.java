@@ -27,7 +27,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = EventTypeController.class)
-public class EventTypeHandler implements AdviceTrait {
+public class EventTypeExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler({InvalidEventTypeException.class,
             UnableProcessException.class,

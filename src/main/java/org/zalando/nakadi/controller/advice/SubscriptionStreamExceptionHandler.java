@@ -17,7 +17,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = SubscriptionStreamController.class)
-public class SubscriptionStreamHandler implements AdviceTrait {
+public class SubscriptionStreamExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(WrongStreamParametersException.class)
     public ResponseEntity<Problem> handleWrongStreamParametersException(final WrongStreamParametersException exception,

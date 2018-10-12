@@ -17,7 +17,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = CursorOperationsController.class)
-public class CursorOperationsHandler implements AdviceTrait {
+public class CursorOperationsExceptionHandler implements AdviceTrait {
 
 
     @ExceptionHandler(InvalidCursorOperation.class)

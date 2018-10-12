@@ -12,8 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.controller.advice.EventPublishingHandler;
-import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
+import org.zalando.nakadi.controller.advice.EventPublishingExceptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -94,7 +94,7 @@ public class EventPublishingControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new NakadiProblemHandling(), new EventPublishingHandler())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventPublishingExceptionHandler())
                 .build();
     }
 

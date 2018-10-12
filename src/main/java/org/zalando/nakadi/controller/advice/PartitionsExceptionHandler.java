@@ -17,7 +17,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = PartitionsController.class)
-public class PartitionsHandler implements AdviceTrait {
+public class PartitionsExceptionHandler implements AdviceTrait {
 
     static final String INVALID_CURSOR_MESSAGE = "invalid consumed_offset or partition";
 

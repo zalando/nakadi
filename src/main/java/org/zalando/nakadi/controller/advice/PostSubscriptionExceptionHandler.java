@@ -21,7 +21,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = PostSubscriptionController.class)
-public class PostSubscriptionHandler implements AdviceTrait {
+public class PostSubscriptionExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(SubscriptionUpdateConflictException.class)
     public ResponseEntity<Problem> handleSubscriptionUpdateConflictException(

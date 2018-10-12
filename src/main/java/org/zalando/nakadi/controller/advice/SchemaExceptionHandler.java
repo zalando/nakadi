@@ -15,7 +15,7 @@ import static org.zalando.problem.Status.NOT_FOUND;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = SchemaController.class)
-public class SchemaHandler implements AdviceTrait {
+public class SchemaExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(NoSuchSchemaException.class)
     public ResponseEntity<Problem> handleNoSuchSchemaException(

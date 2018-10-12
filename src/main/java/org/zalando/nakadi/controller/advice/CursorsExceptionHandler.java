@@ -24,7 +24,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = CursorsController.class)
-public class CursorsHandler implements AdviceTrait {
+public class CursorsExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException exception,

@@ -46,9 +46,9 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(20)
 @ControllerAdvice
-public class NakadiProblemHandling implements ProblemHandling {
+public class NakadiProblemExceptionHandler implements ProblemHandling {
 
-    private static final Logger LOG = LoggerFactory.getLogger(NakadiProblemHandling.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NakadiProblemExceptionHandler.class);
 
     @Override
     public String formatFieldName(final String fieldName) {

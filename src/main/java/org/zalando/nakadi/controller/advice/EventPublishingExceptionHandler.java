@@ -22,7 +22,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = EventPublishingController.class)
-public class EventPublishingHandler implements AdviceTrait {
+public class EventPublishingExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(EventTypeTimeoutException.class)
     public ResponseEntity<Problem> handleEventTypeTimeoutException(final EventTypeTimeoutException exception,

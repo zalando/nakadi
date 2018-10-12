@@ -14,8 +14,8 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.zalando.nakadi.controller.advice.NakadiProblemHandling;
-import org.zalando.nakadi.controller.advice.PostSubscriptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -69,7 +69,7 @@ public class PostSubscriptionControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setControllerAdvice(new PostSubscriptionHandler(), new NakadiProblemHandling())
+                .setControllerAdvice(new PostSubscriptionExceptionHandler(), new NakadiProblemExceptionHandler())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver())
                 .build();
     }

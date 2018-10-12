@@ -21,7 +21,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = StoragesController.class)
-public class StoragesHandler implements AdviceTrait {
+public class StoragesExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(NoSuchStorageException.class)
     public ResponseEntity<Problem> handleNoSuchStorageException(
