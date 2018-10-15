@@ -1442,7 +1442,10 @@ paths:
         - $ref: '#/parameters/SubscriptionId'
         - name: show_time_lag
           in: query
-          description: show consumer time lag
+          description: shows consumer time lag as an optional field.
+          This option is a time consuming operation and Nakadi attempts to compute it in the best possible strategy.
+          In cases of failures, resulting in Nakadi being unable to compute it within a configurable timeout,
+          the field might not be present in the output.
           type: boolean
           default: false
       responses:
