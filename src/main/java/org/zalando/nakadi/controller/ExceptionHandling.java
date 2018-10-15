@@ -17,7 +17,6 @@ import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
-import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -25,7 +24,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -115,13 +113,6 @@ public final class ExceptionHandling implements ProblemHandling {
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(LimitReachedException.class)
-    public ResponseEntity<Problem> handleLimitReachedException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.warn(exception.getMessage());
-        return Responses.create(MoreStatus.TOO_MANY_REQUESTS, exception.getMessage(), request);
     }
 
     @ExceptionHandler(DbWriteOperationsBlockedException.class)

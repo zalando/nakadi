@@ -23,7 +23,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.SubscriptionService.StatsMode;
@@ -31,7 +30,6 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import java.util.Set;
 
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
@@ -122,12 +120,4 @@ public class SubscriptionController {
                         exception.getMessage()),
                 request);
     }
-
-    @ExceptionHandler(TimeLagStatsTimeoutException.class)
-    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException e,
-                                                                      final NativeWebRequest request) {
-        LOG.warn(e.getMessage());
-        return Responses.create(Response.Status.REQUEST_TIMEOUT, e.getMessage(), request);
-    }
-
 }

@@ -2,6 +2,8 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -11,9 +13,6 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
-import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -39,7 +38,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 @Component
 public class SubscriptionTimeLagService {
-
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionTimeLagService.class);
     private static final int EVENT_FETCH_WAIT_TIME_MS = 1000;
     private static final int REQUEST_TIMEOUT_MS = 30000;
     private static final int MAX_THREADS_PER_REQUEST = 20;
@@ -59,9 +58,7 @@ public class SubscriptionTimeLagService {
     }
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
-                                                         final List<PartitionEndStatistics> endPositions)
-            throws ErrorGettingCursorTimeLagException, InconsistentStateException, LimitReachedException,
-            TimeLagStatsTimeoutException {
+                                                         final List<PartitionEndStatistics> endPositions) {
 
         final TimeLagRequestHandler timeLagHandler = new TimeLagRequestHandler(timelineService, threadPool);
         final Map<EventTypePartition, Duration> timeLags = new HashMap<>();
@@ -82,21 +79,12 @@ public class SubscriptionTimeLagService {
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
-            return timeLags;
-        } catch (final RejectedExecutionException e) {
-            throw new LimitReachedException("Time lag statistics thread pool exhausted", e);
-        } catch (final TimeoutException e) {
-            throw new TimeLagStatsTimeoutException("Timeout exceeded for time lag statistics", e);
-        } catch (final ExecutionException e) {
-            if (e.getCause() instanceof NakadiBaseException) {
-                throw (NakadiBaseException) e.getCause();
-            } else {
-                throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag",
-                        e.getCause());
-            }
-        } catch (final Throwable e) {
-            throw new InconsistentStateException("Unexpected error occurred when getting subscription time lag", e);
+        } catch (RejectedExecutionException | TimeoutException | ExecutionException e) {
+            LOG.warn("caught exception the timelag stats are not complete - " + e);
+        } catch (Throwable e) {
+            LOG.warn("caught throwable the timelag stats are not complete - " + e);
         }
+        return timeLags;
     }
 
     private boolean isCursorAtTail(final NakadiCursor cursor, final List<PartitionEndStatistics> endPositions) {
