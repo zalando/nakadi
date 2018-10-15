@@ -1443,11 +1443,11 @@ paths:
         - name: show_time_lag
           in: query
           description: |
-          Shows consumer time lag as an optional field.
-          This option is a time consuming operation and Nakadi attempts to compute it in the best possible strategy.
-          In cases of failures, resulting in Nakadi being unable to compute it within a configurable timeout,
-          the field might either be partially present or not present (depending on the number of successful requests)
-          in the output.
+            Shows consumer time lag as an optional field.
+            This option is a time consuming operation and Nakadi attempts to compute it in the best possible strategy.
+            In cases of failures, resulting in Nakadi being unable to compute it within a configurable timeout,
+            the field might either be partially present or not present (depending on the number of successful requests)
+            in the output.
           type: boolean
           default: false
       responses:
