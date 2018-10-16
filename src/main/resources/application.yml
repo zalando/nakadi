@@ -17,7 +17,6 @@ spring:
       connectionTimeout: 2000
       minimumIdle: 1
       maximumPoolSize: 2
-      dataSourceClassName: org.postgresql.ds.PGSimpleDataSource
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000

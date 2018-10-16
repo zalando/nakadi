@@ -89,7 +89,7 @@ dependencies {
     ext['json.version'] = '20180130'
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
-    ext['postgresql.version'] = '42.2.2'
+    ext['postgresql.version'] = '42.2.5'
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
