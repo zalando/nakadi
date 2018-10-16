@@ -40,7 +40,6 @@ import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.NOT_IMPLEMENTED;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.problem.Status.TOO_MANY_REQUESTS;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(20)
@@ -119,13 +118,6 @@ public class NakadiProblemExceptionHandler implements ProblemHandling {
                                                              final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
         return create(Problem.valueOf(BAD_REQUEST, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(LimitReachedException.class)
-    public ResponseEntity<Problem> handleLimitReachedException(
-            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(TOO_MANY_REQUESTS, exception.getMessage()), request);
     }
 
     @ExceptionHandler(NakadiBaseException.class)

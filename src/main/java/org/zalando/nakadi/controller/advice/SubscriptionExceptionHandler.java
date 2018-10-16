@@ -7,13 +7,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.SubscriptionController;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.TimeLagStatsTimeoutException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
 import javax.annotation.Priority;
 
-import static org.zalando.problem.Status.REQUEST_TIMEOUT;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
@@ -34,12 +32,5 @@ public class SubscriptionExceptionHandler implements AdviceTrait {
                                                                     final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
-    }
-
-    @ExceptionHandler(TimeLagStatsTimeoutException.class)
-    public ResponseEntity<Problem> handleTimeLagStatsTimeoutException(final TimeLagStatsTimeoutException exception,
-                                                                      final NativeWebRequest request) {
-        LOG.warn(exception.getMessage());
-        return create(Problem.valueOf(REQUEST_TIMEOUT, exception.getMessage()), request);
     }
 }
