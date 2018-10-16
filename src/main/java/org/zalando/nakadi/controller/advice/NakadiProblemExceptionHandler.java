@@ -19,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
-import org.zalando.nakadi.exceptions.runtime.LimitReachedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
