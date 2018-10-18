@@ -1,7 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,13 +16,10 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -32,21 +27,14 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
-import org.zalando.problem.spring.web.advice.Responses;
 
-import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-import static org.zalando.problem.spring.web.advice.Responses.create;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
 
 @RestController
 public class EventPublishingController {
@@ -78,34 +66,27 @@ public class EventPublishingController {
                                     @RequestBody final String eventsAsString,
                                     final NativeWebRequest request,
                                     final Client client)
-            throws AccessDeniedException, EnrichmentException,
-            PartitioningException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
+            InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
-        try {
-            if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
-                return Responses.create(
-                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
-            }
+        if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
+            throw new BlockedException("Application or event type is blocked");
+        }
 
+        try {
             final ResponseEntity response = postEventInternal(
                     eventTypeName, eventsAsString, request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
+        } catch (final NoSuchEventTypeException exception) {
+            eventTypeMetrics.incrementResponseCount(NOT_FOUND.getStatusCode());
+            throw exception;
         } catch (final RuntimeException ex) {
-            eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
-    }
-
-    @ExceptionHandler({EnrichmentException.class,
-            PartitioningException.class,
-            InvalidPartitionKeyFieldsException.class})
-    public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
-                                                                      final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     private ResponseEntity postEventInternal(final String eventTypeName,
@@ -113,8 +94,8 @@ public class EventPublishingController {
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client)
-            throws AccessDeniedException, EnrichmentException, PartitioningException,
-            ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException, InternalNakadiException,
+            EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName);
@@ -126,18 +107,6 @@ public class EventPublishingController {
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
 
             return response(result);
-        } catch (final JSONException e) {
-            LOG.debug("Problem parsing event", e);
-            return processJSONException(e, nativeWebRequest);
-        } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Event type not found.", e.getMessage());
-            return create(Problem.valueOf(NOT_FOUND, e.getMessage()), nativeWebRequest);
-        } catch (final EventTypeTimeoutException e) {
-            LOG.debug("Failed to publish batch", e);
-            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getMessage()), nativeWebRequest);
-        } catch (final InternalNakadiException e) {
-            LOG.debug("Failed to publish batch", e);
-            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), nativeWebRequest);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }
@@ -174,17 +143,6 @@ public class EventPublishingController {
             final double avgEventSize = totalSizeBytes / (double) eventCount;
             eventTypeMetrics.reportSizing(successfulEvents, (int) Math.round(avgEventSize * successfulEvents));
         }
-    }
-
-    private ResponseEntity processJSONException(final JSONException e, final NativeWebRequest nativeWebRequest) {
-        if (e.getCause() == null) {
-            return create(createProblem(e), nativeWebRequest);
-        }
-        return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
-    }
-
-    private ThrowableProblem createProblem(final JSONException e) {
-        return Problem.valueOf(Response.Status.BAD_REQUEST, "Error occurred when parsing event(s). " + e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {
