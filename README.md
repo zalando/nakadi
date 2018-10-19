@@ -44,7 +44,7 @@ The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to pro
 - Nakadi is high-load production ready. 
 - Zalando uses Nakadi as its central Event Bus Service. 
 - Nakadi reliably handles the traffic from thousands event types with the throughput of more than hundreds gigabytes per second.
-- The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)    
+- The project is in active development.  
 
 ### Presentations
 
@@ -84,7 +84,7 @@ The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to pro
         * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
         (like AWS Kinesis, Google pub/sub etc.)
     
-Read more about latest development in our [CHANGELOG.md](CHANGELOG.md) 
+Read more about latest development on the [releases page](https://github.com/zalando/nakadi/releases) 
 
 #### Additional features that we plan to cover in the future are:
 
@@ -102,7 +102,7 @@ like
 
 * [Use Nakadi with a client in your language of choice](https://nakadi.io/manual.html#using_clients)
 * SDK
-* [GUI](https://github.com/zalando-incubator/nakadi-ui)
+* [Web UI](https://github.com/zalando-incubator/nakadi-ui)
 * DevOps tools and more
 
 
