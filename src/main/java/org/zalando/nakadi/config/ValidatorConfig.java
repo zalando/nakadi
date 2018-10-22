@@ -99,7 +99,7 @@ public class ValidatorConfig {
         forwardChanges.put(DESCRIPTION_CHANGED, PATCH);
         forwardChanges.put(TITLE_CHANGED, PATCH);
         forwardChanges.put(PROPERTIES_ADDED, MINOR);
-        forwardChanges.put(REQUIRED_ARRAY_EXTENDED, MINOR);
+        forwardChanges.put(REQUIRED_ARRAY_EXTENDED, MAJOR);
         forwardChanges.put(ID_CHANGED, MAJOR);
         forwardChanges.put(SCHEMA_REMOVED, MAJOR);
         forwardChanges.put(TYPE_CHANGED, MAJOR);

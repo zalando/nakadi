@@ -114,7 +114,7 @@ is not safe.
 Supported changes:
 
 1. changes to meta attributes: titles and descriptions.
-2. addition of new attributes, both optional and required.
+2. addition of new optional attributes.
 3. marking attributes as required.
 4. change additionalProperties from true to object.
 
