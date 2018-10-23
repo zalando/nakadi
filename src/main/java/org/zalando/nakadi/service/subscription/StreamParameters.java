@@ -45,8 +45,10 @@ public class StreamParameters {
 
     private final List<EventTypePartition> partitions;
 
-    private StreamParameters(final UserStreamParameters userParameters, final long commitTimeoutMillis,
-                             final Client consumingClient) throws WrongStreamParametersException {
+    private StreamParameters(
+            final UserStreamParameters userParameters,
+            final long maxCommitTimeout,
+            final Client consumingClient) throws WrongStreamParametersException {
 
         this.batchLimitEvents = userParameters.getBatchLimit().orElse(1);
         if (batchLimitEvents <= 0) {
@@ -61,8 +63,13 @@ public class StreamParameters {
         this.maxUncommittedMessages = userParameters.getMaxUncommittedEvents().orElse(10);
         this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit();
         this.partitions = userParameters.getPartitions();
-        this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeoutMillis);
         this.consumingClient = consumingClient;
+
+        final long commitTimeout = userParameters.getCommitTimeoutSeconds().orElse(maxCommitTimeout);
+        if (commitTimeout > maxCommitTimeout) {
+            throw new WrongStreamParametersException("commit_timeout can not be more than " + maxCommitTimeout);
+        }
+        this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeout <= 0 ? maxCommitTimeout : commitTimeout);
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
@@ -86,9 +93,9 @@ public class StreamParameters {
     }
 
     public static StreamParameters of(final UserStreamParameters userStreamParameters,
-                                      final long commitTimeoutSeconds,
+                                      final long maxCommitTimeoutSeconds,
                                       final Client client) throws WrongStreamParametersException {
-        return new StreamParameters(userStreamParameters, commitTimeoutSeconds, client);
+        return new StreamParameters(userStreamParameters, maxCommitTimeoutSeconds, client);
     }
 
 }

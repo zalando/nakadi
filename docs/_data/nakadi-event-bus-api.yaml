@@ -1240,6 +1240,7 @@ paths:
         - $ref: '#/parameters/BatchFlushTimeout'
         - $ref: '#/parameters/StreamTimeout'
         - $ref: '#/parameters/StreamKeepAliveLimit'
+        - $ref: '#/parameters/CommitTimeout'
         - name: X-Flow-Id
           in: header
           description: |
@@ -1382,6 +1383,17 @@ paths:
                 default: 0
                 minimum: 0
                 maximum: 4200
+              commit_timeout:
+                description: |
+                  Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
+                  In case if commit is not coming within this timeout, nakadi will initialize stream termination, no
+                  new data will be sent. Partitions from this stream will be assigned to other streams.
+                  Setting commit_timeout to 0 is equal to setting it to maximum allowed value - 60 sesconds.
+                type: number
+                format: int32
+                default: 60
+                maximum: 60
+                minimum: 0
         - $ref: '#/parameters/SubscriptionId'
         - name: X-Flow-Id
           in: header
@@ -1972,11 +1984,11 @@ definitions:
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
     schema:
-      oneOf:      
+      oneOf:
       - $ref: '#/definitions/BusinessEvent'
       - $ref: '#/definitions/DataChangeEvent'
       - $ref: '#/definitions/UndefinedEvent'
-      
+
   EventMetadata:
     type: object
     description: |
@@ -2073,9 +2085,9 @@ definitions:
           type: string
     required:
       - eid
-      - occurred_at    
-        
-        
+      - occurred_at
+
+
   BusinessEvent:
     description: |
       A Business Event.
@@ -2230,7 +2242,7 @@ definitions:
   CursorDistanceResult:
     allOf:
       - $ref: '#/definitions/CursorDistanceQuery'
-      - type: object        
+      - type: object
         properties:
           distance:
             type: number
@@ -3165,6 +3177,21 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  CommitTimeout:
+    name: commit_timeout
+    in: query
+    description: |
+      Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
+      In case if commit is not coming within this timeout, nakadi will initialize stream termination, no
+      new data will be sent. Partitions from this stream will be assigned to other streams.
+      Setting commit_timeout to 0 is equal to setting it to maximum allowed value - 60 sesconds.
+    type: number
+    format: int32
+    default: 60
+    maximum: 60
+    minimum: 0
+    required: false
 
   MaxUncommittedEvents:
     name: max_uncommitted_events
