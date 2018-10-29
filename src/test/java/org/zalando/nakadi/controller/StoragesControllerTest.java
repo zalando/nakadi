@@ -6,6 +6,8 @@ import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.SettingsExceptionHandler;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
@@ -41,13 +43,14 @@ public class StoragesControllerTest {
 
     @Before
     public void before() {
-        final StoragesController controller = new StoragesController(securitySettings, storageService, adminService);
+        final StoragesController controller = new StoragesController(storageService, adminService);
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new SettingsExceptionHandler())
                 .build();
     }
 

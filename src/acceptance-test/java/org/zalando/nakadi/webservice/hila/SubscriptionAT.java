@@ -32,7 +32,6 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -63,6 +62,7 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscrip
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class SubscriptionAT extends BaseAT {
 
@@ -473,7 +473,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .body(JSON_HELPER.matchesObject(Problem.valueOf(
-                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        UNPROCESSABLE_ENTITY,
                         "Duplicated partition specified")));
     }
 
@@ -493,7 +493,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .body(JSON_HELPER.matchesObject(Problem.valueOf(
-                        MoreStatus.UNPROCESSABLE_ENTITY,
+                        UNPROCESSABLE_ENTITY,
                         "Wrong partitions specified - some partitions don't belong to subscription: " +
                                 "EventTypePartition{eventType='" + et + "', partition='1'}, " +
                                 "EventTypePartition{eventType='dummy-et-123', partition='0'}")));

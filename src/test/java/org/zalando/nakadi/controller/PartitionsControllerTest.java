@@ -8,6 +8,8 @@ import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.PartitionsExceptionHandler;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -38,8 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -51,6 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 
 public class PartitionsControllerTest {
 
@@ -94,7 +96,7 @@ public class PartitionsControllerTest {
         timelineService = Mockito.mock(TimelineService.class);
         cursorOperationsService = Mockito.mock(CursorOperationsService.class);
         when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
-                .thenThrow(NoSuchEventTypeException.class);
+                .thenThrow(new NoSuchEventTypeException("topic not found"));
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenReturn(Collections.singletonList(TIMELINE));
         when(timelineService.getAllTimelinesOrdered(eq(TEST_EVENT_TYPE)))
@@ -111,7 +113,7 @@ public class PartitionsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new ExceptionHandling())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new PartitionsExceptionHandler())
                 .build();
     }
 
@@ -144,7 +146,7 @@ public class PartitionsControllerTest {
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "");
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isServiceUnavailable())
@@ -233,7 +235,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
+        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE))
+                .thenThrow(new NoSuchEventTypeException("topic not found"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
 
         mockMvc.perform(
@@ -262,7 +265,7 @@ public class PartitionsControllerTest {
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "");
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())

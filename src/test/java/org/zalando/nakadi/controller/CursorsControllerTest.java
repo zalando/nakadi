@@ -8,6 +8,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.controller.advice.CursorsExceptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -33,8 +35,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -49,7 +49,9 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class CursorsControllerTest {
 
@@ -94,8 +96,7 @@ public class CursorsControllerTest {
         final CursorTokenService tokenService = mock(CursorTokenService.class);
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
-        final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
-                cursorConverter, tokenService);
+        final CursorsController controller = new CursorsController(cursorsService, cursorConverter, tokenService);
 
         final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
@@ -104,6 +105,7 @@ public class CursorsControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new CursorsExceptionHandler())
                 .build();
     }
 

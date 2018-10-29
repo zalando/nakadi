@@ -27,7 +27,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -51,6 +50,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class TestUtils {
 
@@ -177,7 +177,7 @@ public class TestUtils {
     }
 
     public static Problem createInvalidEventTypeExceptionProblem(final String message) {
-        return Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, message);
+        return Problem.valueOf(UNPROCESSABLE_ENTITY, message);
     }
 
     public static void waitFor(final Runnable runnable) {

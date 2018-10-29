@@ -9,7 +9,6 @@ commits.
 ## Review
 - [ ] Tests
 - [ ] Documentation
-- [ ] CHANGELOG
 
 ## Deployment Notes
 These should highlight any db migrations, feature toggles, etc.

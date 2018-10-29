@@ -11,6 +11,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
+import org.zalando.nakadi.controller.advice.EventTypeExceptionHandler;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Timeline;
@@ -110,7 +112,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", eventTypeOptionsValidator, adminService);
         final EventTypeController controller = new EventTypeController(eventTypeService,featureToggleService,
-                applicationService, adminService, nakadiSettings);
+                adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();
 
         doReturn(true).when(applicationService).exists(any());
@@ -118,7 +120,7 @@ public class EventTypeControllerTestCase {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new ExceptionHandling())
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventTypeExceptionHandler())
                 .build();
     }
 
