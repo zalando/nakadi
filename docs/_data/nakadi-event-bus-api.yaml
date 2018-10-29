@@ -1386,9 +1386,9 @@ paths:
               commit_timeout:
                 description: |
                   Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
-                  In case if commit is not coming within this timeout, nakadi will initialize stream termination, no
+                  In case if commit does not come within this timeout, nakadi will initialize stream termination, no
                   new data will be sent. Partitions from this stream will be assigned to other streams.
-                  Setting commit_timeout to 0 is equal to setting it to maximum allowed value - 60 sesconds.
+                  Setting commit_timeout to 0 is equal to setting it to the maximum allowed value - 60 seconds.
                 type: number
                 format: int32
                 default: 60
@@ -3183,9 +3183,9 @@ parameters:
     in: query
     description: |
       Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
-      In case if commit is not coming within this timeout, nakadi will initialize stream termination, no
+      In case if commit does not come within this timeout, nakadi will initialize stream termination, no
       new data will be sent. Partitions from this stream will be assigned to other streams.
-      Setting commit_timeout to 0 is equal to setting it to maximum allowed value - 60 sesconds.
+      Setting commit_timeout to 0 is equal to setting it to the maximum allowed value - 60 seconds.
     type: number
     format: int32
     default: 60
