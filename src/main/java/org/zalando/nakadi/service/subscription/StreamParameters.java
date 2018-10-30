@@ -68,8 +68,10 @@ public class StreamParameters {
         final long commitTimeout = userParameters.getCommitTimeoutSeconds().orElse(maxCommitTimeout);
         if (commitTimeout > maxCommitTimeout) {
             throw new WrongStreamParametersException("commit_timeout can not be more than " + maxCommitTimeout);
+        } else if (commitTimeout < 0) {
+            throw new WrongStreamParametersException("commit_timeout can not be less than 0");
         }
-        this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeout <= 0 ? maxCommitTimeout : commitTimeout);
+        this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeout == 0 ? maxCommitTimeout : commitTimeout);
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {

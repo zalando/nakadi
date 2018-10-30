@@ -35,7 +35,7 @@ public class UserStreamParameters {
                                 @JsonProperty("stream_keep_alive_limit") @Nullable final Integer streamKeepAliveLimit,
                                 @JsonProperty("max_uncommitted_events") @Nullable final Integer maxUncommittedEvents,
                                 @JsonProperty("partitions") @Nullable final List<EventTypePartition> partitions,
-                                @JsonProperty("commit_timeout") final Long commitTimeoutSeconds) {
+                                @JsonProperty("commit_timeout") @Nullable final Long commitTimeoutSeconds) {
         this.batchLimit = Optional.ofNullable(batchLimit);
         this.streamLimit = Optional.ofNullable(streamLimit);
         this.batchFlushTimeout = Optional.ofNullable(batchFlushTimeout);
