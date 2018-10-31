@@ -79,7 +79,7 @@ public class BlacklistService {
             return isSubscriptionConsumptionBlocked(
                     subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.error(e.getMessage());
+            // It's fine, subscription doesn't exists.
         } catch (final ServiceTemporarilyUnavailableException e) {
             LOG.error(e.getMessage(), e);
         }
