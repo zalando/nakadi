@@ -96,7 +96,7 @@ public class StreamParametersTest {
                                                           final Client client) throws WrongStreamParametersException {
         final UserStreamParameters userParams = new UserStreamParameters(batchLimitEvents, streamLimitEvents,
                 batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations, maxUncommittedMessages,
-                ImmutableList.of());
+                ImmutableList.of(), commitTimeoutSeconds);
         return StreamParameters.of(userParams, commitTimeoutSeconds, client);
     }
 }
