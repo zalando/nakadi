@@ -158,7 +158,7 @@ public class SubscriptionStreamController {
             final Client client) {
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
-                nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
+                nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters);
     }
@@ -174,13 +174,14 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
+            @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimeout,
-                streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of());
+                streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(), commitTimeout);
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
-                nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
+                nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters);
     }
