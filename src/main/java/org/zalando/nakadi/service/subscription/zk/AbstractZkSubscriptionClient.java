@@ -238,31 +238,32 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
         getLog().info("fetching sessions information");
-        final List<String> zkSessions;
-        try {
-            zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
-        } catch (final KeeperException.NoNodeException e) {
-            throw new SubscriptionNotInitializedException(getSubscriptionId());
-        } catch (Exception ex) {
-            throw new NakadiRuntimeException(ex);
-        }
-        Map result = new HashMap();
-        for (int i = 0; i < 3; i++) {
+        final int numberOfCalls = 3;
+        for (int i = 0; i < numberOfCalls; i++) {
+            final List<String> zkSessions;
+            final Map <String,Session> result;
+            try {
+                zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
+            } catch (final KeeperException.NoNodeException e) {
+                throw new SubscriptionNotInitializedException(getSubscriptionId());
+            } catch (Exception ex) {
+                throw new NakadiRuntimeException(ex);
+            }
             result = loadDataAsync(zkSessions, key -> getSubscriptionPath("/sessions/" + key),
                     this::deserializeSession);
-            if (result.size() == zkSessions.size())
+            if (result.size() == zkSessions.size()) {
                 return result.values();
+            }
+            if (i == numberOfCalls-1) {
+                throw new ServiceTemporarilyUnavailableException("Failed to get all keys " +
+                        zkSessions.stream()
+                                .filter(v -> !result.containsKey(v))
+                                .map(String::valueOf)
+                                .collect(Collectors.joining(", "))
+                        + " from ZK", null);
+            }
         }
-        if (result.size() != zkSessions.size()) {
-            final Map incompleteResult = result;
-            throw new ServiceTemporarilyUnavailableException("Failed to get all keys " +
-                    zkSessions.stream()
-                            .filter(v -> !incompleteResult.containsKey(v))
-                            .map(String::valueOf)
-                            .collect(Collectors.joining(", "))
-                    + " from ZK", null);
-        }
-        return result.values();
+        return null;
     }
 
     @Override
