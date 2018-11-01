@@ -25,6 +25,8 @@ public class UserStreamParameters {
 
     private final List<EventTypePartition> partitions;
 
+    private final Optional<Long> commitTimeoutSeconds;
+
     @JsonCreator
     public UserStreamParameters(@JsonProperty("batch_limit") @Nullable final Integer batchLimit,
                                 @JsonProperty("stream_limit") @Nullable final Long streamLimit,
@@ -32,7 +34,8 @@ public class UserStreamParameters {
                                 @JsonProperty("stream_timeout") @Nullable final Long streamTimeout,
                                 @JsonProperty("stream_keep_alive_limit") @Nullable final Integer streamKeepAliveLimit,
                                 @JsonProperty("max_uncommitted_events") @Nullable final Integer maxUncommittedEvents,
-                                @JsonProperty("partitions") @Nullable final List<EventTypePartition> partitions) {
+                                @JsonProperty("partitions") @Nullable final List<EventTypePartition> partitions,
+                                @JsonProperty("commit_timeout") @Nullable final Long commitTimeoutSeconds) {
         this.batchLimit = Optional.ofNullable(batchLimit);
         this.streamLimit = Optional.ofNullable(streamLimit);
         this.batchFlushTimeout = Optional.ofNullable(batchFlushTimeout);
@@ -40,6 +43,7 @@ public class UserStreamParameters {
         this.streamKeepAliveLimit = Optional.ofNullable(streamKeepAliveLimit);
         this.maxUncommittedEvents = Optional.ofNullable(maxUncommittedEvents);
         this.partitions = partitions == null ? ImmutableList.of() : partitions;
+        this.commitTimeoutSeconds = Optional.ofNullable(commitTimeoutSeconds);
     }
 
     public Optional<Integer> getBatchLimit() {
@@ -68,5 +72,9 @@ public class UserStreamParameters {
 
     public List<EventTypePartition> getPartitions() {
         return partitions;
+    }
+
+    public Optional<Long> getCommitTimeoutSeconds() {
+        return commitTimeoutSeconds;
     }
 }

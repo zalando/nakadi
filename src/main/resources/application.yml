@@ -48,7 +48,7 @@ nakadi:
       warnMessage: "Compaction warning"
   stream:
     timeoutMs: 31536000000 # 1 year :-P
-    default.commitTimeout: 60 # 1 minute
+    max.commitTimeout: 60 # 1 minute
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
@@ -129,8 +129,7 @@ spring:
 nakadi:
   stream:
     maxStreamMemoryBytes: 10_000 # ~10 Kb
-    default:
-      commitTimeout: 5 # seconds
+    max.commitTimeout: 5 # seconds
   subscription:
     maxPartitions: 30
   features.defaultFeatures:
