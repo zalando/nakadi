@@ -14,11 +14,11 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -46,17 +46,17 @@ import static com.google.common.base.Charsets.UTF_8;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
+    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
+    protected static final String NODE_TOPOLOGY = "/topology";
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
-    protected static final String NODE_TOPOLOGY = "/topology";
-    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
 
     private final String subscriptionId;
     private final CuratorFramework curatorFramework;
-    private InterProcessSemaphoreMutex lock;
     private final String resetCursorPath;
     private final Logger log;
+    private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
@@ -206,6 +206,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                             synchronized (result) {
                                 result.put(key, value);
                             }
+                        } else if (event.getResultCode() == KeeperException.Code.NONODE.intValue()) {
+                            getLog().warn("Unable to get {} data from zk. NoNodeException with status code: {}",
+                                    zkKey, event.getResultCode());
                         } else {
                             getLog().error(
                                     "Failed to get {} data from zk. status code: {}",
@@ -229,14 +232,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException("Failed to wait for zk response", ex);
         }
-        if (result.size() != keys.size()) {
-            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
-                    keys.stream()
-                            .filter(v -> !result.containsKey(v))
-                            .map(String::valueOf)
-                            .collect(Collectors.joining(", "))
-                    + " to be in response", null);
-        }
         return result;
     }
 
@@ -252,12 +247,27 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
+        int count = 0;
+        Map result;
+        do {
+            result = loadDataAsync(
+                    zkSessions,
+                    key -> getSubscriptionPath("/sessions/" + key),
+                    this::deserializeSession
+            );
+            count++;
+        } while (count < 3 && result.size() != zkSessions.size());
 
-        return loadDataAsync(
-                zkSessions,
-                key -> getSubscriptionPath("/sessions/" + key),
-                this::deserializeSession
-        ).values();
+        if (count >= 3 && result.size() != zkSessions.size()) {
+            final Map incompleteResult = result;
+            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
+                    zkSessions.stream()
+                            .filter(v -> !incompleteResult.containsKey(v))
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(", "))
+                    + " to be in response", null);
+        }
+        return result.values();
     }
 
     @Override
