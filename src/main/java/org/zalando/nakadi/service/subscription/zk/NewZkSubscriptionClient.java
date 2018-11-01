@@ -177,12 +177,12 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                                 new String(value, UTF_8)));
 
         if (offSets.size() != keys.size()) {
-            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
+            throw new ServiceTemporarilyUnavailableException("Failed to get all the keys " +
                     keys.stream()
                             .filter(v -> !offSets.containsKey(v))
                             .map(String::valueOf)
                             .collect(Collectors.joining(", "))
-                    + " to be in response", null);
+                    + " from ZK.", null);
         }
 
         return offSets;

@@ -207,8 +207,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                                 result.put(key, value);
                             }
                         } else if (event.getResultCode() == KeeperException.Code.NONODE.intValue()) {
-                            getLog().warn("Unable to get {} data from zk. NoNodeException with status code: {}",
-                                    zkKey, event.getResultCode());
+                            getLog().warn("Unable to get {} data from zk. Node not found ", zkKey);
                         } else {
                             getLog().error(
                                     "Failed to get {} data from zk. status code: {}",
@@ -247,25 +246,21 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (Exception ex) {
             throw new NakadiRuntimeException(ex);
         }
-        int count = 0;
-        Map result;
-        do {
-            result = loadDataAsync(
-                    zkSessions,
-                    key -> getSubscriptionPath("/sessions/" + key),
-                    this::deserializeSession
-            );
-            count++;
-        } while (count < 3 && result.size() != zkSessions.size());
-
-        if (count >= 3 && result.size() != zkSessions.size()) {
+        Map result = new HashMap();
+        for (int i = 0; i < 3; i++) {
+            result = loadDataAsync(zkSessions, key -> getSubscriptionPath("/sessions/" + key),
+                    this::deserializeSession);
+            if (result.size() == zkSessions.size())
+                return result.values();
+        }
+        if (result.size() != zkSessions.size()) {
             final Map incompleteResult = result;
-            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
+            throw new ServiceTemporarilyUnavailableException("Failed to get all keys " +
                     zkSessions.stream()
                             .filter(v -> !incompleteResult.containsKey(v))
                             .map(String::valueOf)
                             .collect(Collectors.joining(", "))
-                    + " to be in response", null);
+                    + " from ZK", null);
         }
         return result.values();
     }
