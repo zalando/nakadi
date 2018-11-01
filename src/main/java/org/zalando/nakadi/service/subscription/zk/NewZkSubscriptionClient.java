@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -170,8 +171,21 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     public Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(
             final Collection<EventTypePartition> keys)
             throws NakadiRuntimeException, ServiceTemporarilyUnavailableException {
-        return loadDataAsync(keys, this::getOffsetPath, (etp, value) ->
-                new SubscriptionCursorWithoutToken(etp.getEventType(), etp.getPartition(), new String(value, UTF_8)));
+        final Map<EventTypePartition, SubscriptionCursorWithoutToken> offSets = loadDataAsync(keys,
+                this::getOffsetPath, (etp, value) ->
+                        new SubscriptionCursorWithoutToken(etp.getEventType(), etp.getPartition(),
+                                new String(value, UTF_8)));
+
+        if (offSets.size() != keys.size()) {
+            throw new ServiceTemporarilyUnavailableException("Failed to get all the keys " +
+                    keys.stream()
+                            .filter(v -> !offSets.containsKey(v))
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(", "))
+                    + " from ZK.", null);
+        }
+
+        return offSets;
     }
 
     @Override
