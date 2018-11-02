@@ -261,7 +261,7 @@ class StreamingState extends State {
 
             long deltaSize = heaviestPartition.getValue().getBytesInMemory();
             final List<ConsumedEvent> events = heaviestPartition.getValue().extractMaxEvents(currentTimeMillis,
-                    Math.min((int) getMessagesAllowedToSend(), heaviestPartition.getValue().getNumberOfUnsentEvents()));
+                    (int) getMessagesAllowedToSend());
             deltaSize -= heaviestPartition.getValue().getBytesInMemory();
 
             sentSomething = true;

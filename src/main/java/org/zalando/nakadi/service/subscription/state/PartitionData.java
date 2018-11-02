@@ -120,10 +120,6 @@ class PartitionData {
         return result;
     }
 
-    public int getNumberOfUnsentEvents() {
-        return this.nakadiEvents.size();
-    }
-
     int getKeepAliveInARow() {
         return keepAliveInARow;
     }
