@@ -9,6 +9,12 @@ import java.util.Objects;
 
 public class Subscription extends SubscriptionBase {
 
+    private String id;
+    private DateTime createdAt;
+    private DateTime updatedAt;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<SubscriptionEventTypeStats> status;
+
     public Subscription() {
         super();
     }
@@ -19,12 +25,13 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
-    private String id;
+    public DateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
-    private DateTime createdAt;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<SubscriptionEventTypeStats> status;
+    public void setUpdatedAt(final DateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     public String getId() {
         return id;
