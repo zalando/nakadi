@@ -7,22 +7,24 @@ import org.junit.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.security.NakadiClient;
-import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
@@ -38,14 +40,14 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class PostSubscriptionControllerTest {
 
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
 
-    private final StandaloneMockMvcBuilder mockMvcBuilder;
+    private final MockMvc mockMvc;
 
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -63,18 +65,19 @@ public class PostSubscriptionControllerTest {
         when(subscriptionService.getSubscriptionUri(any())).thenCallRealMethod();
 
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
-                applicationService, subscriptionService);
+                subscriptionService);
 
-        mockMvcBuilder = standaloneSetup(controller)
+        mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setControllerAdvice(new ExceptionHandling())
-                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
+                .setControllerAdvice(new PostSubscriptionExceptionHandler(), new NakadiProblemExceptionHandler())
+                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver())
+                .build();
     }
 
     @Test
     public void whenSubscriptionCreationIsDisabledThenCreationFails() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)).thenReturn(true);
 
         postSubscription(subscriptionBase).andExpect(status().isServiceUnavailable());
@@ -103,7 +106,7 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
 
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(subscriptionService.createSubscription(any())).thenReturn(subscription);
 
         postSubscription(subscriptionBase)
@@ -112,16 +115,6 @@ public class PostSubscriptionControllerTest {
                 .andExpect(content().string(sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(subscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
-    }
-
-    @Test
-    public void whenCreateSubscriptionWithUnknownApplicationThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(applicationService.exists(any())).thenReturn(false);
-
-        postSubscription(subscriptionBase)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
     @Test
@@ -162,7 +155,7 @@ public class PostSubscriptionControllerTest {
 
     @Test
     public void whenMoreThanAllowedEventTypeThenUnprocessableEntity() throws Exception {
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(subscriptionService.createSubscription(any())).thenThrow(new TooManyPartitionsException("msg"));
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
 
@@ -188,8 +181,8 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
-        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoSuchEventTypeException("msg"));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "msg");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
@@ -202,7 +195,7 @@ public class PostSubscriptionControllerTest {
                 subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenReturn(existingSubscription);
-        when(subscriptionService.createSubscription(any())).thenThrow(new NoEventTypeException("msg"));
+        when(subscriptionService.createSubscription(any())).thenThrow(new NoSuchEventTypeException("msg"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
@@ -227,7 +220,7 @@ public class PostSubscriptionControllerTest {
         final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions")
                 .contentType(APPLICATION_JSON)
                 .content(subscription);
-        return mockMvcBuilder.build().perform(requestBuilder);
+        return mockMvc.perform(requestBuilder);
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {

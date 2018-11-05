@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class EventTypeOptionsValidationException extends MyNakadiRuntimeException1 {
+public class EventTypeOptionsValidationException extends NakadiBaseException {
 
     public EventTypeOptionsValidationException(final String message) {
         super(message);

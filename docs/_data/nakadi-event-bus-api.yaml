@@ -309,6 +309,8 @@ paths:
       responses:
         '200':
           description: EventType is successfuly removed
+        '404':
+          description: EventType is not found in nakadi
         '401':
           description: Client is not authenticated
           schema:
@@ -1025,6 +1027,41 @@ paths:
       responses:
         '204':
           description: Subscription was deleted
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint only allows to update the authorization section of a subscription. All other properties are
+        immutable. This operation is restricted to subjects with administrative role.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription with modified authorization section.
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+      responses:
+        '204':
+          description: Subscription was updated
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1115,6 +1152,10 @@ paths:
                   $ref: '#/definitions/CursorCommitResult'
             required:
               - items
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1160,6 +1201,10 @@ paths:
       responses:
         '204':
           description: Offsets were reset
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
@@ -1195,6 +1240,7 @@ paths:
         - $ref: '#/parameters/BatchFlushTimeout'
         - $ref: '#/parameters/StreamTimeout'
         - $ref: '#/parameters/StreamKeepAliveLimit'
+        - $ref: '#/parameters/CommitTimeout'
         - name: X-Flow-Id
           in: header
           description: |
@@ -1218,6 +1264,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1230,10 +1280,6 @@ paths:
             already equals the maximum value - the total number of partitions in this subscription.
 
             - Request to reset subscription cursors is still in progress.
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -1337,6 +1383,17 @@ paths:
                 default: 0
                 minimum: 0
                 maximum: 4200
+              commit_timeout:
+                description: |
+                  Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
+                  In case if commit does not come within this timeout, nakadi will initialize stream termination, no
+                  new data will be sent. Partitions from this stream will be assigned to other streams.
+                  Setting commit_timeout to 0 is equal to setting it to the maximum allowed value - 60 seconds.
+                type: number
+                format: int32
+                default: 60
+                maximum: 60
+                minimum: 0
         - $ref: '#/parameters/SubscriptionId'
         - name: X-Flow-Id
           in: header
@@ -1361,6 +1418,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -1375,10 +1436,6 @@ paths:
             - Request to reset subscription cursors is still in progress.
 
             - It is requested to read from a partition that is already assigned to another stream by direct request.
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -1397,7 +1454,12 @@ paths:
         - $ref: '#/parameters/SubscriptionId'
         - name: show_time_lag
           in: query
-          description: show consumer time lag
+          description: |
+            Shows consumer time lag as an optional field.
+            This option is a time consuming operation and Nakadi attempts to compute it in the best possible strategy.
+            In cases of failures, resulting in Nakadi being unable to compute it within a configurable timeout,
+            the field might either be partially present or not present (depending on the number of successful requests)
+            in the output.
           type: boolean
           default: false
       responses:
@@ -1922,11 +1984,11 @@ definitions:
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
     schema:
-      oneOf:      
+      oneOf:
       - $ref: '#/definitions/BusinessEvent'
       - $ref: '#/definitions/DataChangeEvent'
       - $ref: '#/definitions/UndefinedEvent'
-      
+
   EventMetadata:
     type: object
     description: |
@@ -2010,11 +2072,22 @@ definitions:
           same partition and therefore compacted in a proper way (as compaction is performed per partition).
         type: string
         example: '329ed3d2-8366-11e8-adc0-fa7ae01bbebc'
+      span_ctx:
+        description: |
+          Object containing an OpenTracing http://opentracing.io span context. In case the producer of this event type
+          uses OpenTracing for tracing transactions accross distributed services, this field is populated with an
+          object that allows consumers to resume the context of a span. The details of the payload are vendor
+          specific and consumers are expected to contact the producer in order to obtain further details. Any attempt
+          to inspect or effectively use the payload, apart from the tracer implementation, can lead to vendor lock-in
+          which should be avoided.
+        type: object
+        additionalProperties:
+          type: string
     required:
       - eid
-      - occurred_at    
-        
-        
+      - occurred_at
+
+
   BusinessEvent:
     description: |
       A Business Event.
@@ -2169,7 +2242,7 @@ definitions:
   CursorDistanceResult:
     allOf:
       - $ref: '#/definitions/CursorDistanceQuery'
-      - type: object        
+      - type: object
         properties:
           distance:
             type: number
@@ -2374,9 +2447,40 @@ definitions:
           status.
         items:
           $ref: '#/definitions/SubscriptionEventTypeStatus'
+      authorization:
+          $ref: '#/definitions/SubscriptionAuthorization'
     required:
       - owning_application
       - event_types
+
+  SubscriptionAuthorization:
+      type: object
+      description: |
+        Authorization section of a Subscription. This section defines two access control lists: one for consuming
+        events and committing cursors ('readers'), and one for administering a subscription ('admins').
+        Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+      properties:
+        admins:
+          type: array
+          description: |
+            An array of subject attributes that are required for updating the subscription. Any one of the attributes
+            defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+            i.e. if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+        readers:
+          type: array
+          description: |
+            An array of subject attributes that are required for reading events and committing cursors to this
+            subscription. Any one of the attributes defined in this array is sufficient to be authorized. The wildcard
+            item takes precedence over all others, i.e., if it is present, all users are authorized.
+          items:
+            $ref: '#/definitions/AuthorizationAttribute'
+          minItems: 1
+      required:
+        - admins
+        - readers
 
   EventType:
     description: An event type defines the schema and its runtime properties.
@@ -2561,6 +2665,27 @@ definitions:
             expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
 
+      ordering_instance_ids:
+        type: array
+        description: |
+          This is only an informational field.
+
+          Indicates which field represents the data instance identifier and scope in which ordering_key_fields
+          provides a strict order. It is typically a single field, but multiple fields for compound identifier
+          keys are also supported.
+
+          This is an informational-only event type attribute without specific Nakadi semantics for specification of
+          application level ordering. It only can be used in combination with ordering_key_fields.
+
+          This field can be modified at any moment, but event type owners are expected to notify consumer in advance
+          about the change.
+        items:
+          type: string
+          description: |
+            Indicates a single key field. It is a simple path (dot separated) to the JSON leaf element of the whole
+            event object, including the contained metadata and data (in case of a data change event) objects, and it
+            must be present in the schema.
+          example: "data.order_number"
       audience:
         type: string
         x-extensible-enum:
@@ -3052,6 +3177,21 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  CommitTimeout:
+    name: commit_timeout
+    in: query
+    description: |
+      Maximum amount of seconds that nakadi will be waiting for commit after sending a batch to a client.
+      In case if commit does not come within this timeout, nakadi will initialize stream termination, no
+      new data will be sent. Partitions from this stream will be assigned to other streams.
+      Setting commit_timeout to 0 is equal to setting it to the maximum allowed value - 60 seconds.
+    type: number
+    format: int32
+    default: 60
+    maximum: 60
+    minimum: 0
+    required: false
 
   MaxUncommittedEvents:
     name: max_uncommitted_events

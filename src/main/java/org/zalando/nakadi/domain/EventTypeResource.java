@@ -30,16 +30,7 @@ public class EventTypeResource implements Resource {
     @Override
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
-        switch (operation) {
-            case READ:
-                return Optional.of(etAuthorization.getReaders());
-            case WRITE:
-                return Optional.of(etAuthorization.getWriters());
-            case ADMIN:
-                return Optional.of(etAuthorization.getAdmins());
-            default:
-                throw new IllegalArgumentException("Operation " + operation + " is not supported");
-        }
+        return etAuthorization.getAttributesForOperation(operation);
     }
 
     @Override

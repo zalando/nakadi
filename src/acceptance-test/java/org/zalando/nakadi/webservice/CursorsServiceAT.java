@@ -15,6 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -108,7 +109,8 @@ public class CursorsServiceAT extends BaseAT {
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
         cursorsService = new CursorsService(subscriptionRepo, null,
-                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator, null);
+                mock(NakadiSettings.class), zkSubscriptionFactory, cursorConverter, uuidGenerator, null,
+                mock(AuthorizationValidator.class));
 
         // Register cursors in converter
         registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));

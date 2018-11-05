@@ -157,13 +157,13 @@ public class StrictJsonParser {
                 throw syntaxError(stringNumber + " can not be used", tokenizer);
             }
         } else {
-            final long longValue = Long.parseLong(stringNumber);
-            if (stringNumber.equals(String.valueOf(longValue))) {
+            try {
+                final long longValue = Long.parseLong(stringNumber);
                 if (longValue <= Integer.MAX_VALUE && longValue >= Integer.MIN_VALUE) {
                     return (int) longValue;
                 }
                 return longValue;
-            } else {
+            } catch (NumberFormatException e) {
                 throw syntaxError("Can not use long value '" + stringNumber + "' cause it is too big", tokenizer);
             }
         }

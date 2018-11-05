@@ -1,13 +1,12 @@
 package org.zalando.nakadi.service;
 
-
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -41,7 +40,7 @@ public class AuthorizationValidatorTest {
     }
 
     @Test
-    public void whenInvalidAuthAttributesThenInvalidEventTypeException() throws Exception {
+    public void whenInvalidAuthAttributesThenInvalidEventTypeException() {
 
         final ResourceAuthorization auth = new ResourceAuthorization(
                 ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4));
@@ -61,7 +60,7 @@ public class AuthorizationValidatorTest {
     }
 
     @Test
-    public void whenDuplicatesThenInvalidEventTypeException() throws Exception {
+    public void whenDuplicatesThenInvalidEventTypeException() {
 
         final ResourceAuthorization auth = new ResourceAuthorization(
                 ImmutableList.of(attr1, attr3, attr2, attr1, attr1, attr3),
@@ -81,7 +80,7 @@ public class AuthorizationValidatorTest {
     }
 
     @Test(expected = ServiceTemporarilyUnavailableException.class)
-    public void whenPluginExceptionInIsAuthorizationAttributeValidThenServiceUnavailableException() throws Exception {
+    public void whenPluginExceptionInIsAuthorizationAttributeValidThenServiceUnavailableException() {
 
         final ResourceAuthorization auth = new ResourceAuthorization(
                 ImmutableList.of(attr1),
@@ -94,19 +93,19 @@ public class AuthorizationValidatorTest {
     }
 
     @Test
-    public void whenAuthorizationIsNullWhileUpdatingETThenOk() throws Exception {
+    public void whenAuthorizationIsNullWhileUpdatingETThenOk() {
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder().authorization(null).build());
     }
 
     @Test(expected = AccessDeniedException.class)
-    public void whenNotAuthorizedThenForbiddenAccessException() throws Exception {
+    public void whenNotAuthorizedThenForbiddenAccessException() {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
-    public void whenETAdminNotAuthorizedButAdminThenOk() throws Exception {
+    public void whenETAdminNotAuthorizedButAdminThenOk() {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
@@ -114,15 +113,14 @@ public class AuthorizationValidatorTest {
     }
 
     @Test
-    public void whenAuthorizedThenOk() throws Exception {
+    public void whenAuthorizedThenOk() {
         when(authorizationService.isAuthorized(any(), any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test(expected = ServiceTemporarilyUnavailableException.class)
-    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporarilyUnavailableException()
-            throws Exception {
+    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporarilyUnavailableException() {
         when(authorizationService.isAuthorized(any(), any())).thenThrow(new PluginException("blah"));
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());

@@ -4,13 +4,15 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
+import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -22,8 +24,8 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -31,6 +33,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -49,7 +52,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,9 +62,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.text.MessageFormat.format;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -82,6 +81,9 @@ import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionL
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
@@ -92,7 +94,7 @@ public class SubscriptionControllerTest {
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private final StandaloneMockMvcBuilder mockMvcBuilder;
+    private final MockMvc mockMvc;
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final CursorConverter cursorConverter;
@@ -123,15 +125,16 @@ public class SubscriptionControllerTest {
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et");
-        final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
+                "subscription_log_et", mock(AuthorizationValidator.class));
+        final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
 
-        mockMvcBuilder = standaloneSetup(controller)
+        mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setControllerAdvice(new ExceptionHandling())
-                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
+                .setControllerAdvice(new NakadiProblemExceptionHandler(), new PostSubscriptionExceptionHandler())
+                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver())
+                .build();
     }
 
     @Test
@@ -149,7 +152,7 @@ public class SubscriptionControllerTest {
         final Subscription subscription = builder().build();
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
-        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy-message");
+        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
         getSubscription(subscription.getId())
                 .andExpect(status().isNotFound())
@@ -202,7 +205,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
-                "'limit' parameter should have value from 1 to 1000");
+                "'limit' parameter should have value between 1 and 1000");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
     }
 
@@ -285,23 +288,23 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscriptionStats(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}/stats", subscriptionId)));
+        return mockMvc.perform(get(format("/subscriptions/{0}/stats", subscriptionId)));
     }
 
     private ResultActions getSubscriptions() throws Exception {
-        return mockMvcBuilder.build().perform(get("/subscriptions"));
+        return mockMvc.perform(get("/subscriptions"));
     }
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
         final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
-        return mockMvcBuilder.build().perform(get(url));
+        return mockMvc.perform(get(url));
     }
 
     @Test
     public void whenDeleteSubscriptionThenNoContent() throws Exception {
         mockGetFromRepoSubscriptionWithOwningApp("sid", "nakadiClientId");
-        mockMvcBuilder.build().perform(delete("/subscriptions/sid"))
+        mockMvc.perform(delete("/subscriptions/sid"))
                 .andExpect(status().isNoContent());
     }
 
@@ -313,7 +316,7 @@ public class SubscriptionControllerTest {
                 .when(subscriptionRepository).deleteSubscription("sid");
 
         checkForProblem(
-                mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
+                mockMvc.perform(delete("/subscriptions/sid")),
                 Problem.valueOf(NOT_FOUND, "dummy message"));
     }
 
@@ -327,7 +330,7 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}", subscriptionId)));
+        return mockMvc.perform(get(format("/subscriptions/{0}", subscriptionId)));
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {

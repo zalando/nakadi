@@ -6,7 +6,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +25,12 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoConnectionSlotsException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.nakadi.metrics.MetricUtils;
@@ -42,24 +41,20 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.ConnectionSlot;
-import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.Cursor;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+import org.zalando.problem.StatusType;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -71,14 +66,15 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
+import static org.zalando.problem.Status.BAD_REQUEST;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.PRECONDITION_FAILED;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.TOO_MANY_REQUESTS;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -93,8 +89,6 @@ public class EventStreamController {
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
-    private final ConsumerLimitingService consumerLimitingService;
-    private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
@@ -110,8 +104,6 @@ public class EventStreamController {
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
-                                 final ConsumerLimitingService consumerLimitingService,
-                                 final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
                                  final EventTypeChangeListener eventTypeChangeListener,
@@ -124,8 +116,6 @@ public class EventStreamController {
         this.streamMetrics = streamMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
-        this.consumerLimitingService = consumerLimitingService;
-        this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
@@ -212,14 +202,13 @@ public class EventStreamController {
 
             if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
-                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
+                        Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                 return;
             }
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
-            List<ConnectionSlot> connectionSlots = ImmutableList.of();
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
 
             LOG.info("[X-NAKADI-CURSORS] \"{}\" {}", eventTypeName, Optional.ofNullable(cursorsStr).orElse("-"));
@@ -242,15 +231,6 @@ public class EventStreamController {
                         .withCursors(getStreamingStart(eventType, cursorsStr))
                         .withMaxMemoryUsageBytes(maxMemoryUsageBytes)
                         .build();
-
-                // acquire connection slots to limit the number of simultaneous connections from one client
-                if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
-                    final List<String> partitions = streamConfig.getCursors().stream()
-                            .map(NakadiCursor::getPartition)
-                            .collect(Collectors.toList());
-                    connectionSlots = consumerLimitingService.acquireConnectionSlots(
-                            client.getClientId(), eventTypeName, partitions);
-                }
 
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
                 consumerCounter.inc();
@@ -289,13 +269,15 @@ public class EventStreamController {
             } catch (final NoConnectionSlotsException e) {
                 LOG.debug("Connection creation failed due to exceeding max connection count");
                 writeProblemResponse(response, outputStream,
-                        Problem.valueOf(MoreStatus.TOO_MANY_REQUESTS, e.getMessage()));
+                        Problem.valueOf(TOO_MANY_REQUESTS, e.getMessage()));
             } catch (final ServiceTemporarilyUnavailableException e) {
                 LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getMessage());
-            } catch (final NakadiException e) {
+            } catch (final InvalidLimitException e) {
+                writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY, e.getMessage());
+            } catch (final InternalNakadiException e) {
                 LOG.error("Error while trying to stream events.", e);
-                writeProblemResponse(response, outputStream, e.asProblem());
+                writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final AccessDeniedException e) {
@@ -305,7 +287,6 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } finally {
                 connectionReady.set(false);
-                consumerLimitingService.releaseConnectionSlots(connectionSlots);
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }
@@ -333,7 +314,7 @@ public class EventStreamController {
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-                                      final Response.StatusType statusCode, final String message) throws IOException {
+                                      final StatusType statusCode, final String message) throws IOException {
         writeProblemResponse(response, outputStream, Problem.valueOf(statusCode, message));
     }
 

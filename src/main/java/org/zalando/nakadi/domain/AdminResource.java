@@ -32,25 +32,12 @@ public class AdminResource implements Resource {
     @Override
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
-        switch (operation) {
-            case READ:
-                return Optional.of(resourceAuthorization.getReaders());
-            case WRITE:
-                return Optional.of(resourceAuthorization.getWriters());
-            case ADMIN:
-                return Optional.of(resourceAuthorization.getAdmins());
-            default:
-                throw new IllegalArgumentException("Operation " + operation + " is not supported");
-        }
-    }
-
-    public List<Permission> getPermissionsList() {
-        return resourceAuthorization.toPermissionsList(name);
+        return resourceAuthorization.getAttributesForOperation(operation);
     }
 
     @Override
     public String toString() {
-        return "AuthorizedResource{" + ADMIN_RESOURCE +"='" + name + "'}";
+        return "AuthorizedResource{" + ADMIN_RESOURCE + "='" + name + "'}";
     }
 
 }

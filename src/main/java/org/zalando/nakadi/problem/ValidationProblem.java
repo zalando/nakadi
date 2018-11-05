@@ -4,14 +4,14 @@ import com.google.common.base.CaseFormat;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
+import org.zalando.problem.StatusType;
+import org.zalando.problem.ThrowableProblem;
 
-import javax.ws.rs.core.Response;
 import java.net.URI;
-import java.util.Optional;
 
-public class ValidationProblem implements Problem {
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
+
+public class ValidationProblem extends ThrowableProblem {
     private final Errors errors;
 
     private static final String TYPE_VALUE = "http://httpstatus.es/422";
@@ -33,13 +33,13 @@ public class ValidationProblem implements Problem {
     }
 
     @Override
-    public Response.StatusType getStatus() {
-        return MoreStatus.UNPROCESSABLE_ENTITY;
+    public StatusType getStatus() {
+        return UNPROCESSABLE_ENTITY;
     }
 
     @Override
-    public Optional<String> getDetail() {
-        return Optional.of(buildErrorMessage());
+    public String getDetail() {
+        return buildErrorMessage();
     }
 
     private String buildErrorMessage() {

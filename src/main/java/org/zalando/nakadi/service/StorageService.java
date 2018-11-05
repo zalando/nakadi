@@ -16,22 +16,19 @@ import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
-import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
+import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.problem.Problem;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @Service
 public class StorageService {
@@ -63,10 +60,8 @@ public class StorageService {
             curator.getData().usingWatcher((CuratorWatcher) event -> {
                 final byte[] defaultStorageId = curator.getData().forPath(ZK_TIMELINES_DEFAULT_STORAGE);
                 if (defaultStorageId != null) {
-                    final Result<Storage> storageResult = getStorage(new String(defaultStorageId));
-                    if (storageResult.isSuccessful()) {
-                        defaultStorage.setStorage(storageResult.getValue());
-                    }
+                    final Storage storage = getStorage(new String(defaultStorageId));
+                    defaultStorage.setStorage(storage);
                 }
                 watchDefaultStorage();
             }).forPath(ZK_TIMELINES_DEFAULT_STORAGE);
@@ -75,33 +70,35 @@ public class StorageService {
         }
     }
 
-    public Result<List<Storage>> listStorages() {
+    public List<Storage> listStorages() throws InternalNakadiException {
         final List<Storage> storages;
         try {
             storages = storageDbRepository.listStorages();
         } catch (RepositoryProblemException e) {
             LOG.error("DB error occurred when listing storages", e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+            throw new InternalNakadiException(e.getMessage());
         }
-        return Result.ok(storages);
+        return storages;
     }
 
-    public Result<Storage> getStorage(final String id) {
+    public Storage getStorage(final String id) throws NoSuchStorageException, InternalNakadiException {
         final Optional<Storage> storage;
         try {
             storage = storageDbRepository.getStorage(id);
         } catch (RepositoryProblemException e) {
             LOG.error("DB error occurred when fetching storage", e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+            throw new InternalNakadiException(e.getMessage());
         }
         if (storage.isPresent()) {
-            return Result.ok(storage.get());
+            return storage.get();
         } else {
-            return Result.problem(Problem.valueOf(NOT_FOUND, "No storage with id " + id));
+            throw new NoSuchStorageException("No storage with id " + id);
         }
     }
 
-    public Result<Void> createStorage(final JSONObject json) throws DbWriteOperationsBlockedException {
+    public void createStorage(final JSONObject json)
+            throws DbWriteOperationsBlockedException, DuplicatedStorageException, InternalNakadiException,
+            UnknownStorageTypeException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create storage: write operations on DB " +
                     "are blocked by feature flag.");
@@ -118,11 +115,10 @@ public class StorageService {
                     configuration = json.getJSONObject("kafka_configuration");
                     break;
                 default:
-                    return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY,
-                            "Type '" + type + "' is not a valid storage type"));
+                    throw new UnknownStorageTypeException("Type '" + type + "' is not a valid storage type");
             }
         } catch (JSONException e) {
-            return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
+            throw new UnprocessableEntityException(e.getMessage());
         }
 
         final Storage storage = new Storage();
@@ -131,53 +127,44 @@ public class StorageService {
         try {
             storage.parseConfiguration(objectMapper, configuration.toString());
         } catch (final IOException e) {
-            return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
+            throw new UnprocessableEntityException(e.getMessage());
         }
 
         try {
             storageDbRepository.createStorage(storage);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when creating storage", e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
-        } catch (final DuplicatedStorageException e) {
-            return Result.problem(Problem.valueOf(CONFLICT, e.getMessage()));
+            throw new InternalNakadiException(e.getMessage());
         }
-        return Result.ok();
     }
 
-    public Result<Void> deleteStorage(final String id) throws DbWriteOperationsBlockedException {
+    public void deleteStorage(final String id)
+            throws DbWriteOperationsBlockedException, NoSuchStorageException,
+            StorageIsUsedException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete storage: write operations on DB " +
                     "are blocked by feature flag.");
         }
         try {
             storageDbRepository.deleteStorage(id);
-        } catch (final NoStorageException e) {
-            return Result.notFound("No storage with ID " + id);
-        } catch (final StorageIsUsedException e) {
-            return Result.forbidden("Storage " + id + " is in use");
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when deleting storage", e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+            throw new InternalNakadiException(e.getMessage());
         } catch (final TransactionException e) {
             LOG.error("Error with transaction handling when deleting storage", e);
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
-                    "Transaction error occurred when deleting storage"));
+            throw new InternalNakadiException("Transaction error occurred when deleting storage");
         }
-        return Result.ok();
     }
 
-    public Result<Storage> setDefaultStorage(final String defaultStorageId) {
-        final Result<Storage> storageResult = getStorage(defaultStorageId);
-        if (storageResult.isSuccessful()) {
+    public Storage setDefaultStorage(final String defaultStorageId)
+            throws NoSuchStorageException, InternalNakadiException {
+        final Storage storage = getStorage(defaultStorageId);
             try {
                 curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
             } catch (final Exception e) {
                 LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
-                return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR,
-                        "Error while setting default storage in zk"));
+                throw new InternalNakadiException("Error while setting default storage in zk");
             }
-        }
-        return storageResult;
+        return storage;
     }
 }

@@ -6,10 +6,11 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.CursorConverter;
@@ -19,7 +20,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -37,13 +37,7 @@ public class StartingState extends State {
         try {
             getContext().checkAccessAuthorized();
         } catch (final AccessDeniedException e) {
-            switchState(new CleanupState(
-                    new NakadiException(e.explain()) {
-                        @Override
-                        protected Response.StatusType getStatus() {
-                            return Response.Status.FORBIDDEN;
-                        }
-                    }));
+            switchState(new CleanupState(e));
             return;
         }
         getZk().runLocked(this::initializeStream);
@@ -94,12 +88,7 @@ public class StartingState extends State {
 
         if (getZk().isCursorResetInProgress()) {
             switchState(new CleanupState(
-                    new NakadiException("Resetting subscription cursors request is still in progress") {
-                        @Override
-                        protected Response.StatusType getStatus() {
-                            return Response.Status.CONFLICT;
-                        }
-                    }));
+                    new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
         }
 
@@ -158,7 +147,7 @@ public class StartingState extends State {
                         try {
                             // get oldest active timeline
                             return timelineService.getActiveTimelinesOrdered(et).get(0);
-                        } catch (final NakadiException e) {
+                        } catch (final InternalNakadiException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })
@@ -197,7 +186,7 @@ public class StartingState extends State {
                             // get newest active timeline
                             final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(et);
                             return activeTimelines.get(activeTimelines.size() - 1);
-                        } catch (final NakadiException e) {
+                        } catch (final InternalNakadiException e) {
                             throw new NakadiRuntimeException(e);
                         }
                     })

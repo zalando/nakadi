@@ -5,12 +5,12 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.State;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,7 +20,7 @@ public class StreamingContextTest {
     private static StreamingContext createTestContext(final Consumer<Exception> onException) {
         final SubscriptionOutput output = new SubscriptionOutput() {
             @Override
-            public void onInitialized(final String ignore) throws IOException {
+            public void onInitialized(final String ignore) {
             }
 
             @Override
@@ -39,11 +39,11 @@ public class StreamingContextTest {
                 .setOut(output)
                 .setParameters(null)
                 .setSession(Session.generate(1, ImmutableList.of()))
+                .setSubscription(new Subscription())
                 .setTimer(null)
                 .setZkClient(null)
                 .setRebalancer(null)
                 .setKafkaPollTimeout(0)
-                .setLoggingPath("stream")
                 .setConnectionReady(new AtomicBoolean(true))
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
@@ -87,8 +87,8 @@ public class StreamingContextTest {
         final boolean[] contextsSet = new boolean[]{false, false};
         final State state1 = new State() {
             @Override
-            public void setContext(final StreamingContext context, final String tmp) {
-                super.setContext(context, tmp);
+            public void setContext(final StreamingContext context) {
+                super.setContext(context);
                 contextsSet[0] = null != context;
             }
 
@@ -106,8 +106,8 @@ public class StreamingContextTest {
         };
         final State state2 = new State() {
             @Override
-            public void setContext(final StreamingContext context, final String tmp) {
-                super.setContext(context, tmp);
+            public void setContext(final StreamingContext context) {
+                super.setContext(context);
                 contextsSet[1] = true;
             }
 

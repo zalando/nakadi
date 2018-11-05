@@ -21,7 +21,8 @@ import java.util.Optional;
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
+    // We are using empty log name, cause it is used only for access log and we do not care about class name
+    private static final Logger ACCESS_LOGGER = LoggerFactory.getLogger("ACCESS_LOG");
 
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
@@ -55,7 +56,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .orElse("-");
             final Long contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
 
-            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms \"{}\" \"{}\" {} bytes",
+            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     method,
                     path,
                     query,

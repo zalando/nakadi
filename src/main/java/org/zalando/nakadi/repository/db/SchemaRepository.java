@@ -7,7 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 
 import java.io.IOException;
 import java.sql.ResultSet;

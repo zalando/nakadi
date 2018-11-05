@@ -5,7 +5,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.utils.TestUtils;
 

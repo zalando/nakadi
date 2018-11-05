@@ -9,10 +9,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.ErrorGettingCursorTimeLagException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.SubscriptionTimeLagService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -24,6 +21,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -45,7 +43,7 @@ public class SubscriptionTimeLagServiceTest {
     }
 
     @Test
-    public void testTimeLagsForTailAndNotTailPositions() throws NakadiException, InvalidCursorException {
+    public void testTimeLagsForTailAndNotTailPositions() throws InvalidCursorException {
 
         final EventConsumer eventConsumer = mock(EventConsumer.class);
         final Timeline timeline = mock(Timeline.class);
@@ -79,28 +77,15 @@ public class SubscriptionTimeLagServiceTest {
     }
 
 
-    @Test(expected = InconsistentStateException.class)
-    @SuppressWarnings("unchecked")
-    public void whenNakadiExceptionThenInconsistentStateExceptionIsThrown()
-            throws NakadiException, InvalidCursorException {
-        when(timelineService.createEventConsumer(any(), any())).thenThrow(NakadiException.class);
-
+    @Test
+    public void whenNoSubscriptionThenReturnSizeZeroMap() {
+        when(timelineService.createEventConsumer(any(), any())).thenReturn(null);
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
 
-        timeLagService.getTimeLags(ImmutableList.of(committedCursor1), ImmutableList.of());
-    }
-
-    @Test(expected = ErrorGettingCursorTimeLagException.class)
-    @SuppressWarnings("unchecked")
-    public void whenInvalidCursorThenErrorGettingCursorTimeLagExceptionIsThrown()
-            throws NakadiException, InvalidCursorException {
-        when(timelineService.createEventConsumer(any(), any())).thenThrow(InvalidCursorException.class);
-
-        final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
-        final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
-
-        timeLagService.getTimeLags(ImmutableList.of(committedCursor1), ImmutableList.of());
+        final Map<EventTypePartition, Duration> result = timeLagService.getTimeLags
+                (ImmutableList.of(committedCursor1), ImmutableList.of());
+        assertThat(result.size(), is(0));
     }
 
     private PartitionEndStatistics mockEndStats(final NakadiCursor nakadiCursor) {

@@ -9,9 +9,8 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -100,12 +99,12 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test(expected = NoSuchEventTypeException.class)
-    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException {
+    public void whenEventDoesntExistsFindByNameReturnsNothing() {
         repository.findByName("inexisting-name");
     }
 
     @Test
-    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, IOException {
+    public void whenUpdateExistingEventTypeItUpdates() throws IOException {
         final EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
@@ -135,7 +134,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenUpdateDifferentSchemaVersionThenInsertIt() throws NakadiException, IOException {
+    public void whenUpdateDifferentSchemaVersionThenInsertIt() throws IOException {
         final EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
@@ -151,7 +150,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListExistingEventTypesAreListed() throws NakadiException {
+    public void whenListExistingEventTypesAreListed() {
         final EventType eventType1 = buildDefaultEventType();
         final EventType eventType2 = buildDefaultEventType();
 

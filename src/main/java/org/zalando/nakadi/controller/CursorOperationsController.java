@@ -4,25 +4,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -33,9 +29,6 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorDistance;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.ShiftedCursor;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -83,7 +76,7 @@ public class CursorOperationsController {
                 final Long distance = cursorOperationsService.calculateDistance(initialCursor, finalCursor);
                 query.setDistance(distance);
             } catch (InternalNakadiException | ServiceTemporarilyUnavailableException e) {
-                throw new MyNakadiRuntimeException1("problem calculating cursors distance", e);
+                throw new NakadiBaseException("problem calculating cursors distance", e);
             } catch (final NoSuchEventTypeException e) {
                 throw new NotFoundException("event type not found", e);
             } catch (final InvalidCursorException e) {
@@ -133,28 +126,6 @@ public class CursorOperationsController {
                 .collect(Collectors.toList());
     }
 
-    @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
-                                                    final NativeWebRequest request) {
-        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
-        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                clientErrorMessage(e.getReason())), request);
-    }
-
-    private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
-        switch (reason) {
-            case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
-                    "timeline that has already expired.";
-            case PARTITION_NOT_FOUND: return "Partition not found.";
-            case CURSOR_FORMAT_EXCEPTION: return "Сursor format is not supported.";
-            case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
-                    "have matching partitions.";
-            default:
-                LOG.error("Unexpected invalid cursor operation reason " + reason);
-                throw new MyNakadiRuntimeException1();
-        }
-    }
-
     private CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag) {
         return new CursorLag(
                 nakadiCursorLag.getPartition(),
@@ -168,7 +139,7 @@ public class CursorOperationsController {
         return cursor -> {
             try {
                 return cursorConverter.convert(eventTypeName, cursor);
-            } catch (final NakadiException | InvalidCursorException e) {
+            } catch (final InternalNakadiException | InvalidCursorException e) {
                 throw new CursorConversionException("problem converting cursors", e);
             }
         };
@@ -180,7 +151,7 @@ public class CursorOperationsController {
                 final NakadiCursor nakadiCursor = cursorConverter.convert(eventTypeName, cursor);
                 return new ShiftedNakadiCursor(nakadiCursor.getTimeline(), nakadiCursor.getPartition(),
                         nakadiCursor.getOffset(), cursor.getShift());
-            } catch (final NakadiException | InvalidCursorException e) {
+            } catch (final InternalNakadiException | InvalidCursorException e) {
                 throw new CursorConversionException("problem converting cursors", e);
             }
         };

@@ -152,13 +152,13 @@ public class NakadiKafkaConsumerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenReadEventsThenNakadiException() {
+    public void whenReadEventsThenNakadiRuntimeBaseException() {
 
         // ARRANGE //
         final ImmutableList<RuntimeException> exceptions = ImmutableList.of(new NoOffsetForPartitionException(
                 new TopicPartition("", 0)), new KafkaException());
 
-        int numberOfNakadiExceptions = 0;
+        int numberOfNakadiRuntimeBaseExceptions = 0;
         for (final Exception exception : exceptions) {
             final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
             when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
@@ -173,11 +173,12 @@ public class NakadiKafkaConsumerTest {
                 // ASSERT //
                 fail("An Exception was expected to be be thrown");
             } catch (final Exception e) {
-                numberOfNakadiExceptions++;
+                numberOfNakadiRuntimeBaseExceptions++;
             }
         }
 
-        assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions,
+        assertThat("We should get a NakadiBaseException for every call",
+                numberOfNakadiRuntimeBaseExceptions,
                 equalTo(exceptions.size()));
     }
 

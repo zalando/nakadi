@@ -12,18 +12,11 @@ spring:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
     username: nakadi
     password: nakadi
-    driverClassName: org.postgresql.Driver
-    tomcat:
-      initial-size: 2
-      max-active: 2
-      min-idle: 1
-      max-idle: 1
-      test-on-borrow: true
-      validation-query: SELECT 1
-      test-while-idle: true
-      time-between-eviction-runs-millis: 5000
-      min-evictable-idle-time-millis: 60000
-      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      connectionTimeout: 2000
+      minimumIdle: 1
+      maximumPoolSize: 2
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
@@ -36,7 +29,7 @@ nakadi:
   admin.default:
     dataType: service
     value: stups_nakadi
-  authz.warnAllDataAccessMessage: ""
+  authz.warnAllDataAccessMessage: "Data access warning"
   topic:
     min:
       retentionMs: 86400000 # 1 days
@@ -52,9 +45,10 @@ nakadi:
       rotationMs: 10800000 # 3 hours
       segmentBytes: 1073741824 # 1 GB
       compactionLagMs: 10800000 # 3 hours
+      warnMessage: "Compaction warning"
   stream:
     timeoutMs: 31536000000 # 1 year :-P
-    default.commitTimeout: 60 # 1 minute
+    max.commitTimeout: 60 # 1 minute
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
@@ -127,7 +121,7 @@ nakadi:
 
 twintip:
   mapping: /api
-  yaml: "file:nakadi-event-bus-api.yaml"
+  yaml: "file:api/nakadi-event-bus-api.yaml"
 ---
 
 spring:
@@ -135,8 +129,7 @@ spring:
 nakadi:
   stream:
     maxStreamMemoryBytes: 10_000 # ~10 Kb
-    default:
-      commitTimeout: 5 # seconds
+    max.commitTimeout: 5 # seconds
   subscription:
     maxPartitions: 30
   features.defaultFeatures:
@@ -144,10 +137,6 @@ nakadi:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
     DISABLE_SUBSCRIPTION_CREATION: false
-    CHECK_PARTITIONS_KEYS: true
-    CHECK_OWNING_APPLICATION: false
-    LIMIT_CONSUMERS_NUMBER: true
-    SEND_BATCH_VIA_OUTPUT_STREAM: true
     REMOTE_TOKENINFO: true
     KPI_COLLECTION: false
     DISABLE_DB_WRITE_OPERATIONS: false
@@ -159,9 +148,6 @@ kpi:
 
 spring:
   profiles: test
-twintip:
-  mapping: /api
-  yaml: "file:api/nakadi-event-bus-api.yaml"
 
 ---
 
@@ -172,10 +158,6 @@ nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false
   DISABLE_SUBSCRIPTION_CREATION: false
-  CHECK_PARTITIONS_KEYS: true
-  CHECK_OWNING_APPLICATION: true
-  LIMIT_CONSUMERS_NUMBER: true
-  SEND_BATCH_VIA_OUTPUT_STREAM: true
   REMOTE_TOKENINFO: true
   KPI_COLLECTION: false
   DISABLE_DB_WRITE_OPERATIONS: false

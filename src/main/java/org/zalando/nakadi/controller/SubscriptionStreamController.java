@@ -9,28 +9,25 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -38,20 +35,23 @@ import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
+import static org.zalando.problem.Status.CONFLICT;
+import static org.zalando.problem.Status.FORBIDDEN;
+import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class SubscriptionStreamController {
@@ -59,7 +59,6 @@ public class SubscriptionStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
-    private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
@@ -70,7 +69,6 @@ public class SubscriptionStreamController {
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
-                                        final FeatureToggleService featureToggleService,
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
@@ -79,7 +77,6 @@ public class SubscriptionStreamController {
                                         final SubscriptionDbRepository subscriptionDbRepository,
                                         final SubscriptionValidationService subscriptionValidationService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
-        this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
@@ -118,21 +115,23 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 try {
                     if (ex instanceof AccessDeniedException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
+                        writeProblemResponse(response, out, Problem.valueOf(FORBIDDEN,
                                 ((AccessDeniedException) ex).explain()));
                     } else if (ex instanceof SubscriptionPartitionConflictException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.CONFLICT,
+                        writeProblemResponse(response, out, Problem.valueOf(CONFLICT,
                                 ex.getMessage()));
                     } else if (ex instanceof WrongStreamParametersException) {
-                        writeProblemResponse(response, out, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                        writeProblemResponse(response, out, Problem.valueOf(UNPROCESSABLE_ENTITY,
                                 ex.getMessage()));
                     } else if (ex instanceof NoSuchSubscriptionException) {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.NOT_FOUND,
+                        writeProblemResponse(response, out, Problem.valueOf(NOT_FOUND,
                                 ex.getMessage()));
-                    } else if (ex instanceof NakadiException) {
-                        writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
+                    } else if (ex instanceof InternalNakadiException) {
+                        writeProblemResponse(response, out, Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()));
+                    } else if (ex instanceof NoStreamingSlotsAvailable) {
+                        writeProblemResponse(response, out, Problem.valueOf(CONFLICT, ex.getMessage()));
                     } else {
-                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                        writeProblemResponse(response, out, Problem.valueOf(SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));
                     }
                     out.flush();
@@ -159,7 +158,7 @@ public class SubscriptionStreamController {
             final Client client) {
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
-                nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
+                nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters);
     }
@@ -175,13 +174,14 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
+            @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimeout,
-                streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of());
+                streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(), commitTimeout);
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
-                nakadiSettings.getDefaultCommitTimeoutSeconds(), client);
+                nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters);
     }
@@ -207,7 +207,7 @@ public class SubscriptionStreamController {
             try {
                 if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
-                            Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
+                            Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
 
@@ -238,12 +238,4 @@ public class SubscriptionStreamController {
         response.setContentType("application/problem+json");
         jsonMapper.writer().writeValue(outputStream, problem);
     }
-
-    @ExceptionHandler(WrongStreamParametersException.class)
-    public ResponseEntity<Problem> invalidEventTypeException(final WrongStreamParametersException exception,
-                                                             final NativeWebRequest request) {
-        LOG.debug(exception.getMessage(), exception);
-        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
-    }
-
 }

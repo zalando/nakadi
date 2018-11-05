@@ -5,11 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-import org.zalando.problem.Problem;
 
-import javax.ws.rs.core.Response;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,35 +30,29 @@ public class SchemaService {
         this.paginationService = paginationService;
     }
 
-    public Result<?> getSchemas(final String name, final int offset, final int limit) {
+    public PaginationWrapper getSchemas(final String name, final int offset, final int limit)
+            throws InvalidLimitException {
         if (limit < 1 || limit > 1000) {
-            return Result.problem(Problem.valueOf(Response.Status.BAD_REQUEST,
-                    "'limit' parameter should have value from 1 to 1000"));
+            throw new InvalidLimitException("'limit' parameter sholud have value between 1 and 1000");
         }
 
         if (offset < 0) {
-            return Result.problem(Problem.valueOf(Response.Status.BAD_REQUEST,
-                    "'offset' parameter can't be lower than 0"));
+            throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
 
-        return Result.ok(paginationService
+        return paginationService
                 .paginate(offset,  limit, String.format("/event-types/%s/schemas", name),
                         (o, l) -> schemaRepository.getSchemas(name, o, l),
-                        () -> schemaRepository.getSchemasCount(name)));
+                        () -> schemaRepository.getSchemasCount(name));
     }
 
-    public Result<EventTypeSchema> getSchemaVersion(final String name, final String version) {
+    public EventTypeSchema getSchemaVersion(final String name, final String version)
+            throws NoSuchSchemaException, InvalidVersionNumberException {
         final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
         if (!versionMatcher.matches()) {
-            return Result.problem(Problem.valueOf(Response.Status.BAD_REQUEST, "Invalid version number"));
+            throw new InvalidVersionNumberException("Invalid version number");
         }
-
-        try {
-            final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
-            return Result.ok(schema);
-        } catch (final NoSuchSchemaException e) {
-            LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
-            return Result.problem(e.asProblem());
-        }
+        final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
+        return schema;
     }
 }

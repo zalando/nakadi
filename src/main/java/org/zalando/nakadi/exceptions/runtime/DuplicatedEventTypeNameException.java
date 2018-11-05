@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class DuplicatedEventTypeNameException extends MyNakadiRuntimeException1 {
+public class DuplicatedEventTypeNameException extends NakadiBaseException {
 
     public DuplicatedEventTypeNameException(final String msg, final Exception cause) {
         super(msg, cause);

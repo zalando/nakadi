@@ -4,7 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.utils.TestUtils;
 
 public class KafkaCursorTest {

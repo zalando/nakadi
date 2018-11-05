@@ -8,7 +8,7 @@ import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.util.HashGenerator;

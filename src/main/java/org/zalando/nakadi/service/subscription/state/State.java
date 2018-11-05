@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.state;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
@@ -15,9 +16,12 @@ public abstract class State {
     private StreamingContext context;
     private Logger log;
 
-    public void setContext(final StreamingContext context, final String loggingPath) {
+    public void setContext(final StreamingContext context) {
         this.context = context;
-        this.log = LoggerFactory.getLogger(loggingPath + "." + this.getClass().getSimpleName());
+        this.log = LoggerFactory.getLogger(LogPathBuilder.build(
+                context.getSubscription().getId(),
+                context.getSessionId(),
+                "state." + this.getClass().getSimpleName()));
     }
 
     public Logger getLog() {

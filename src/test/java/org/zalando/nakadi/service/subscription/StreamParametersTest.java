@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -94,10 +93,10 @@ public class StreamParametersTest {
                                                           final Integer batchKeepAliveIterations,
                                                           final int maxUncommittedMessages,
                                                           final long commitTimeoutSeconds,
-                                                          final Client client) throws UnprocessableEntityException {
+                                                          final Client client) throws WrongStreamParametersException {
         final UserStreamParameters userParams = new UserStreamParameters(batchLimitEvents, streamLimitEvents,
                 batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations, maxUncommittedMessages,
-                ImmutableList.of());
+                ImmutableList.of(), commitTimeoutSeconds);
         return StreamParameters.of(userParams, commitTimeoutSeconds, client);
     }
 }

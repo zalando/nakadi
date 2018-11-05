@@ -12,13 +12,13 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -46,17 +46,17 @@ import static com.google.common.base.Charsets.UTF_8;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
+    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
+    protected static final String NODE_TOPOLOGY = "/topology";
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
-    protected static final String NODE_TOPOLOGY = "/topology";
-    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
 
     private final String subscriptionId;
     private final CuratorFramework curatorFramework;
-    private InterProcessSemaphoreMutex lock;
     private final String resetCursorPath;
     private final Logger log;
+    private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
@@ -112,7 +112,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 throw releaseException;
             }
             return result;
-        } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
+        } catch (final NakadiRuntimeException | NakadiBaseException e) {
             throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
@@ -206,6 +206,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                             synchronized (result) {
                                 result.put(key, value);
                             }
+                        } else if (event.getResultCode() == KeeperException.Code.NONODE.intValue()) {
+                            getLog().warn("Unable to get {} data from zk. Node not found ", zkKey);
                         } else {
                             getLog().error(
                                     "Failed to get {} data from zk. status code: {}",
@@ -229,14 +231,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException("Failed to wait for zk response", ex);
         }
-        if (result.size() != keys.size()) {
-            throw new ServiceTemporarilyUnavailableException("Failed to wait for keys " +
-                    keys.stream()
-                            .filter(v -> !result.containsKey(v))
-                            .map(String::valueOf)
-                            .collect(Collectors.joining(", "))
-                    + " to be in response", null);
-        }
         return result;
     }
 
@@ -244,20 +238,22 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
         getLog().info("fetching sessions information");
-        final List<String> zkSessions;
-        try {
-            zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
-        } catch (final KeeperException.NoNodeException e) {
-            throw new SubscriptionNotInitializedException(getSubscriptionId());
-        } catch (Exception ex) {
-            throw new NakadiRuntimeException(ex);
+        for (int i = 0; i < 5; i++) {
+            try {
+                final List<String> sessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
+                final Map <String,Session> result = loadDataAsync(sessions,
+                        key -> getSubscriptionPath("/sessions/" + key),
+                        this::deserializeSession);
+                if (result.size() == sessions.size()) {
+                    return result.values();
+                }
+            } catch (final KeeperException.NoNodeException e) {
+                throw new SubscriptionNotInitializedException(getSubscriptionId());
+            } catch (Exception ex) {
+                throw new NakadiRuntimeException(ex);
+            }
         }
-
-        return loadDataAsync(
-                zkSessions,
-                key -> getSubscriptionPath("/sessions/" + key),
-                this::deserializeSession
-        ).values();
+        throw new ServiceTemporarilyUnavailableException("Failed to get all keys from ZK", null);
     }
 
     @Override
@@ -432,7 +428,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                                 }
                             }
                             if (!currentMaxCursor.getOffset().equals(currentMaxOffset)) {
-                                getLog().info("Committing {} to {}", currentMaxCursor.getOffset(), offsetPath);
+                                getLog().info("Committing {} to {}/{}",
+                                        currentMaxCursor.getOffset(),
+                                        entry.getKey().getEventType(),
+                                        entry.getKey().getPartition());
+
                                 getCurator()
                                         .setData()
                                         .withVersion(stat.getVersion())

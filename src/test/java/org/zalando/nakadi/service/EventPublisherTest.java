@@ -15,8 +15,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -71,7 +71,7 @@ public class EventPublisherTest {
     private final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
-            NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "");
+            NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "", "");
     private final EventPublisher publisher;
 
     public EventPublisherTest() {

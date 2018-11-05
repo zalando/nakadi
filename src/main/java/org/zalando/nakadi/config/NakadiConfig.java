@@ -14,7 +14,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;

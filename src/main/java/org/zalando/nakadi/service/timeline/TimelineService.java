@@ -20,15 +20,14 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -40,7 +39,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
@@ -114,8 +112,7 @@ public class TimelineService {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-                final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
-                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
             if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
                 throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
@@ -227,7 +224,7 @@ public class TimelineService {
             }
 
             throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
-        } catch (final NakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }
@@ -253,7 +250,7 @@ public class TimelineService {
     }
 
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
-            throws NakadiException, InvalidCursorException {
+            throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
                 clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
         result.reassign(positions);
@@ -340,8 +337,8 @@ public class TimelineService {
     public List<Timeline> getTimelines(final String eventTypeName)
             throws AccessDeniedException, UnableProcessException, TimelineException, NotFoundException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
-            final Resource resource = new EventTypeResource(eventTypeName, null);
-            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
+            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                    new EventTypeResource(eventTypeName, null));
         }
 
         try {
