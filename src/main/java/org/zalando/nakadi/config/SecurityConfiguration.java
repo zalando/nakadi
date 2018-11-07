@@ -10,6 +10,9 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
@@ -201,4 +204,16 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         }
         throw new UnknownStatusCodeException("Unknown status code: " + code);
     }
+
+    @Configuration
+    @EnableWebSecurity
+    public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+        @Override
+        public void configure(final WebSecurity web) throws Exception {
+            if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
+                web.ignoring().anyRequest();
+            }
+        }
+    }
+
 }
