@@ -55,6 +55,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.ArrayList;
