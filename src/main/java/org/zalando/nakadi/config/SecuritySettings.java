@@ -11,9 +11,15 @@ public class SecuritySettings {
 
     public enum AuthMode {
         OFF,   // no authentication at all
+        NONE,  // same as OFF
         BASIC, // only checks that the token is valid (has "uid" scope)
         REALM, // checks that the token is valid and contains at least one required realm
         FULL   // full authentication and authorization using oauth2 scopes
+        ;
+
+        public boolean isNoAuthentication() {
+            return AuthMode.OFF == this || AuthMode.NONE == this;
+        }
     }
 
     private final String tokenInfoUrl;

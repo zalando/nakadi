@@ -19,8 +19,6 @@ import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
-
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
@@ -44,7 +42,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
         if (clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF) {
+                || settings.getAuthMode().isNoAuthentication()) {
             return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
         }
 

@@ -210,7 +210,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         @Override
         public void configure(final WebSecurity web) throws Exception {
-            if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
+            if (settings.getAuthMode().isNoAuthentication()) {
                 web.ignoring().anyRequest();
             }
         }
