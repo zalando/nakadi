@@ -65,6 +65,7 @@ public class SubscriptionServiceTest {
         final Subscription subscription = RandomSubscriptionBuilder.builder()
                 .withId("my_subscription_id1")
                 .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
 
         subscriptionService.createSubscription(subscriptionBase);

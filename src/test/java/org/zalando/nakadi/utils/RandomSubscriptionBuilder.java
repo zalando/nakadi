@@ -83,7 +83,6 @@ public class RandomSubscriptionBuilder {
         final Subscription subscription = new Subscription();
         subscription.setId(id);
         subscription.setCreatedAt(createdAt);
-        subscription.setUpdatedAt(createdAt);
         subscription.setOwningApplication(owningApplication);
         subscription.setEventTypes(eventTypes);
         subscription.setConsumerGroup(consumerGroup);
