@@ -117,6 +117,7 @@ nakadi:
       nakadiSubscriptionLog: "nakadi.subscription.log"
       nakadiBatchPublished: "nakadi.batch.published"
       nakadiDataStreamed: "nakadi.data.streamed"
+      owning_application: "nakadi"
   hasher.salt: "salt"
 
 twintip:
