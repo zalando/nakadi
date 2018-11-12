@@ -46,10 +46,10 @@ public class NakadiKpiInitialization {
 
     @EventListener
     public void onApplicationEvent(final ContextRefreshedEvent event) throws IOException {
-//        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.KPI_COLLECTION)) {
-//            LOG.debug("KPI collection is disabled, skip creation of kpi event types");
-//            return;
-//        }
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.KPI_COLLECTION)) {
+            LOG.debug("KPI collection is disabled, skip creation of kpi event types");
+            return;
+        }
 
         LOG.debug("Initializing KPI event types");
 
@@ -75,7 +75,7 @@ public class NakadiKpiInitialization {
             try {
                 eventTypeService.create(et);
             } catch (final DuplicatedEventTypeNameException e) {
-                LOG.debug("KPI event type already exists " + et.getName(), e);
+                LOG.debug("KPI event type already exists " + et.getName());
             } catch (final NakadiBaseException e) {
                 LOG.debug("Problem creating KPI event type " + et.getName(), e);
             }
