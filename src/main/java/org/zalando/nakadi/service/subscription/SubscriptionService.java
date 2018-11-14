@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,7 +147,7 @@ public class SubscriptionService {
 
         subscriptionValidationService.validateSubscriptionChange(old, newValue);
         old.mergeFrom(newValue);
-        old.setUpdatedAt(new DateTime());
+        old.setUpdatedAt(new DateTime(DateTimeZone.UTC));
         subscriptionRepository.updateSubscription(old);
         return old;
     }
