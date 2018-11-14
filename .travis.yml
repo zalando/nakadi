@@ -40,7 +40,7 @@ before_script:
 
 env:
   global:
-    - DOCKER_COMPOSE_VERSION="1.7.1"
+    - DOCKER_COMPOSE_VERSION="1.23.1"
   matrix:
     - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
     - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
