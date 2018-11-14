@@ -62,7 +62,7 @@ nakadi:
     enable.auto.commit: false
   zookeeper:
     kafkaNamespace:
-    brokers: 127.0.0.1:2181
+    brokers: zookeeper:2181
     sessionTimeoutMs: 30000
     connectionTimeoutMs: 10000
   oauth2:
@@ -117,6 +117,7 @@ nakadi:
       nakadiSubscriptionLog: "nakadi.subscription.log"
       nakadiBatchPublished: "nakadi.batch.published"
       nakadiDataStreamed: "nakadi.data.streamed"
+      owning_application: "nakadi"
   hasher.salt: "salt"
 
 twintip:
@@ -138,7 +139,7 @@ nakadi:
     DISABLE_EVENT_TYPE_DELETION: false
     DISABLE_SUBSCRIPTION_CREATION: false
     REMOTE_TOKENINFO: true
-    KPI_COLLECTION: false
+    KPI_COLLECTION: true
     DISABLE_DB_WRITE_OPERATIONS: false
 kpi:
   config:
@@ -159,5 +160,5 @@ nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_DELETION: false
   DISABLE_SUBSCRIPTION_CREATION: false
   REMOTE_TOKENINFO: true
-  KPI_COLLECTION: false
+  KPI_COLLECTION: true
   DISABLE_DB_WRITE_OPERATIONS: false

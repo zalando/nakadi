@@ -28,7 +28,7 @@ public class Storage {
         public KafkaConfiguration(
                 @JsonProperty(value="exhibitor_address") final String exhibitorAddress,
                 @JsonProperty(value="exhibitor_port", defaultValue = "8181") final Integer exhibitorPort,
-                @JsonProperty(value="zk_address", defaultValue = "127.0.0.1:2181") final String zkAddress,
+                @JsonProperty(value="zk_address", defaultValue = "zookeeper:2181") final String zkAddress,
                 @JsonProperty(value="zk_path", defaultValue = "") final String zkPath) {
             this.exhibitorAddress = exhibitorAddress;
             this.exhibitorPort = exhibitorPort;
