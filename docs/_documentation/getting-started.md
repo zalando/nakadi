@@ -47,7 +47,7 @@ Some ports need to be available to run the service:
 
 -  8080 for the API server
 -  5432 for PostgreSQL
--  9092 for Kafka
+-  9092 and 29092 for Kafka
 -  2181 for Zookeeper
 
 Even though users of the API interact with port 8080, the other ports are exposed
@@ -55,9 +55,3 @@ in order to run integration tests.
 
 If you are not running the tests, it's safe to modify docker-compose.yaml by removing
 the port forwarding from dependencies.
-
-<a name="macos"></a>
-### Mac OS Docker Settings
-
-Nakadi no longer supports the old docker-machine. Please, install the most recent
-version of Docker for Mac. 
