@@ -8,8 +8,11 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = {"org.zalando.nakadi", "org.zalando.nakadi.config"})
 public class Application {
 
-    public static void main(final String[] args) {
+    static {
         java.security.Security.setProperty("networkaddress.cache.ttl" , "10");
+    }
+
+    public static void main(final String[] args) {
         SpringApplication.run(Application.class, args);
     }
 }
