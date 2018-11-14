@@ -9,6 +9,7 @@ import org.springframework.context.annotation.ComponentScan;
 public class Application {
 
     public static void main(final String[] args) {
+        java.security.Security.setProperty("networkaddress.cache.ttl" , "10");
         SpringApplication.run(Application.class, args);
     }
 }
