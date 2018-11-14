@@ -62,7 +62,7 @@ nakadi:
     enable.auto.commit: false
   zookeeper:
     kafkaNamespace:
-    brokers: 127.0.0.1:2181
+    brokers: zookeeper:2181
     sessionTimeoutMs: 30000
     connectionTimeoutMs: 10000
   oauth2:
