@@ -11,8 +11,8 @@ import static org.springframework.http.HttpStatus.OK;
 public class NakadiKpiInitializationAT extends RealEnvironmentAT {
     @Test
     public void testKpiEventTypesCreatedOnApplicationLaunch() {
-        Lists.newArrayList("nakadi.event.type.log", "nakadi.subscription.log", "nakadi.data.streamed", "nakadi.batch.published",
-                "nakadi.access.log")
+        Lists.newArrayList("nakadi.event.type.log", "nakadi.subscription.log", "nakadi.data.streamed",
+                "nakadi.batch.published", "nakadi.access.log")
                 .forEach(et -> jsonRequestSpec()
                         .get("/event-types/" + et)
                         .then()
