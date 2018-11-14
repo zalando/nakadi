@@ -41,6 +41,7 @@ import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static org.springframework.http.HttpStatus.OK;
 
 public class NakadiTestUtils {
@@ -57,14 +58,18 @@ public class NakadiTestUtils {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .post("/event-types").print();
+                .post("/event-types")
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
     }
 
     public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .put("/event-types/" + eventType.getName());
+                .put("/event-types/" + eventType.getName())
+                .then()
+                .statusCode(SC_OK);
     }
 
     public static EventType createBusinessEventTypeWithPartitions(final int partitionNum)
@@ -93,7 +98,9 @@ public class NakadiTestUtils {
         given()
                 .body(format("[{0}]", event))
                 .contentType(JSON)
-                .post(format("/event-types/{0}/events", eventType));
+                .post(format("/event-types/{0}/events", eventType))
+                .then()
+                .statusCode(SC_OK);
     }
 
     public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
