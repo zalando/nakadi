@@ -112,6 +112,14 @@ class PartitionData {
         return result;
     }
 
+    public List<ConsumedEvent> extractMaxEvents(final long currentTimeMillis, final int count) {
+        final List<ConsumedEvent> result = extract(count);
+        if(!result.isEmpty()) {
+            lastSendMillis = currentTimeMillis;
+        }
+        return result;
+    }
+
     int getKeepAliveInARow() {
         return keepAliveInARow;
     }
