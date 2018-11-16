@@ -12,11 +12,18 @@ spring:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
     username: nakadi
     password: nakadi
-    type: com.zaxxer.hikari.HikariDataSource
-    hikari:
-      connectionTimeout: 2000
-      minimumIdle: 1
-      maximumPoolSize: 2
+    driverClassName: org.postgresql.Driver
+    tomcat:
+      initial-size: 2
+      max-active: 2
+      min-idle: 1
+      max-idle: 1
+      test-on-borrow: true
+      validation-query: SELECT 1
+      test-while-idle: true
+      time-between-eviction-runs-millis: 5000
+      min-evictable-idle-time-millis: 60000
+      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
