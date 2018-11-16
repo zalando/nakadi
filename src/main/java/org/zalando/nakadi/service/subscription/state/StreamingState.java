@@ -252,7 +252,7 @@ class StreamingState extends State {
         }
 
         long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
-        while (memoryConsumed > getContext().getStreamMemoryLimitBytes()) {
+        while (memoryConsumed > getContext().getStreamMemoryLimitBytes() && getMessagesAllowedToSend() > 0) {
             // Select heaviest guy (and on previous step we figured out that we can not send anymore full batches,
             // therefore we can take all the events from one partition.
             final Map.Entry<EventTypePartition, PartitionData> heaviestPartition = offsets.entrySet().stream().max(
@@ -260,7 +260,8 @@ class StreamingState extends State {
             ).get(); // There is always at least 1 item in list
 
             long deltaSize = heaviestPartition.getValue().getBytesInMemory();
-            final List<ConsumedEvent> events = heaviestPartition.getValue().extractAll(currentTimeMillis);
+            final List<ConsumedEvent> events = heaviestPartition.getValue().extractMaxEvents(currentTimeMillis,
+                    (int) getMessagesAllowedToSend());
             deltaSize -= heaviestPartition.getValue().getBytesInMemory();
 
             sentSomething = true;

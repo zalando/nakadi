@@ -6,7 +6,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -15,9 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.io.IOException;
@@ -49,7 +49,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
             return eventType;
         } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
-        } catch (final DuplicateKeyException e) {
+        } catch (final DataIntegrityViolationException e) {
             throw new DuplicatedEventTypeNameException("EventType " + eventTypeBase.getName() + " already exists.", e);
         }
     }

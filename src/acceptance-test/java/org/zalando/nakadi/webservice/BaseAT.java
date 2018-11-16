@@ -25,7 +25,7 @@ public abstract class BaseAT {
     public static final String URL = "http://localhost:" + PORT;
 
     protected static final String ZOOKEEPER_URL = "localhost:2181";
-    protected static final String KAFKA_URL = "localhost:9092";
+    protected static final String KAFKA_URL = "localhost:29092";
 
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
             new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
