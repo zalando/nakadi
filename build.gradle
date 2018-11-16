@@ -91,7 +91,6 @@ dependencies {
     ext['json.version'] = '20180130'
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
-    ext['postgresql.version'] = '42.2.2'
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
@@ -120,7 +119,7 @@ dependencies {
 
     // storage
     compile "org.springframework.boot:spring-boot-starter-jdbc"
-    compile 'org.postgresql:postgresql'
+    compile 'org.postgresql:postgresql:42.2.5'
 
     compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
 
