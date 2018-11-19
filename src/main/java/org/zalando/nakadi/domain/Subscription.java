@@ -13,11 +13,12 @@ public class Subscription extends SubscriptionBase {
         super();
     }
 
-    public Subscription(final String id, final DateTime createdAt, final SubscriptionBase subscriptionBase) {
+    public Subscription(final String id, final DateTime createdAt, final DateTime updatedAt,
+                        final SubscriptionBase subscriptionBase) {
         super(subscriptionBase);
         this.id = id;
         this.createdAt = createdAt;
-        this.updatedAt=createdAt;
+        this.updatedAt = updatedAt;
     }
 
     private String id;

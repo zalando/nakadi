@@ -113,7 +113,6 @@ public class SubscriptionAT extends BaseAT {
                 .body("consumer_group", not(isEmptyString()))
                 .body("id", not(isEmptyString()))
                 .body("created_at", not(isEmptyString()))
-                .body("updated_at", not(isEmptyString()))
                 .body("start_from", not(isEmptyString()));
 
         // retrieve subscription object from response
@@ -143,7 +142,7 @@ public class SubscriptionAT extends BaseAT {
         final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(gotSubscription, equalTo(subFirst));
 
-        //Check for updation of the subscription
+        //Check for update time of the subscription
         final Subscription updateSub= subFirst;
         updateSub.setAuthorization(new SubscriptionAuthorization(
                 Collections.singletonList(new ResourceAuthorizationAttribute("user", "me")),
