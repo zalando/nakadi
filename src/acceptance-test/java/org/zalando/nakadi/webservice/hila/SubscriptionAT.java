@@ -143,7 +143,7 @@ public class SubscriptionAT extends BaseAT {
         assertThat(gotSubscription, equalTo(subFirst));
 
         //Check for update time of the subscription
-        final Subscription updateSub= subFirst;
+        final Subscription updateSub = subFirst;
         updateSub.setAuthorization(new SubscriptionAuthorization(
                 Collections.singletonList(new ResourceAuthorizationAttribute("user", "me")),
                 Collections.singletonList(new ResourceAuthorizationAttribute("user", "me"))));
@@ -166,7 +166,7 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testSubscriptionWithNullAuthorisation() {
-        final  EventType eventType = createEventType();
+        final EventType eventType = createEventType();
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\""
                 + eventType.getName() + "\"], \"read_from\": \"end\", \"consumer_group\":\"test\"," +
                 "\"authorization\": {\"admins\": [], \"readers\": []}}";

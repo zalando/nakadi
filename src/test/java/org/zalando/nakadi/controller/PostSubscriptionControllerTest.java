@@ -86,8 +86,8 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenSubscriptionCreationDisabledThenReturnExistentSubscription() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        final DateTime createdAt= new DateTime(DateTimeZone.UTC);
-        final Subscription existingSubscription = new Subscription("123",createdAt,createdAt,subscriptionBase);
+        final DateTime createdAt = new DateTime(DateTimeZone.UTC);
+        final Subscription existingSubscription = new Subscription("123", createdAt, createdAt, subscriptionBase);
         existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
 
         when(subscriptionService.getExistingSubscription(any())).thenReturn(existingSubscription);
@@ -104,8 +104,8 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenPostValidSubscriptionThenOk() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        final DateTime createdAt= new DateTime(DateTimeZone.UTC);
-        final Subscription subscription = new Subscription("123",createdAt,createdAt,subscriptionBase);
+        final DateTime createdAt = new DateTime(DateTimeZone.UTC);
+        final Subscription subscription = new Subscription("123", createdAt, createdAt, subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSuchSubscriptionException("", null));
         when(subscriptionService.createSubscription(any())).thenReturn(subscription);
@@ -192,8 +192,8 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenSubscriptionExistsThenReturnIt() throws Exception {
         final SubscriptionBase subscriptionBase = builder().buildSubscriptionBase();
-        final DateTime createdAt =  new DateTime(DateTimeZone.UTC);
-        final Subscription existingSubscription = new Subscription("123",createdAt,createdAt, subscriptionBase);
+        final DateTime createdAt = new DateTime(DateTimeZone.UTC);
+        final Subscription existingSubscription = new Subscription("123", createdAt, createdAt, subscriptionBase);
 
         when(subscriptionService.getExistingSubscription(any())).thenReturn(existingSubscription);
         when(subscriptionService.createSubscription(any())).thenThrow(new NoSuchEventTypeException("msg"));
