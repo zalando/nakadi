@@ -35,7 +35,7 @@ public class RFC3339DateTimeValidator implements FormatValidator {
             }
 
         } catch (final DateTimeParseException e) {
-            return error;
+            return Optional.of(error.get() + " " + e.getMessage());
         }
     }
 }

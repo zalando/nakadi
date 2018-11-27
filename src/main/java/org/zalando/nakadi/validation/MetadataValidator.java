@@ -17,6 +17,7 @@ public class MetadataValidator implements EventValidator {
     }
 
     private Optional<ValidationError> checkDateTime(final String occurredAt) {
-        return validator.validate(occurredAt).map(ValidationError::new);
+        return validator.validate(occurredAt)
+                .map(e-> new ValidationError("#/metadata/occurred_at:" + e));
     }
 }
