@@ -29,8 +29,6 @@ before_install:
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
-  - pip install --user codecov
-  - sudo curl -L https://github.com/codacy/codacy-coverage-reporter/releases/download/1.0.13/codacy-coverage-reporter-assembly-1.0.5.jar > /opt/codacy-coverage-reporter.jar
 
 install:
   - ./gradlew compileJava compileTestJava assemble
@@ -40,7 +38,7 @@ before_script:
 
 env:
   global:
-    - DOCKER_COMPOSE_VERSION="1.7.1"
+    - DOCKER_COMPOSE_VERSION="1.23.1"
   matrix:
     - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
     - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
@@ -48,8 +46,3 @@ env:
 
 # run test suits in parallel
 script: "$TEST_SUITE"
-
-after_success:
-  # only testWithReport generates coverage report
-  - test -e build/reports/jacoco/test/jacocoTestReport.xml && codecov
-  - test -e build/reports/jacoco/test/jacocoTestReport.xml && java -jar /opt/codacy-coverage-reporter.jar -l Java -r build/reports/jacoco/test/jacocoTestReport.xml

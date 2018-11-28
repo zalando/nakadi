@@ -118,10 +118,7 @@ dependencies {
     compile 'org.zalando.zmon:zmon-actuator:0.9.8'
 
     // storage
-    compile ('org.springframework.boot:spring-boot-starter-jdbc') {
-        exclude module: "tomcat-jdbc"
-    }
-    compile 'com.zaxxer:HikariCP:3.2.0'
+    compile "org.springframework.boot:spring-boot-starter-jdbc"
     compile 'org.postgresql:postgresql:42.2.5'
 
     compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'

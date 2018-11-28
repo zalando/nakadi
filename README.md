@@ -126,8 +126,6 @@ The project is built with [Gradle](http://gradle.org).
 The `./gradlew` [wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap
 the right Gradle version if it's not already installed. 
 
-[Mac OS specific configuration](https://zalando.github.io/nakadi/manual.html#macos)
-
 ### Install
 
 To get the source, clone the git repository.
