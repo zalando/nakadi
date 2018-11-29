@@ -8,11 +8,11 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -21,7 +21,6 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.state.StartingState;
@@ -43,7 +42,7 @@ import java.util.stream.Stream;
 @Component
 public class CursorsService {
 
-    private final SubscriptionDbRepository subscriptionRepository;
+
     private final EventTypeCache eventTypeCache;
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
@@ -51,9 +50,10 @@ public class CursorsService {
     private final UUIDGenerator uuidGenerator;
     private final TimelineService timelineService;
     private final AuthorizationValidator authorizationValidator;
+    private final SubscriptionCache subscriptionCache;
 
     @Autowired
-    public CursorsService(final SubscriptionDbRepository subscriptionRepository,
+    public CursorsService(final SubscriptionCache subscriptionCache,
                           final EventTypeCache eventTypeCache,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
@@ -61,7 +61,6 @@ public class CursorsService {
                           final UUIDGenerator uuidGenerator,
                           final TimelineService timelineService,
                           final AuthorizationValidator authorizationValidator) {
-        this.subscriptionRepository = subscriptionRepository;
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
@@ -69,6 +68,7 @@ public class CursorsService {
         this.uuidGenerator = uuidGenerator;
         this.timelineService = timelineService;
         this.authorizationValidator = authorizationValidator;
+        this.subscriptionCache = subscriptionCache;
     }
 
     /**
@@ -79,7 +79,7 @@ public class CursorsService {
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             AccessDeniedException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
         authorizationValidator.authorizeSubscriptionCommit(subscription);
 
@@ -129,7 +129,7 @@ public class CursorsService {
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId)
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -153,7 +153,7 @@ public class CursorsService {
             throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 

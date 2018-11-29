@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.CursorsAreEmptyException;
@@ -71,8 +70,7 @@ public class CursorsController {
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.POST)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursorsIn,
-                                           @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
-                                           final NativeWebRequest request)
+                                           @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId)
             throws NoSuchEventTypeException,
             NoSuchSubscriptionException,
             InvalidCursorException,
@@ -98,8 +96,7 @@ public class CursorsController {
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.PATCH)
     public ResponseEntity<?> resetCursors(
             @PathVariable("subscriptionId") final String subscriptionId,
-            @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
-            final NativeWebRequest request)
+            @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
         cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
         return noContent().build();

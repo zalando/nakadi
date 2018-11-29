@@ -5,7 +5,6 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.SubscriptionResource;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 
 import java.util.Collections;
 
@@ -22,7 +21,7 @@ public class CursorsServiceTest {
     public void setup() {
         authorizationValidator = mock(AuthorizationValidator.class);
         service = new CursorsService(
-                mock(SubscriptionDbRepository.class), null, null, null, null, null, null, authorizationValidator);
+                mock(SubscriptionCache.class), null, null, null, null, null, null, authorizationValidator);
     }
 
     @Test(expected = AccessDeniedException.class)
