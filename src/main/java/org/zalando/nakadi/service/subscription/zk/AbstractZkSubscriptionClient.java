@@ -241,7 +241,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         for (int i = 0; i < 5; i++) {
             try {
                 final List<String> sessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
-                final Map <String,Session> result = loadDataAsync(sessions,
+                final Map<String, Session> result = loadDataAsync(sessions,
                         key -> getSubscriptionPath("/sessions/" + key),
                         this::deserializeSession);
                 if (result.size() == sessions.size()) {

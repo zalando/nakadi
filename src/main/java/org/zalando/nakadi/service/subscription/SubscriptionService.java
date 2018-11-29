@@ -45,7 +45,6 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
-import org.zalando.nakadi.service.SubscriptionCache;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -84,7 +83,6 @@ public class SubscriptionService {
     private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
-    private final SubscriptionCache subscriptionCache;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -98,8 +96,7 @@ public class SubscriptionService {
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
-                               final AuthorizationValidator authorizationValidator,
-                               final SubscriptionCache subscriptionCache) {
+                               final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -112,7 +109,6 @@ public class SubscriptionService {
         this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
         this.authorizationValidator = authorizationValidator;
-        this.subscriptionCache = subscriptionCache;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -148,7 +144,6 @@ public class SubscriptionService {
         subscriptionValidationService.validateSubscriptionChange(old, newValue);
         old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(old);
-        subscriptionCache.invalidateSubscription(subscriptionId);
         return old;
     }
 
@@ -217,7 +212,6 @@ public class SubscriptionService {
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
                 .put("subscription_id", subscriptionId)
                 .put("status", "deleted"));
-        subscriptionCache.invalidateSubscription(subscriptionId);
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,

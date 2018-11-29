@@ -55,7 +55,7 @@ public class SubscriptionServiceTest {
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                authorizationValidator, mock(SubscriptionCache.class));
+                authorizationValidator);
     }
 
     @Test

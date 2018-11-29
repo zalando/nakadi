@@ -140,7 +140,7 @@ public class NakadiProblemExceptionHandler implements ProblemHandling {
     @ExceptionHandler({NoSuchEventTypeException.class, NoSuchSchemaException.class, NoSuchSubscriptionException.class})
     public ResponseEntity<Problem> handleNotFoundResponses(final NakadiBaseException exception,
                                                            final NativeWebRequest request) {
-        LOG.debug(exception.getMessage());
+        LOG.error(exception.getMessage(), exception);
         return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
 
