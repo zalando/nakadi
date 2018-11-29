@@ -140,6 +140,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionThenOk() throws Exception {
         final Subscription subscription = builder().build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
@@ -150,6 +151,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
         final Subscription subscription = builder().build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
@@ -237,6 +239,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         final Collection<Partition> partitions = Collections.singleton(
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
         final ZkSubscriptionNode zkSubscriptionNode =
@@ -278,6 +281,7 @@ public class SubscriptionControllerTest {
     @SuppressWarnings("unchecked")
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
@@ -326,6 +330,7 @@ public class SubscriptionControllerTest {
                 .withId(subscriptionId)
                 .withOwningApplication(owningApplication)
                 .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscriptionId)).thenReturn(subscription);
     }
 
