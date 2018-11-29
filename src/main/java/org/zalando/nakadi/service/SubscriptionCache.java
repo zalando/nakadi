@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The caching works only inside the instance of the application, it does not sync cahce across the instances, that's
+ * The caching works only inside the instance of the application, it does not sync cache across the instances, that's
  * why one should be careful about using it.
  */
 @Service
@@ -40,7 +40,8 @@ public class SubscriptionCache {
     }
 
     /**
-     * The method is not synced across Nakadi instances, it may return stale data.
+     * The method is not synced across Nakadi instances and eventually consistent in case of invalidation on
+     * different instance, it may return stale data.
      *
      * @param subscriptionId
      * @return cached subscription or exception
@@ -54,11 +55,11 @@ public class SubscriptionCache {
         } catch (final UncheckedExecutionException e) {
             final Throwable cause = e.getCause();
             if (cause instanceof NoSuchSubscriptionException) {
-                throw new NoSuchSubscriptionException(e.getCause().getMessage());
+                throw (NoSuchSubscriptionException) cause;
             }
-            throw new ServiceTemporarilyUnavailableException(e.getCause().getMessage());
+            throw new ServiceTemporarilyUnavailableException("Failed to access subscription cache", cause);
         } catch (final ExecutionException e) {
-            throw new ServiceTemporarilyUnavailableException(e.getCause().getMessage());
+            throw new ServiceTemporarilyUnavailableException("Failed to access subscription cache", e.getCause());
         }
     }
 
