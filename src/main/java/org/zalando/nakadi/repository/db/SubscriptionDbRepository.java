@@ -101,7 +101,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (final EmptyResultDataAccessException e) {
-            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
+            throw NoSuchSubscriptionException.withSubscriptionId(id, e);
         } catch (final DataAccessException e) {
             LOG.error("Database error when getting subscription", e);
             throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
@@ -113,7 +113,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         try {
             final int rowsDeleted = jdbcTemplate.update("DELETE FROM zn_data.subscription WHERE s_id = ?", id);
             if (rowsDeleted == 0) {
-                throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
+                throw NoSuchSubscriptionException.withSubscriptionId(id, null);
             }
         } catch (final DataAccessException e) {
             LOG.error("Database error when deleting subscription", e);

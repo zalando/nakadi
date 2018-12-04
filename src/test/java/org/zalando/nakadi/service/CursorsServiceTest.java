@@ -21,8 +21,8 @@ public class CursorsServiceTest {
     @Before
     public void setup() {
         authorizationValidator = mock(AuthorizationValidator.class);
-        service = new CursorsService(
-                mock(SubscriptionDbRepository.class), null, null, null, null, null, null, authorizationValidator);
+        service = new CursorsService(mock(SubscriptionDbRepository.class), mock(SubscriptionCache.class), null, null,
+                null, null, null, null, authorizationValidator);
     }
 
     @Test(expected = AccessDeniedException.class)

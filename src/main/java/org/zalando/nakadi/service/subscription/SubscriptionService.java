@@ -39,7 +39,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
