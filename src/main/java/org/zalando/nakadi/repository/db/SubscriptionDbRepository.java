@@ -62,7 +62,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             final String newId = uuidGenerator.randomUUID().toString();
             final String keyFieldsHash = hashGenerator.generateSubscriptionKeyFieldsHash(subscriptionBase);
             final DateTime createdAt = new DateTime(DateTimeZone.UTC);
-            final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
+            final Subscription subscription = new Subscription(newId, createdAt, createdAt, subscriptionBase);
 
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object, s_key_fields_hash) " +
                             "VALUES (?, ?::JSONB, ?)",

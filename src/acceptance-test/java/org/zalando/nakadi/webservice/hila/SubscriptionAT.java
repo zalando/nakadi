@@ -19,7 +19,9 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -35,6 +37,7 @@ import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -114,7 +117,8 @@ public class SubscriptionAT extends BaseAT {
 
         // retrieve subscription object from response
         final Subscription subFirst = MAPPER.readValue(response.print(), Subscription.class);
-
+        //check initialization of updated_At
+        assertThat(subFirst.getUpdatedAt(), equalTo(subFirst.getCreatedAt()));
         // when we try to create that subscription again - we should get status 200
         // and the subscription that already exists should be returned
         response = given()
@@ -137,11 +141,32 @@ public class SubscriptionAT extends BaseAT {
         response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
         final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(gotSubscription, equalTo(subFirst));
+
+        //Check for update time of the subscription
+        final Subscription updateSub = subFirst;
+        updateSub.setAuthorization(new SubscriptionAuthorization(
+                Collections.singletonList(new ResourceAuthorizationAttribute("user", "me")),
+                Collections.singletonList(new ResourceAuthorizationAttribute("user", "me"))));
+        final String updatedSubscription = MAPPER.writeValueAsString(updateSub);
+
+        response = given()
+                .body(updatedSubscription)
+                .contentType(JSON)
+                .put(format(SUBSCRIPTION_URL, subFirst.getId()));
+
+        response
+                .then()
+                .statusCode(HttpStatus.SC_NO_CONTENT);
+
+        response = get(format(SUBSCRIPTION_URL, subFirst.getId()));
+        response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
+        final Subscription updatedSub = MAPPER.readValue(response.print(), Subscription.class);
+        assertThat(updatedSub.getUpdatedAt(), not(equalTo(subFirst.getUpdatedAt())));
     }
 
     @Test
     public void testSubscriptionWithNullAuthorisation() {
-        final  EventType eventType = createEventType();
+        final EventType eventType = createEventType();
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\""
                 + eventType.getName() + "\"], \"read_from\": \"end\", \"consumer_group\":\"test\"," +
                 "\"authorization\": {\"admins\": [], \"readers\": []}}";

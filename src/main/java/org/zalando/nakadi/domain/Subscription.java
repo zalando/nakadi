@@ -13,18 +13,30 @@ public class Subscription extends SubscriptionBase {
         super();
     }
 
-    public Subscription(final String id, final DateTime createdAt, final SubscriptionBase subscriptionBase) {
+    public Subscription(final String id, final DateTime createdAt, final DateTime updatedAt,
+                        final SubscriptionBase subscriptionBase) {
         super(subscriptionBase);
         this.id = id;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     private String id;
 
     private DateTime createdAt;
 
+    private DateTime updatedAt;
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<SubscriptionEventTypeStats> status;
+
+    public DateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(final DateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     public String getId() {
         return id;
