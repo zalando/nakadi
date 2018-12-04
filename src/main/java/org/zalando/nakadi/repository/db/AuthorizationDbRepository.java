@@ -55,7 +55,8 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
     public void deletePermission(final Permission permission) {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.authorization " +
-                            "WHERE az_resource=? AND az_operation=?::az_operation AND az_data_type=? AND az_value=?",
+                            "WHERE az_resource=? AND az_operation=?::zn_data.az_operation " +
+                            " AND az_data_type=? AND az_value=?",
                     permission.getResource(), permission.getOperation().toString(),
                     permission.getAuthorizationAttribute().getDataType(),
                     permission.getAuthorizationAttribute().getValue());
@@ -76,7 +77,7 @@ public class AuthorizationDbRepository extends AbstractDbRepository {
 
     public void createPermission(final Permission permission) {
         try {
-            jdbcTemplate.update("INSERT INTO zn_data.authorization VALUES (?, ?::az_operation, ?, ?)",
+            jdbcTemplate.update("INSERT INTO zn_data.authorization VALUES (?, ?::zn_data.az_operation, ?, ?)",
                     permission.getResource(), permission.getOperation().toString(),
                     permission.getAuthorizationAttribute().getDataType(),
                     permission.getAuthorizationAttribute().getValue());
