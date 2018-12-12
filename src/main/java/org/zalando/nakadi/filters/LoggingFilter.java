@@ -55,18 +55,19 @@ public class LoggingFilter extends OncePerRequestFilter {
             final String acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
                     .orElse("-");
             final Long contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
-
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                    method,
-                    path,
-                    query,
-                    userAgent,
-                    user,
-                    response.getStatus(),
-                    timing,
-                    contentEncoding,
-                    acceptEncoding,
-                    contentLength);
+            if (!request.isAsyncStarted()) {
+                ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+                        method,
+                        path,
+                        query,
+                        userAgent,
+                        user,
+                        response.getStatus(),
+                        timing,
+                        contentEncoding,
+                        acceptEncoding,
+                        contentLength);
+            }
             nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                     .put("method", method)
                     .put("path", path)
