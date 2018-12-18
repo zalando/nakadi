@@ -5,21 +5,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.util.JsonPathAccess;
-import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
+import static org.zalando.nakadi.validation.JsonSchemaEnrichment.DATA_PATH_PREFIX;
 
 @Component
 public class HashPartitionStrategy implements PartitionStrategy {
-
-    private static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
     private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final StringHash stringHash;

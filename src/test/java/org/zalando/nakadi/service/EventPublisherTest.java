@@ -1,9 +1,11 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
@@ -15,12 +17,13 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -38,12 +41,14 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -405,6 +410,66 @@ public class EventPublisherTest {
     }
 
     @Test
+    public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(ImmutableList.of("my_field"))
+                .build();
+
+        final JSONArray batch = buildDefaultBatch(1);
+        batch.getJSONObject(0).put("my_field", "my_key");
+
+        mockSuccessfulValidation(eventType);
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
+    }
+
+    @Test
+    public void whenMultiplePartitioningKeyThenEventKeyIsNotSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(ImmutableList.of("my_field", "other_field"))
+                .build();
+
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
+        event.put("my_field", "my_key");
+        event.put("other_field", "other_value");
+
+        mockSuccessfulValidation(eventType);
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+    }
+
+    @Test
+    public void whenNoneHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+        final JSONArray batch = buildDefaultBatch(1);
+
+        mockSuccessfulValidation(eventType);
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<BatchItem> capturePublishedBatch() {
+        final ArgumentCaptor<List> batchCaptor = ArgumentCaptor.forClass(List.class);
+        verify(topicRepository, atLeastOnce()).syncPostBatch(any(), batchCaptor.capture());
+        return (List<BatchItem>) batchCaptor.getValue();
+    }
+
+    @Test
     public void whenEnrichmentFailsThenSubsequentItemsAreAborted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
@@ -449,6 +514,13 @@ public class EventPublisherTest {
     private void mockFaultPartition() throws PartitioningException {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
+                .when(partitionResolver)
+                .resolvePartition(any(), any());
+    }
+
+    private void mockSuccessfulPartitioning() throws PartitioningException {
+        Mockito
+                .doReturn("0")
                 .when(partitionResolver)
                 .resolvePartition(any(), any());
     }
