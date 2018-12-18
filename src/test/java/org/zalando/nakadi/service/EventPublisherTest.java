@@ -41,7 +41,6 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -514,13 +513,6 @@ public class EventPublisherTest {
     private void mockFaultPartition() throws PartitioningException {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
-                .when(partitionResolver)
-                .resolvePartition(any(), any());
-    }
-
-    private void mockSuccessfulPartitioning() throws PartitioningException {
-        Mockito
-                .doReturn("0")
                 .when(partitionResolver)
                 .resolvePartition(any(), any());
     }
