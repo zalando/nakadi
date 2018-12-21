@@ -27,8 +27,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
@@ -96,6 +96,63 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
+    private static CompletableFuture<Exception> publishItem(
+            final Producer<String, String> producer,
+            final String topicId,
+            final BatchItem item,
+            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
+        try {
+            final CompletableFuture<Exception> result = new CompletableFuture<>();
+            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+                    topicId,
+                    KafkaCursor.toKafkaPartition(item.getPartition()),
+                    item.getEventKey(),
+                    item.dumpEventToString());
+
+            circuitBreaker.markStart();
+            producer.send(kafkaRecord, ((metadata, exception) -> {
+                if (null != exception) {
+                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+                    if (hasKafkaConnectionException(exception)) {
+                        circuitBreaker.markFailure();
+                    } else {
+                        circuitBreaker.markSuccessfully();
+                    }
+                    result.complete(exception);
+                } else {
+                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
+                    circuitBreaker.markSuccessfully();
+                    result.complete(null);
+                }
+            }));
+            return result;
+        } catch (final InterruptException e) {
+            Thread.currentThread().interrupt();
+            circuitBreaker.markSuccessfully();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        } catch (final RuntimeException e) {
+            circuitBreaker.markSuccessfully();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        }
+    }
+
+    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
+        if (null == exception) {
+            return false;
+        }
+        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class)
+                .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
+    }
+
+    private static boolean hasKafkaConnectionException(final Exception exception) {
+        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
+                exception instanceof NetworkException ||
+                exception instanceof UnknownServerException;
+    }
+
     public List<String> listTopics() throws TopicRepositoryException {
         try {
             return zkFactory.get()
@@ -161,63 +218,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
-    private static CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer,
-            final String topicId,
-            final BatchItem item,
-            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
-        try {
-            final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
-                    topicId,
-                    KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getEventKey(),
-                    item.dumpEventToString());
-
-            circuitBreaker.markStart();
-            producer.send(kafkaRecord, ((metadata, exception) -> {
-                if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    if (hasKafkaConnectionException(exception)) {
-                        circuitBreaker.markFailure();
-                    } else {
-                        circuitBreaker.markSuccessfully();
-                    }
-                    result.complete(exception);
-                } else {
-                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    circuitBreaker.markSuccessfully();
-                    result.complete(null);
-                }
-            }));
-            return result;
-        } catch (final InterruptException e) {
-            Thread.currentThread().interrupt();
-            circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        } catch (final RuntimeException e) {
-            circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        }
-    }
-
-    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
-        if (null == exception) {
-            return false;
-        }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class)
-                .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
-    }
-
-    private static boolean hasKafkaConnectionException(final Exception exception) {
-        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
-                exception instanceof NetworkException ||
-                exception instanceof UnknownServerException;
-    }
-
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
@@ -270,6 +270,10 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
             failUnpublished(batch, "interrupted");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final org.apache.kafka.common.errors.TimeoutException ex) {
+            failUnpublished(batch, "timed out");
+            kafkaFactory.terminateProducer(producer);
             throw new EventPublishingException("Error publishing message to kafka", ex);
         } finally {
             kafkaFactory.releaseProducer(producer);
@@ -411,6 +415,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     .stream()
                     .map(partitionInfo -> KafkaCursor.toNakadiPartition(partitionInfo.partition()))
                     .collect(toList()));
+        } catch (final org.apache.kafka.common.errors.TimeoutException e) {
+            kafkaFactory.terminateProducer(producer);
+            throw new ServiceTemporarilyUnavailableException("Timeout while listing Kafka partitions", e);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
@@ -500,11 +507,6 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    @FunctionalInterface
-    private interface ZkUtilsAction {
-        void execute(ZkUtils zkUtils) throws Exception;
-    }
-
     private void doWithZkUtils(final ZkUtilsAction action) throws Exception {
         ZkUtils zkUtils = null;
         try {
@@ -517,5 +519,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 zkUtils.close();
             }
         }
+    }
+
+    @FunctionalInterface
+    private interface ZkUtilsAction {
+        void execute(ZkUtils zkUtils) throws Exception;
     }
 }

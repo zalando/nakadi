@@ -116,6 +116,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, kafkaSettings.getLingerMs());
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         producerProps.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, kafkaSettings.getMaxRequestSize());
+        producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafkaSettings.getMaxBlockMsConfig());
         return producerProps;
     }
 }

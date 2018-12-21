@@ -67,6 +67,7 @@ nakadi:
     max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
+    max.max.block.ms.config: 5000 # kafka default is 60000ms
   zookeeper:
     kafkaNamespace:
     brokers: zookeeper:2181
