@@ -36,7 +36,7 @@ The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to pro
     Once a publisher sends an event using a simple [HTTP POST](https://zalando.github.io/nakadi/manual.html#using_producing-events), 
     consumers can be pushed to via a [streaming](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola)
     HTTP connection, allowing near real-time event processing. 
-    The consumer connection has keepalive controls and support for managing stream offsets using
+    The consumer connection has keepalive controls and support for managing stream offsets using 
     [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
 
 ### Development status
