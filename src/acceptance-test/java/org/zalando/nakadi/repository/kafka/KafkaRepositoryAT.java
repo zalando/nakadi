@@ -57,7 +57,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final CleanupPolicy DEFAULT_CLEANUP_POLICY = CleanupPolicy.DELETE;
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_BATCH_SIZE = 1048576;
-    private static final long KAFKA_LINGER_MS = 0;
+    private static final int KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
     private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
