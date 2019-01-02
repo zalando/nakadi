@@ -95,6 +95,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_ADMIN_VALUE,
                 DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
                 DEFAULT_WARN_LOG_COMPACTION_MESSAGE);
+
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
