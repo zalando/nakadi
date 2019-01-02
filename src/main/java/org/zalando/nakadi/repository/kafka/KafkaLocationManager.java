@@ -81,6 +81,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         producerProps.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, kafkaSettings.getMaxRequestSize());
         producerProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, kafkaSettings.getDeliveryTimeoutMs());
+        producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         return producerProps;
     }
 
