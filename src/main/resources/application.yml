@@ -67,6 +67,7 @@ nakadi:
     max.request.size: 2098152
     linger.ms: 0
     enable.auto.commit: false
+    delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
   zookeeper:
     kafkaNamespace:
     brokers: zookeeper:2181
