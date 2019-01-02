@@ -262,6 +262,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 kafkaFactory.terminateProducer(producer);
             }
         } catch (final TimeoutException ex) {
+            kafkaFactory.terminateProducer(producer);
             failUnpublished(batch, "timed out");
             throw new EventPublishingException("Error publishing message to kafka", ex);
         } catch (final ExecutionException ex) {
