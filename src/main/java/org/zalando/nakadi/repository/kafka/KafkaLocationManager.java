@@ -8,13 +8,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class KafkaLocationManager {
 
@@ -24,73 +27,34 @@ public class KafkaLocationManager {
     private final ZooKeeperHolder zkFactory;
     private final Properties kafkaProperties;
     private final KafkaSettings kafkaSettings;
+    private final ScheduledExecutorService scheduledExecutor;
 
     public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
-        this.kafkaProperties = buildKafkaProperties(fetchBrokers());
+        this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
+        this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+        this.scheduledExecutor.scheduleAtFixedRate(this::updateBootstrapServers, 0, 1, TimeUnit.MINUTES);
     }
 
-    static class Broker {
-        final String host;
-        final Integer port;
-
-        private Broker(final String host, final Integer port) {
-            this.host = host;
-            this.port = port;
-        }
-
-        static Broker fromByteJson(final byte[] data) throws JSONException, UnsupportedEncodingException {
-            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
-            final String host = json.getString("host");
-            final Integer port = json.getInt("port");
-            return new Broker(host, port);
-        }
-
-        public String toString() {
-            return this.host + ":" + this.port;
-        }
-    }
-
-    private List<Broker> fetchBrokers() {
+    private void updateBootstrapServers() {
         final List<Broker> brokers = new ArrayList<>();
         try {
             final CuratorFramework curator = zkFactory.get();
             for (final String brokerId : curator.getChildren().forPath(BROKERS_IDS_PATH)) {
-                try {
-                    final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
-                    brokers.add(Broker.fromByteJson(brokerData));
-                } catch (final Exception e) {
-                    LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
-                }
+                final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
+                brokers.add(Broker.fromByteJson(brokerData));
             }
         } catch (final Exception e) {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
+            return;
         }
 
-        return brokers;
-    }
-
-    private static String buildBootstrapServers(final List<Broker> brokers) {
-        final StringBuilder builder = new StringBuilder();
-        brokers.stream().forEach(broker -> builder.append(broker).append(","));
-        return builder.deleteCharAt(builder.length() - 1).toString();
-    }
-
-    private Properties buildKafkaProperties(final List<Broker> brokers) {
-        final Properties props = new Properties();
-        props.put("bootstrap.servers", buildBootstrapServers(brokers));
-        return props;
-    }
-
-    @Scheduled(fixedDelay = 30000)
-    private void updateBrokers() {
-        if (kafkaProperties != null) {
-            final List<Broker> brokers = fetchBrokers();
-            if (!brokers.isEmpty()) {
-                kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-                        buildBootstrapServers(brokers));
-            }
+        if (!brokers.isEmpty()) {
+            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+                    brokers.stream().map(Broker::toString).collect(Collectors.joining(",")));
+            LOG.info("Kafka client bootstrap servers: {}",
+                    kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
         }
     }
 
@@ -117,5 +81,26 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         producerProps.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, kafkaSettings.getMaxRequestSize());
         return producerProps;
+    }
+
+    static class Broker {
+        final String host;
+        final Integer port;
+
+        private Broker(final String host, final Integer port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        static Broker fromByteJson(final byte[] data) throws JSONException, UnsupportedEncodingException {
+            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
+            final String host = json.getString("host");
+            final Integer port = json.getInt("port");
+            return new Broker(host, port);
+        }
+
+        public String toString() {
+            return this.host + ":" + this.port;
+        }
     }
 }
