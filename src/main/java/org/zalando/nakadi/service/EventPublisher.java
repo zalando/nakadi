@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
@@ -26,9 +27,11 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -38,6 +41,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.validation.JsonSchemaEnrichment.DATA_PATH_PREFIX;
 
 @Component
 public class EventPublisher {
@@ -99,7 +104,7 @@ public class EventPublisher {
 
             validate(batch, eventType);
             partition(batch, eventType);
-            compact(batch, eventType);
+            setEventKey(batch, eventType);
             enrich(batch, eventType);
             submit(batch, eventType);
 
@@ -169,13 +174,28 @@ public class EventPublisher {
         }
     }
 
-    private void compact(final List<BatchItem> batch, final EventType eventType) {
+    private void setEventKey(final List<BatchItem> batch, final EventType eventType) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()
                         .getJSONObject("metadata")
                         .getString("partition_compaction_key");
                 item.setEventKey(compactionKey);
+            }
+        } else if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
+            final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
+            // we will set event key only if there is exactly one partition key field,
+            // in other case it's not clear what should be set as event key
+            if (partitionKeyFields.size() == 1) {
+                String partitionKeyField = partitionKeyFields.get(0);
+                if (EventCategory.DATA.equals(eventType.getCategory())) {
+                    partitionKeyField = DATA_PATH_PREFIX + partitionKeyField;
+                }
+                for (final BatchItem item : batch) {
+                    final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent());
+                    final String eventKey = jsonPath.get(partitionKeyField).toString();
+                    item.setEventKey(eventKey);
+                }
             }
         }
     }
