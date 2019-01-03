@@ -65,6 +65,7 @@ public class KafkaLocationManager {
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        properties.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, kafkaSettings.getMaxBlockMs());
         return properties;
     }
 
