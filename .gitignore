@@ -85,3 +85,4 @@ kafka-src
 /bin/
 scm-source.json
 
+*.code-workspace
