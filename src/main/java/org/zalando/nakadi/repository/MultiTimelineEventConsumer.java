@@ -15,7 +15,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -308,9 +307,6 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     public void close() throws IOException {
         try {
             reassign(Collections.emptySet());
-            for (final EventConsumer.LowLevelConsumer consumer : eventConsumers.values()) {
-                consumer.close();
-            }
         } catch (final InvalidCursorException e) {
             throw new IOException(e);
         }
