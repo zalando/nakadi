@@ -4,6 +4,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.zookeeper.Watcher;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -12,8 +13,10 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,13 +31,31 @@ public class KafkaLocationManager {
     private final Properties kafkaProperties;
     private final KafkaSettings kafkaSettings;
     private final ScheduledExecutorService scheduledExecutor;
+    private final Set<Runnable> ipAddressChangeListeners;
 
     public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
+        this.ipAddressChangeListeners = new HashSet<>();
+        this.updateBootstrapServers();
+        this.subscribeForBrokersChange(zkFactory);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(this::updateBootstrapServers, 0, 1, TimeUnit.MINUTES);
+        this.scheduledExecutor.scheduleAtFixedRate(this::updateBootstrapServers, 1, 1, TimeUnit.MINUTES);
+    }
+
+    private void subscribeForBrokersChange(final ZooKeeperHolder zkFactory) {
+        try {
+            zkFactory.get().getChildren()
+                    .usingWatcher((Watcher) event -> {
+                        this.ipAddressChangeListeners.forEach(Runnable::run);
+                        this.scheduledExecutor.schedule(this::updateBootstrapServers, 0, TimeUnit.MILLISECONDS);
+                        this.scheduledExecutor.schedule(
+                                () -> subscribeForBrokersChange(zkFactory), 0, TimeUnit.MILLISECONDS);
+                    }).forPath(BROKERS_IDS_PATH);
+        } catch (final Exception e) {
+            LOG.error(e.getMessage(), e);
+        }
     }
 
     private void updateBootstrapServers() {
@@ -50,12 +71,20 @@ public class KafkaLocationManager {
             return;
         }
 
-        if (!brokers.isEmpty()) {
-            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-                    brokers.stream().map(Broker::toString).collect(Collectors.joining(",")));
-            LOG.info("Kafka client bootstrap servers: {}",
-                    kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+        if (brokers.isEmpty()) {
+            return;
         }
+        final String bootstrapServers = brokers.stream().map(Broker::toString).collect(Collectors.joining(","));
+        final String currentBootstrapServers =
+                (String) kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+
+        if (bootstrapServers.equals(currentBootstrapServers)) {
+            return;
+        }
+
+        kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        this.ipAddressChangeListeners.forEach(Runnable::run);
+        LOG.info("Kafka client bootstrap servers changed: {}", bootstrapServers);
     }
 
     public Properties getKafkaConsumerProperties() {
@@ -85,6 +114,14 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
         producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafkaSettings.getMaxBlockMs());
         return producerProps;
+    }
+
+    public void addIpAddressChangeListener(final Runnable listener) {
+        this.ipAddressChangeListeners.add(listener);
+    }
+
+    public void removeIpAddressChangeListener(final Runnable brokerIpAddressChangeListener) {
+        this.ipAddressChangeListeners.remove(brokerIpAddressChangeListener);
     }
 
     static class Broker {

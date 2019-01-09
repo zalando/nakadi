@@ -8,13 +8,14 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +36,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
+    private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
     private final String clientId;
     /**
      * Contains latest offsets that were sent to client of this class
@@ -61,7 +63,6 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
-    private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
 
     public MultiTimelineEventConsumer(
             final String clientId,
@@ -307,6 +308,9 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     public void close() throws IOException {
         try {
             reassign(Collections.emptySet());
+            for (final EventConsumer.LowLevelConsumer consumer : eventConsumers.values()) {
+                consumer.close();
+            }
         } catch (final InvalidCursorException e) {
             throw new IOException(e);
         }
