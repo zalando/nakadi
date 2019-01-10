@@ -14,10 +14,10 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +38,7 @@ public class KafkaLocationManager {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
-        this.ipAddressChangeListeners = new HashSet<>();
+        this.ipAddressChangeListeners = ConcurrentHashMap.newKeySet();
         this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
         this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServers(false), 1, 1, TimeUnit.MINUTES);
@@ -64,6 +64,7 @@ public class KafkaLocationManager {
         }
 
         if (brokers.isEmpty()) {
+            LOG.info("Brokers list from ZK is empty");
             return;
         }
         final String bootstrapServers = brokers.stream()
@@ -74,6 +75,7 @@ public class KafkaLocationManager {
                 (String) kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
 
         if (bootstrapServers.equals(currentBootstrapServers)) {
+            LOG.info("Bootstraps servers list from ZK and from Kafka config is the same");
             return;
         }
 
