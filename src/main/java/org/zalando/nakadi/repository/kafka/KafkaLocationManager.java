@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -38,29 +39,22 @@ public class KafkaLocationManager {
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
         this.ipAddressChangeListeners = new HashSet<>();
-        this.subscribeForBrokersChange(zkFactory);
-        this.updateBootstrapServers();
+        this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(this::updateBootstrapServers, 1, 1, TimeUnit.MINUTES);
+        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServers(false), 1, 1, TimeUnit.MINUTES);
     }
 
-    private void subscribeForBrokersChange(final ZooKeeperHolder zkFactory) {
-        try {
-            zkFactory.get().getChildren()
-                    .usingWatcher((Watcher) event -> {
-                        this.scheduledExecutor.schedule(this::updateBootstrapServers, 0, TimeUnit.MILLISECONDS);
-                        subscribeForBrokersChange(zkFactory);
-                    }).forPath(BROKERS_IDS_PATH);
-        } catch (final Exception e) {
-            LOG.error(e.getMessage(), e);
-        }
-    }
-
-    private void updateBootstrapServers() {
+    private void updateBootstrapServers(final boolean createWatcher) {
         final List<Broker> brokers = new ArrayList<>();
         try {
             final CuratorFramework curator = zkFactory.get();
-            for (final String brokerId : curator.getChildren().forPath(BROKERS_IDS_PATH)) {
+            final GetChildrenBuilder childrenBuilder = curator.getChildren();
+            if (createWatcher) {
+                LOG.info("Creating watcher on brokers change");
+                childrenBuilder.usingWatcher((Watcher) event ->
+                        this.scheduledExecutor.schedule(() -> updateBootstrapServers(true), 0, TimeUnit.MILLISECONDS));
+            }
+            for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                 brokers.add(Broker.fromByteJson(brokerData));
             }

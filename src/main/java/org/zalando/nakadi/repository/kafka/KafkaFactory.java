@@ -165,8 +165,6 @@ public class KafkaFactory {
         @Override
         public ConsumerRecords<byte[], byte[]> poll(final long timeoutMs) {
             if (brokerIpAddressChanged) {
-                LOG.info("Broker address changed, stop polling and removing ip address change listener");
-                this.kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
                 throw new KafkaCrutchException("Kafka broker ip address changed, exiting");
             }
             return super.poll(timeoutMs);
@@ -174,9 +172,11 @@ public class KafkaFactory {
 
         @Override
         public void close() {
-            LOG.info("Closing crutch consumer and removing ip address change listener");
+            if (brokerIpAddressChanged) {
+                LOG.info("Closing crutch consumer and removing ip address change listener");
+                this.kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
+            }
             super.close();
-            this.kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
         }
     }
 
