@@ -41,7 +41,15 @@ public class KafkaLocationManager {
         this.ipAddressChangeListeners = ConcurrentHashMap.newKeySet();
         this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServers(false), 1, 1, TimeUnit.MINUTES);
+        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
+    }
+
+    private void updateBootstrapServersSafe(final boolean createWatcher) {
+        try {
+            updateBootstrapServers(createWatcher);
+        } catch (final RuntimeException re) {
+            LOG.error("Failed to execute updateBootstrapServers", re);
+        }
     }
 
     private void updateBootstrapServers(final boolean createWatcher) {
@@ -51,8 +59,8 @@ public class KafkaLocationManager {
             final GetChildrenBuilder childrenBuilder = curator.getChildren();
             if (createWatcher) {
                 LOG.info("Creating watcher on brokers change");
-                childrenBuilder.usingWatcher((Watcher) event ->
-                        this.scheduledExecutor.schedule(() -> updateBootstrapServers(true), 0, TimeUnit.MILLISECONDS));
+                childrenBuilder.usingWatcher((Watcher) event -> this.scheduledExecutor.schedule(
+                        () -> updateBootstrapServersSafe(true), 0, TimeUnit.MILLISECONDS));
             }
             for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
@@ -64,7 +72,6 @@ public class KafkaLocationManager {
         }
 
         if (brokers.isEmpty()) {
-            LOG.info("Brokers list from ZK is empty");
             return;
         }
         final String bootstrapServers = brokers.stream()
@@ -75,7 +82,6 @@ public class KafkaLocationManager {
                 (String) kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
 
         if (bootstrapServers.equals(currentBootstrapServers)) {
-            LOG.info("Bootstraps servers list from ZK and from Kafka config is the same");
             return;
         }
 

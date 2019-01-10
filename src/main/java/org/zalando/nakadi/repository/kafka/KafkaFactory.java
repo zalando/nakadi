@@ -172,9 +172,6 @@ public class KafkaFactory {
 
         @Override
         public void close() {
-            if (brokerIpAddressChanged) {
-                LOG.info("Closing crutch consumer and removing ip address change listener");
-            }
             this.kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
             super.close();
         }
