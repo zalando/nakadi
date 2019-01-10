@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 
+import javax.servlet.AsyncEvent;
+import javax.servlet.AsyncListener;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -34,17 +36,61 @@ public class LoggingFilter extends OncePerRequestFilter {
         this.accessLogEventType = accessLogEventType;
     }
 
+    public class AsyncRequestListener implements AsyncListener {
+        private final HttpServletRequest request;
+        private final HttpServletResponse response;
+        private long startTime;
+
+        public AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
+                                    final long startTime) {
+            this.request = request;
+            this.response = response;
+            this.startTime = startTime;
+        }
+        @Override
+        public void onComplete(final AsyncEvent event) {
+            writeToAccessLogAndEventType(request, response, startTime);
+        }
+
+        @Override
+        public void onTimeout(final AsyncEvent event) {
+            writeToAccessLogAndEventType(request, response, startTime);
+        }
+
+        @Override
+        public void onError(final AsyncEvent event) {
+            writeToAccessLogAndEventType(request, response, startTime);
+        }
+
+        @Override
+        public void onStartAsync(final AsyncEvent event) {
+        }
+    }
+
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
         final long start = System.currentTimeMillis();
+        boolean willBeLogged = false;
         try {
             //execute request
             filterChain.doFilter(request, response);
+            if (request.isAsyncStarted()) {
+                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start));
+                willBeLogged = true;
+            }
         } finally {
-            final long time = System.currentTimeMillis();
-            final Long timing = time - start;
+            if(!willBeLogged) {
+                writeToAccessLogAndEventType(request, response, start);
+            }
+        }
+    }
+
+    private void writeToAccessLogAndEventType(final HttpServletRequest request, final HttpServletResponse response,
+                                             final long requestTime) {
+            final long currentTime = System.currentTimeMillis();
+            final Long timing = currentTime - requestTime;
             final String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
             final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
             final String method = request.getMethod();
@@ -75,6 +121,5 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .put("app_hashed", nakadiKpiPublisher.hash(user))
                     .put("status_code", response.getStatus())
                     .put("response_time_ms", timing));
-        }
     }
 }
