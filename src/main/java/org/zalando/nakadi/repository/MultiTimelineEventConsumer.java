@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
@@ -88,7 +89,18 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final List<ConsumedEvent> result = poll();
+        final List<ConsumedEvent> result;
+        try {
+            result = poll();
+        } catch (KafkaFactory.KafkaCrutchException kce) {
+            LOG.warn("Kafka connections should be reinitialized because consumers should be recreated", kce);
+            final List<NakadiCursor> tmpOffsets = new ArrayList<>(latestOffsets.values());
+            // close all the clients
+            reassign(Collections.emptyList());
+            // create new clients
+            reassign(tmpOffsets);
+            return Collections.emptyList();
+        }
         for (final ConsumedEvent event : result) {
             final EventTypePartition etp = event.getPosition().getEventTypePartition();
             latestOffsets.put(etp, event.getPosition());
