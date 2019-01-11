@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
@@ -43,26 +44,30 @@ public class SchemaEvolutionService {
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
     private final Schema metaSchema;
     private final SchemaDiff schemaDiff;
-    private final Map<SchemaChange.Type, Version.Level> forwardChanges;
-    private final Map<SchemaChange.Type, Version.Level> compatibleChanges;
     private final Map<SchemaChange.Type, String> errorMessages;
     private static final List<SchemaChange.Type> FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES = Lists.newArrayList(
             DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, REQUIRED_ARRAY_EXTENDED,
             ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
+    private final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver;
 
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
-                                  final Map<SchemaChange.Type, Version.Level> compatibleChanges,
-                                  final Map<SchemaChange.Type, Version.Level> forwardChanges,
+                                  final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver,
                                   final Map<SchemaChange.Type, String> errorMessages) {
         this.metaSchema = metaSchema;
         this.schemaEvolutionConstraints = schemaEvolutionConstraints;
         this.schemaDiff = schemaDiff;
-        this.forwardChanges = forwardChanges;
-        this.compatibleChanges = compatibleChanges;
+        this.levelResolver = levelResolver;
         this.errorMessages = errorMessages;
+    }
+
+    public SchemaEvolutionService(final Schema metaSchema,
+                                  final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
+                                  final SchemaDiff schemaDiff,
+                                  final Map<SchemaChange.Type, String> errorMessages) {
+        this(metaSchema, schemaEvolutionConstraints, schemaDiff, SchemaChange.Type::getLevel, errorMessages);
     }
 
     public List<SchemaIncompatibility> collectIncompatibilities(final JSONObject schemaJson) {
@@ -165,7 +170,8 @@ public class SchemaEvolutionService {
                 || original.getCompatibilityMode() == CompatibilityMode.FORWARD)
                 && changeLevel == MAJOR) {
             final String errorMessage = changes.stream()
-                    .filter(change -> MAJOR.equals(compatibleChanges.get(change.getType())))
+                    .filter(change -> MAJOR.equals(
+                            levelResolver.apply(change.getType(), original.getCompatibilityMode())))
                     .map(this::formatErrorMessage)
                     .collect(Collectors.joining(", "));
             throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
@@ -182,9 +188,9 @@ public class SchemaEvolutionService {
         if (changes.isEmpty() && !originalSchema.equals(updatedSchema)) {
             return PATCH;
         } else {
-            final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
-                    .equals(CompatibilityMode.COMPATIBLE) ? compatibleChanges : forwardChanges;
-            return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get)
+            return changes.stream()
+                    .map(SchemaChange::getType)
+                    .map(v -> levelResolver.apply(v, compatibilityMode))
                     .reduce(NO_CHANGES, collectOverallChange());
         }
     }
