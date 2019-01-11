@@ -1,9 +1,11 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.zookeeper.Watcher;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -14,6 +16,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,20 +32,37 @@ public class KafkaLocationManager {
     private final Properties kafkaProperties;
     private final KafkaSettings kafkaSettings;
     private final ScheduledExecutorService scheduledExecutor;
+    private final Set<Runnable> ipAddressChangeListeners;
 
     public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
+        this.ipAddressChangeListeners = ConcurrentHashMap.newKeySet();
+        this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(this::updateBootstrapServers, 0, 1, TimeUnit.MINUTES);
+        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
     }
 
-    private void updateBootstrapServers() {
+    private void updateBootstrapServersSafe(final boolean createWatcher) {
+        try {
+            updateBootstrapServers(createWatcher);
+        } catch (final RuntimeException re) {
+            LOG.error("Failed to execute updateBootstrapServers", re);
+        }
+    }
+
+    private void updateBootstrapServers(final boolean createWatcher) {
         final List<Broker> brokers = new ArrayList<>();
         try {
             final CuratorFramework curator = zkFactory.get();
-            for (final String brokerId : curator.getChildren().forPath(BROKERS_IDS_PATH)) {
+            final GetChildrenBuilder childrenBuilder = curator.getChildren();
+            if (createWatcher) {
+                LOG.info("Creating watcher on brokers change");
+                childrenBuilder.usingWatcher((Watcher) event -> this.scheduledExecutor.schedule(
+                        () -> updateBootstrapServersSafe(true), 0, TimeUnit.MILLISECONDS));
+            }
+            for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                 brokers.add(Broker.fromByteJson(brokerData));
             }
@@ -50,12 +71,29 @@ public class KafkaLocationManager {
             return;
         }
 
-        if (!brokers.isEmpty()) {
-            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-                    brokers.stream().map(Broker::toString).collect(Collectors.joining(",")));
-            LOG.info("Kafka client bootstrap servers: {}",
-                    kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+        if (brokers.isEmpty()) {
+            return;
         }
+        final String bootstrapServers = brokers.stream()
+                .sorted()
+                .map(Broker::toString)
+                .collect(Collectors.joining(","));
+        final String currentBootstrapServers =
+                (String) kafkaProperties.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+
+        if (bootstrapServers.equals(currentBootstrapServers)) {
+            return;
+        }
+
+        kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        this.ipAddressChangeListeners.forEach(listener -> {
+            try {
+                listener.run();
+            } catch (final RuntimeException re) {
+                LOG.error("Failed to process listener {}", re.getMessage(), re);
+            }
+        });
+        LOG.info("Kafka client bootstrap servers changed: {}", bootstrapServers);
     }
 
     public Properties getKafkaConsumerProperties() {
@@ -87,7 +125,15 @@ public class KafkaLocationManager {
         return producerProps;
     }
 
-    static class Broker {
+    public void addIpAddressChangeListener(final Runnable listener) {
+        this.ipAddressChangeListeners.add(listener);
+    }
+
+    public void removeIpAddressChangeListener(final Runnable brokerIpAddressChangeListener) {
+        this.ipAddressChangeListeners.remove(brokerIpAddressChangeListener);
+    }
+
+    private static class Broker implements Comparable<Broker> {
         final String host;
         final Integer port;
 
@@ -105,6 +151,11 @@ public class KafkaLocationManager {
 
         public String toString() {
             return this.host + ":" + this.port;
+        }
+
+        @Override
+        public int compareTo(final Broker broker) {
+            return host.compareTo(broker.host);
         }
     }
 }

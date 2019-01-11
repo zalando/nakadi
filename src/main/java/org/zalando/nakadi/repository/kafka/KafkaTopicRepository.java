@@ -27,8 +27,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
@@ -208,7 +208,9 @@ public class KafkaTopicRepository implements TopicRepository {
         if (null == exception) {
             return false;
         }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class)
+        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
+                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
