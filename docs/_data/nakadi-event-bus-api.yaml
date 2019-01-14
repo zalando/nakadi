@@ -2270,9 +2270,8 @@ definitions:
           Note that if you want to specify beginning position of a stream with first event at offset `N`,
           you should specify offset `N-1`.
           This applies in cases when you create new subscription or reset subscription offsets.
-          Also for stream start offsets one can use two special values:
+          Also for stream start offsets one can use special value:
           - `begin` - read from the oldest available event.
-          - `end` - read from the most recent offset.
 
   ShiftedCursor:
     allOf:
