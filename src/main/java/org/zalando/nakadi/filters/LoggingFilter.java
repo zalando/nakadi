@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
@@ -73,14 +74,17 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.startTime = startTime;
 
             final RequestLogInfo requestLogInfo = new RequestLogInfo(request);
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" \"{}\" \"{}\"",
+            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
                     requestLogInfo.path,
                     requestLogInfo.query,
                     requestLogInfo.userAgent,
                     requestLogInfo.user,
+                    HttpStatus.PROCESSING.value(),
+                    0,
                     requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding);
+                    requestLogInfo.acceptEncoding,
+                    requestLogInfo.contentLength);
         }
         @Override
         public void onComplete(final AsyncEvent event) {
