@@ -108,16 +108,14 @@ public class LoggingFilter extends OncePerRequestFilter {
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
         final long start = System.currentTimeMillis();
-        boolean willBeLogged = false;
         try {
             //execute request
             filterChain.doFilter(request, response);
             if (request.isAsyncStarted()) {
                 request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start));
-                willBeLogged = true;
             }
         } finally {
-            if(!willBeLogged) {
+            if(!request.isAsyncStarted()) {
                 writeToAccessLogAndEventType(request, response, start);
             }
         }
