@@ -48,6 +48,7 @@ import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 public class EventTypeServiceTest {
 
     private static final String KPI_ET_LOG_EVENT_TYPE = "et-log";
+    private static final String AUDIT_ET_LOG_EVENT_TYPE = "et-audit-log";
     protected static final long TOPIC_RETENTION_MIN_MS = 86400000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
 
@@ -64,6 +65,7 @@ public class EventTypeServiceTest {
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     private final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     private final AdminService adminService = mock(AdminService.class);
     private EventTypeService eventTypeService;
 
@@ -74,7 +76,8 @@ public class EventTypeServiceTest {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
-                KPI_ET_LOG_EVENT_TYPE, eventTypeOptionsValidator, adminService);
+                KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, AUDIT_ET_LOG_EVENT_TYPE,eventTypeOptionsValidator,
+                adminService);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -94,7 +97,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
-            eventTypeService.delete(eventType.getName());
+            eventTypeService.delete(eventType.getName(), Optional.empty());
         } catch (final EventTypeDeletionException e) {
             // check that topics are not deleted in Kafka
             verifyZeroInteractions(topicsToDelete);
@@ -113,7 +116,7 @@ public class EventTypeServiceTest {
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
 
-        eventTypeService.delete(eventType.getName());
+        eventTypeService.delete(eventType.getName(), Optional.empty());
     }
 
     @Test
@@ -128,7 +131,7 @@ public class EventTypeServiceTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(true);
 
-        eventTypeService.delete(eventType.getName());
+        eventTypeService.delete(eventType.getName(), Optional.empty());
         // no exception should be thrown
     }
 
@@ -140,7 +143,7 @@ public class EventTypeServiceTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION))
                 .thenReturn(true);
 
-        eventTypeService.create(eventType);
+        eventTypeService.create(eventType, Optional.empty());
     }
 
     @Test
@@ -149,7 +152,7 @@ public class EventTypeServiceTest {
         when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
-            eventTypeService.create(eventType);
+            eventTypeService.create(eventType, Optional.empty());
             fail("should throw TopicCreationException");
         } catch (final TopicCreationException e) {
             // expected
@@ -161,7 +164,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeCreatedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
-        eventTypeService.create(et);
+        eventTypeService.create(et,Optional.empty());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
@@ -177,7 +180,7 @@ public class EventTypeServiceTest {
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
 
-        eventTypeService.update(et.getName(), et);
+        eventTypeService.update(et.getName(), et, Optional.empty());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
@@ -192,7 +195,7 @@ public class EventTypeServiceTest {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByNameO(et.getName())).thenReturn(Optional.of(et));
 
-        eventTypeService.delete(et.getName());
+        eventTypeService.delete(et.getName(), Optional.empty());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())

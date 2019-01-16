@@ -39,7 +39,9 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 
 import javax.validation.Valid;
+import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -88,13 +90,17 @@ public class EventTypeController {
             throw new ValidationException(errors);
         }
 
-        eventTypeService.create(eventType);
+        eventTypeService.create(eventType, getUser(request));
 
         return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
     }
 
+    private Optional<String> getUser(final NativeWebRequest request) {
+        return Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+    }
+
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName)
+    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName, final NativeWebRequest request)
             throws EventTypeDeletionException,
             AccessDeniedException,
             NoSuchEventTypeException,
@@ -105,7 +111,7 @@ public class EventTypeController {
             throw new ForbiddenOperationException("Event Type deletion is disabled");
         }
 
-        eventTypeService.delete(eventTypeName);
+        eventTypeService.delete(eventTypeName, getUser(request));
 
         return status(HttpStatus.OK).build();
     }
@@ -127,7 +133,7 @@ public class EventTypeController {
             throw new ValidationException(errors);
         }
 
-        eventTypeService.update(name, eventType);
+        eventTypeService.update(name, eventType, getUser(request));
 
         return status(HttpStatus.OK).headers(generateWarningHeaders(eventType)).build();
     }

@@ -90,6 +90,8 @@ public class EventTypeService {
     private final TransactionTemplate transactionTemplate;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String etLogEventType;
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private final String auditEventType;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
 
@@ -108,6 +110,8 @@ public class EventTypeService {
                             final NakadiSettings nakadiSettings,
                             final NakadiKpiPublisher nakadiKpiPublisher,
                             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
+                            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+                            @Value("${nakadi.audit.eventType}") final String auditEventType,
                             final EventTypeOptionsValidator eventTypeOptionsValidator,
                             final AdminService adminService) {
         this.eventTypeRepository = eventTypeRepository;
@@ -124,6 +128,8 @@ public class EventTypeService {
         this.nakadiSettings = nakadiSettings;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.etLogEventType = etLogEventType;
+        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
+        this.auditEventType = auditEventType;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
     }
@@ -132,7 +138,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public void create(final EventTypeBase eventType)
+    public void create(final EventTypeBase eventType, final Optional<String> user)
             throws TopicCreationException,
             InternalNakadiException,
             NoSuchPartitionStrategyException,
@@ -176,6 +182,10 @@ public class EventTypeService {
                 .put("category", eventType.getCategory())
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
+
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.empty(), Optional.of(eventType),
+                NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
+                eventType.getName(), user);
     }
 
     private void validateCompaction(final EventTypeBase eventType) throws
@@ -212,7 +222,7 @@ public class EventTypeService {
         }
     }
 
-    public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
+    public void delete(final String eventTypeName, final Optional<String> user) throws EventTypeDeletionException, AccessDeniedException,
             NoSuchEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -277,6 +287,10 @@ public class EventTypeService {
                 .put("category", eventType.getCategory())
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
+
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(eventType), Optional.empty(),
+                NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
+                eventType.getName(), user);
     }
 
     private Multimap<TopicRepository, String> deleteEventTypeIfNoSubscriptions(final String eventType) {
@@ -314,7 +328,8 @@ public class EventTypeService {
     }
 
     public void update(final String eventTypeName,
-                       final EventTypeBase eventTypeBase)
+                       final EventTypeBase eventTypeBase,
+                       final Optional<String> user)
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
@@ -327,9 +342,11 @@ public class EventTypeService {
                     "are blocked by feature flag.");
         }
         Closeable updatingCloser = null;
+        final EventType original;
+        final EventType eventType;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            final EventType original = eventTypeRepository.findByName(eventTypeName);
+            original = eventTypeRepository.findByName(eventTypeName);
 
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
@@ -341,7 +358,7 @@ public class EventTypeService {
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
-            final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
+            eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             updateRetentionTime(original, eventType);
@@ -371,6 +388,10 @@ public class EventTypeService {
                 .put("category", eventTypeBase.getCategory())
                 .put("authz", identifyAuthzState(eventTypeBase))
                 .put("compatibility_mode", eventTypeBase.getCompatibilityMode()));
+
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(original), Optional.of(eventType),
+                NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
+                eventType.getName(), user);
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) {

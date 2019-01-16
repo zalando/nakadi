@@ -35,6 +35,7 @@ public interface FeatureToggleService {
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
         KPI_COLLECTION("kpi_collection"),
+        AUDIT_LOG_COLLECTION("audit_log_collection"),
         DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
         DISABLE_LOG_COMPACTION("disable_log_compaction");
 
