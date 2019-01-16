@@ -82,7 +82,7 @@ public class NakadiAuditLogPublisher {
         return Hex.encodeHexString(messageDigest.digest());
     }
 
-    private String serialize(Object state) {
+    private String serialize(final Object state) {
         try {
             return objectMapper.writeValueAsString(state);
         } catch (JsonProcessingException e) {

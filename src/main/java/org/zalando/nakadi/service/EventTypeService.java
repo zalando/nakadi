@@ -222,8 +222,8 @@ public class EventTypeService {
         }
     }
 
-    public void delete(final String eventTypeName, final Optional<String> user) throws EventTypeDeletionException, AccessDeniedException,
-            NoSuchEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
+    public void delete(final String eventTypeName, final Optional<String> user) throws EventTypeDeletionException,
+            AccessDeniedException, NoSuchEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot delete event type: write operations on DB " +

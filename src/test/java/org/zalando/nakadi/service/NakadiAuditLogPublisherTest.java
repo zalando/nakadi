@@ -39,7 +39,8 @@ public class NakadiAuditLogPublisherTest {
         et.setCreatedAt(now);
         et.setUpdatedAt(now);
         et.getSchema().setCreatedAt(now);
-        publisher.publish("audit-event-type",Optional.empty(), Optional.of(et), NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
+        publisher.publish("audit-event-type",Optional.empty(), Optional.of(et),
+                NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name", Optional.of("user-name"));
 
         final ArgumentCaptor<JSONObject> supplierCaptor = ArgumentCaptor.forClass(JSONObject.class);
