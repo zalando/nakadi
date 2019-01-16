@@ -15,6 +15,7 @@ import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
@@ -96,6 +97,65 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
+    private static CompletableFuture<Exception> publishItem(
+            final Producer<String, String> producer,
+            final String topicId,
+            final BatchItem item,
+            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
+        try {
+            final CompletableFuture<Exception> result = new CompletableFuture<>();
+            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+                    topicId,
+                    KafkaCursor.toKafkaPartition(item.getPartition()),
+                    item.getEventKey(),
+                    item.dumpEventToString());
+
+            circuitBreaker.markStart();
+            producer.send(kafkaRecord, ((metadata, exception) -> {
+                if (null != exception) {
+                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+                    if (hasKafkaConnectionException(exception)) {
+                        circuitBreaker.markFailure();
+                    } else {
+                        circuitBreaker.markSuccessfully();
+                    }
+                    result.complete(exception);
+                } else {
+                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
+                    circuitBreaker.markSuccessfully();
+                    result.complete(null);
+                }
+            }));
+            return result;
+        } catch (final InterruptException e) {
+            Thread.currentThread().interrupt();
+            circuitBreaker.markSuccessfully();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        } catch (final RuntimeException e) {
+            circuitBreaker.markSuccessfully();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        }
+    }
+
+    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
+        if (null == exception) {
+            return false;
+        }
+        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
+                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                UnknownServerException.class)
+                .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
+    }
+
+    private static boolean hasKafkaConnectionException(final Exception exception) {
+        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
+                exception instanceof NetworkException ||
+                exception instanceof UnknownServerException;
+    }
+
     public List<String> listTopics() throws TopicRepositoryException {
         try {
             return zkFactory.get()
@@ -159,65 +219,6 @@ public class KafkaTopicRepository implements TopicRepository {
         return listTopics()
                 .stream()
                 .anyMatch(t -> t.equals(topic));
-    }
-
-    private static CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer,
-            final String topicId,
-            final BatchItem item,
-            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
-        try {
-            final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
-                    topicId,
-                    KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getEventKey(),
-                    item.dumpEventToString());
-
-            circuitBreaker.markStart();
-            producer.send(kafkaRecord, ((metadata, exception) -> {
-                if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    if (hasKafkaConnectionException(exception)) {
-                        circuitBreaker.markFailure();
-                    } else {
-                        circuitBreaker.markSuccessfully();
-                    }
-                    result.complete(exception);
-                } else {
-                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    circuitBreaker.markSuccessfully();
-                    result.complete(null);
-                }
-            }));
-            return result;
-        } catch (final InterruptException e) {
-            Thread.currentThread().interrupt();
-            circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        } catch (final RuntimeException e) {
-            circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        }
-    }
-
-    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
-        if (null == exception) {
-            return false;
-        }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                UnknownServerException.class)
-                .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
-    }
-
-    private static boolean hasKafkaConnectionException(final Exception exception) {
-        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
-                exception instanceof NetworkException ||
-                exception instanceof UnknownServerException;
     }
 
     @Override
@@ -305,6 +306,20 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public List<Optional<PartitionStatistics>> loadPartitionStatistics(
             final Collection<TimelinePartition> partitions) throws ServiceTemporarilyUnavailableException {
+        try {
+            return Retryer.executeWithRetry(() -> {
+                        return loadPartitionStatisticsInternal(partitions);
+                    },
+                    new RetryForSpecifiedCountStrategy(3)
+                            .withWaitBetweenEachTry(5000)
+                            .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+        } catch (final Exception e) {
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    public List<Optional<PartitionStatistics>> loadPartitionStatisticsInternal(
+            final Collection<TimelinePartition> partitions) {
         final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
                 Collectors.groupingBy(
                         tp -> tp.getTimeline().getTopic(),
@@ -344,14 +359,25 @@ public class KafkaTopicRepository implements TopicRepository {
                 result.add(itemResult);
             }
             return result;
-        } catch (final Exception e) {
-            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
     @Override
     public List<PartitionStatistics> loadTopicStatistics(final Collection<Timeline> timelines)
             throws ServiceTemporarilyUnavailableException {
+        try {
+            return Retryer.executeWithRetry(() -> {
+                        return loadTopicStatisticsInternal(timelines);
+                    },
+                    new RetryForSpecifiedCountStrategy(3)
+                            .withWaitBetweenEachTry(5000)
+                            .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+        } catch (final Exception e) {
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    public List<PartitionStatistics> loadTopicStatisticsInternal(final Collection<Timeline> timelines) {
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final Map<TopicPartition, Timeline> backMap = new HashMap<>();
             for (final Timeline timeline : timelines) {
@@ -375,14 +401,25 @@ public class KafkaTopicRepository implements TopicRepository {
                             begins[i],
                             ends[i] - 1))
                     .collect(toList());
-        } catch (final Exception e) {
-            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
     @Override
     public List<PartitionEndStatistics> loadTopicEndStatistics(final Collection<Timeline> timelines)
             throws ServiceTemporarilyUnavailableException {
+        try {
+            return Retryer.executeWithRetry(() -> {
+                        return loadTopicEndStatisticsInternal(timelines);
+                    },
+                    new RetryForSpecifiedCountStrategy(3)
+                            .withWaitBetweenEachTry(5000)
+                            .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+        } catch (final Exception e) {
+            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    private List<PartitionEndStatistics> loadTopicEndStatisticsInternal(final Collection<Timeline> timelines) {
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final Map<TopicPartition, Timeline> backMap = new HashMap<>();
             for (final Timeline timeline : timelines) {
@@ -401,13 +438,20 @@ public class KafkaTopicRepository implements TopicRepository {
                         return new KafkaPartitionEndStatistics(timeline, tp.partition(), consumer.position(tp) - 1);
                     })
                     .collect(toList());
-        } catch (final Exception e) {
-            throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
     @Override
     public List<String> listPartitionNames(final String topicId) {
+        return Retryer.executeWithRetry(() -> {
+                    return listPartitionNamesInternal(topicId);
+                },
+                new RetryForSpecifiedCountStrategy(3)
+                        .withWaitBetweenEachTry(5000)
+                        .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+    }
+
+    public List<String> listPartitionNamesInternal(final String topicId) {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
@@ -419,7 +463,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    @Override
+        @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
             @Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
@@ -503,11 +547,6 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    @FunctionalInterface
-    private interface ZkUtilsAction {
-        void execute(ZkUtils zkUtils) throws Exception;
-    }
-
     private void doWithZkUtils(final ZkUtilsAction action) throws Exception {
         ZkUtils zkUtils = null;
         try {
@@ -520,5 +559,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 zkUtils.close();
             }
         }
+    }
+
+    @FunctionalInterface
+    private interface ZkUtilsAction {
+        void execute(ZkUtils zkUtils) throws Exception;
     }
 }
