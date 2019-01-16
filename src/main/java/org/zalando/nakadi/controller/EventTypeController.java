@@ -39,14 +39,13 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 
 import javax.validation.Valid;
-import java.security.Principal;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -93,10 +92,6 @@ public class EventTypeController {
         eventTypeService.create(eventType, getUser(request));
 
         return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
-    }
-
-    private Optional<String> getUser(final NativeWebRequest request) {
-        return Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)

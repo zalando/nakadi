@@ -112,7 +112,7 @@ nakadi:
   timelines.storage:
     default: "default"
     compacted: "default"
-  audit-log:
+  audit:
     eventType: "nakadi.audit.log"
     owningApplication: "nakadi"
   kpi:

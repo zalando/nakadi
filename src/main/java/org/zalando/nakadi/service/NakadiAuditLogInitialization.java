@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Component
-@ConfigurationProperties(prefix = "nakadi.audit-log")
+@ConfigurationProperties(prefix = "nakadi.audit")
 public class NakadiAuditLogInitialization {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiAuditLogInitialization.class);
 
@@ -59,7 +59,7 @@ public class NakadiAuditLogInitialization {
 
         replacements.forEach(auditEventTypeString::replaceAll);
 
-        final TypeReference<List<EventTypeBase>> typeReference = new TypeReference<List<EventTypeBase>>() {
+        final TypeReference<EventTypeBase> typeReference = new TypeReference<EventTypeBase>() {
         };
         final EventTypeBase eventType = objectMapper.readValue(auditEventTypeString, typeReference);
 

@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -77,6 +78,12 @@ public class Subscription extends SubscriptionBase {
         }
         final Subscription that = (Subscription) o;
         return super.equals(that) && Objects.equals(id, that.id) && Objects.equals(createdAt, that.createdAt);
+    }
+
+    public Subscription mergeFrom(final SubscriptionBase newValue) {
+        final Subscription subscription = new Subscription(id, createdAt, new DateTime(DateTimeZone.UTC), this);
+        subscription.setAuthorization(newValue.getAuthorization());
+        return subscription;
     }
 
     @Override

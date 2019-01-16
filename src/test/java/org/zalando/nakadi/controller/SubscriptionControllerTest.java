@@ -37,6 +37,7 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -122,10 +123,12 @@ public class SubscriptionControllerTest {
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
+        final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", mock(AuthorizationValidator.class));
+                "subscription_log_et", nakadiAuditLogPublisher, "audit_log_et",
+                mock(AuthorizationValidator.class));
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());

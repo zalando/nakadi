@@ -46,6 +46,7 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -86,6 +87,8 @@ public class SubscriptionService {
     private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private final String auditEventType;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -99,6 +102,8 @@ public class SubscriptionService {
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
+                               final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+                               @Value("${nakadi.audit.eventType}") final String auditEventType,
                                final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -111,10 +116,12 @@ public class SubscriptionService {
         this.featureToggleService = featureToggleService;
         this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
+        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
+        this.auditEventType = auditEventType;
         this.authorizationValidator = authorizationValidator;
     }
 
-    public Subscription createSubscription(final SubscriptionBase subscriptionBase)
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Optional<String> user)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException {
@@ -131,10 +138,15 @@ public class SubscriptionService {
                 .put("subscription_id", subscription.getId())
                 .put("status", "created"));
 
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.empty(), Optional.of(subscription),
+                NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
+                subscription.getId(), user);
+
         return subscription;
     }
 
-    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
+    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue,
+                                           final Optional<String> user)
             throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
@@ -145,10 +157,14 @@ public class SubscriptionService {
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
         subscriptionValidationService.validateSubscriptionChange(old, newValue);
-        old.mergeFrom(newValue);
-        old.setUpdatedAt(new DateTime(DateTimeZone.UTC));
-        subscriptionRepository.updateSubscription(old);
-        return old;
+        final Subscription updated = old.mergeFrom(newValue);
+        subscriptionRepository.updateSubscription(updated);
+
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(old), Optional.of(updated),
+                NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.UPDATED,
+                updated.getId(), user);
+
+        return updated;
     }
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
@@ -197,7 +213,7 @@ public class SubscriptionService {
         return subscriptionRepository.getSubscription(subscriptionId);
     }
 
-    public void deleteSubscription(final String subscriptionId)
+    public void deleteSubscription(final String subscriptionId, final Optional<String> user)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
             ServiceTemporarilyUnavailableException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -216,6 +232,10 @@ public class SubscriptionService {
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
                 .put("subscription_id", subscriptionId)
                 .put("status", "deleted"));
+
+        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(subscription), Optional.empty(),
+                NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
+                subscription.getId(), user);
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
