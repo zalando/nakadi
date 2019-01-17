@@ -13,10 +13,10 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -48,7 +48,6 @@ import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 public class EventTypeServiceTest {
 
     private static final String KPI_ET_LOG_EVENT_TYPE = "et-log";
-    private static final String AUDIT_ET_LOG_EVENT_TYPE = "et-audit-log";
     protected static final long TOPIC_RETENTION_MIN_MS = 86400000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
 
@@ -76,7 +75,7 @@ public class EventTypeServiceTest {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
-                KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, AUDIT_ET_LOG_EVENT_TYPE,eventTypeOptionsValidator,
+                KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
                 adminService);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
@@ -164,7 +163,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeCreatedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
-        eventTypeService.create(et,Optional.empty());
+        eventTypeService.create(et, Optional.empty());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())

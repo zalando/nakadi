@@ -153,6 +153,7 @@ nakadi:
     REMOTE_TOKENINFO: true
     KPI_COLLECTION: true
     DISABLE_DB_WRITE_OPERATIONS: false
+    AUDIT_LOG_COLLECTION: true
 kpi:
   config:
     stream-data-collection-frequency-ms: 100

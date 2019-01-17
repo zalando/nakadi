@@ -31,7 +31,6 @@ import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 public class SubscriptionServiceTest {
 
     private static final String SUBSCRIPTION_LOG_ET = "subscription_log_et";
-    private static final String SUBSCRIPTION_AUDIT_ET = "audit_log_et";
 
     private SubscriptionDbRepository subscriptionRepository;
     private NakadiKpiPublisher nakadiKpiPublisher;
@@ -59,7 +58,7 @@ public class SubscriptionServiceTest {
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                nakadiAuditLogPublisher, SUBSCRIPTION_AUDIT_ET, authorizationValidator);
+                nakadiAuditLogPublisher, authorizationValidator);
     }
 
     @Test

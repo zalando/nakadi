@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
@@ -16,10 +17,13 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 
 import javax.validation.Valid;
+import java.util.Optional;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/settings")
@@ -28,15 +32,18 @@ public class SettingsController {
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
 
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
-                              final AdminService adminService) {
+                              final AdminService adminService,
+                              final NakadiAuditLogPublisher auditLogPublisher) {
         this.blacklistService = blacklistService;
         this.featureToggleService = featureToggleService;
         this.adminService = adminService;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     @RequestMapping(path = "/blacklist", method = RequestMethod.GET)
@@ -79,12 +86,23 @@ public class SettingsController {
     }
 
     @RequestMapping(path = "/features", method = RequestMethod.POST)
-    public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper)
+    public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper,
+                                        final NativeWebRequest request)
             throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
+        final boolean oldState = featureToggleService.isFeatureEnabled(featureWrapper.getFeature());
         featureToggleService.setFeature(featureWrapper);
+
+        auditLogPublisher.publish(
+                Optional.of(new FeatureToggleService.FeatureWrapper(featureWrapper.getFeature(), oldState)),
+                Optional.of(featureWrapper),
+                NakadiAuditLogPublisher.ResourceType.FEATURE,
+                NakadiAuditLogPublisher.ActionType.UPDATED,
+                featureWrapper.getFeature().getId(),
+                getUser(request));
+
         return ResponseEntity.noContent().build();
     }
 
@@ -98,6 +116,7 @@ public class SettingsController {
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
+                                          final NativeWebRequest request,
                                           final Errors errors)
             throws ValidationException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
@@ -106,7 +125,17 @@ public class SettingsController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
+        final ResourceAuthorization oldAuthz = ResourceAuthorization.fromPermissionsList(adminService.getAdmins());
         adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
+
+        auditLogPublisher.publish(
+                Optional.of(oldAuthz),
+                Optional.of(authz),
+                NakadiAuditLogPublisher.ResourceType.ADMINS,
+                NakadiAuditLogPublisher.ActionType.UPDATED,
+                "-",
+                getUser(request));
+
         return ResponseEntity.ok().build();
     }
 }

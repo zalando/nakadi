@@ -28,10 +28,11 @@ public class NakadiAuditLogPublisherTest {
         when(toggle.isFeatureEnabled(FeatureToggleService.Feature.AUDIT_LOG_COLLECTION)).thenReturn(true);
 
         final NakadiAuditLogPublisher publisher = new NakadiAuditLogPublisher(
-            toggle,
-            processor,
-            new JsonConfig().jacksonObjectMapper(),
-                "salt");
+                toggle,
+                processor,
+                new JsonConfig().jacksonObjectMapper(),
+                "salt",
+                "audit-event-type");
 
         final DateTime now = DateTime.parse("2019-01-16T13:44:16.819Z");
         final EventType et = buildDefaultEventType();
@@ -39,7 +40,7 @@ public class NakadiAuditLogPublisherTest {
         et.setCreatedAt(now);
         et.setUpdatedAt(now);
         et.getSchema().setCreatedAt(now);
-        publisher.publish("audit-event-type",Optional.empty(), Optional.of(et),
+        publisher.publish(Optional.empty(), Optional.of(et),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name", Optional.of("user-name"));
 
@@ -49,31 +50,31 @@ public class NakadiAuditLogPublisherTest {
         assertThat(new JSONObject("{" +
                         "\"data_op\":\"C\"," +
                         "\"data\":{" +
-                            "\"new_object\":{" +
-                                "\"schema\":{" +
-                                    "\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\"" +
-                                        " } } }\"," +
-                                    "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
-                                    "\"type\":\"json_schema\"," +
-                                    "\"version\":\"1.0.0\"" +
-                                "}," +
-                                "\"compatibility_mode\":\"compatible\"," +
-                                "\"ordering_key_fields\":[]," +
-                                "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
-                                "\"cleanup_policy\":\"delete\"," +
-                                "\"ordering_instance_ids\":[]," +
-                                "\"authorization\":null," +
-                                "\"partition_key_fields\":[]," +
-                                "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
-                                "\"default_statistic\":null," +
-                                "\"name\":\"new-et-name\"," +
-                                "\"options\":{\"retention_time\":172800000}," +
-                                "\"partition_strategy\":\"random\"," +
-                                "\"owning_application\":\"event-producer-application\"," +
-                                "\"enrichment_strategies\":[]," +
-                                "\"category\":\"undefined\"" +
-                            "}," +
-                            "\"new_text\":\"{\\\"name\\\":\\\"new-et-name\\\",\\\"owning_application\\\":\\\"event" +
+                        "\"new_object\":{" +
+                        "\"schema\":{" +
+                        "\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\"" +
+                        " } } }\"," +
+                        "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
+                        "\"type\":\"json_schema\"," +
+                        "\"version\":\"1.0.0\"" +
+                        "}," +
+                        "\"compatibility_mode\":\"compatible\"," +
+                        "\"ordering_key_fields\":[]," +
+                        "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
+                        "\"cleanup_policy\":\"delete\"," +
+                        "\"ordering_instance_ids\":[]," +
+                        "\"authorization\":null," +
+                        "\"partition_key_fields\":[]," +
+                        "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
+                        "\"default_statistic\":null," +
+                        "\"name\":\"new-et-name\"," +
+                        "\"options\":{\"retention_time\":172800000}," +
+                        "\"partition_strategy\":\"random\"," +
+                        "\"owning_application\":\"event-producer-application\"," +
+                        "\"enrichment_strategies\":[]," +
+                        "\"category\":\"undefined\"" +
+                        "}," +
+                        "\"new_text\":\"{\\\"name\\\":\\\"new-et-name\\\",\\\"owning_application\\\":\\\"event" +
                         "-producer-application\\\",\\\"category\\\":\\\"undefined\\\",\\\"enrichment_strategies\\\"" +
                         ":[],\\\"partition_strategy\\\":\\\"random\\\",\\\"partition_key_fields\\\":[],\\\"cleanup" +
                         "_policy\\\":\\\"delete\\\",\\\"ordering_key_fields\\\":[],\\\"ordering_instance_ids\\\":[" +
@@ -83,12 +84,12 @@ public class NakadiAuditLogPublisherTest {
                         "efault_statistic\\\":null,\\\"options\\\":{\\\"retention_time\\\":172800000},\\\"authoriz" +
                         "ation\\\":null,\\\"compatibility_mode\\\":\\\"compatible\\\",\\\"updated_at\\\":\\\"2019-" +
                         "01-16T13:44:16.819Z\\\",\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}\"," +
-                            "\"resource_type\":\"event_type\"," +
-                            "\"resource_id\":\"et-name\"," +
-                            "\"user\":\"user-name\"," +
-                            "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"" +
+                        "\"resource_type\":\"event_type\"," +
+                        "\"resource_id\":\"et-name\"," +
+                        "\"user\":\"user-name\"," +
+                        "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"" +
                         "}," +
-                        "\"data_type\":\"et-name\"}").toString(),
+                        "\"data_type\":\"event_type\"}").toString(),
                 sameJSONAs(supplierCaptor.getValue().toString()));
     }
 

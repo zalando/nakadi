@@ -24,21 +24,24 @@ public class NakadiAuditLogPublisher {
     private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
     private final byte[] salt;
+    private final String auditEventType;
     private final ObjectMapper objectMapper;
 
     @Autowired
     protected NakadiAuditLogPublisher(final FeatureToggleService featureToggleService,
                                       final EventsProcessor eventsProcessor,
                                       final ObjectMapper objectMapper,
-                                      @Value("${nakadi.hasher.salt}") final String salt) {
+                                      @Value("${nakadi.hasher.salt}") final String salt,
+                                      @Value("${nakadi.audit.eventType}") final String auditEventType) {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.salt = salt.getBytes(Charsets.UTF_8);
         this.messageDigestThreadLocal = ThreadLocal.withInitial(DigestUtils::getSha256Digest);
         this.objectMapper = objectMapper;
+        this.auditEventType = auditEventType;
     }
 
-    public void publish(final String etName, final Optional<Object> previousState, final Optional<Object> newState,
+    public void publish(final Optional<Object> previousState, final Optional<Object> newState,
                         final ResourceType resourceType, final ActionType actionType, final String resourceId,
                         final Optional<String> user) {
         try {
@@ -63,13 +66,13 @@ public class NakadiAuditLogPublisher {
                     .put("user_hash", user.map(this::hash).orElse(null));
 
             final JSONObject dataEvent = new JSONObject()
-                    .put("data_type", resourceId)
+                    .put("data_type", resourceType.name().toLowerCase())
                     .put("data_op", actionType.getShortname())
                     .put("data", payload);
 
 
-            eventsProcessor.enrichAndSubmit(etName, dataEvent);
-        } catch (final Exception e) {
+            eventsProcessor.enrichAndSubmit(auditEventType, dataEvent);
+        } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }
     }
@@ -91,9 +94,17 @@ public class NakadiAuditLogPublisher {
         }
     }
 
-    public enum ResourceType { EVENT_TYPE, SUBSCRIPTION }
+    public enum ResourceType {
+        EVENT_TYPE,
+        SUBSCRIPTION,
+        TIMELINE,
+        STORAGE,
+        FEATURE,
+        ADMINS
+    }
 
-    public enum ActionType { CREATED("C"), UPDATED("U"), DELETED("D");
+    public enum ActionType {
+        CREATED("C"), UPDATED("U"), DELETED("D");
 
         private final String shortname;
 

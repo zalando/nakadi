@@ -91,7 +91,6 @@ public class EventTypeService {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String etLogEventType;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
-    private final String auditEventType;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
 
@@ -111,7 +110,6 @@ public class EventTypeService {
                             final NakadiKpiPublisher nakadiKpiPublisher,
                             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
                             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                            @Value("${nakadi.audit.eventType}") final String auditEventType,
                             final EventTypeOptionsValidator eventTypeOptionsValidator,
                             final AdminService adminService) {
         this.eventTypeRepository = eventTypeRepository;
@@ -129,7 +127,6 @@ public class EventTypeService {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.etLogEventType = etLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
-        this.auditEventType = auditEventType;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
     }
@@ -183,7 +180,7 @@ public class EventTypeService {
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.empty(), Optional.of(eventType),
+        nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
                 eventType.getName(), user);
     }
@@ -288,7 +285,7 @@ public class EventTypeService {
                 .put("authz", identifyAuthzState(eventType))
                 .put("compatibility_mode", eventType.getCompatibilityMode()));
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(eventType), Optional.empty(),
+        nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
                 eventType.getName(), user);
     }
@@ -389,7 +386,7 @@ public class EventTypeService {
                 .put("authz", identifyAuthzState(eventTypeBase))
                 .put("compatibility_mode", eventTypeBase.getCompatibilityMode()));
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(original), Optional.of(eventType),
+        nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
                 eventType.getName(), user);
     }

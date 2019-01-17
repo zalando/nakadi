@@ -85,7 +85,6 @@ public class SubscriptionService {
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
-    private final String auditEventType;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -100,7 +99,6 @@ public class SubscriptionService {
                                final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                               @Value("${nakadi.audit.eventType}") final String auditEventType,
                                final AuthorizationValidator authorizationValidator) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -114,7 +112,6 @@ public class SubscriptionService {
         this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
-        this.auditEventType = auditEventType;
         this.authorizationValidator = authorizationValidator;
     }
 
@@ -135,7 +132,7 @@ public class SubscriptionService {
                 .put("subscription_id", subscription.getId())
                 .put("status", "created"));
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.empty(), Optional.of(subscription),
+        nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(subscription),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
                 subscription.getId(), user);
 
@@ -157,7 +154,7 @@ public class SubscriptionService {
         final Subscription updated = old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(updated);
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(old), Optional.of(updated),
+        nakadiAuditLogPublisher.publish(Optional.of(old), Optional.of(updated),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.UPDATED,
                 updated.getId(), user);
 
@@ -230,7 +227,7 @@ public class SubscriptionService {
                 .put("subscription_id", subscriptionId)
                 .put("status", "deleted"));
 
-        nakadiAuditLogPublisher.publish(auditEventType, Optional.of(subscription), Optional.empty(),
+        nakadiAuditLogPublisher.publish(Optional.of(subscription), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
                 subscription.getId(), user);
     }

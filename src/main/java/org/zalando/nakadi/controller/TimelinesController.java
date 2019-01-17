@@ -39,6 +39,8 @@ public class TimelinesController {
             RepositoryProblemException {
         timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
+
+        //todo audit_log TIMELINE C
     }
 
     @RequestMapping(method = RequestMethod.GET)
