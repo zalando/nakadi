@@ -48,8 +48,9 @@ public class LoggingFilter extends OncePerRequestFilter {
         private String contentEncoding;
         private Long contentLength;
         private String acceptEncoding;
+        private Long requestTime;
 
-        private RequestLogInfo(final HttpServletRequest request) {
+        private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
             this.user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
             this.method = request.getMethod();
@@ -60,23 +61,21 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
                 .orElse("-");
             this.contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
+            this.requestTime = requestTime;
         }
     }
 
     private class AsyncRequestListener implements AsyncListener {
-        private final HttpServletRequest request;
         private final HttpServletResponse response;
-        private long startTime;
-        private String flowId;
+        private final String flowId;
+        private final RequestLogInfo requestLogInfo;
 
         private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
                                     final long startTime, final String flowId) {
-            this.request = request;
             this.response = response;
-            this.startTime = startTime;
             this.flowId = flowId;
 
-            final RequestLogInfo requestLogInfo = new RequestLogInfo(request);
+            this.requestLogInfo = new RequestLogInfo(request, startTime);
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
                     requestLogInfo.path,
@@ -89,22 +88,23 @@ public class LoggingFilter extends OncePerRequestFilter {
                     requestLogInfo.acceptEncoding,
                     requestLogInfo.contentLength);
         }
+
         @Override
         public void onComplete(final AsyncEvent event) {
             FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(request, response, startTime);
+            writeToAccessLogAndEventType(requestLogInfo, response);
         }
 
         @Override
         public void onTimeout(final AsyncEvent event) {
             FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(request, response, startTime);
+            writeToAccessLogAndEventType(requestLogInfo, response);
         }
 
         @Override
         public void onError(final AsyncEvent event) {
             FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(request, response, startTime);
+            writeToAccessLogAndEventType(requestLogInfo, response);
         }
 
         @Override
@@ -116,7 +116,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
-            throws ServletException, IOException {
+            throws IOException, ServletException{
         final long start = System.currentTimeMillis();
         try {
             //execute request
@@ -127,16 +127,15 @@ public class LoggingFilter extends OncePerRequestFilter {
             }
         } finally {
             if(!request.isAsyncStarted()) {
-                writeToAccessLogAndEventType(request, response, start);
+                final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
+                writeToAccessLogAndEventType(requestLogInfo, response);
             }
         }
     }
 
-    private void writeToAccessLogAndEventType(final HttpServletRequest request, final HttpServletResponse response,
-                                             final long requestTime) {
+    private void writeToAccessLogAndEventType(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
             final long currentTime = System.currentTimeMillis();
-            final Long timing = currentTime - requestTime;
-            final RequestLogInfo requestLogInfo = new RequestLogInfo(request);
+            final Long timing = currentTime - requestLogInfo.requestTime;
 
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
