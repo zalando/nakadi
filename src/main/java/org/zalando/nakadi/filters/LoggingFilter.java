@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.util.FlowIdUtils;
 
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -66,12 +67,14 @@ public class LoggingFilter extends OncePerRequestFilter {
         private final HttpServletRequest request;
         private final HttpServletResponse response;
         private long startTime;
+        private String flowId;
 
         private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
-                                    final long startTime) {
+                                    final long startTime, final String flowId) {
             this.request = request;
             this.response = response;
             this.startTime = startTime;
+            this.flowId = flowId;
 
             final RequestLogInfo requestLogInfo = new RequestLogInfo(request);
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
@@ -88,16 +91,19 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
         @Override
         public void onComplete(final AsyncEvent event) {
+            FlowIdUtils.push(this.flowId);
             writeToAccessLogAndEventType(request, response, startTime);
         }
 
         @Override
         public void onTimeout(final AsyncEvent event) {
+            FlowIdUtils.push(this.flowId);
             writeToAccessLogAndEventType(request, response, startTime);
         }
 
         @Override
         public void onError(final AsyncEvent event) {
+            FlowIdUtils.push(this.flowId);
             writeToAccessLogAndEventType(request, response, startTime);
         }
 
@@ -116,7 +122,8 @@ public class LoggingFilter extends OncePerRequestFilter {
             //execute request
             filterChain.doFilter(request, response);
             if (request.isAsyncStarted()) {
-                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start));
+                final String flowId = FlowIdUtils.peek();
+                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start, flowId));
             }
         } finally {
             if(!request.isAsyncStarted()) {
