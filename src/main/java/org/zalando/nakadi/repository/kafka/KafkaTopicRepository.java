@@ -463,7 +463,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-        @Override
+    @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
             @Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
