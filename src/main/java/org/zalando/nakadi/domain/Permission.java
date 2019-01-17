@@ -43,11 +43,26 @@ public class Permission {
         final Permission that = (Permission) o;
         return Objects.equals(resource, that.resource) &&
                 Objects.equals(operation, that.operation) &&
-                Objects.equals(authorizationAttribute, that.authorizationAttribute);
+                Objects.equals(authorizationAttribute.getDataType(), that.authorizationAttribute.getDataType()) &&
+                Objects.equals(authorizationAttribute.getValue(), that.authorizationAttribute.getDataType());
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(resource, operation, authorizationAttribute);
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Permission {");
+        sb.append("resource: ");
+        sb.append(resource);
+        sb.append("\tOperation: ");
+        sb.append(operation.toString());
+        sb.append("\tAuthorization attribute: ");
+        sb.append(authorizationAttribute.toString());
+        sb.append("}.");
+        return sb.toString();
     }
 }
