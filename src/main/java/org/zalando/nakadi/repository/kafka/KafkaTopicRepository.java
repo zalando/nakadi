@@ -97,7 +97,7 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
-    private static CompletableFuture<Exception> publishItem(
+    private CompletableFuture<Exception> publishItem(
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
@@ -134,6 +134,7 @@ public class KafkaTopicRepository implements TopicRepository {
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
+            kafkaFactory.terminateProducer(producer);
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
