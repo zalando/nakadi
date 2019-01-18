@@ -116,8 +116,8 @@ public class SettingsController {
 
     @RequestMapping(path = "/admins", method = RequestMethod.POST)
     public ResponseEntity<?> updateAdmins(@Valid @RequestBody final ResourceAuthorization authz,
-                                          final NativeWebRequest request,
-                                          final Errors errors)
+                                          final Errors errors,
+                                          final NativeWebRequest request)
             throws ValidationException, ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
