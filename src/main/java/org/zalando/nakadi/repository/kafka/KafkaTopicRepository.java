@@ -313,7 +313,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     new RetryForSpecifiedCountStrategy(3)
                             .withWaitBetweenEachTry(5000)
                             .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
-        } catch (final Exception e) {
+        } catch (final RuntimeException e) {
             throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
@@ -372,7 +372,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     new RetryForSpecifiedCountStrategy(3)
                             .withWaitBetweenEachTry(5000)
                             .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
-        } catch (final Exception e) {
+        } catch (final RuntimeException e) {
             throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
@@ -414,7 +414,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     new RetryForSpecifiedCountStrategy(3)
                             .withWaitBetweenEachTry(5000)
                             .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
-        } catch (final Exception e) {
+        } catch (final RuntimeException e) {
             throw new ServiceTemporarilyUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
