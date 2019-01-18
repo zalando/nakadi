@@ -44,7 +44,7 @@ public class Permission {
         return Objects.equals(resource, that.resource) &&
                 Objects.equals(operation, that.operation) &&
                 Objects.equals(authorizationAttribute.getDataType(), that.authorizationAttribute.getDataType()) &&
-                Objects.equals(authorizationAttribute.getValue(), that.authorizationAttribute.getDataType());
+                Objects.equals(authorizationAttribute.getValue(), that.authorizationAttribute.getValue());
     }
 
     @Override
