@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -90,7 +91,7 @@ public class TimelineService {
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
-                           final NakadiAuditLogPublisher auditLogPublisher) {
+                           @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;

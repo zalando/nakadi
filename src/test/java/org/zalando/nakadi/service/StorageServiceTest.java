@@ -48,11 +48,13 @@ public class StorageServiceTest {
 
     @Test
     public void testDeleteUnusedStorage() {
+        when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
         storageService.deleteStorage("s3", Optional.empty());
     }
 
     @Test(expected = StorageIsUsedException.class)
     public void testDeleteStorageInUse() {
+        when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
         doThrow(new StorageIsUsedException("", null)).when(storageDbRepository).deleteStorage("s");
 
         storageService.deleteStorage("s", Optional.empty());
@@ -60,6 +62,7 @@ public class StorageServiceTest {
 
     @Test(expected = NoSuchStorageException.class)
     public void testDeleteNonExistingStorage() {
+        when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
         doThrow(new NoSuchStorageException("")).when(storageDbRepository).deleteStorage("s");
 
         storageService.deleteStorage("s", Optional.empty());
