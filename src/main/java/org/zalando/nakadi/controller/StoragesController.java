@@ -28,6 +28,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 public class StoragesController {
@@ -60,7 +61,7 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
-        storageService.createStorage(new JSONObject(storage));
+        storageService.createStorage(new JSONObject(storage), getUser(request));
         return status(CREATED).build();
 
         //todo audit_log STORAGE C
@@ -83,7 +84,7 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
-        storageService.deleteStorage(id);
+        storageService.deleteStorage(id, getUser(request));
         return status(NO_CONTENT).build();
 
         //todo audit_log STORAGE D

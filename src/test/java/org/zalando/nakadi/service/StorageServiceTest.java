@@ -11,6 +11,8 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.utils.TestUtils;
 
+import java.util.Optional;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -26,8 +28,10 @@ public class StorageServiceTest {
     public void setUp() {
         featureToggleService = mock(FeatureToggleService.class);
         storageDbRepository = mock(StorageDbRepository.class);
+        final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
         storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
-                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class), featureToggleService);
+                new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class), featureToggleService,
+                auditLogPublisher);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
     }
@@ -39,26 +43,26 @@ public class StorageServiceTest {
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
 
         final JSONObject storage = createTestStorageJson("s1");
-        storageService.createStorage(storage);
+        storageService.createStorage(storage, Optional.empty());
     }
 
     @Test
-    public void testDeleteUnusedStorage() throws Exception {
-        storageService.deleteStorage("s3");
+    public void testDeleteUnusedStorage() {
+        storageService.deleteStorage("s3", Optional.empty());
     }
 
     @Test(expected = StorageIsUsedException.class)
-    public void testDeleteStorageInUse() throws Exception {
+    public void testDeleteStorageInUse() {
         doThrow(new StorageIsUsedException("", null)).when(storageDbRepository).deleteStorage("s");
 
-        storageService.deleteStorage("s");
+        storageService.deleteStorage("s", Optional.empty());
     }
 
     @Test(expected = NoSuchStorageException.class)
-    public void testDeleteNonExistingStorage() throws Exception {
+    public void testDeleteNonExistingStorage() {
         doThrow(new NoSuchStorageException("")).when(storageDbRepository).deleteStorage("s");
 
-        storageService.deleteStorage("s");
+        storageService.deleteStorage("s", Optional.empty());
     }
 
     private JSONObject createTestStorageJson(final String id) {

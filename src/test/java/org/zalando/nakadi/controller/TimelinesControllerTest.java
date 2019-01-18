@@ -23,6 +23,7 @@ import org.zalando.nakadi.view.TimelineView;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ public class TimelinesControllerTest {
 
     @Test
     public void whenPostTimelineThenCreated() throws Exception {
-        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any());
+        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.post("/event-types/event_type/timelines")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(new JSONObject().put("storage_id", "default").toString())

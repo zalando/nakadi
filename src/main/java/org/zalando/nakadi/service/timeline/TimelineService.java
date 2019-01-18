@@ -49,6 +49,7 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 
 import javax.annotation.Nullable;
@@ -75,6 +76,7 @@ public class TimelineService {
     private final AdminService adminService;
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -87,7 +89,8 @@ public class TimelineService {
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
-                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName) {
+                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
+                           final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -99,9 +102,10 @@ public class TimelineService {
         this.adminService = adminService;
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId)
+    public void createTimeline(final String eventTypeName, final String storageId, final Optional<String> user)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException, DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -135,6 +139,14 @@ public class TimelineService {
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 
             switchTimelines(activeTimeline, nextTimeline);
+
+            auditLogPublisher.publish(
+                    Optional.empty(),
+                    Optional.of(nextTimeline),
+                    NakadiAuditLogPublisher.ResourceType.TIMELINE,
+                    NakadiAuditLogPublisher.ActionType.CREATED,
+                    String.valueOf(nextTimeline.getId()),
+                    user);
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
                 InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
