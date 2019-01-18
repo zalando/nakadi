@@ -89,22 +89,25 @@ public class LoggingFilter extends OncePerRequestFilter {
                     requestLogInfo.contentLength);
         }
 
+        private void logOnEvent() {
+            FlowIdUtils.push(this.flowId);
+            writeToAccessLogAndEventType(this.requestLogInfo, this.response);
+            FlowIdUtils.clear();
+        }
+
         @Override
         public void onComplete(final AsyncEvent event) {
-            FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(requestLogInfo, response);
+            logOnEvent();
         }
 
         @Override
         public void onTimeout(final AsyncEvent event) {
-            FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(requestLogInfo, response);
+            logOnEvent();
         }
 
         @Override
         public void onError(final AsyncEvent event) {
-            FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(requestLogInfo, response);
+            logOnEvent();
         }
 
         @Override
