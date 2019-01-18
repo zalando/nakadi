@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -32,8 +33,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
@@ -61,25 +64,25 @@ import static org.zalando.nakadi.utils.TestUtils.readFile;
 public class SchemaEvolutionServiceTest {
     private SchemaEvolutionService service;
     private final SchemaEvolutionConstraint evolutionConstraint = mock(SchemaEvolutionConstraint.class);
-    private final Map<SchemaChange.Type, Version.Level> compatibleChanges = mock(HashMap.class);
-    private final Map<SchemaChange.Type, Version.Level> forwardChanges = mock(HashMap.class);
     private final Map<SchemaChange.Type, String> errorMessages = mock(HashMap.class);
+    private final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver =
+            mock(BiFunction.class);
     private final SchemaDiff schemaDiff = mock(SchemaDiff.class);
 
     @Before
     public void setUp() throws IOException {
-        final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
+        final List<SchemaEvolutionConstraint> evolutionConstraints = Lists.newArrayList(evolutionConstraint);
         final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
                 Charsets.UTF_8));
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
-        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, compatibleChanges,
-                forwardChanges, errorMessages);
+        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, levelResolver,
+                errorMessages);
 
         Mockito.doReturn("error").when(errorMessages).get(any());
     }
 
     @Test(expected = InvalidEventTypeException.class)
-    public void checkEvolutionConstraints() throws Exception {
+    public void checkEvolutionConstraints() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
@@ -92,7 +95,7 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void whenNoChangesKeepVersion() throws Exception {
+    public void whenNoChangesKeepVersion() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
@@ -107,7 +110,7 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void whenNoSemanticalChangesButTextualChangedBumpPatch() throws Exception {
+    public void whenNoSemanticalChangesButTextualChangedBumpPatch() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.schema("{\"default\":\"this\"}").build();
         final EventType newEventType = builder.schema("{\"default\":\"that\"}").build();
@@ -122,13 +125,13 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void whenPatchChangesBumpVersion() throws Exception {
+    public void whenPatchChangesBumpVersion() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(PATCH).when(compatibleChanges).get(any());
+        when(levelResolver.apply(any(), eq(CompatibilityMode.COMPATIBLE))).thenReturn(PATCH);
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -140,13 +143,13 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void whenMinorChangesBumpVersion() throws Exception {
+    public void whenMinorChangesBumpVersion() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MINOR).when(compatibleChanges).get(any());
+        when(levelResolver.apply(any(), eq(CompatibilityMode.COMPATIBLE))).thenReturn(MINOR);
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -158,13 +161,13 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test(expected = InvalidEventTypeException.class)
-    public void whenCompatibleModeDoNotAllowMajorChanges() throws Exception {
+    public void whenCompatibleModeDoNotAllowMajorChanges() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MAJOR).when(compatibleChanges).get(any());
+        when(levelResolver.apply(any(), eq(CompatibilityMode.COMPATIBLE))).thenReturn(MAJOR);
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -172,13 +175,13 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void whenIncompatibleModeAllowMajorChanges() throws Exception {
+    public void whenIncompatibleModeAllowMajorChanges() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.NONE);
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MAJOR).when(forwardChanges).get(any());
+        when(levelResolver.apply(any(), eq(CompatibilityMode.NONE))).thenReturn(MAJOR);
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -190,7 +193,7 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void compatibilityModeMigrationAllowedChanges() throws Exception {
+    public void compatibilityModeMigrationAllowedChanges() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
                 .compatibilityMode(CompatibilityMode.FORWARD);
         final EventType oldEventType = builder.build();
@@ -222,7 +225,7 @@ public class SchemaEvolutionServiceTest {
                 REQUIRED_ARRAY_CHANGED);
 
         allowedChanges.forEach(changeType -> {
-            Mockito.doReturn(MINOR).when(forwardChanges).get(any());
+            when(levelResolver.apply(any(), eq(CompatibilityMode.FORWARD))).thenReturn(MINOR);
             Mockito.doReturn(Lists.newArrayList(new SchemaChange(changeType, "#/"))).when(schemaDiff)
                     .collectChanges(any(), any());
 
@@ -252,7 +255,7 @@ public class SchemaEvolutionServiceTest {
         final JSONArray testCases = new JSONArray(
                 readFile("org/zalando/nakadi/validation/invalid-json-schema-examples.json"));
 
-        for(final Object testCaseObject : testCases) {
+        for (final Object testCaseObject : testCases) {
             final JSONObject testCase = (JSONObject) testCaseObject;
             final JSONObject schemaJson = testCase.getJSONObject("schema");
             final List<String> errorMessages = testCase
@@ -264,7 +267,7 @@ public class SchemaEvolutionServiceTest {
             final String description = testCase.getString("description");
 
             assertThat(description, service.collectIncompatibilities(schemaJson).stream().map(Object::toString)
-                            .collect(toList()), is(errorMessages));
+                    .collect(toList()), is(errorMessages));
         }
     }
 }

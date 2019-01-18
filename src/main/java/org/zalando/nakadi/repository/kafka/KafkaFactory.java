@@ -3,6 +3,7 @@ package org.zalando.nakadi.repository.kafka;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -20,15 +21,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class KafkaFactory {
 
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
     private final KafkaLocationManager kafkaLocationManager;
     private final Counter useCountMetric;
     private final Counter producerTerminations;
-    @Nullable
-    private Producer<String, String> activeProducer;
     private final Map<Producer<String, String>, AtomicInteger> useCount = new ConcurrentHashMap<>();
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
-
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
+    @Nullable
+    private Producer<String, String> activeProducer;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry) {
         this.kafkaLocationManager = kafkaLocationManager;
@@ -133,7 +133,7 @@ public class KafkaFactory {
     }
 
     public Consumer<byte[], byte[]> getConsumer(final Properties properties) {
-        return new KafkaConsumer<>(properties);
+        return new KafkaCrutchConsumer(properties, kafkaLocationManager);
     }
 
     public Consumer<byte[], byte[]> getConsumer() {
@@ -147,6 +147,40 @@ public class KafkaFactory {
         // https://docs.google.com/document/d/1JDgsBemNqS0SrNpWUL90205u0MFmSMnOqrC-ENAb6TM/edit
         // properties.put("client.id", clientId);
         return this.getConsumer(properties);
+    }
+
+    public class KafkaCrutchConsumer extends KafkaConsumer<byte[], byte[]> {
+
+        private final KafkaLocationManager kafkaLocationManager;
+        private final Runnable brokerIpAddressChangeListener;
+        private volatile boolean brokerIpAddressChanged;
+
+        public KafkaCrutchConsumer(final Properties properties, final KafkaLocationManager kafkaLocationManager) {
+            super(properties);
+            this.kafkaLocationManager = kafkaLocationManager;
+            this.brokerIpAddressChangeListener = () -> brokerIpAddressChanged = true;
+            this.kafkaLocationManager.addIpAddressChangeListener(brokerIpAddressChangeListener);
+        }
+
+        @Override
+        public ConsumerRecords<byte[], byte[]> poll(final long timeoutMs) {
+            if (brokerIpAddressChanged) {
+                throw new KafkaCrutchException("Kafka broker ip address changed, exiting");
+            }
+            return super.poll(timeoutMs);
+        }
+
+        @Override
+        public void close() {
+            this.kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
+            super.close();
+        }
+    }
+
+    public class KafkaCrutchException extends RuntimeException {
+        public KafkaCrutchException(final String message) {
+            super(message);
+        }
     }
 
 }
