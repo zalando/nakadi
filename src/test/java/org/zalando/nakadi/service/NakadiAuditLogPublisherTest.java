@@ -1,12 +1,12 @@
 package org.zalando.nakadi.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.security.UsernameHasher;
 
 import java.util.Optional;
 
@@ -20,8 +20,9 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class NakadiAuditLogPublisherTest {
+
     @Test
-    public void testPublishAuditLog() throws JsonProcessingException {
+    public void testPublishAuditLog() {
         final EventsProcessor processor = mock(EventsProcessor.class);
         final FeatureToggleService toggle = mock(FeatureToggleService.class);
 
@@ -31,7 +32,7 @@ public class NakadiAuditLogPublisherTest {
                 toggle,
                 processor,
                 new JsonConfig().jacksonObjectMapper(),
-                "salt",
+                new UsernameHasher("salt"),
                 "audit-event-type");
 
         final DateTime now = DateTime.parse("2019-01-16T13:44:16.819Z");
