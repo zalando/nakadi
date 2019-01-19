@@ -63,8 +63,6 @@ public class StoragesController {
         }
         storageService.createStorage(new JSONObject(storage), getUser(request));
         return status(CREATED).build();
-
-        //todo audit_log STORAGE C
     }
 
     @RequestMapping(value = "/storages/{id}", method = RequestMethod.GET)
@@ -86,8 +84,6 @@ public class StoragesController {
         }
         storageService.deleteStorage(id, getUser(request));
         return status(NO_CONTENT).build();
-
-        //todo audit_log STORAGE D
     }
 
     @RequestMapping(value = "/storages/default/{id}", method = RequestMethod.PUT)
