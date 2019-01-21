@@ -83,6 +83,17 @@ public class KafkaFactory {
     }
 
     /**
+     * Terminates provided producer and initializes a new one.
+     *
+     * @return Initialized kafka producer instance.
+     */
+    public Producer<String, String> terminateAndTakeProducer(final Producer<String, String> producer) {
+        terminateProducer(producer);
+        releaseProducer(producer);
+        return takeProducer();
+    }
+
+    /**
      * Release kafka producer that was obtained by {@link #takeProducer()} method. If producer was not obtained by
      * {@link #takeProducer()} call - method will throw {@link NullPointerException}
      *
