@@ -93,7 +93,8 @@ public class NakadiAuditLogPublisher {
         TIMELINE,
         STORAGE,
         FEATURE,
-        ADMINS
+        ADMINS,
+        CURSORS
     }
 
     public enum ActionType {

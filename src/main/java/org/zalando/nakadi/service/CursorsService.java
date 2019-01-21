@@ -36,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,6 +54,7 @@ public class CursorsService {
     private final AuthorizationValidator authorizationValidator;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionCache subscriptionCache;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -63,7 +65,8 @@ public class CursorsService {
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator,
                           final TimelineService timelineService,
-                          final AuthorizationValidator authorizationValidator) {
+                          final AuthorizationValidator authorizationValidator,
+                          final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
@@ -73,6 +76,7 @@ public class CursorsService {
         this.authorizationValidator = authorizationValidator;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionCache = subscriptionCache;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     /**
@@ -159,7 +163,7 @@ public class CursorsService {
         return cursorsListBuilder.build();
     }
 
-    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors)
+    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Optional<String> user)
             throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
@@ -187,11 +191,23 @@ public class CursorsService {
                 zkClient, subscription, timelineService, cursorConverter));
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
         if (!cursors.isEmpty()) {
+            final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
+
             final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
                     TimeUnit.SECONDS.toMillis(1);
-            zkClient.resetCursors(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                    timeout);
+            final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
+                    .map(cursorConverter::convertToNoToken)
+                    .collect(Collectors.toList());
+
+            zkClient.resetCursors(newCursors, timeout);
+
+            auditLogPublisher.publish(
+                    Optional.of(oldCursors),
+                    Optional.of(newCursors),
+                    NakadiAuditLogPublisher.ResourceType.CURSORS,
+                    NakadiAuditLogPublisher.ActionType.UPDATED,
+                    subscriptionId,
+                    user);
         }
     }
 
