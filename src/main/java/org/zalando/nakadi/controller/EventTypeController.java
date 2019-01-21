@@ -1,13 +1,10 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,8 +54,6 @@ public class EventTypeController {
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
     private final NakadiSettings nakadiSettings;
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
-
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
@@ -74,6 +69,7 @@ public class EventTypeController {
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> list() {
         final List<EventType> eventTypes = eventTypeService.list();
+
         return status(HttpStatus.OK).body(eventTypes);
     }
 
