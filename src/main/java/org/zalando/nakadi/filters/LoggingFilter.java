@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 
 import javax.servlet.FilterChain;
@@ -27,11 +29,15 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
 
+    private final AuthorizationService authorizationService;
+
     @Autowired
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
+                         final AuthorizationService authorizationService,
                          @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -46,7 +52,8 @@ public class LoggingFilter extends OncePerRequestFilter {
             final long time = System.currentTimeMillis();
             final Long timing = time - start;
             final String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
-            final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
+            final String user = Optional.ofNullable(authorizationService.getSubject()).map(Subject::getName)
+                    .orElse("-");
             final String method = request.getMethod();
             final String path = request.getRequestURI();
             final String query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
