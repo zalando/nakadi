@@ -17,10 +17,8 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 
 import javax.validation.Valid;
-import java.util.Optional;
 
 import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
 import static org.zalando.nakadi.util.RequestUtils.getUser;
@@ -32,18 +30,14 @@ public class SettingsController {
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
-    private final NakadiAuditLogPublisher auditLogPublisher;
-
 
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
-                              final AdminService adminService,
-                              final NakadiAuditLogPublisher auditLogPublisher) {
+                              final AdminService adminService) {
         this.blacklistService = blacklistService;
         this.featureToggleService = featureToggleService;
         this.adminService = adminService;
-        this.auditLogPublisher = auditLogPublisher;
     }
 
     @RequestMapping(path = "/blacklist", method = RequestMethod.GET)
@@ -92,17 +86,7 @@ public class SettingsController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        final boolean oldState = featureToggleService.isFeatureEnabled(featureWrapper.getFeature());
-        featureToggleService.setFeature(featureWrapper);
-
-        auditLogPublisher.publish(
-                Optional.of(new FeatureToggleService.FeatureWrapper(featureWrapper.getFeature(), oldState)),
-                Optional.of(featureWrapper),
-                NakadiAuditLogPublisher.ResourceType.FEATURE,
-                NakadiAuditLogPublisher.ActionType.UPDATED,
-                featureWrapper.getFeature().getId(),
-                getUser(request));
-
+        featureToggleService.setFeature(featureWrapper, getUser(request));
         return ResponseEntity.noContent().build();
     }
 
@@ -125,17 +109,7 @@ public class SettingsController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
-        final ResourceAuthorization oldAuthz = ResourceAuthorization.fromPermissionsList(adminService.getAdmins());
-        adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
-
-        auditLogPublisher.publish(
-                Optional.of(oldAuthz),
-                Optional.of(authz),
-                NakadiAuditLogPublisher.ResourceType.ADMINS,
-                NakadiAuditLogPublisher.ActionType.UPDATED,
-                "-",
-                getUser(request));
-
+        adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE), getUser(request));
         return ResponseEntity.ok().build();
     }
 }

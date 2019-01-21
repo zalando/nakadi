@@ -5,14 +5,17 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public interface FeatureToggleService {
 
-    void setFeature(FeatureWrapper feature);
+    void setFeature(FeatureWrapper feature, Optional<String> user);
 
     boolean isFeatureEnabled(Feature feature);
+
+    void setAuditLogPublisher(NakadiAuditLogPublisher auditLogPublisher);
 
     default void checkFeatureOn(final Feature feature) {
         if (!isFeatureEnabled(feature)) {

@@ -29,11 +29,12 @@ public class NakadiAuditLogPublisher {
                                       final ObjectMapper objectMapper,
                                       final UsernameHasher usernameHasher,
                                       @Value("${nakadi.audit.eventType}") final String auditEventType) {
-        this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.usernameHasher = usernameHasher;
         this.objectMapper = objectMapper;
         this.auditEventType = auditEventType;
+        this.featureToggleService = featureToggleService;
+        this.featureToggleService.setAuditLogPublisher(this);
     }
 
     public void publish(final Optional<Object> previousState,
