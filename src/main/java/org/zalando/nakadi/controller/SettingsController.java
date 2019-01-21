@@ -50,23 +50,25 @@ public class SettingsController {
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.PUT)
     public ResponseEntity blacklist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                    @PathVariable("name") final String name)
+                                    @PathVariable("name") final String name,
+                                    final NativeWebRequest request)
             throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        blacklistService.blacklist(name, blacklistType);
+        blacklistService.blacklist(name, blacklistType, getUser(request));
         return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(value = "/blacklist/{blacklist_type}/{name}", method = RequestMethod.DELETE)
     public ResponseEntity whitelist(@PathVariable("blacklist_type") final BlacklistService.Type blacklistType,
-                                    @PathVariable("name") final String name)
+                                    @PathVariable("name") final String name,
+                                    final NativeWebRequest request)
             throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        blacklistService.whitelist(name, blacklistType);
+        blacklistService.whitelist(name, blacklistType, getUser(request));
         return ResponseEntity.noContent().build();
     }
 

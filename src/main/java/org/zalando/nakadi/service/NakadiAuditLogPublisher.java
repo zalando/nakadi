@@ -94,7 +94,8 @@ public class NakadiAuditLogPublisher {
         STORAGE,
         FEATURE,
         ADMINS,
-        CURSORS
+        CURSORS,
+        BLACKLIST_ENTRY
     }
 
     public enum ActionType {
