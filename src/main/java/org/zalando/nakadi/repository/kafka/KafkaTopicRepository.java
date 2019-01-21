@@ -214,6 +214,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         try {
                             sendFutures.put(item, sendItem(producer, topicId, item, circuitBreaker));
                         } catch (final KafkaFactory.KafkaCrutchException e) {
+                            LOG.info("Failed to publish due to KafkaCrutchException, retrying");
                             kafkaFactory.terminateProducer(producer);
                             kafkaFactory.releaseProducer(producer);
                             producer = kafkaFactory.takeProducer();
