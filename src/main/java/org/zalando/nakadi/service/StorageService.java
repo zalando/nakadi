@@ -164,8 +164,8 @@ public class StorageService {
             storageDbRepository.deleteStorage(id);
 
             auditLogPublisher.publish(
-                    Optional.empty(),
                     storageOrNone,
+                    Optional.empty(),
                     NakadiAuditLogPublisher.ResourceType.STORAGE,
                     NakadiAuditLogPublisher.ActionType.DELETED,
                     id,
