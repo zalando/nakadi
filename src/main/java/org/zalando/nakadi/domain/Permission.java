@@ -55,14 +55,13 @@ public class Permission {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
-        sb.append("Permission {");
-        sb.append("resource: ");
-        sb.append(resource);
-        sb.append("\tOperation: ");
-        sb.append(operation.toString());
-        sb.append("\tAuthorization attribute: ");
-        sb.append(authorizationAttribute.toString());
-        sb.append("}.");
-        return sb.toString();
+        return sb.append("Permission {resource: ")
+                .append(resource)
+                .append("\tOperation: ")
+                .append(operation.toString())
+                .append("\tAuthorization attribute: ")
+                .append(authorizationAttribute.toString())
+                .append("}.")
+                .toString();
     }
 }
