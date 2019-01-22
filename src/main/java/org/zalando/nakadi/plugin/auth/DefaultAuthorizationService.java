@@ -24,6 +24,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
     @Override
     public Subject getSubject() {
         return () -> SecurityContextHolder.getContext().getAuthentication().getName();
+    }
 
     @Override
     public List<Resource> filter(final List<Resource> input) throws PluginException {
