@@ -49,6 +49,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -92,6 +93,7 @@ public class EventTypeService {
     private final String etLogEventType;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -109,7 +111,8 @@ public class EventTypeService {
                             final NakadiKpiPublisher nakadiKpiPublisher,
                             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
                             final EventTypeOptionsValidator eventTypeOptionsValidator,
-                            final AdminService adminService) {
+                            final AdminService adminService,
+                            final AuthorizationService authorizationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -126,10 +129,17 @@ public class EventTypeService {
         this.etLogEventType = etLogEventType;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
+        this.authorizationService = authorizationService;
     }
 
     public List<EventType> list() {
-        return eventTypeRepository.list();
+        return authorizationService.filter(eventTypeRepository.list()
+                .stream()
+                .map(EventType::asResource)
+                .collect(Collectors.toList()))
+                .stream()
+                .map(Resource<EventType>::get)
+                .collect(Collectors.toList());
     }
 
     public void create(final EventTypeBase eventType)

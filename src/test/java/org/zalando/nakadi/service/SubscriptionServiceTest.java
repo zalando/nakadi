@@ -36,6 +36,7 @@ public class SubscriptionServiceTest {
     private FeatureToggleService featureToggleService;
     private AuthorizationValidator authorizationValidator;
     private SubscriptionValidationService subscriptionValidationService;
+    private AuthorizationService authorizationService;
 
     @Before
     public void setUp() throws Exception {
@@ -51,11 +52,13 @@ public class SubscriptionServiceTest {
         subscriptionRepository = mock(SubscriptionDbRepository.class);
         featureToggleService = mock(FeatureToggleService.class);
         authorizationValidator = mock(AuthorizationValidator.class);
+        authorizationService = mock(AuthorizationService.class);
+        when(authorizationService.filter(any())).thenAnswer(i -> i.getArguments()[0]);
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                authorizationValidator);
+                authorizationValidator, authorizationService);
     }
 
     @Test

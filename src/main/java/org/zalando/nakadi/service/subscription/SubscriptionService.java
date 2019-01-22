@@ -39,6 +39,8 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -54,7 +56,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-
 
 import javax.annotation.Nullable;
 import java.time.Duration;
@@ -86,6 +87,7 @@ public class SubscriptionService {
     private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -99,7 +101,8 @@ public class SubscriptionService {
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
-                               final AuthorizationValidator authorizationValidator) {
+                               final AuthorizationValidator authorizationValidator,
+                               final AuthorizationService authorizationService) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -112,6 +115,7 @@ public class SubscriptionService {
         this.subscriptionTimeLagService = subscriptionTimeLagService;
         this.subLogEventType = subLogEventType;
         this.authorizationValidator = authorizationValidator;
+        this.authorizationService = authorizationService;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -180,7 +184,15 @@ public class SubscriptionService {
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
         final List<Subscription> subscriptions =
-                subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
+                authorizationService
+                        .filter(subscriptionRepository
+                                .listSubscriptions(eventTypesFilter, owningAppOption, offset, limit)
+                                .stream()
+                                .map(Subscription::asResource)
+                                .collect(Collectors.toList()))
+                        .stream()
+                        .map(Resource<Subscription>::get)
+                        .collect(Collectors.toList());
         final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                 owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
         final PaginationWrapper<Subscription> paginationWrapper =
