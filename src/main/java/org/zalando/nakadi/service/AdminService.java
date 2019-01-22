@@ -74,8 +74,8 @@ public class AdminService {
         authorizationDbRepository.update(add, delete);
 
         auditLogPublisher.publish(
-                Optional.of(currentAdmins),
-                Optional.of(newAdmins),
+                Optional.of(ResourceAuthorization.fromPermissionsList(currentAdmins)),
+                Optional.of(ResourceAuthorization.fromPermissionsList(newAdmins)),
                 NakadiAuditLogPublisher.ResourceType.ADMINS,
                 NakadiAuditLogPublisher.ActionType.UPDATED,
                 "-",
