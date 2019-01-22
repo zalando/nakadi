@@ -1,12 +1,12 @@
 {
-  "name": "nakadi.audit.log",
-  "owning_application": "owning_application",
+  "name": "event_type_name_placeholder",
+  "owning_application": "owning_application_placeholder",
   "category": "data",
   "enrichment_strategies": [
     "metadata_enrichment"
   ],
   "partition_strategy": "hash",
-  "partition_key_fields": ["user"],
+  "partition_key_fields": ["resource_id"],
   "cleanup_policy": "delete",
   "ordering_key_fields": [],
   "ordering_instance_ids": [],

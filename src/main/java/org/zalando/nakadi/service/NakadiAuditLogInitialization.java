@@ -16,8 +16,6 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -49,19 +47,15 @@ public class NakadiAuditLogInitialization {
 
         LOG.debug("Initializing Audit log event type");
 
-        final String auditEventTypeString = Resources
+        String auditEventTypeString = Resources
                 .toString(Resources.getResource("audit_event_type.json"), Charsets.UTF_8);
 
-        final Map<String, String> replacements = new HashMap<>();
-        replacements.put("nakadi.audit.log", eventType);
-        replacements.put("owning_application", owningApplication);
-
-        replacements.forEach(auditEventTypeString::replaceAll);
+        auditEventTypeString = auditEventTypeString.replaceAll("event_type_name_placeholder", eventType);
+        auditEventTypeString = auditEventTypeString.replaceAll("owning_application_placeholder", owningApplication);
 
         final TypeReference<EventTypeBase> typeReference = new TypeReference<EventTypeBase>() {
         };
         final EventTypeBase eventType = objectMapper.readValue(auditEventTypeString, typeReference);
-
 
         try {
             eventTypeService.create(eventType, Optional.of(owningApplication));

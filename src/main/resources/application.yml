@@ -114,7 +114,7 @@ nakadi:
     compacted: "default"
   audit:
     eventType: "nakadi.audit.log"
-    owningApplication: "nakadi"
+    owningApplication: "stups_nakadi"
   kpi:
     config:
       batch-collection-timeout: 1000

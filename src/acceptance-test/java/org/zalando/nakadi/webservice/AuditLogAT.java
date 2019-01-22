@@ -12,6 +12,7 @@ import java.io.IOException;
 import static com.jayway.restassured.RestAssured.given;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
@@ -26,7 +27,9 @@ public class AuditLogAT extends BaseAT {
         given()
                 .get("/event-types/" + AUDIT_LOG_ET)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo("nakadi.audit.log"))
+                .body("owning_application", equalTo("stups_nakadi"));
     }
 
     @Test(timeout = 10000L)
