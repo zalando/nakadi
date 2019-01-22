@@ -54,7 +54,7 @@ public class NakadiKpiInitialization {
 
         LOG.debug("Initializing KPI event types");
 
-        final String kpiEventTypesString = Resources
+        String kpiEventTypesString = Resources
                 .toString(Resources.getResource("kpi_event_types.json"), Charsets.UTF_8);
 
         final Map<String, String> replacements = new HashMap<>();
@@ -63,9 +63,11 @@ public class NakadiKpiInitialization {
         replacements.put("nakadi.data.streamed", nakadiDataStreamed);
         replacements.put("nakadi.batch.published", nakadiBatchPublished);
         replacements.put("nakadi.access.log", nakadiAccessLog);
-        replacements.put("owning_application", owningApplication);
+        replacements.put("owning_application_placeholder", owningApplication);
 
-        replacements.forEach((key, value) -> kpiEventTypesString.replaceAll(key, value));
+        for (final Map.Entry<String, String> entry : replacements.entrySet()) {
+            kpiEventTypesString = kpiEventTypesString.replaceAll(entry.getKey(), entry.getValue());
+        }
 
         final TypeReference<List<EventTypeBase>> typeReference = new TypeReference<List<EventTypeBase>>() {
         };

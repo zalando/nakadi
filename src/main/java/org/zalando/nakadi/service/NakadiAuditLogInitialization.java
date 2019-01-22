@@ -29,6 +29,7 @@ public class NakadiAuditLogInitialization {
 
     private String eventType;
     private String owningApplication;
+    private String authorization;
 
     @Autowired
     public NakadiAuditLogInitialization(final ObjectMapper objectMapper, final EventTypeService eventTypeService,
@@ -52,6 +53,7 @@ public class NakadiAuditLogInitialization {
 
         auditEventTypeString = auditEventTypeString.replaceAll("event_type_name_placeholder", eventType);
         auditEventTypeString = auditEventTypeString.replaceAll("owning_application_placeholder", owningApplication);
+        auditEventTypeString = auditEventTypeString.replaceAll("authorization_placeholder", authorization);
 
         final TypeReference<EventTypeBase> typeReference = new TypeReference<EventTypeBase>() {
         };
@@ -80,5 +82,13 @@ public class NakadiAuditLogInitialization {
 
     public void setOwningApplication(final String owningApplication) {
         this.owningApplication = owningApplication;
+    }
+
+    public String getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(final String authorization) {
+        this.authorization = authorization;
     }
 }

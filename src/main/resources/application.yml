@@ -115,6 +115,7 @@ nakadi:
   audit:
     eventType: "nakadi.audit.log"
     owningApplication: "stups_nakadi"
+    authorization: '{"admins":[{"data_type":"*","value":"*"}],"readers":[{"data_type":"*","value":"*"}],"writers":[{"data_type":"*","value":"*"}]}'
   kpi:
     config:
       batch-collection-timeout: 1000
@@ -129,7 +130,7 @@ nakadi:
       nakadiSubscriptionLog: "nakadi.subscription.log"
       nakadiBatchPublished: "nakadi.batch.published"
       nakadiDataStreamed: "nakadi.data.streamed"
-      owning_application: "nakadi"
+      owning_application: "stups_nakadi"
   hasher.salt: "salt"
 
 twintip:

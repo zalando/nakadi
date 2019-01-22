@@ -24,5 +24,6 @@
     "retention_time": 345600000
   },
   "compatibility_mode": "forward",
-  "audience": "company-internal"
+  "audience": "company-internal",
+  "authorization": authorization_placeholder
 }
