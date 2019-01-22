@@ -4,11 +4,10 @@ import com.google.common.base.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.ValidatableAuthorization;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.PluginException;
@@ -110,7 +109,7 @@ public class AuthorizationValidator {
         if (eventType.getAuthorization() == null) {
             return;
         }
-        final EventTypeResource resource = eventType.asResource();
+        final Resource<EventType> resource = eventType.asResource();
         try {
             final boolean authorized = authorizationService.isAuthorized(
                     AuthorizationService.Operation.WRITE,

@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import org.joda.time.DateTime;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 public class EventType extends EventTypeBase {
 
@@ -47,7 +48,7 @@ public class EventType extends EventTypeBase {
         this.createdAt = createdAt;
     }
 
-    public EventTypeResource asResource() {
-        return new EventTypeResource(getName(), getAuthorization());
+    public Resource<EventType> asResource() {
+        return new ResourceImpl<EventType>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
 }
