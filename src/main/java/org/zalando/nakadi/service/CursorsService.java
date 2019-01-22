@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -202,8 +203,8 @@ public class CursorsService {
             zkClient.resetCursors(newCursors, timeout);
 
             auditLogPublisher.publish(
-                    Optional.of(oldCursors),
-                    Optional.of(newCursors),
+                    Optional.of(new ItemsWrapper<>(oldCursors)),
+                    Optional.of(new ItemsWrapper<>(newCursors)),
                     NakadiAuditLogPublisher.ResourceType.CURSORS,
                     NakadiAuditLogPublisher.ActionType.UPDATED,
                     subscriptionId,
