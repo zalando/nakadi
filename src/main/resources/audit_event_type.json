@@ -6,7 +6,9 @@
     "metadata_enrichment"
   ],
   "partition_strategy": "hash",
-  "partition_key_fields": ["resource_id"],
+  "partition_key_fields": [
+    "resource_id"
+  ],
   "cleanup_policy": "delete",
   "ordering_key_fields": [],
   "ordering_instance_ids": [],
@@ -25,5 +27,24 @@
   },
   "compatibility_mode": "forward",
   "audience": "company-internal",
-  "authorization": authorization_placeholder
+  "authorization": {
+    "admins": [
+      {
+        "data_type": "auth_data_type_placeholder",
+        "value": "auth_value_placeholder"
+      }
+    ],
+    "readers": [
+      {
+        "data_type": "auth_data_type_placeholder",
+        "value": "auth_value_placeholder"
+      }
+    ],
+    "writers": [
+      {
+        "data_type": "auth_data_type_placeholder",
+        "value": "auth_value_placeholder"
+      }
+    ]
+  }
 }

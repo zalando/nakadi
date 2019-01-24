@@ -115,7 +115,8 @@ nakadi:
   audit:
     eventType: "nakadi.audit.log"
     owningApplication: "stups_nakadi"
-    authorization: '{"admins":[{"data_type":"*","value":"*"}],"readers":[{"data_type":"*","value":"*"}],"writers":[{"data_type":"*","value":"*"}]}'
+    authDataType: "*"
+    authValue: "*"
   kpi:
     config:
       batch-collection-timeout: 1000
