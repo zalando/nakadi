@@ -3,11 +3,11 @@ package org.zalando.nakadi.service;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionResource;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -99,7 +99,8 @@ public class SubscriptionServiceTest {
 
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionModifiedAuthorizationIsValidated() throws NoSuchSubscriptionException {
-        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, new SubscriptionResource("", null)))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
@@ -110,7 +111,8 @@ public class SubscriptionServiceTest {
 
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionDeletedAuthorizationIsValidated() {
-        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, new SubscriptionResource("", null)))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         subscriptionService.deleteSubscription("test");
