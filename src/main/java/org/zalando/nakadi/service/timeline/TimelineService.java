@@ -16,9 +16,9 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -351,7 +351,7 @@ public class TimelineService {
             throws AccessDeniedException, UnableProcessException, TimelineException, NotFoundException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             throw new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                    new EventTypeResource(eventTypeName, null));
+                    new ResourceImpl<EventType>(eventTypeName, ResourceImpl.EVENT_TYPE_RESOURCE, null, null));
         }
 
         try {

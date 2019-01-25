@@ -85,15 +85,6 @@ public class AdminServiceTest {
     }
 
     @Test
-    public void whenGetThenDefaultAdminIsIncluded() {
-        when(nakadiSettings.getDefaultAdmin()).thenReturn(defaultAdmin);
-        when(authorizationDbRepository.listAdmins()).thenReturn(adminList);
-        final List<Permission> expected = new ArrayList<>(adminList);
-        expected.addAll(defaultAdminPermissions);
-        assertEquals(adminService.getAdmins(), expected);
-    }
-
-    @Test
     public void whenUpdateThenDefaultAdminIsNotAddedToDB() {
         when(nakadiSettings.getDefaultAdmin()).thenReturn(defaultAdmin);
         when(authorizationDbRepository.listAdmins()).thenReturn(adminList);

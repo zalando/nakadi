@@ -8,10 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.AdminResource;
-import org.zalando.nakadi.domain.AllDataAccessResource;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.PluginException;
@@ -26,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.domain.AdminResource.ADMIN_RESOURCE;
-import static org.zalando.nakadi.domain.AllDataAccessResource.ALL_DATA_ACCESS_RESOURCE;
+import static org.zalando.nakadi.domain.ResourceImpl.ADMIN_RESOURCE;
+import static org.zalando.nakadi.domain.ResourceImpl.ALL_DATA_ACCESS_RESOURCE;
 
 @Service
 public class AdminService {
@@ -84,8 +83,8 @@ public class AdminService {
 
     public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
         final List<Permission> permissions = getAdmins();
-        final Resource resource = new AdminResource(ADMIN_RESOURCE,
-                ResourceAuthorization.fromPermissionsList(permissions));
+        final Resource<Void> resource = new ResourceImpl(ADMIN_RESOURCE, ADMIN_RESOURCE,
+                ResourceAuthorization.fromPermissionsList(permissions), null);
         return authorizationService.isAuthorized(operation, resource);
     }
 
@@ -93,8 +92,9 @@ public class AdminService {
         try {
             final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
                     () -> authorizationDbRepository.listAllDataAccess());
-            final Resource resource = new AllDataAccessResource(ALL_DATA_ACCESS_RESOURCE,
-                    ResourceAuthorization.fromPermissionsList(permissions));
+            final Resource<Void> resource = new ResourceImpl<Void>(ALL_DATA_ACCESS_RESOURCE,
+                    ALL_DATA_ACCESS_RESOURCE,
+                    ResourceAuthorization.fromPermissionsList(permissions), null);
             return authorizationService.isAuthorized(operation, resource);
         } catch (ExecutionException e) {
             LOG.error("Could not determine whether this application has all data access", e);

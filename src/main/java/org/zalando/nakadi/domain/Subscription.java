@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.joda.time.DateTime;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.joda.time.DateTimeZone;
 
 import javax.annotation.Nullable;
@@ -55,8 +56,8 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
-    public SubscriptionResource asResource() {
-        return new SubscriptionResource(id, getAuthorization());
+    public Resource<Subscription> asResource() {
+        return new ResourceImpl<Subscription>(id, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
     }
 
     @Nullable
