@@ -8,6 +8,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 
 import javax.annotation.Nullable;
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +27,9 @@ public class DefaultAuthorizationService implements AuthorizationService {
     @Override
     @Nullable
     public Optional<Subject> getSubject() {
-        return Optional.of(() -> SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        return Optional.of(
+                () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                        .map(Principal::getName).orElse(null));
     }
 
     @Override
