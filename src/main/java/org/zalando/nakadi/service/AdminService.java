@@ -83,7 +83,7 @@ public class AdminService {
 
     public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
         final List<Permission> permissions = getAdmins();
-        final Resource<Void> resource = new ResourceImpl(ADMIN_RESOURCE, ADMIN_RESOURCE,
+        final Resource<Void> resource = new ResourceImpl<>(ADMIN_RESOURCE, ADMIN_RESOURCE,
                 ResourceAuthorization.fromPermissionsList(permissions), null);
         return authorizationService.isAuthorized(operation, resource);
     }
@@ -91,8 +91,8 @@ public class AdminService {
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
             final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
-                    () -> authorizationDbRepository.listAllDataAccess());
-            final Resource<Void> resource = new ResourceImpl<Void>(ALL_DATA_ACCESS_RESOURCE,
+                    authorizationDbRepository::listAllDataAccess);
+            final Resource<Void> resource = new ResourceImpl<>(ALL_DATA_ACCESS_RESOURCE,
                     ALL_DATA_ACCESS_RESOURCE,
                     ResourceAuthorization.fromPermissionsList(permissions), null);
             return authorizationService.isAuthorized(operation, resource);

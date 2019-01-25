@@ -49,6 +49,6 @@ public class EventType extends EventTypeBase {
     }
 
     public Resource<EventType> asResource() {
-        return new ResourceImpl<EventType>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
+        return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
 }

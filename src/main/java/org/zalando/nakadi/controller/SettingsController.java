@@ -20,8 +20,8 @@ import org.zalando.nakadi.service.FeatureToggleService;
 
 import javax.validation.Valid;
 
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 import static org.zalando.nakadi.domain.ResourceImpl.ADMIN_RESOURCE;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/settings")
