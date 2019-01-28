@@ -105,10 +105,6 @@ public class SubscriptionBase {
         this.initialCursors = Optional.ofNullable(initialCursors).orElse(ImmutableList.of());
     }
 
-    public void mergeFrom(final SubscriptionBase newValue) {
-        this.authorization = newValue.getAuthorization();
-    }
-
     @Override
     public boolean equals(final Object o) {
         if (this == o) {

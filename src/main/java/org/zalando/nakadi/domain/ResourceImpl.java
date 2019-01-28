@@ -7,7 +7,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import java.util.List;
 import java.util.Optional;
 
-public class ResourceImpl<T> implements Resource {
+public class ResourceImpl<T> implements Resource<T> {
 
     public static final String ALL_DATA_ACCESS_RESOURCE = "all-data-access";
     public static final String ADMIN_RESOURCE = "nakadi";
