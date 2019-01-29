@@ -91,9 +91,11 @@ public class AdminService {
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
             LOG.info("[ALL_DATA_ACCESS] start");
+            LOG.info("[ALL_DATA_ACCESS] Cache contents: " + resourceCache.asMap());
+            LOG.info("[ALL_DATA_ACCESS] From DB: " + authorizationDbRepository.listAllDataAccess());
 
             final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
-                    authorizationDbRepository::listAllDataAccess);
+                    () -> authorizationDbRepository.listAllDataAccess());
             LOG.info("[ALL_DATA_ACCESS] Permissions: " + permissions);
 
             final ResourceAuthorization resourceAuthorization = ResourceAuthorization.fromPermissionsList(permissions);
