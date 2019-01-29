@@ -17,6 +17,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -60,7 +61,8 @@ public class SubscriptionValidationService {
 
     public void validateSubscription(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
-            InconsistentStateException, WrongInitialCursorsException {
+            InconsistentStateException, WrongInitialCursorsException, UnableProcessException,
+            ServiceTemporarilyUnavailableException {
 
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);

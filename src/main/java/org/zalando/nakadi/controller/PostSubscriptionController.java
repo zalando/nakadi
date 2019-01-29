@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionCreationDisabledException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -52,7 +53,8 @@ public class PostSubscriptionController {
             throws ValidationException,
             UnprocessableSubscriptionException,
             InconsistentStateException,
-            SubscriptionCreationDisabledException {
+            SubscriptionCreationDisabledException,
+            UnableProcessException {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
