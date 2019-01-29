@@ -90,12 +90,23 @@ public class AdminService {
 
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
+            LOG.info("[ALL_DATA_ACCESS] start");
+
             final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
                     authorizationDbRepository::listAllDataAccess);
+            LOG.info("[ALL_DATA_ACCESS] Permissions: " + permissions);
+
+            final ResourceAuthorization resourceAuthorization = ResourceAuthorization.fromPermissionsList(permissions);
+            LOG.info("[ALL_DATA_ACCESS] Resource authorization: " + resourceAuthorization.asMapValue());
+
             final Resource<Void> resource = new ResourceImpl<>(ALL_DATA_ACCESS_RESOURCE,
                     ALL_DATA_ACCESS_RESOURCE,
-                    ResourceAuthorization.fromPermissionsList(permissions), null);
-            return authorizationService.isAuthorized(operation, resource);
+                    resourceAuthorization, null);
+
+            final boolean authorized = authorizationService.isAuthorized(operation, resource);
+            LOG.info("[ALL_DATA_ACCESS] Plugin says " + (authorized ? "yes" : "no"));
+
+            return authorized;
         } catch (ExecutionException e) {
             LOG.error("Could not determine whether this application has all data access", e);
             return false;
