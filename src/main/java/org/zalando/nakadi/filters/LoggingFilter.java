@@ -57,7 +57,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
             this.user = authorizationService.getSubject().isPresent() ?
-                    authorizationService.getSubject().get().getName():"-";
+                    authorizationService.getSubject().get().getName() : "-";
             this.method = request.getMethod();
             this.path = request.getRequestURI();
             this.query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");

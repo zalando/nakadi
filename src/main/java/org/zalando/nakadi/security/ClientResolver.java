@@ -13,6 +13,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
 
 import java.security.Principal;
@@ -26,10 +28,14 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
+    private final AuthorizationService authorizationService;
 
     @Autowired
-    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
+    public ClientResolver(final SecuritySettings settings,
+                          final FeatureToggleService featureToggleService,
+                          final AuthorizationService authorizationService) {
         this.settings = settings;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -42,7 +48,8 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final ModelAndViewContainer mavContainer,
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
-        final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        final Optional<String> clientId = Optional.ofNullable(authorizationService.getSubject().isPresent() ?
+                        authorizationService.getSubject().get().getName():"unauthenticated");
         if (clientId.filter(settings.getAdminClientId()::equals).isPresent()
                 || settings.getAuthMode() == OFF) {
             return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));

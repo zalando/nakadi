@@ -29,7 +29,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
     public Optional<Subject> getSubject() {
         return Optional.of(
                 () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                        .map(Principal::getName).orElse(null));
+                        .map(Principal::getName).orElse("unauthorized"));
     }
 
     @Override
