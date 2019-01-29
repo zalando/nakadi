@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -88,13 +89,13 @@ public class EventTypeController {
             throw new ValidationException(errors);
         }
 
-        eventTypeService.create(eventType);
+        eventTypeService.create(eventType, getUser(request));
 
         return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName)
+    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName, final NativeWebRequest request)
             throws EventTypeDeletionException,
             AccessDeniedException,
             NoSuchEventTypeException,
@@ -105,7 +106,7 @@ public class EventTypeController {
             throw new ForbiddenOperationException("Event Type deletion is disabled");
         }
 
-        eventTypeService.delete(eventTypeName);
+        eventTypeService.delete(eventTypeName, getUser(request));
 
         return status(HttpStatus.OK).build();
     }
@@ -127,7 +128,7 @@ public class EventTypeController {
             throw new ValidationException(errors);
         }
 
-        eventTypeService.update(name, eventType);
+        eventTypeService.update(name, eventType, getUser(request));
 
         return status(HttpStatus.OK).headers(generateWarningHeaders(eventType)).build();
     }

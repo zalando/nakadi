@@ -112,6 +112,11 @@ nakadi:
   timelines.storage:
     default: "default"
     compacted: "default"
+  audit:
+    eventType: "nakadi.audit.log"
+    owningApplication: "stups_nakadi"
+    authDataType: "*"
+    authValue: "*"
   kpi:
     config:
       batch-collection-timeout: 1000
@@ -126,7 +131,7 @@ nakadi:
       nakadiSubscriptionLog: "nakadi.subscription.log"
       nakadiBatchPublished: "nakadi.batch.published"
       nakadiDataStreamed: "nakadi.data.streamed"
-      owning_application: "nakadi"
+      owning_application: "stups_nakadi"
   hasher.salt: "salt"
 
 twintip:
@@ -150,6 +155,7 @@ nakadi:
     REMOTE_TOKENINFO: true
     KPI_COLLECTION: true
     DISABLE_DB_WRITE_OPERATIONS: false
+    AUDIT_LOG_COLLECTION: true
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
