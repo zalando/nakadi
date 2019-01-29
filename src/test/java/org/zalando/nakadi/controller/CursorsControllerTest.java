@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
@@ -32,6 +33,7 @@ import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.problem.Problem;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -77,6 +79,7 @@ public class CursorsControllerTest {
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final CursorConverter cursorConverter;
+    private final AuthorizationService authorizationService;
 
     public CursorsControllerTest() throws Exception {
 
@@ -84,6 +87,8 @@ public class CursorsControllerTest {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
         subscriptionRepository = mock(SubscriptionDbRepository.class);
+        authorizationService = mock(AuthorizationService.class);
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         cursorConverter = mock(CursorConverter.class);
 
         IntStream.range(0, DUMMY_CURSORS.size()).forEach(idx ->
@@ -104,7 +109,7 @@ public class CursorsControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new CursorsExceptionHandler())
                 .build();
     }

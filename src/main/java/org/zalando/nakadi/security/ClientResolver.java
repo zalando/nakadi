@@ -14,10 +14,8 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
 
-import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,15 +46,19 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final ModelAndViewContainer mavContainer,
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
-        final Optional<String> clientId = Optional.ofNullable(authorizationService.getSubject().isPresent() ?
-                        authorizationService.getSubject().get().getName():"unauthenticated");
-        if (clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF) {
-            return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
-        }
+        final String clientId = authorizationService.getSubject().isPresent() ?
+                        authorizationService.getSubject().get().getName():"unauthorized";
 
-        return clientId.map(client -> new NakadiClient(client, getRealm()))
-                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+        if (clientId.equals(settings.getAdminClientId()) || settings.getAuthMode() == OFF) {
+            if(settings.getAuthMode() == OFF) {
+                return new FullAccessClient(clientId);
+            }
+            return new FullAccessClient(FULL_ACCESS_CLIENT_ID);
+        }
+        if(clientId.equals("unauthorized")) {
+            throw new UnauthorizedUserException("Client unauthorized");
+        }
+        return new NakadiClient(clientId, getRealm());
     }
 
     public String getRealm() {

@@ -18,6 +18,7 @@ import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -39,6 +40,7 @@ public class StoragesControllerTest {
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
     private final AdminService adminService = mock(AdminService.class);
+    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
     private MockMvc mockMvc;
 
     @Before
@@ -47,9 +49,11 @@ public class StoragesControllerTest {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(
+                        securitySettings, featureToggleService, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new SettingsExceptionHandler())
                 .build();
     }

@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
@@ -32,6 +33,7 @@ import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -71,6 +73,7 @@ public class EventPublishingControllerTest {
     private EventTypeMetricRegistry eventTypeMetricRegistry;
     private NakadiKpiPublisher kpiPublisher;
     private BlacklistService blacklistService;
+    private AuthorizationService authorizationService;
 
     @Before
     public void setUp() {
@@ -79,8 +82,10 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         kpiPublisher = mock(NakadiKpiPublisher.class);
         settings = mock(SecuritySettings.class);
+        authorizationService = mock(AuthorizationService.class);
+        when(authorizationService.getSubject()).thenReturn(Optional.of(() ->  "adminClientId"));
         when(settings.getAuthMode()).thenReturn(OFF);
-        when(settings.getAdminClientId()).thenReturn("nakadi");
+        when(settings.getAdminClientId()).thenReturn("adminClientId");
 
         blacklistService = Mockito.mock(BlacklistService.class);
         when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
@@ -93,7 +98,7 @@ public class EventPublishingControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventPublishingExceptionHandler())
                 .build();
     }

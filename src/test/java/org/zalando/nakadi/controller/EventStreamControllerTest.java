@@ -59,6 +59,7 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -128,6 +129,7 @@ public class EventStreamControllerTest {
         topicRepositoryMock = mock(TopicRepository.class);
         adminService = mock(AdminService.class);
         authorizationService = mock(AuthorizationService.class);
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
         eventTypeCache = mock(EventTypeCache.class);
@@ -172,7 +174,7 @@ public class EventStreamControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
                 .build();
     }
 

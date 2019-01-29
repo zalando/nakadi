@@ -14,6 +14,7 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -23,6 +24,7 @@ import org.zalando.nakadi.view.TimelineView;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.when;
@@ -34,15 +36,18 @@ public class TimelinesControllerTest {
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
     private final SecuritySettings securitySettings = Mockito.mock(SecuritySettings.class);
     private MockMvc mockMvc;
+    private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
 
     public TimelinesControllerTest() {
         final TimelinesController controller = new TimelinesController(timelineService);
         when(securitySettings.getAuthMode()).thenReturn(OFF);
         when(securitySettings.getAdminClientId()).thenReturn("nakadi");
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(
+                        securitySettings, featureToggleService, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler())
                 .build();
     }

@@ -19,6 +19,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -87,6 +88,7 @@ public class PartitionsControllerTest {
     private CursorOperationsService cursorOperationsService;
     private MockMvc mockMvc;
     private SecuritySettings settings;
+    private AuthorizationService authorizationService;
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
@@ -95,6 +97,8 @@ public class PartitionsControllerTest {
         eventTypeCache = mock(EventTypeCache.class);
         timelineService = Mockito.mock(TimelineService.class);
         cursorOperationsService = Mockito.mock(CursorOperationsService.class);
+        authorizationService = Mockito.mock(AuthorizationService.class);
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
                 .thenThrow(new NoSuchEventTypeException("topic not found"));
         when(timelineService.getActiveTimelinesOrdered(eq(TEST_EVENT_TYPE)))
@@ -112,7 +116,7 @@ public class PartitionsControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new PartitionsExceptionHandler())
                 .build();
     }
