@@ -1,6 +1,5 @@
 package org.zalando.nakadi.plugin.auth;
 
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -8,7 +7,6 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 
 import javax.annotation.Nullable;
-import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,9 +25,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
     @Override
     @Nullable
     public Optional<Subject> getSubject() {
-        return Optional.of(
-                () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                        .map(Principal::getName).orElse("unauthorized"));
+        return Optional.empty();
     }
 
     @Override
