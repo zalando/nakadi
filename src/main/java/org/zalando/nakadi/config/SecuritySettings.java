@@ -21,7 +21,7 @@ public class SecuritySettings {
     private final String clientId;
     private final AuthMode authMode;
     private final String adminClientId;
-    public final static String UNAUTHENTICATED_CLIENT_ID = "unauthenticated";
+    public static final String UNAUTHENTICATED_CLIENT_ID = "unauthenticated";
 
     @Autowired
     public SecuritySettings(@Value("${nakadi.oauth2.tokenInfoUrl}") final String tokenInfoUrl,
