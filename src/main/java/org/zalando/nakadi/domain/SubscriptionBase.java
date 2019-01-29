@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -23,6 +24,7 @@ public class SubscriptionBase {
         CURSORS
     }
 
+    private String id;
     @NotNull
     @Size(min = 1, message = "must contain at least one character")
     private String owningApplication;
@@ -48,13 +50,22 @@ public class SubscriptionBase {
     public SubscriptionBase() {
     }
 
-    public SubscriptionBase(final SubscriptionBase subscriptionBase) {
+    public SubscriptionBase(final SubscriptionBase subscriptionBase, final String id) {
+        this.setId(id);
         this.setOwningApplication(subscriptionBase.getOwningApplication());
         this.setEventTypes(subscriptionBase.getEventTypes());
         this.setConsumerGroup(subscriptionBase.getConsumerGroup());
         this.setReadFrom(subscriptionBase.getReadFrom());
         this.setInitialCursors(subscriptionBase.getInitialCursors());
         this.setAuthorization(subscriptionBase.getAuthorization());
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(final String id) {
+        this.id = id;
     }
 
     public SubscriptionAuthorization getAuthorization() {
@@ -125,5 +136,9 @@ public class SubscriptionBase {
     @Override
     public int hashCode() {
         return Objects.hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors);
+    }
+
+    public Resource<SubscriptionBase> asBaseResource() {
+        return new ResourceImpl<>(id, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
     }
 }

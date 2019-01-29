@@ -267,7 +267,7 @@ public class EventTypeBase implements EventTypeAuthz {
     public String getAuthCleanupPolicy() {
         return this.cleanupPolicy.toString();
     }
-    public Resource<EventTypeBase> asEventBaseResource() {
+    public Resource<EventTypeBase> asBaseResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
 }

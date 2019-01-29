@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.ValidatableAuthorization;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -17,7 +16,6 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,10 +84,10 @@ public class AuthorizationValidator {
         }
     }
 
-    private void checkAuthAttributesAreValid(Resource resource)
+    private void checkAuthAttributesAreValid(final Resource resource)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
         try {
-            if (authorizationService.isAuthorizationAttributeValid(resource)) {
+            if (authorizationService.isAuthorizationForResourceValid(resource)) {
                 throw new UnableProcessException("Authorization Attributes are not valid");
             }
         } catch (final PluginException e) {
@@ -199,8 +197,8 @@ public class AuthorizationValidator {
 
     public void validateAuthorization(final Resource oldValue, final Resource newValue)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        Map<String, List<AuthorizationAttribute>> oldAuth = oldValue.getAuthorization();
-        Map<String, List<AuthorizationAttribute>> newAuth = newValue.getAuthorization();
+        final Map<String, List<AuthorizationAttribute>> oldAuth = oldValue.getAuthorization();
+        final Map<String, List<AuthorizationAttribute>> newAuth = newValue.getAuthorization();
         if (oldAuth != null && newAuth == null) {
             throw new UnableProcessException(
                     "Changing authorization object to `null` is not possible due to existing one");

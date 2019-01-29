@@ -4,12 +4,14 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
@@ -49,9 +51,9 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
         when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
         when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
-
+        final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         try {
-            validator.validateAuthorization(auth);
+            validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo("authorization attribute type1:value1 is invalid, " +
@@ -68,9 +70,10 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr3, attr4));
 
         when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+        final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
 
         try {
-            validator.validateAuthorization(auth);
+           validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo(
@@ -88,8 +91,8 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr3));
 
         when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
-
-        validator.validateAuthorization(auth);
+        final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
+        validator.validateAuthorization(resource);
     }
 
     @Test

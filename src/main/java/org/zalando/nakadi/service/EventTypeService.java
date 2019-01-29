@@ -158,7 +158,7 @@ public class EventTypeService {
         validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
-        authorizationValidator.validateAuthorization(eventType.asEventBaseResource());
+        authorizationValidator.validateAuthorization(eventType.asBaseResource());
 
         eventTypeRepository.saveEventType(eventType);
 
@@ -349,8 +349,7 @@ public class EventTypeService {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
             }
-
-            authorizationValidator.validateAuthorization(original.asResource(), eventType.asResource());
+            authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
