@@ -13,9 +13,9 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 
-import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
 
@@ -26,10 +26,13 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
+    private final AuthorizationService authorizationService;
 
     @Autowired
-    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
+    public ClientResolver(final SecuritySettings settings,
+                          final AuthorizationService authorizationService) {
         this.settings = settings;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -41,15 +44,22 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     public Client resolveArgument(final MethodParameter parameter,
                                   final ModelAndViewContainer mavContainer,
                                   final NativeWebRequest request,
-                                  final WebDataBinderFactory binderFactory) throws Exception {
-        final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
-        if (clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF) {
-            return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
-        }
+                                  final WebDataBinderFactory binderFactory) {
 
-        return clientId.map(client -> new NakadiClient(client, getRealm()))
-                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+        final String clientId = authorizationService.getSubject().map(Subject::getName)
+                .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
+
+        if(settings.getAuthMode() == OFF) {
+            return new FullAccessClient(clientId);
+        } else {
+            if (clientId.equals(settings.getAdminClientId())) {
+                return new FullAccessClient(FULL_ACCESS_CLIENT_ID);
+            } else if (!authorizationService.getSubject().isPresent()) {
+                throw new UnauthorizedUserException("Client unauthorized");
+            } else {
+                return new NakadiClient(clientId, getRealm());
+            }
+        }
     }
 
     public String getRealm() {

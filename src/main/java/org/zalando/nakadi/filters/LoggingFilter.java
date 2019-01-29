@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -19,7 +21,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.security.Principal;
 import java.util.Optional;
 
 @Component
@@ -31,11 +32,15 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
 
+    private final AuthorizationService authorizationService;
+
     @Autowired
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
+                         final AuthorizationService authorizationService,
                          @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
+        this.authorizationService = authorizationService;
     }
 
     private class RequestLogInfo {
@@ -52,7 +57,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
-            this.user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
+            this.user = authorizationService.getSubject().map(Subject::getName).orElse("-");
             this.method = request.getMethod();
             this.path = request.getRequestURI();
             this.query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");

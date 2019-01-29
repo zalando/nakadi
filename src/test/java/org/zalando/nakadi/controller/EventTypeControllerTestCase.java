@@ -19,6 +19,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -41,6 +42,7 @@ import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.Matchers.any;
@@ -84,6 +86,7 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final AdminService adminService = mock(AdminService.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
+    protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
 
     protected MockMvc mockMvc;
@@ -102,6 +105,7 @@ public class EventTypeControllerTestCase {
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -122,7 +126,7 @@ public class EventTypeControllerTestCase {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventTypeExceptionHandler())
                 .build();
     }

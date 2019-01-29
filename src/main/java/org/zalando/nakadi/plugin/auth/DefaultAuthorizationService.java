@@ -4,8 +4,11 @@ import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 
+import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 
 public class DefaultAuthorizationService implements AuthorizationService {
 
@@ -17,6 +20,12 @@ public class DefaultAuthorizationService implements AuthorizationService {
     @Override
     public boolean isAuthorizationAttributeValid(final AuthorizationAttribute authorizationAttribute) {
         return true;
+    }
+
+    @Override
+    @Nullable
+    public Optional<Subject> getSubject() {
+        return Optional.empty();
     }
 
     @Override
