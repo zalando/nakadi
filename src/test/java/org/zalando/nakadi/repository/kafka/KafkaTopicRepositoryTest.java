@@ -316,6 +316,7 @@ public class KafkaTopicRepositoryTest {
     public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
+        when(nakadiSettings.getProducerRetryMs()).thenReturn(10L);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));

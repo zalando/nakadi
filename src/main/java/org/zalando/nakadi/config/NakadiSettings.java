@@ -23,6 +23,7 @@ public class NakadiSettings {
     private final AuthorizationAttribute defaultAdmin;
     private final String warnAllDataAccessMessage;
     private final String logCompactionWarnMessage;
+    private final long producerRetryMs;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -39,7 +40,8 @@ public class NakadiSettings {
                           @Value("${nakadi.admin.default.dataType}") final String defaultAdminDataType,
                           @Value("${nakadi.admin.default.value}") final String defaultAdminValue,
                           @Value("${nakadi.authz.warnAllDataAccessMessage}") final String warnAllDataAccessMessage,
-                          @Value("${nakadi.topic.compacted.warnMessage}") final String logCompactionWarnMessage) {
+                          @Value("${nakadi.topic.compacted.warnMessage}") final String logCompactionWarnMessage,
+                          @Value("${nakadi.kafka.poll.producerRetryMs:5000}") final long producerRetryMs) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -54,6 +56,7 @@ public class NakadiSettings {
         this.defaultAdmin = new ResourceAuthorizationAttribute(defaultAdminDataType, defaultAdminValue);
         this.warnAllDataAccessMessage = warnAllDataAccessMessage;
         this.logCompactionWarnMessage = logCompactionWarnMessage;
+        this.producerRetryMs = producerRetryMs;
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -110,5 +113,9 @@ public class NakadiSettings {
 
     public String getLogCompactionWarnMessage() {
         return logCompactionWarnMessage;
+    }
+
+    public long getProducerRetryMs() {
+        return producerRetryMs;
     }
 }

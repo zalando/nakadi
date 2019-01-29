@@ -176,7 +176,8 @@ public class KafkaFactory {
         }
 
         @Override
-        public ConsumerRecords<byte[], byte[]> poll(final long timeoutMs) {
+        public ConsumerRecords<byte[], byte[]> poll(final long timeoutMs)
+                throws KafkaFactory.KafkaCrutchException {
             if (kafkaCrutch.brokerIpAddressChanged) {
                 throw new KafkaCrutchException("Kafka broker ip address changed, exiting");
             }
@@ -206,7 +207,8 @@ public class KafkaFactory {
         }
 
         @Override
-        public Future<RecordMetadata> send(final ProducerRecord<String, String> record, final Callback callback) {
+        public Future<RecordMetadata> send(final ProducerRecord<String, String> record, final Callback callback)
+                throws KafkaFactory.KafkaCrutchException {
             if (kafkaCrutch.brokerIpAddressChanged) {
                 throw new KafkaCrutchException("Kafka broker ip address changed, exiting");
             }
