@@ -5,6 +5,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class ResourceImpl<T> implements Resource<T> {
@@ -41,6 +42,11 @@ public class ResourceImpl<T> implements Resource<T> {
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
         return authorization.getAttributesForOperation(operation);
+    }
+
+    @Override
+    public Map<String, List<AuthorizationAttribute>> getAuthorization() {
+        return authorization.asMapValue();
     }
 
     @Override

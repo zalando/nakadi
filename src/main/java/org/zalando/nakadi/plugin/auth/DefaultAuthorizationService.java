@@ -18,7 +18,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
     }
 
     @Override
-    public boolean isAuthorizationAttributeValid(final AuthorizationAttribute authorizationAttribute) {
+    public boolean isAuthorizationAttributeValid(final Resource resource) {
         return true;
     }
 

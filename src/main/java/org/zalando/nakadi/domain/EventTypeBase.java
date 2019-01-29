@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.EventTypeAuthz;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
@@ -15,7 +17,7 @@ import java.util.List;
 
 import static java.util.Collections.unmodifiableList;
 
-public class EventTypeBase {
+public class EventTypeBase implements EventTypeAuthz {
 
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
     private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
@@ -254,5 +256,18 @@ public class EventTypeBase {
 
     public void setAuthorization(final ResourceAuthorization authorization) {
         this.authorization = authorization;
+    }
+
+    @Override
+    public String getAuthCompatibilityMode() {
+        return this.compatibilityMode.toString();
+    }
+
+    @Override
+    public String getAuthCleanupPolicy() {
+        return this.cleanupPolicy.toString();
+    }
+    public Resource<EventTypeBase> asEventBaseResource() {
+        return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
 }

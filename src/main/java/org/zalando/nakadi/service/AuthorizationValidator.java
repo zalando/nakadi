@@ -44,12 +44,12 @@ public class AuthorizationValidator {
         this.adminService = adminService;
     }
 
-    public void validateAuthorization(@Nullable final ValidatableAuthorization auth) throws UnableProcessException,
+    public void validateAuthorization(@Nullable final Resource resource) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
-        if (auth != null) {
-            final Map<String, List<AuthorizationAttribute>> authorization = auth.asMapValue();
-            checkAuthAttributesAreValid(authorization);
-            checkAuthAttributesNoDuplicates(authorization);
+
+        if (resource.getAuthorization() != null) {
+            checkAuthAttributesAreValid(resource);
+            checkAuthAttributesNoDuplicates(resource.getAuthorization());
         }
     }
 
@@ -86,18 +86,11 @@ public class AuthorizationValidator {
         }
     }
 
-    private void checkAuthAttributesAreValid(final Map<String, List<AuthorizationAttribute>> allAttributes)
+    private void checkAuthAttributesAreValid(Resource resource)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
         try {
-            final String errorMessage = allAttributes.values().stream()
-                    .flatMap(Collection::stream)
-                    .filter(attr -> !authorizationService.isAuthorizationAttributeValid(attr))
-                    .map(attr -> String.format("authorization attribute %s:%s is invalid",
-                            attr.getDataType(), attr.getValue()))
-                    .collect(Collectors.joining(", "));
-
-            if (!Strings.isNullOrEmpty(errorMessage)) {
-                throw new UnableProcessException(errorMessage);
+            if (authorizationService.isAuthorizationAttributeValid(resource)) {
+                throw new UnableProcessException("Authorization Attributes are not valid");
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -204,14 +197,16 @@ public class AuthorizationValidator {
         authorizeResourceAdmin(subscription.asResource());
     }
 
-    public void validateAuthorization(final ValidatableAuthorization oldValue, final ValidatableAuthorization newValue)
+    public void validateAuthorization(final Resource oldValue, final Resource newValue)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        if (oldValue != null && newValue == null) {
+        Map<String, List<AuthorizationAttribute>> oldAuth = oldValue.getAuthorization();
+        Map<String, List<AuthorizationAttribute>> newAuth = newValue.getAuthorization();
+        if (oldAuth != null && newAuth == null) {
             throw new UnableProcessException(
                     "Changing authorization object to `null` is not possible due to existing one");
         }
 
-        if (oldValue != null && oldValue.equals(newValue)) {
+        if (oldAuth != null && oldAuth.equals(newAuth)) {
             return;
         }
 
