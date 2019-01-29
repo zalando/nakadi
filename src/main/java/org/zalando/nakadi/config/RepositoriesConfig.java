@@ -15,6 +15,8 @@ import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.FeatureToggleService.Feature;
+import org.zalando.nakadi.service.FeatureToggleService.FeatureWrapper;
 import org.zalando.nakadi.service.FeatureToggleServiceZk;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
@@ -22,6 +24,7 @@ import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
 
+import java.util.Optional;
 import java.util.Set;
 
 @Configuration
@@ -34,16 +37,16 @@ public class RepositoriesConfig {
 
     @Profile({"acceptanceTest", "local"})
     @Bean
-    public FeatureToggleService featureToggleServiceLocal(
-            final ZooKeeperHolder zooKeeperHolder, final FeaturesConfig featuresConfig) {
+    public FeatureToggleService featureToggleServiceLocal(final ZooKeeperHolder zooKeeperHolder,
+                                                          final FeaturesConfig featuresConfig) {
         final FeatureToggleService featureToggleService = new FeatureToggleServiceZk(zooKeeperHolder);
         if (featuresConfig.containsDefaults()) {
             final Set<String> features = featuresConfig.getFeaturesWithDefaultState();
-            for (final String feature: features) {
-                LOG.info("Setting feature {} to {}", feature, featuresConfig.getDefaultState(feature));
-                featureToggleService.setFeature(
-                        new FeatureToggleService.FeatureWrapper(FeatureToggleService.Feature.valueOf(feature),
-                                featuresConfig.getDefaultState(feature)));
+            for (final String featureStr : features) {
+                final boolean defaultState = featuresConfig.getDefaultState(featureStr);
+                LOG.info("Setting feature {} to {}", featureStr, defaultState);
+                final FeatureWrapper featureWrapper = new FeatureWrapper(Feature.valueOf(featureStr), defaultState);
+                featureToggleService.setFeature(featureWrapper, Optional.empty());
             }
         }
         return featureToggleService;

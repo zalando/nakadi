@@ -13,6 +13,7 @@ import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
@@ -62,8 +63,9 @@ public class AdminServiceTest {
         this.authorizationService = mock(AuthorizationService.class);
         this.nakadiSettings = mock(NakadiSettings.class);
         this.featureToggleService = mock(FeatureToggleService.class);
+        final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
         this.adminService = new AdminService(authorizationDbRepository, authorizationService,
-                featureToggleService, nakadiSettings);
+                featureToggleService, nakadiSettings, auditLogPublisher);
         this.adminList = new ArrayList<>(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
@@ -79,7 +81,7 @@ public class AdminServiceTest {
     @Test
     public void whenUpdateAdminsThenOk() {
         when(authorizationDbRepository.listAdmins()).thenReturn(adminList);
-        adminService.updateAdmins(newAuthz.toPermissionsList("nakadi"));
+        adminService.updateAdmins(newAuthz.toPermissionsList("nakadi"), Optional.empty());
     }
 
     @Test
@@ -89,7 +91,7 @@ public class AdminServiceTest {
 
         final List<Permission> newList = new ArrayList<>(adminList);
         newList.addAll(defaultAdminPermissions);
-        adminService.updateAdmins(newList);
+        adminService.updateAdmins(newList, Optional.empty());
         verify(authorizationDbRepository, times(0)).createPermission(any());
         verify(authorizationDbRepository, times(0)).deletePermission(any());
     }
@@ -99,7 +101,7 @@ public class AdminServiceTest {
         when(nakadiSettings.getDefaultAdmin()).thenReturn(defaultAdmin);
         when(authorizationDbRepository.listAdmins()).thenReturn(adminList);
 
-        adminService.updateAdmins(adminList);
+        adminService.updateAdmins(adminList, Optional.empty());
         verify(authorizationDbRepository, times(0)).createPermission(any());
         verify(authorizationDbRepository, times(0)).deletePermission(any());
     }
@@ -117,7 +119,7 @@ public class AdminServiceTest {
         newList.add(new Permission("nakadi", AuthorizationService.Operation.READ,
                 new ResourceAuthorizationAttribute("user", "user42")));
 
-        adminService.updateAdmins(newList);
+        adminService.updateAdmins(newList, Optional.empty());
 
         verify(authorizationDbRepository).update(addCaptor.capture(), deleteCaptor.capture());
         assertEquals(1, addCaptor.getValue().size());
@@ -136,7 +138,7 @@ public class AdminServiceTest {
         final List<Permission> newList = new ArrayList<>(adminList);
         newList.remove(permReadUser1);
 
-        adminService.updateAdmins(newList);
+        adminService.updateAdmins(newList, Optional.empty());
 
         verify(authorizationDbRepository).update(addCaptor.capture(), deleteCaptor.capture());
         assertEquals(0, addCaptor.getValue().size());

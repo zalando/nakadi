@@ -30,12 +30,13 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
@@ -86,7 +87,7 @@ public class EventTypeControllerTestCase {
     protected final AdminService adminService = mock(AdminService.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
-
+    protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
 
     protected MockMvc mockMvc;
 
@@ -115,8 +116,9 @@ public class EventTypeControllerTestCase {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type", eventTypeOptionsValidator, adminService);
-        final EventTypeController controller = new EventTypeController(eventTypeService,featureToggleService,
+                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher, eventTypeOptionsValidator,
+                adminService);
+        final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();
 

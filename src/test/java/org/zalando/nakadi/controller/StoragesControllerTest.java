@@ -71,7 +71,7 @@ public class StoragesControllerTest {
 
     @Test
     public void testDeleteUnusedStorage() throws Exception {
-        doNothing().when(storageService).deleteStorage("s1");
+        doNothing().when(storageService).deleteStorage("s1", Optional.empty());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(delete("/storages/s1")
                 .principal(mockPrincipal("nakadi")))
@@ -81,7 +81,7 @@ public class StoragesControllerTest {
     @Test
     public void testPostStorage() throws Exception {
         final JSONObject json = createJsonKafkaStorage("test_storage");
-        doNothing().when(storageService).createStorage(any());
+        doNothing().when(storageService).createStorage(any(), any());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)

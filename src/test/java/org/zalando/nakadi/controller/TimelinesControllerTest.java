@@ -16,8 +16,8 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TimelineView;
@@ -54,7 +54,7 @@ public class TimelinesControllerTest {
 
     @Test
     public void whenPostTimelineThenCreated() throws Exception {
-        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any());
+        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.post("/event-types/event_type/timelines")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(new JSONObject().put("storage_id", "default").toString())

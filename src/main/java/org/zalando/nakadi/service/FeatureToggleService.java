@@ -5,14 +5,17 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public interface FeatureToggleService {
 
-    void setFeature(FeatureWrapper feature);
+    void setFeature(FeatureWrapper feature, Optional<String> user);
 
     boolean isFeatureEnabled(Feature feature);
+
+    void setAuditLogPublisher(NakadiAuditLogPublisher auditLogPublisher);
 
     default void checkFeatureOn(final Feature feature) {
         if (!isFeatureEnabled(feature)) {
@@ -35,6 +38,7 @@ public interface FeatureToggleService {
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
         KPI_COLLECTION("kpi_collection"),
+        AUDIT_LOG_COLLECTION("audit_log_collection"),
         DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
         DISABLE_LOG_COMPACTION("disable_log_compaction");
 
