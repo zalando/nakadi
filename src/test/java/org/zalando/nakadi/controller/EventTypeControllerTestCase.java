@@ -124,7 +124,7 @@ public class EventTypeControllerTestCase {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventTypeExceptionHandler())
                 .build();
     }

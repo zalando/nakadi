@@ -27,7 +27,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -90,15 +89,13 @@ public class EventPublishingControllerTest {
         blacklistService = Mockito.mock(BlacklistService.class);
         when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
-        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
-
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher,
                         "kpiEventTypeName");
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new EventPublishingExceptionHandler())
                 .build();
     }

@@ -25,7 +25,6 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.CursorCommitResult;
@@ -76,15 +75,11 @@ public class CursorsControllerTest {
 
     private final CursorsService cursorsService = mock(CursorsService.class);
     private final MockMvc mockMvc;
-    private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final CursorConverter cursorConverter;
     private final AuthorizationService authorizationService;
 
     public CursorsControllerTest() throws Exception {
-
-        featureToggleService = mock(FeatureToggleService.class);
-        when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
         subscriptionRepository = mock(SubscriptionDbRepository.class);
         authorizationService = mock(AuthorizationService.class);
@@ -109,7 +104,7 @@ public class CursorsControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new CursorsExceptionHandler())
                 .build();
     }

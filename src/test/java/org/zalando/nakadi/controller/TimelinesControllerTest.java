@@ -17,7 +17,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TimelineView;
@@ -43,11 +42,10 @@ public class TimelinesControllerTest {
         when(securitySettings.getAuthMode()).thenReturn(OFF);
         when(securitySettings.getAdminClientId()).thenReturn("nakadi");
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
-        final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(
-                        securitySettings, featureToggleService, authorizationService))
+                        securitySettings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler())
                 .build();
     }

@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -42,8 +44,8 @@ public class MonitoringRequestFilter extends OncePerRequestFilter {
         openHttpConnectionsCounter.inc();
         final Timer.Context timerContext = httpConnectionsTimer.time();
 
-        final String clientId = authorizationService.getSubject().isPresent()
-                ? authorizationService.getSubject().get().getName():"unauthenticated";
+        final String clientId = authorizationService.getSubject().map(Subject::getName)
+                .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
         final String perPathMetricKey = MetricRegistry.name(
                 clientId,
                 request.getMethod(),

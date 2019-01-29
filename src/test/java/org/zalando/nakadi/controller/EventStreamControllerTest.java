@@ -42,7 +42,6 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -108,7 +107,6 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private MetricRegistry metricRegistry;
     private MetricRegistry streamMetrics;
-    private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
     private BlacklistService blacklistService;
     private EventTypeCache eventTypeCache;
@@ -151,7 +149,6 @@ public class EventStreamControllerTest {
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
-        featureToggleService = mock(FeatureToggleService.class);
         timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
@@ -174,7 +171,7 @@ public class EventStreamControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, authorizationService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .build();
     }
 

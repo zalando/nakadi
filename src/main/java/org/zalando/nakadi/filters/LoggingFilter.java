@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -56,8 +57,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
-            this.user = authorizationService.getSubject().isPresent() ?
-                    authorizationService.getSubject().get().getName() : "-";
+            this.user = authorizationService.getSubject().map(Subject::getName).orElse("-");
             this.method = request.getMethod();
             this.path = request.getRequestURI();
             this.query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
