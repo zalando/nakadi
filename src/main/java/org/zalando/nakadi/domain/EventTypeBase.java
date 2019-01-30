@@ -258,15 +258,18 @@ public class EventTypeBase implements EventTypeAuthz {
         this.authorization = authorization;
     }
 
+    @JsonIgnore
     @Override
     public String getAuthCompatibilityMode() {
         return this.compatibilityMode.toString();
     }
 
+    @JsonIgnore
     @Override
     public String getAuthCleanupPolicy() {
         return this.cleanupPolicy.toString();
     }
+
     public Resource<EventTypeBase> asBaseResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
