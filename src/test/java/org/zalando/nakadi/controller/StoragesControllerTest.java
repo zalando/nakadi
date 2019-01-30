@@ -12,12 +12,12 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -39,17 +39,19 @@ public class StoragesControllerTest {
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
     private final AdminService adminService = mock(AdminService.class);
+    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
     private MockMvc mockMvc;
 
     @Before
     public void before() {
         final StoragesController controller = new StoragesController(storageService, adminService);
-        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
         doReturn("nakadi").when(securitySettings).getAdminClientId();
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(
+                        securitySettings, authorizationService))
                 .setControllerAdvice(new NakadiProblemExceptionHandler(), new SettingsExceptionHandler())
                 .build();
     }
@@ -67,7 +69,7 @@ public class StoragesControllerTest {
 
     @Test
     public void testDeleteUnusedStorage() throws Exception {
-        doNothing().when(storageService).deleteStorage("s1");
+        doNothing().when(storageService).deleteStorage("s1", Optional.empty());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(delete("/storages/s1")
                 .principal(mockPrincipal("nakadi")))
@@ -77,7 +79,7 @@ public class StoragesControllerTest {
     @Test
     public void testPostStorage() throws Exception {
         final JSONObject json = createJsonKafkaStorage("test_storage");
-        doNothing().when(storageService).createStorage(any());
+        doNothing().when(storageService).createStorage(any(), any());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)

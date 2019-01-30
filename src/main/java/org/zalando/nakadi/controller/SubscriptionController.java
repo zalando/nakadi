@@ -26,6 +26,7 @@ import java.util.Set;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 
 @RestController
@@ -65,7 +66,7 @@ public class SubscriptionController {
                                                 final NativeWebRequest request)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
             ServiceTemporarilyUnavailableException, InternalNakadiException {
-        subscriptionService.deleteSubscription(subscriptionId);
+        subscriptionService.deleteSubscription(subscriptionId, getUser(request));
         return status(NO_CONTENT).build();
     }
 

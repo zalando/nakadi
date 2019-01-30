@@ -27,7 +27,7 @@ public class SettingsControllerAT extends BaseAT {
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
     @Test
-    public void testBlockFlooder() throws Exception {
+    public void testBlacklistConsumerByEventType() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         Assert.assertNotNull(CURATOR.checkExists()
@@ -35,7 +35,7 @@ public class SettingsControllerAT extends BaseAT {
     }
 
     @Test
-    public void testUnblockFlooder() throws Exception {
+    public void testWhitelistConsumerByEventType() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
@@ -46,7 +46,7 @@ public class SettingsControllerAT extends BaseAT {
     }
 
     @Test
-    public void testGetFlooders() throws Exception {
+    public void testGetBlacklist() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         TestUtils.waitFor(

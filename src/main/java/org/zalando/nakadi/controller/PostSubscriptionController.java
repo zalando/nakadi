@@ -29,6 +29,7 @@ import javax.validation.Valid;
 import static org.apache.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
+import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 
 @RestController
@@ -63,7 +64,8 @@ public class PostSubscriptionController {
                 throw new SubscriptionCreationDisabledException("Subscription creation is temporarily unavailable");
             }
             try {
-                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
+                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase,
+                        getUser(request));
                 return prepareLocationResponse(subscription);
             } catch (final DuplicatedSubscriptionException ex) {
                 throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
@@ -83,7 +85,7 @@ public class PostSubscriptionController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
-        subscriptionService.updateSubscription(subscriptionId, subscription);
+        subscriptionService.updateSubscription(subscriptionId, subscription, getUser(request));
         return ResponseEntity.noContent().build();
 
     }

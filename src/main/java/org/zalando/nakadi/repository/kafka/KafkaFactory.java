@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.Closeable;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -208,7 +209,7 @@ public class KafkaFactory {
         }
     }
 
-    private class KafkaCrutch {
+    private class KafkaCrutch implements Closeable {
 
         private final KafkaLocationManager kafkaLocationManager;
         private final Runnable brokerIpAddressChangeListener;
@@ -220,6 +221,7 @@ public class KafkaFactory {
             this.kafkaLocationManager.addIpAddressChangeListener(brokerIpAddressChangeListener);
         }
 
+        @Override
         public void close() {
             kafkaLocationManager.removeIpAddressChangeListener(brokerIpAddressChangeListener);
         }

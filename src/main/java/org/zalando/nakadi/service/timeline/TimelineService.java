@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -15,9 +16,9 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -49,6 +50,7 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 
 import javax.annotation.Nullable;
@@ -75,6 +77,7 @@ public class TimelineService {
     private final AdminService adminService;
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -87,7 +90,8 @@ public class TimelineService {
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
-                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName) {
+                           @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
+                           @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -99,9 +103,10 @@ public class TimelineService {
         this.adminService = adminService;
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId)
+    public void createTimeline(final String eventTypeName, final String storageId, final Optional<String> user)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException, DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -135,6 +140,14 @@ public class TimelineService {
                     activeTimeline.getOrder() + 1, storage, newTopic, new Date());
 
             switchTimelines(activeTimeline, nextTimeline);
+
+            auditLogPublisher.publish(
+                    Optional.empty(),
+                    Optional.of(nextTimeline),
+                    NakadiAuditLogPublisher.ResourceType.TIMELINE,
+                    NakadiAuditLogPublisher.ActionType.CREATED,
+                    String.valueOf(nextTimeline.getId()),
+                    user);
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
                 InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
@@ -338,7 +351,7 @@ public class TimelineService {
             throws AccessDeniedException, UnableProcessException, TimelineException, NotFoundException {
         if (!adminService.isAdmin(AuthorizationService.Operation.READ)) {
             throw new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                    new EventTypeResource(eventTypeName, null));
+                    new ResourceImpl<EventType>(eventTypeName, ResourceImpl.EVENT_TYPE_RESOURCE, null, null));
         }
 
         try {
