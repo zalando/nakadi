@@ -319,7 +319,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final StringBuilder sb = new StringBuilder();
         for (final Map.Entry<String, List<Integer>> entry : result.entrySet()) {
-            sb.append(entry.getKey()).append(": ").append(Arrays.toString(entry.getValue().toArray()));
+            sb.append(entry.getKey()).append(":").append(Arrays.toString(entry.getValue().toArray())).append(" ");
         }
 
         LOG.info("Failed events in batch {}", sb.toString());
