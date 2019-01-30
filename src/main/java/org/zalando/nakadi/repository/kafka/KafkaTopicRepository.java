@@ -43,9 +43,11 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -292,10 +294,35 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private void failUnpublished(final List<BatchItem> batch, final String reason) {
+        logFailedEvents(batch);
+
         batch.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .filter(item -> item.getResponse().getDetail().isEmpty())
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
+    }
+
+    private void logFailedEvents(final List<BatchItem> batch) {
+        final Map<String, List<Integer>> result = new HashMap<>();
+        for (final BatchItem batchItem : batch) {
+            List<Integer> events = result.get(batchItem.getPartition());
+            if (events == null) {
+                events = new LinkedList<>();
+                result.put(batchItem.getPartition(), events);
+            }
+            if (batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED) {
+                events.add(1);
+            } else {
+                events.add(0);
+            }
+        }
+
+        final StringBuilder sb = new StringBuilder();
+        for (final Map.Entry<String, List<Integer>> entry : result.entrySet()) {
+            sb.append(entry.getKey()).append(": ").append(Arrays.toString(entry.getValue().toArray()));
+        }
+
+        LOG.info("Failed events in batch {}", sb.toString());
     }
 
     @Override
