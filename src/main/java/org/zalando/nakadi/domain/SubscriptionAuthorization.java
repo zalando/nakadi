@@ -9,11 +9,14 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SubscriptionAuthorization implements ValidatableAuthorization {
     @NotNull
@@ -41,6 +44,10 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
 
     public List<AuthorizationAttribute> getReaders() {
         return readers;
+    }
+
+    public List<AuthorizationAttribute> getAll() {
+        return Stream.of(readers, admins).flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     @Override
@@ -77,6 +84,8 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
                 return Optional.of(getReaders());
             case ADMIN:
                 return Optional.of(getAdmins());
+            case VIEW:
+                return Optional.of(getAll());
             default:
                 throw new IllegalArgumentException("Operation " + operation + " is not supported");
         }

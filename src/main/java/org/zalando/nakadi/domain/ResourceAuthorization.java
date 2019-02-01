@@ -10,12 +10,14 @@ import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Immutable
 public class ResourceAuthorization implements ValidatableAuthorization {
@@ -60,6 +62,10 @@ public class ResourceAuthorization implements ValidatableAuthorization {
         return writers;
     }
 
+    public List<AuthorizationAttribute> getAll() {
+        return Stream.of(readers, writers, admins).flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
     public List<Permission> toPermissionsList(final String resource) {
         final List<Permission> permissions = admins.stream()
                 .map(p -> new Permission(resource, AuthorizationService.Operation.ADMIN, p))
@@ -99,6 +105,8 @@ public class ResourceAuthorization implements ValidatableAuthorization {
                 return Optional.of(getWriters());
             case ADMIN:
                 return Optional.of(getAdmins());
+            case VIEW:
+                return Optional.of(getAll());
             default:
                 throw new IllegalArgumentException("Operation " + operation + " is not supported");
         }

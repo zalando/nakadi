@@ -145,6 +145,7 @@ public class CursorsService {
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
