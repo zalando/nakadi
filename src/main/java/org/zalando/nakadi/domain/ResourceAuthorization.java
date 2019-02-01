@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
@@ -10,6 +11,7 @@ import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -62,8 +64,13 @@ public class ResourceAuthorization implements ValidatableAuthorization {
         return writers;
     }
 
+    @JsonIgnore
     public List<AuthorizationAttribute> getAll() {
-        return Stream.of(readers, writers, admins).flatMap(Collection::stream).collect(Collectors.toList());
+        return Stream.of(
+                Optional.ofNullable(this.readers).orElse(new ArrayList<>()),
+                Optional.ofNullable(this.writers).orElse(new ArrayList<>()),
+                Optional.ofNullable(this.admins).orElse(new ArrayList<>()))
+                .flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     public List<Permission> toPermissionsList(final String resource) {

@@ -37,10 +37,6 @@ public class ResourceImpl<T> implements Resource<T> {
         return type;
     }
 
-    private boolean isEventTypeOrSubscriptionResource() {
-        return type.equals(EVENT_TYPE_RESOURCE) || type.equals(SUBSCRIPTION_RESOURCE);
-    }
-
     @Override
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {

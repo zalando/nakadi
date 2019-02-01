@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
@@ -9,6 +10,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -46,8 +48,12 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
         return readers;
     }
 
+    @JsonIgnore
     public List<AuthorizationAttribute> getAll() {
-        return Stream.of(readers, admins).flatMap(Collection::stream).collect(Collectors.toList());
+        return Stream.of(
+                Optional.ofNullable(readers).orElse(new ArrayList<>()),
+                Optional.ofNullable(admins).orElse(new ArrayList<>()))
+                .flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     @Override
