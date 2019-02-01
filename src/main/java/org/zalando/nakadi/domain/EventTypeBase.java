@@ -270,6 +270,7 @@ public class EventTypeBase implements EventTypeAuthz {
         return this.cleanupPolicy.toString();
     }
 
+    @JsonIgnore
     public Resource<EventTypeBase> asBaseResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
