@@ -61,7 +61,7 @@ public class StreamParameters {
                         .filter(timeout -> timeout > 0 && timeout <= EventStreamConfig.MAX_STREAM_TIMEOUT)
                         .orElse((long) EventStreamConfig.generateDefaultStreamTimeout()));
         this.maxUncommittedMessages = userParameters.getMaxUncommittedEvents().orElse(10);
-        this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit();
+        this.batchKeepAliveIterations = userParameters.getStreamKeepAliveLimit().filter(v -> v != 0);
         this.partitions = userParameters.getPartitions();
         this.consumingClient = consumingClient;
 
@@ -78,12 +78,12 @@ public class StreamParameters {
         return streamLimitEvents.map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
     }
 
-    public boolean isStreamLimitReached(final long commitedEvents) {
-        return streamLimitEvents.map(v -> v <= commitedEvents).orElse(false);
+    public boolean isStreamLimitReached(final long committedEvents) {
+        return streamLimitEvents.map(v -> v <= committedEvents).orElse(false);
     }
 
     public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
-        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it) && it > 0).orElse(false);
+        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
     }
 
     public Client getConsumingClient() {
