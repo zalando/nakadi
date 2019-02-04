@@ -63,7 +63,6 @@ public class EventTypeBase {
     private EventTypeOptions options;
 
     @Valid
-    @Nullable
     private ResourceAuthorization authorization;
 
     @NotNull

@@ -18,11 +18,10 @@ public class ResourceImpl<T> implements Resource<T> {
     private final T resource;
     private final String name;
     private final String type;
-    @Nullable
     private final ValidatableAuthorization authorization;
 
     public ResourceImpl(final String name, final String type,
-                        final ValidatableAuthorization authorization, final T resource) {
+                        @Nullable final ValidatableAuthorization authorization, final T resource) {
         this.name = name;
         this.type = type;
         this.authorization = authorization;
