@@ -83,7 +83,7 @@ public class StreamParameters {
     }
 
     public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
-        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
+        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it) && it > 0).orElse(false);
     }
 
     public Client getConsumingClient() {
