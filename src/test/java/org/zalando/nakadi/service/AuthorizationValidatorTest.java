@@ -48,12 +48,16 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4));
 
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
-        when(authorizationService.isAuthorizationForResourceValid(resource)).thenReturn(true);
+        when(authorizationService.isAuthorizationAttributeValid(attr1)).thenReturn(false);
+        when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
+        when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
+        when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
         try {
             validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
-            assertThat(e.getMessage(), equalTo("Authorization Attributes are not valid"));
+            assertThat(e.getMessage(), equalTo("authorization attribute type1:value1 is invalid, " +
+                    "authorization attribute type4:value4 is invalid"));
         }
     }
 
@@ -66,10 +70,11 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr3, attr4));
 
         when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+        when(authorizationService.areAllAuthorizationsForResourceValid(any())).thenReturn(true);
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
 
         try {
-           validator.validateAuthorization(resource);
+            validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo(
@@ -86,7 +91,8 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
 
-        when(authorizationService.isAuthorizationForResourceValid(any())).thenThrow(new PluginException("blah"));
+        when(authorizationService.areAllAuthorizationsForResourceValid(any())).thenThrow(new PluginException("blah"));
+        when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
     }

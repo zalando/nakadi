@@ -16,6 +16,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,9 +45,8 @@ public class AuthorizationValidator {
 
     public void validateAuthorization(@Nullable final Resource resource) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
-
         if (resource.getAuthorization() != null) {
-            checkAuthAttributesAreValid(resource);
+            checkAuthorisationForResourceAreValid(resource);
             checkAuthAttributesNoDuplicates(resource.getAuthorization());
         }
     }
@@ -84,11 +84,31 @@ public class AuthorizationValidator {
         }
     }
 
-    private void checkAuthAttributesAreValid(final Resource resource)
+    private void checkAuthorisationForResourceAreValid(final Resource resource)
+            throws UnableProcessException, ServiceTemporarilyUnavailableException {
+
+        checkAuthAttributesAreValid(resource.getAuthorization());
+        try {
+            if (!authorizationService.areAllAuthorizationsForResourceValid(resource)) {
+                throw new AccessDeniedException(resource);
+            }
+        } catch (PluginException e) {
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+        }
+    }
+
+    private void checkAuthAttributesAreValid(final Map<String, List<AuthorizationAttribute>> allAttributes)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
         try {
-            if (authorizationService.isAuthorizationForResourceValid(resource)) {
-                throw new UnableProcessException("Authorization Attributes are not valid");
+            final String errorMessage = allAttributes.values().stream()
+                    .flatMap(Collection::stream)
+                    .filter(attr -> !authorizationService.isAuthorizationAttributeValid(attr))
+                    .map(attr -> String.format("authorization attribute %s:%s is invalid",
+                            attr.getDataType(), attr.getValue()))
+                    .collect(Collectors.joining(", "));
+
+            if (!Strings.isNullOrEmpty(errorMessage)) {
+                throw new UnableProcessException(errorMessage);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -139,28 +159,13 @@ public class AuthorizationValidator {
         }
 
         final Resource resource = eventType.asResource();
-        try {
-            if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
-                    && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
-                throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
-            }
-        } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
-        }
+        checkResourceAuthorization(resource);
     }
 
     public void authorizeSubscriptionRead(final Subscription subscription) throws AccessDeniedException {
         if (null != subscription.getAuthorization()) {
             final Resource resource = subscription.asResource();
-            try {
-                // In this case operation for read will invoke
-                if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
-                        && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
-                    throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
-                }
-            } catch (final PluginException e) {
-                throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
-            }
+            checkResourceAuthorization(resource);
         }
         subscription.getEventTypes().forEach(
                 (eventTypeName) -> {
@@ -178,6 +183,12 @@ public class AuthorizationValidator {
             return;
         }
         final Resource resource = subscription.asResource();
+        checkResourceAuthorization(resource);
+
+    }
+
+    private void checkResourceAuthorization(final Resource resource)
+            throws ServiceTemporarilyUnavailableException, AccessDeniedException {
         try {
             if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)
                     && !adminService.hasAllDataAccess(AuthorizationService.Operation.READ)) {
