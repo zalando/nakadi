@@ -49,7 +49,7 @@ public class SubscriptionBase {
     public SubscriptionBase() {
     }
 
-    public SubscriptionBase(final SubscriptionBase subscriptionBase, final String id) {
+    public SubscriptionBase(final SubscriptionBase subscriptionBase) {
         this.setOwningApplication(subscriptionBase.getOwningApplication());
         this.setEventTypes(subscriptionBase.getEventTypes());
         this.setConsumerGroup(subscriptionBase.getConsumerGroup());

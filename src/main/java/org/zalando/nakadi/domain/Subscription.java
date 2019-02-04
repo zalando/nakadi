@@ -17,7 +17,7 @@ public class Subscription extends SubscriptionBase {
 
     public Subscription(final String id, final DateTime createdAt, final DateTime updatedAt,
                         final SubscriptionBase subscriptionBase) {
-        super(subscriptionBase, id);
+        super(subscriptionBase);
         this.id = id;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
