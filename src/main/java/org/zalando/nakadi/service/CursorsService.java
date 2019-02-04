@@ -90,6 +90,7 @@ public class CursorsService {
             AccessDeniedException {
         final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         validateSubscriptionCommitCursors(subscription, cursors);
@@ -171,6 +172,7 @@ public class CursorsService {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         validateCursorsBelongToSubscription(subscription, cursors);

@@ -49,7 +49,6 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
@@ -79,7 +78,6 @@ public class TimelineService {
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
     private final NakadiAuditLogPublisher auditLogPublisher;
-    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -92,7 +90,6 @@ public class TimelineService {
                            @Qualifier("default_storage") final DefaultStorage defaultStorage,
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
-                           final AuthorizationValidator authorizationValidator,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
                            @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
@@ -107,7 +104,6 @@ public class TimelineService {
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
         this.auditLogPublisher = auditLogPublisher;
-        this.authorizationValidator = authorizationValidator;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Optional<String> user)
@@ -119,7 +115,6 @@ public class TimelineService {
         }
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authorizationValidator.authorizeEventTypeView(eventType);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
@@ -360,7 +355,6 @@ public class TimelineService {
 
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authorizationValidator.authorizeEventTypeView(eventType);
             return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");

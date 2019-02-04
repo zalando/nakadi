@@ -136,10 +136,9 @@ public class AuthorizationValidator {
 
     private void authorizeResourceView(final Resource resource) throws AccessDeniedException {
         try {
-            if (!adminService.isAdmin(AuthorizationService.Operation.ADMIN)) {
-                if (!authorizationService.isAuthorized(AuthorizationService.Operation.VIEW, resource)) {
-                    throw new AccessDeniedException(AuthorizationService.Operation.VIEW, resource);
-                }
+            if (!(adminService.isAdmin(AuthorizationService.Operation.ADMIN) ||
+                    authorizationService.isAuthorized(AuthorizationService.Operation.VIEW, resource))) {
+                throw new AccessDeniedException(AuthorizationService.Operation.VIEW, resource);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -151,8 +150,8 @@ public class AuthorizationValidator {
         authorizeResourceView(eventType.asResource());
     }
 
-    public void authorizeSubscriptionView(final Subscription subscription) throws
-            AccessDeniedException, ServiceTemporarilyUnavailableException {
+    public void authorizeSubscriptionView(final Subscription subscription)
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         authorizeResourceView(subscription.asResource());
     }
 

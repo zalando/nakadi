@@ -24,7 +24,6 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -51,12 +50,11 @@ public class TimelineServiceTest {
     private final TopicRepositoryHolder topicRepositoryHolder = mock(TopicRepositoryHolder.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new DefaultStorage(new Storage()), adminService, featureToggleService, authorizationValidator,
-            "compacted-storage", auditLogPublisher);
+            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage",
+            auditLogPublisher);
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
