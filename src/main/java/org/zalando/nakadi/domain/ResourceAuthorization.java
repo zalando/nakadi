@@ -11,7 +11,6 @@ import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -66,10 +65,7 @@ public class ResourceAuthorization implements ValidatableAuthorization {
 
     @JsonIgnore
     public List<AuthorizationAttribute> getAll() {
-        return Stream.of(
-                Optional.ofNullable(this.readers).orElse(new ArrayList<>()),
-                Optional.ofNullable(this.writers).orElse(new ArrayList<>()),
-                Optional.ofNullable(this.admins).orElse(new ArrayList<>()))
+        return Stream.of(this.writers, this.admins, this.writers)
                 .flatMap(Collection::stream).collect(Collectors.toList());
     }
 

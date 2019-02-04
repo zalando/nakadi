@@ -10,7 +10,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -50,9 +49,7 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
 
     @JsonIgnore
     public List<AuthorizationAttribute> getAll() {
-        return Stream.of(
-                Optional.ofNullable(readers).orElse(new ArrayList<>()),
-                Optional.ofNullable(admins).orElse(new ArrayList<>()))
+        return Stream.of(readers, admins)
                 .flatMap(Collection::stream).collect(Collectors.toList());
     }
 
