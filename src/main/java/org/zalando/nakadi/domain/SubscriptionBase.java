@@ -128,7 +128,7 @@ public class SubscriptionBase {
         return Objects.hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors);
     }
 
-    public Resource<SubscriptionBase> asBaseResource() {
-        return new ResourceImpl<>(null, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
+    public Resource<SubscriptionBase> asBaseResource(final String id) {
+        return new ResourceImpl<>(id, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
     }
 }

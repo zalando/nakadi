@@ -80,7 +80,7 @@ public class SubscriptionValidationService {
             validateInitialCursors(subscription, allPartitions);
         }
         // Verify that subscription authorization object is valid
-        authorizationValidator.validateAuthorization(subscription.asBaseResource());
+        authorizationValidator.validateAuthorization(subscription.asBaseResource("new-subscription"));
     }
 
     public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue)
@@ -100,7 +100,7 @@ public class SubscriptionValidationService {
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
             throw new SubscriptionUpdateConflictException("Not allowed to change initial cursors");
         }
-        authorizationValidator.validateAuthorization(old.asResource(), newValue.asBaseResource());
+        authorizationValidator.validateAuthorization(old.asResource(), newValue.asBaseResource(old.getId()));
     }
 
     public void validatePartitionsToStream(final Subscription subscription, final List<EventTypePartition> partitions) {
@@ -193,7 +193,7 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toList());
         if (!missingEventTypes.isEmpty()) {
             throw new NoSuchEventTypeException(String.format("Failed to create subscription, event type(s) not " +
-                            "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
+                    "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
         }
     }
 }
