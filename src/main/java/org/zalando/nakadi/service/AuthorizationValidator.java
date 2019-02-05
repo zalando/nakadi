@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
@@ -13,6 +14,8 @@ import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
+import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermitedException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import javax.annotation.Nullable;
@@ -85,13 +88,15 @@ public class AuthorizationValidator {
     }
 
     private void checkAuthorisationForResourceAreValid(final Resource resource)
-            throws UnableProcessException, ServiceTemporarilyUnavailableException {
+            throws UnableProcessException, ServiceTemporarilyUnavailableException, ForbiddenOperationException {
 
         checkAuthAttributesAreValid(resource.getAuthorization());
         try {
-            if (!authorizationService.areAllAuthorizationsForResourceValid(resource)) {
-                throw new AccessDeniedException(resource);
-            }
+            authorizationService.areAllAuthorizationsForResourceValid(resource);
+        } catch (OperationOnResourceNotPermitedException e) {
+            throw new ForbiddenOperationException(e.getMessage());
+        } catch (AuthorizationInvalidException e) {
+            throw new UnableProcessException(e.getMessage());
         } catch (PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
