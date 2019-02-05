@@ -54,9 +54,8 @@ public class SchemaController {
                                               final NativeWebRequest request)
             throws NoSuchEventTypeException, InternalNakadiException,
             NoSuchSchemaException, InvalidVersionNumberException {
+        final EventType eventType = eventTypeService.get(name);
         if (version.equals("latest")) { // latest schema might be cached with the event type
-            final EventType eventType = eventTypeService.get(name);
-
             return ResponseEntity.status(HttpStatus.OK).body(eventType.getSchema());
         }
 

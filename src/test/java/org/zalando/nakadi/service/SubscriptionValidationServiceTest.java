@@ -57,6 +57,7 @@ public class SubscriptionValidationServiceTest {
     @Before
     public void setUp() throws InternalNakadiException {
         final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
+        final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
         when(nakadiSettings.getMaxSubscriptionPartitions()).thenReturn(MAX_SUBSCRIPTION_PARTITIONS);
 
         topicRepository = mock(TopicRepository.class);
@@ -84,7 +85,7 @@ public class SubscriptionValidationServiceTest {
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
         subscriptionValidationService = new SubscriptionValidationService(timelineService, etRepo, nakadiSettings,
-                cursorConverter, null);
+                cursorConverter, authorizationValidator);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
