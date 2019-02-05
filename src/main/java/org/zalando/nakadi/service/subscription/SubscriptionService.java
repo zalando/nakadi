@@ -258,6 +258,7 @@ public class SubscriptionService {
                                                                     final StatsMode statsMode)
             throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
+        subscriptionValidationService.verifyViewAccessOnEventTypes(eventTypes);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 

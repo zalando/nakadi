@@ -66,7 +66,8 @@ public class SubscriptionValidationService {
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
         checkEventTypesExist(eventTypesOrNone);
-        verifyViewAccessOnEventTypes(eventTypesOrNone);
+        verifyViewAccessOnEventTypes(eventTypesOrNone.values().stream().map(Optional::get)
+                .collect(Collectors.toList()));
 
         // check that maximum number of partitions is not exceeded
         final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
@@ -199,10 +200,8 @@ public class SubscriptionValidationService {
         }
     }
 
-    public void verifyViewAccessOnEventTypes(final Map<String, Optional<EventType>> eventTypesOrNone)
+    public void verifyViewAccessOnEventTypes(final List<EventType> eventTypes)
             throws AccessDeniedException {
-        eventTypesOrNone.values().forEach(
-                et -> et.ifPresent(eventType -> authorizationValidator.authorizeEventTypeView(eventType))
-        );
+        eventTypes.forEach(et -> authorizationValidator.authorizeEventTypeView(et));
     }
 }
