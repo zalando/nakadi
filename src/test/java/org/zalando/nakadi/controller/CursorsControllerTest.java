@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,7 +22,9 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
@@ -37,12 +40,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,6 +55,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
@@ -78,6 +84,8 @@ public class CursorsControllerTest {
     private final SubscriptionDbRepository subscriptionRepository;
     private final CursorConverter cursorConverter;
     private final AuthorizationService authorizationService;
+    private final Client client;
+    private final BlacklistService blacklistService;
 
     public CursorsControllerTest() throws Exception {
 
@@ -96,7 +104,12 @@ public class CursorsControllerTest {
         final CursorTokenService tokenService = mock(CursorTokenService.class);
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
-        final CursorsController controller = new CursorsController(cursorsService, cursorConverter, tokenService);
+        client = mock(Client.class);
+
+        blacklistService = mock(BlacklistService.class);
+
+        final CursorsController controller = new CursorsController(cursorsService, cursorConverter, tokenService,
+                blacklistService);
 
         final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
@@ -181,6 +194,51 @@ public class CursorsControllerTest {
                 invalidProblem("items[0].event_type", "may not be null"));
     }
 
+    @Test
+    public void whenCommitCursorWithEmptyPartitionThenUnprocessableEntity() throws Exception {
+        checkForProblem(
+                postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"\",\"cursor_token\":\"x\"," +
+                        "\"event_type\":\"et\"}]}"),
+                invalidProblem("items[0].partition", "cursor partition cannot be empty"));
+    }
+
+    @Test
+    public void whenCommitCursorWithEmptyOffsetThenUnprocessableEntity() throws Exception {
+        checkForProblem(
+                postCursorsString("{\"items\":[{\"offset\":\"\",\"partition\":\"0\",\"cursor_token\":\"x\"," +
+                        "\"event_type\":\"et\"}]}"),
+                invalidProblem("items[0].offset", "cursor offset cannot be empty"));
+    }
+
+    @Test
+    public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnPostCommit() throws Exception {
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
+        checkForProblem(
+                postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"," +
+                        "\"event_type\":\"et\"}]}"),
+                expectedProblem);
+    }
+
+    @Test
+    public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnPatchCommit() throws Exception {
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
+        checkForProblem(
+                patchCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"," +
+                        "\"event_type\":\"et\"}]}"),
+                expectedProblem);
+    }
+
+    @Test
+    public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnGetCursors() throws Exception {
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
+        checkForProblem(
+                getCursors(),
+                expectedProblem);
+    }
+
     private ResultActions getCursors() throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = get("/subscriptions/" + SUBSCRIPTION_ID + "/cursors");
         return mockMvc.perform(requestBuilder);
@@ -196,6 +254,14 @@ public class CursorsControllerTest {
     private ResultActions postCursors(final List<SubscriptionCursor> cursors) throws Exception {
         final ItemsWrapper<SubscriptionCursor> cursorsWrapper = new ItemsWrapper<>(cursors);
         return postCursorsString(TestUtils.OBJECT_MAPPER.writeValueAsString(cursorsWrapper));
+    }
+
+    private ResultActions patchCursorsString(final String cursors) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = patch("/subscriptions/" + SUBSCRIPTION_ID + "/cursors")
+                .header("X-Nakadi-StreamId", "test-stream-id")
+                .contentType(APPLICATION_JSON)
+                .content(cursors);
+        return mockMvc.perform(requestBuilder);
     }
 
     private ResultActions postCursorsString(final String cursors) throws Exception {
