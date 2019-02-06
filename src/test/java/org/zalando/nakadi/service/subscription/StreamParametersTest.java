@@ -71,6 +71,14 @@ public class StreamParametersTest {
     }
 
     @Test
+    public void checkIsKeepAliveLimitReachedIndefinitely() throws Exception {
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, 0, 0, 0, mock(Client.class));
+
+        assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 6, 12)), is(false));
+        assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 4, 12)), is(false));
+    }
+
+    @Test
     public void checkGetMessagesAllowedToSend() throws Exception {
         final StreamParameters streamParameters = createStreamParameters(1, 200L, 0, null, null, 0, 0,
                 mock(Client.class));
