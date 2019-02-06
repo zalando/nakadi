@@ -30,7 +30,6 @@ public class SettingsController {
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
 
-
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
