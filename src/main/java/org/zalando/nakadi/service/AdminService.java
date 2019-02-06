@@ -58,7 +58,7 @@ public class AdminService {
         return addDefaultAdmin(authorizationDbRepository.listAdmins());
     }
 
-    public void updateAdmins(final List<Permission> newAdmins, final Optional<String> user)
+    public void updateAdmins(final List<Permission> newAdmins)
             throws DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update admins: write operations on DB " +
@@ -77,8 +77,7 @@ public class AdminService {
                 Optional.of(ResourceAuthorization.fromPermissionsList(newAdmins)),
                 NakadiAuditLogPublisher.ResourceType.ADMINS,
                 NakadiAuditLogPublisher.ActionType.UPDATED,
-                "-",
-                user);
+                "-");
     }
 
     public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {

@@ -21,7 +21,6 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import javax.validation.Valid;
 
 import static org.zalando.nakadi.domain.ResourceImpl.ADMIN_RESOURCE;
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/settings")
@@ -30,6 +29,7 @@ public class SettingsController {
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
+
 
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
@@ -56,7 +56,7 @@ public class SettingsController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        blacklistService.blacklist(name, blacklistType, getUser(request));
+        blacklistService.blacklist(name, blacklistType);
         return ResponseEntity.noContent().build();
     }
 
@@ -68,7 +68,7 @@ public class SettingsController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        blacklistService.whitelist(name, blacklistType, getUser(request));
+        blacklistService.whitelist(name, blacklistType);
         return ResponseEntity.noContent().build();
     }
 
@@ -88,7 +88,7 @@ public class SettingsController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges are required to perform this operation");
         }
-        featureToggleService.setFeature(featureWrapper, getUser(request));
+        featureToggleService.setFeature(featureWrapper);
         return ResponseEntity.noContent().build();
     }
 
@@ -111,7 +111,7 @@ public class SettingsController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
-        adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE), getUser(request));
+        adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
         return ResponseEntity.ok().build();
     }
 }

@@ -24,7 +24,6 @@ import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
 
-import java.util.Optional;
 import java.util.Set;
 
 @Configuration
@@ -46,7 +45,7 @@ public class RepositoriesConfig {
                 final boolean defaultState = featuresConfig.getDefaultState(featureStr);
                 LOG.info("Setting feature {} to {}", featureStr, defaultState);
                 final FeatureWrapper featureWrapper = new FeatureWrapper(Feature.valueOf(featureStr), defaultState);
-                featureToggleService.setFeature(featureWrapper, Optional.empty());
+                featureToggleService.setFeature(featureWrapper);
             }
         }
         return featureToggleService;
