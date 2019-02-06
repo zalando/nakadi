@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.PostConstruct;
@@ -27,17 +26,17 @@ public class BlacklistService {
     private static final Logger LOG = LoggerFactory.getLogger(BlacklistService.class);
     private static final String PATH_BLACKLIST = "/nakadi/blacklist";
 
-    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionCache subscriptionCache;
     private final ZooKeeperHolder zooKeeperHolder;
     private final NakadiAuditLogPublisher auditLogPublisher;
     private TreeCache blacklistCache;
 
     @Autowired
-    public BlacklistService(final SubscriptionDbRepository subscriptionDbRepository,
+    public BlacklistService(final SubscriptionCache subscriptionCache,
                             final ZooKeeperHolder zooKeeperHolder,
                             final NakadiAuditLogPublisher auditLogPublisher) {
         this.zooKeeperHolder = zooKeeperHolder;
-        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionCache = subscriptionCache;
         this.auditLogPublisher = auditLogPublisher;
     }
 
@@ -81,7 +80,7 @@ public class BlacklistService {
     public boolean isSubscriptionConsumptionBlocked(final String subscriptionId, final String appId) {
         try {
             return isSubscriptionConsumptionBlocked(
-                    subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
+                    subscriptionCache.getSubscription(subscriptionId).getEventTypes(), appId);
         } catch (final NoSuchSubscriptionException e) {
             // It's fine, subscription doesn't exists.
         } catch (final ServiceTemporarilyUnavailableException e) {
