@@ -22,10 +22,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
 
+    private static final Pattern PATTERN_POST_PUBLISH = Pattern.compile("/event-types/\\.*/events");
     // We are using empty log name, cause it is used only for access log and we do not care about class name
     private static final Logger ACCESS_LOGGER = LoggerFactory.getLogger("ACCESS_LOG");
 
@@ -62,9 +64,9 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.path = request.getRequestURI();
             this.query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
             this.contentEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING))
-                .orElse("-");
+                    .orElse("-");
             this.acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
-                .orElse("-");
+                    .orElse("-");
             this.contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
             this.requestTime = requestTime;
         }
@@ -76,7 +78,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         private final RequestLogInfo requestLogInfo;
 
         private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
-                                    final long startTime, final String flowId) {
+                                     final long startTime, final String flowId) {
             this.response = response;
             this.flowId = flowId;
 
@@ -124,7 +126,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
-            throws IOException, ServletException{
+            throws IOException, ServletException {
         final long start = System.currentTimeMillis();
         try {
             //execute request
@@ -134,7 +136,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                 request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start, flowId));
             }
         } finally {
-            if(!request.isAsyncStarted()) {
+            if (!request.isAsyncStarted()) {
                 final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
                 writeToAccessLogAndEventType(requestLogInfo, response);
             }
@@ -142,9 +144,10 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void writeToAccessLogAndEventType(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
-            final long currentTime = System.currentTimeMillis();
-            final Long timing = currentTime - requestLogInfo.requestTime;
+        final long currentTime = System.currentTimeMillis();
+        final Long timing = currentTime - requestLogInfo.requestTime;
 
+        if (shouldLogRequest(requestLogInfo, response)) {
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
                     requestLogInfo.path,
@@ -156,13 +159,20 @@ public class LoggingFilter extends OncePerRequestFilter {
                     requestLogInfo.contentEncoding,
                     requestLogInfo.acceptEncoding,
                     requestLogInfo.contentLength);
-            nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
-                    .put("method", requestLogInfo.method)
-                    .put("path", requestLogInfo.path)
-                    .put("query", requestLogInfo.query)
-                    .put("app", requestLogInfo.user)
-                    .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
-                    .put("status_code", response.getStatus())
-                    .put("response_time_ms", timing));
+        }
+        nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
+                .put("method", requestLogInfo.method)
+                .put("path", requestLogInfo.path)
+                .put("query", requestLogInfo.query)
+                .put("app", requestLogInfo.user)
+                .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
+                .put("status_code", response.getStatus())
+                .put("response_time_ms", timing));
+    }
+
+    private boolean shouldLogRequest(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
+        return !"POST".equals(requestLogInfo.method) ||
+                !PATTERN_POST_PUBLISH.matcher(requestLogInfo.path).matches() ||
+                response.getStatus() != 200;
     }
 }
