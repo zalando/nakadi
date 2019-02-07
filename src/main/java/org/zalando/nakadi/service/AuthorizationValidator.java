@@ -10,16 +10,15 @@ import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
-import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermitedException;
+import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedException;
+import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -90,10 +89,9 @@ public class AuthorizationValidator {
     private void checkAuthorisationForResourceAreValid(final Resource resource)
             throws UnableProcessException, ServiceTemporarilyUnavailableException, ForbiddenOperationException {
 
-        checkAuthAttributesAreValid(resource.getAuthorization());
         try {
-            authorizationService.areAllAuthorizationsForResourceValid(resource);
-        } catch (OperationOnResourceNotPermitedException e) {
+            authorizationService.isAuthorizationForResourceValid(resource);
+        } catch (OperationOnResourceNotPermittedException e) {
             throw new ForbiddenOperationException(e.getMessage());
         } catch (AuthorizationInvalidException e) {
             throw new UnableProcessException(e.getMessage());
@@ -102,23 +100,6 @@ public class AuthorizationValidator {
         }
     }
 
-    private void checkAuthAttributesAreValid(final Map<String, List<AuthorizationAttribute>> allAttributes)
-            throws UnableProcessException, ServiceTemporarilyUnavailableException {
-        try {
-            final String errorMessage = allAttributes.values().stream()
-                    .flatMap(Collection::stream)
-                    .filter(attr -> !authorizationService.isAuthorizationAttributeValid(attr))
-                    .map(attr -> String.format("authorization attribute %s:%s is invalid",
-                            attr.getDataType(), attr.getValue()))
-                    .collect(Collectors.joining(", "));
-
-            if (!Strings.isNullOrEmpty(errorMessage)) {
-                throw new UnableProcessException(errorMessage);
-            }
-        } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
-        }
-    }
 
     public void authorizeEventTypeWrite(final EventType eventType)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {

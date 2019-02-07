@@ -73,7 +73,7 @@ public class AdminServiceTest {
         for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
             defaultAdminPermissions.add(new Permission("nakadi", operation, defaultAdmin));
         }
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+        doNothing().when(authorizationService).isAuthorizationForResourceValid(any());
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
     }

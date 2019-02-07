@@ -14,6 +14,7 @@ public class ResourceImpl<T> implements Resource<T> {
     public static final String ADMIN_RESOURCE = "nakadi";
     public static final String EVENT_TYPE_RESOURCE = "event-type";
     public static final String SUBSCRIPTION_RESOURCE = "subscription";
+    public static final String PERMISSION_RESOURCE = "permission";
 
     private final T resource;
     private final String name;

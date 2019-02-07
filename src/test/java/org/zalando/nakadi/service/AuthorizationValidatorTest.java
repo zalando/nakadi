@@ -9,12 +9,12 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
-import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermitedException;
+import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedException;
+import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
@@ -52,16 +52,13 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4));
 
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
-        when(authorizationService.isAuthorizationAttributeValid(attr1)).thenReturn(false);
-        when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
+        doThrow(new AuthorizationInvalidException("some attributes are not ok"))
+                .when(authorizationService).isAuthorizationForResourceValid(any());
         try {
             validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
-            assertThat(e.getMessage(), equalTo("authorization attribute type1:value1 is invalid, " +
-                    "authorization attribute type4:value4 is invalid"));
+            assertThat(e.getMessage(), equalTo("some attributes are not ok"));
         }
     }
 
@@ -73,7 +70,6 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr3, attr2, attr2),
                 ImmutableList.of(attr3, attr4));
 
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
 
         try {
@@ -93,9 +89,8 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
-        doThrow(new OperationOnResourceNotPermitedException("blah"))
-                .when(authorizationService).areAllAuthorizationsForResourceValid(any());
+        doThrow(new OperationOnResourceNotPermittedException("blah"))
+                .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
     }
@@ -107,9 +102,8 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
         doThrow(new AuthorizationInvalidException("blah"))
-                .when(authorizationService).areAllAuthorizationsForResourceValid(any());
+                .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
     }
@@ -121,8 +115,8 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
+        doThrow(new PluginException("blah"))
+                .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
     }
