@@ -9,6 +9,7 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionCreationDisabledException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.problem.Problem;
@@ -42,7 +43,8 @@ public class PostSubscriptionExceptionHandler implements AdviceTrait {
     @ExceptionHandler({
             WrongInitialCursorsException.class,
             TooManyPartitionsException.class,
-            UnprocessableSubscriptionException.class})
+            UnprocessableSubscriptionException.class,
+            UnableProcessException.class})
     public ResponseEntity<Problem> handleUnprocessableSubscription(final NakadiBaseException exception,
                                                                    final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
