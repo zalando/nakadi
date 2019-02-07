@@ -45,7 +45,7 @@ public class AuthorizationValidator {
         this.adminService = adminService;
     }
 
-    public void validateAuthorization(@Nullable final Resource resource) throws UnableProcessException,
+    public void validateAuthorization(final Resource resource) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
         if (resource.getAuthorization() != null) {
             checkAuthorisationForResourceAreValid(resource);

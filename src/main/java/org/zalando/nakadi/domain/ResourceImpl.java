@@ -42,12 +42,18 @@ public class ResourceImpl<T> implements Resource<T> {
     @Override
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
+        if (null == authorization) {
+            return Optional.empty();
+        }
         return authorization.getAttributesForOperation(operation);
     }
 
     @Override
     public Map<String, List<AuthorizationAttribute>> getAuthorization() {
-        return authorization.asMapValue();
+        if (authorization != null) {
+            return authorization.asMapValue();
+        }
+        return null;
     }
 
     @Override
