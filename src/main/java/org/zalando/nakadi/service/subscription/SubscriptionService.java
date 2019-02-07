@@ -36,6 +36,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -118,7 +119,7 @@ public class SubscriptionService {
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
-            DbWriteOperationsBlockedException {
+            DbWriteOperationsBlockedException, UnableProcessException, ServiceTemporarilyUnavailableException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
                     "are blocked by feature flag.");
