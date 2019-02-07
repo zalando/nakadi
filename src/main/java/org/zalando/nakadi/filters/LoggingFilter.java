@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final Pattern PATTERN_POST_PUBLISH = Pattern.compile("/event-types/\\.*/events");
+    private static final Pattern PATTERN_POST_PUBLISH = Pattern.compile("\\/event-types\\/.*\\/events");
     // We are using empty log name, cause it is used only for access log and we do not care about class name
     private static final Logger ACCESS_LOGGER = LoggerFactory.getLogger("ACCESS_LOG");
 
