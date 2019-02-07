@@ -18,7 +18,7 @@ More detailed information can be found on our [website](http://zalando.github.io
 
 ### Project goal
 
-The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to provide an event broker infrastructure to:
+The goal  of Nakadi (**ნაკადი** means *stream* in Georgian) is to provide an event broker infrastructure to:
 
 - Abstract event delivery via a secured [RESTful API](https://zalando.github.io/nakadi/manual.html#nakadi-event-bus-api).
  
