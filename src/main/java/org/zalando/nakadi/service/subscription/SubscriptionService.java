@@ -116,7 +116,7 @@ public class SubscriptionService {
         this.authorizationValidator = authorizationValidator;
     }
 
-    public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Optional<String> user)
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException, ServiceTemporarilyUnavailableException {
@@ -135,13 +135,12 @@ public class SubscriptionService {
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(subscription),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
-                subscription.getId(), user);
+                subscription.getId());
 
         return subscription;
     }
 
-    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue,
-                                           final Optional<String> user)
+    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
             throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
@@ -157,7 +156,7 @@ public class SubscriptionService {
 
         nakadiAuditLogPublisher.publish(Optional.of(old), Optional.of(updated),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.UPDATED,
-                updated.getId(), user);
+                updated.getId());
 
         return updated;
     }
@@ -208,7 +207,7 @@ public class SubscriptionService {
         return subscriptionRepository.getSubscription(subscriptionId);
     }
 
-    public void deleteSubscription(final String subscriptionId, final Optional<String> user)
+    public void deleteSubscription(final String subscriptionId)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
             ServiceTemporarilyUnavailableException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -230,7 +229,7 @@ public class SubscriptionService {
 
         nakadiAuditLogPublisher.publish(Optional.of(subscription), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
-                subscription.getId(), user);
+                subscription.getId());
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,

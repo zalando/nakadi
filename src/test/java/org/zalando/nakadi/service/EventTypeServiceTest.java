@@ -96,7 +96,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
-            eventTypeService.delete(eventType.getName(), Optional.empty());
+            eventTypeService.delete(eventType.getName());
         } catch (final EventTypeDeletionException e) {
             // check that topics are not deleted in Kafka
             verifyZeroInteractions(topicsToDelete);
@@ -115,7 +115,7 @@ public class EventTypeServiceTest {
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
 
-        eventTypeService.delete(eventType.getName(), Optional.empty());
+        eventTypeService.delete(eventType.getName());
     }
 
     @Test
@@ -130,7 +130,7 @@ public class EventTypeServiceTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(true);
 
-        eventTypeService.delete(eventType.getName(), Optional.empty());
+        eventTypeService.delete(eventType.getName());
         // no exception should be thrown
     }
 
@@ -142,7 +142,7 @@ public class EventTypeServiceTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION))
                 .thenReturn(true);
 
-        eventTypeService.create(eventType, Optional.empty());
+        eventTypeService.create(eventType);
     }
 
     @Test
@@ -151,7 +151,7 @@ public class EventTypeServiceTest {
         when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
-            eventTypeService.create(eventType, Optional.empty());
+            eventTypeService.create(eventType);
             fail("should throw TopicCreationException");
         } catch (final TopicCreationException e) {
             // expected
@@ -163,7 +163,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeCreatedThenKPIEventSubmitted() throws Exception {
         final EventType et = buildDefaultEventType();
-        eventTypeService.create(et, Optional.empty());
+        eventTypeService.create(et);
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
@@ -179,7 +179,7 @@ public class EventTypeServiceTest {
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
 
-        eventTypeService.update(et.getName(), et, Optional.empty());
+        eventTypeService.update(et.getName(), et);
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
@@ -194,7 +194,7 @@ public class EventTypeServiceTest {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByNameO(et.getName())).thenReturn(Optional.of(et));
 
-        eventTypeService.delete(et.getName(), Optional.empty());
+        eventTypeService.delete(et.getName());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())

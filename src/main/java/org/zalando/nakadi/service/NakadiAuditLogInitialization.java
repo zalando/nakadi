@@ -16,7 +16,6 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 
 import java.io.IOException;
-import java.util.Optional;
 
 @Component
 @ConfigurationProperties(prefix = "nakadi.audit")
@@ -62,7 +61,7 @@ public class NakadiAuditLogInitialization {
         final EventTypeBase eventType = objectMapper.readValue(auditEventTypeString, typeReference);
 
         try {
-            eventTypeService.create(eventType, Optional.of(owningApplication));
+            eventTypeService.create(eventType);
         } catch (final DuplicatedEventTypeNameException e) {
             LOG.debug("Audit event type already exists " + eventType.getName());
         } catch (final NakadiBaseException e) {

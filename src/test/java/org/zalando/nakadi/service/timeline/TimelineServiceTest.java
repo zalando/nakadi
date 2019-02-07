@@ -31,7 +31,6 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.util.stream.IntStream.range;
@@ -153,7 +152,7 @@ public class TimelineServiceTest {
 
         when(adminService.isAdmin(any())).thenReturn(true);
 
-        timelineService.createTimeline("et1", "st1", Optional.empty());
+        timelineService.createTimeline("et1", "st1");
     }
 
 }

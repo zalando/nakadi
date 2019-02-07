@@ -9,7 +9,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -28,15 +27,15 @@ public class CursorsServiceTest {
     }
 
     @Test(expected = AccessDeniedException.class)
-    public void whenResetCursorsThenAdminAccessChecked() throws Exception {
+    public void whenResetCursorsThenAdminAccessChecked() {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
-        service.resetCursors("test", Collections.emptyList(), Optional.empty());
+        service.resetCursors("test", Collections.emptyList());
     }
 
     @Test(expected = AccessDeniedException.class)
-    public void whenCommitCursorsAccessDenied() throws Exception {
+    public void whenCommitCursorsAccessDenied() {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionCommit(any());
