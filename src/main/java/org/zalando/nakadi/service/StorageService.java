@@ -100,7 +100,7 @@ public class StorageService {
         }
     }
 
-    public void createStorage(final JSONObject json, final Optional<String> user)
+    public void createStorage(final JSONObject json)
             throws DbWriteOperationsBlockedException, DuplicatedStorageException, InternalNakadiException,
             UnknownStorageTypeException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -146,11 +146,10 @@ public class StorageService {
                 Optional.of(storage),
                 NakadiAuditLogPublisher.ResourceType.STORAGE,
                 NakadiAuditLogPublisher.ActionType.CREATED,
-                storage.getId(),
-                user);
+                storage.getId());
     }
 
-    public void deleteStorage(final String id, final Optional<String> user)
+    public void deleteStorage(final String id)
             throws DbWriteOperationsBlockedException, NoSuchStorageException,
             StorageIsUsedException, InternalNakadiException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -168,8 +167,7 @@ public class StorageService {
                     Optional.empty(),
                     NakadiAuditLogPublisher.ResourceType.STORAGE,
                     NakadiAuditLogPublisher.ActionType.DELETED,
-                    id,
-                    user);
+                    id);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when deleting storage", e);
             throw new InternalNakadiException(e.getMessage());

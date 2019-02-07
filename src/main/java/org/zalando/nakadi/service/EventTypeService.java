@@ -135,7 +135,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public void create(final EventTypeBase eventType, final Optional<String> user)
+    public void create(final EventTypeBase eventType)
             throws TopicCreationException,
             InternalNakadiException,
             NoSuchPartitionStrategyException,
@@ -182,7 +182,7 @@ public class EventTypeService {
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
-                eventType.getName(), user);
+                eventType.getName());
     }
 
     private void validateCompaction(final EventTypeBase eventType) throws
@@ -219,7 +219,7 @@ public class EventTypeService {
         }
     }
 
-    public void delete(final String eventTypeName, final Optional<String> user) throws EventTypeDeletionException,
+    public void delete(final String eventTypeName) throws EventTypeDeletionException,
             AccessDeniedException, NoSuchEventTypeException, ConflictException, ServiceTemporarilyUnavailableException,
             DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -287,7 +287,7 @@ public class EventTypeService {
 
         nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
-                eventType.getName(), user);
+                eventType.getName());
     }
 
     private Multimap<TopicRepository, String> deleteEventTypeIfNoSubscriptions(final String eventType) {
@@ -325,8 +325,7 @@ public class EventTypeService {
     }
 
     public void update(final String eventTypeName,
-                       final EventTypeBase eventTypeBase,
-                       final Optional<String> user)
+                       final EventTypeBase eventTypeBase)
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
@@ -388,7 +387,7 @@ public class EventTypeService {
 
         nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
-                eventType.getName(), user);
+                eventType.getName());
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) {

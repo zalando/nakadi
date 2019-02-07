@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Component
 @ConfigurationProperties(prefix = "nakadi.kpi.event-types")
@@ -76,7 +75,7 @@ public class NakadiKpiInitialization {
 
         eventTypes.forEach(et -> {
             try {
-                eventTypeService.create(et, Optional.of(owningApplication));
+                eventTypeService.create(et);
             } catch (final DuplicatedEventTypeNameException e) {
                 LOG.debug("KPI event type already exists " + et.getName());
             } catch (final NakadiBaseException e) {

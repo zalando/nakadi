@@ -19,8 +19,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
-import java.util.Optional;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -71,7 +69,7 @@ public class SubscriptionServiceTest {
         subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
 
-        subscriptionService.createSubscription(subscriptionBase, Optional.empty());
+        subscriptionService.createSubscription(subscriptionBase);
 
         checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
                 new JSONObject()
@@ -82,7 +80,7 @@ public class SubscriptionServiceTest {
     @Test
     public void whenSubscriptionDeletedThenKPIEventSubmitted() {
         when(subscriptionRepository.getSubscription(any())).thenReturn(new Subscription());
-        subscriptionService.deleteSubscription("my_subscription_id1", Optional.empty());
+        subscriptionService.deleteSubscription("my_subscription_id1");
 
         checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
                 new JSONObject()
@@ -98,7 +96,7 @@ public class SubscriptionServiceTest {
         doThrow(new UnableProcessException("fake"))
                 .when(subscriptionValidationService).validateSubscription(eq(subscriptionBase));
 
-        subscriptionService.createSubscription(subscriptionBase, Optional.empty());
+        subscriptionService.createSubscription(subscriptionBase);
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -110,7 +108,7 @@ public class SubscriptionServiceTest {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .buildSubscriptionBase();
 
-        subscriptionService.updateSubscription("test", subscriptionBase, Optional.empty());
+        subscriptionService.updateSubscription("test", subscriptionBase);
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -119,6 +117,6 @@ public class SubscriptionServiceTest {
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
-        subscriptionService.deleteSubscription("test", Optional.empty());
+        subscriptionService.deleteSubscription("test");
     }
 }

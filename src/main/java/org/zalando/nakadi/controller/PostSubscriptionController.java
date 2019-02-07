@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionCreationDisabledException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -29,7 +30,6 @@ import javax.validation.Valid;
 import static org.apache.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 
 @RestController
@@ -52,7 +52,8 @@ public class PostSubscriptionController {
             throws ValidationException,
             UnprocessableSubscriptionException,
             InconsistentStateException,
-            SubscriptionCreationDisabledException {
+            SubscriptionCreationDisabledException,
+            UnableProcessException {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
@@ -64,8 +65,7 @@ public class PostSubscriptionController {
                 throw new SubscriptionCreationDisabledException("Subscription creation is temporarily unavailable");
             }
             try {
-                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase,
-                        getUser(request));
+                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
                 return prepareLocationResponse(subscription);
             } catch (final DuplicatedSubscriptionException ex) {
                 throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
@@ -85,7 +85,7 @@ public class PostSubscriptionController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
-        subscriptionService.updateSubscription(subscriptionId, subscription, getUser(request));
+        subscriptionService.updateSubscription(subscriptionId, subscription);
         return ResponseEntity.noContent().build();
 
     }

@@ -56,7 +56,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
         }
     }
 
-    public void setFeature(final FeatureWrapper feature, final Optional<String> user) {
+    public void setFeature(final FeatureWrapper feature) {
         try {
             final boolean oldState = isFeatureEnabled(feature.getFeature());
             final CuratorFramework curator = zkHolder.get();
@@ -75,8 +75,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
                         Optional.of(feature),
                         NakadiAuditLogPublisher.ResourceType.FEATURE,
                         NakadiAuditLogPublisher.ActionType.UPDATED,
-                        feature.getFeature().getId(),
-                        user);
+                        feature.getFeature().getId());
             }
         } catch (final KeeperException.NoNodeException nne) {
             LOG.debug("Feature {} was already disabled", feature.getFeature().getId());
