@@ -10,6 +10,7 @@ import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -18,7 +19,6 @@ import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedE
 import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,8 +47,8 @@ public class AuthorizationValidator {
 
     public void validateAuthorization(final Resource resource) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
+        checkAuthorisationForResourceAreValid(resource);
         if (resource.getAuthorization() != null) {
-            checkAuthorisationForResourceAreValid(resource);
             checkAuthAttributesNoDuplicates(resource.getAuthorization());
         }
     }
@@ -94,7 +94,7 @@ public class AuthorizationValidator {
         } catch (OperationOnResourceNotPermittedException e) {
             throw new ForbiddenOperationException(e.getMessage());
         } catch (AuthorizationInvalidException e) {
-            throw new UnableProcessException(e.getMessage());
+            throw new UnprocessableEntityException(e.getMessage());
         } catch (PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }

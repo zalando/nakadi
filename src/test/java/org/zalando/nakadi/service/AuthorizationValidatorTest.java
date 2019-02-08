@@ -9,6 +9,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -57,7 +58,7 @@ public class AuthorizationValidatorTest {
         try {
             validator.validateAuthorization(resource);
             fail("Exception expected to be thrown");
-        } catch (final UnableProcessException e) {
+        } catch (final UnprocessableEntityException e) {
             assertThat(e.getMessage(), equalTo("some attributes are not ok"));
         }
     }
@@ -77,8 +78,8 @@ public class AuthorizationValidatorTest {
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo(
-                    "authorization property 'admins' contains duplicated attribute(s): type1:value1, type3:value3; " +
-                            "authorization property 'readers' contains duplicated attribute(s): type2:value2"));
+                    "authorization property 'ADMIN' contains duplicated attribute(s): type1:value1, type3:value3; " +
+                            "authorization property 'READ' contains duplicated attribute(s): type2:value2"));
         }
     }
 
@@ -95,7 +96,7 @@ public class AuthorizationValidatorTest {
         validator.validateAuthorization(resource);
     }
 
-    @Test(expected = UnableProcessException.class)
+    @Test(expected = UnprocessableEntityException.class)
     public void whenAuthorizationInvalidExceptionThenUnableProcessException() {
 
         final ResourceAuthorization auth = new ResourceAuthorization(

@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
@@ -122,7 +123,7 @@ public class AdminService {
             authorizationService.isAuthorizationForResourceValid(new ResourceImpl<>(PERMISSION_RESOURCE,
                     PERMISSION_RESOURCE, ResourceAuthorization.fromPermissionsList(admins), null));
         } catch (AuthorizationInvalidException e) {
-            throw new UnableProcessException(e.getMessage());
+            throw new UnprocessableEntityException(e.getMessage());
         }
     }
 }
