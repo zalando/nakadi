@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.zalando.nakadi.service.StorageService;
 
 import java.util.Optional;
@@ -36,8 +37,8 @@ public class NakadiConfigTest {
         Mockito.when(dataBuilder.forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE)).thenReturn(null);
         Mockito.when(environment.getProperty("nakadi.timelines.storage.default")).thenReturn("default");
         Mockito.when(storageDbRepository.getStorage("default")).thenReturn(Optional.ofNullable(null));
-        final DefaultStorage defaultStorage =
-                new NakadiConfig().defaultStorage(storageDbRepository, environment, zooKeeperHolder);
+        final DefaultStorage defaultStorage = new NakadiConfig().defaultStorage(
+                storageDbRepository, environment, Mockito.mock(ZookeeperConfig.class), zooKeeperHolder);
         Assert.assertEquals("default", defaultStorage.getStorage().getId());
     }
 
@@ -48,8 +49,8 @@ public class NakadiConfigTest {
         final Storage storage = new Storage();
         storage.setId("new-storage");
         Mockito.when(storageDbRepository.getStorage("new-storage")).thenReturn(Optional.of(storage));
-        final DefaultStorage defaultStorage =
-                new NakadiConfig().defaultStorage(storageDbRepository, environment, zooKeeperHolder);
+        final DefaultStorage defaultStorage = new NakadiConfig().defaultStorage(
+                storageDbRepository, environment, Mockito.mock(ZookeeperConfig.class), zooKeeperHolder);
         Assert.assertEquals("new-storage", defaultStorage.getStorage().getId());
     }
 

@@ -20,52 +20,15 @@ public class Storage {
     }
 
     public static class KafkaConfiguration {
-        private String exhibitorAddress;
-        private Integer exhibitorPort;
-        private String zkAddress;
-        private String zkPath;
+        private String zkConnectionString;
 
         public KafkaConfiguration(
-                @JsonProperty(value="exhibitor_address") final String exhibitorAddress,
-                @JsonProperty(value="exhibitor_port", defaultValue = "8181") final Integer exhibitorPort,
-                @JsonProperty(value="zk_address", defaultValue = "zookeeper:2181") final String zkAddress,
-                @JsonProperty(value="zk_path", defaultValue = "") final String zkPath) {
-            this.exhibitorAddress = exhibitorAddress;
-            this.exhibitorPort = exhibitorPort;
-            this.zkAddress = zkAddress;
-            this.zkPath = zkPath;
+                @JsonProperty(value = "zk_connection_string") final String zkConnectionString) {
+            this.zkConnectionString = zkConnectionString;
         }
 
-        public String getZkAddress() {
-            return zkAddress;
-        }
-
-        public void setZkAddress(final String zkAddress) {
-            this.zkAddress = zkAddress;
-        }
-
-        public String getZkPath() {
-            return zkPath;
-        }
-
-        public void setZkPath(final String zkPath) {
-            this.zkPath = zkPath;
-        }
-
-        public String getExhibitorAddress() {
-            return exhibitorAddress;
-        }
-
-        public void setExhibitorAddress(final String exhibitorAddress) {
-            this.exhibitorAddress = exhibitorAddress;
-        }
-
-        public Integer getExhibitorPort() {
-            return exhibitorPort;
-        }
-
-        public void setExhibitorPort(final Integer exhibitorPort) {
-            this.exhibitorPort = exhibitorPort;
+        public String getZkConnectionString() {
+            return zkConnectionString;
         }
 
         @Override
@@ -79,26 +42,17 @@ public class Storage {
             }
 
             final KafkaConfiguration that = (KafkaConfiguration) o;
-            return Objects.equals(exhibitorAddress, that.exhibitorAddress) &&
-                    Objects.equals(exhibitorPort, that.exhibitorPort) &&
-                    Objects.equals(zkAddress, that.zkAddress) &&
-                    Objects.equals(zkPath, that.zkPath);
+            return Objects.equals(zkConnectionString, that.zkConnectionString);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(exhibitorAddress, exhibitorPort, zkAddress, zkPath);
+            return zkConnectionString.hashCode();
         }
 
         @Override
         public String toString() {
-            final StringBuilder sb = new StringBuilder("KafkaConfiguration{");
-            sb.append("exhibitorAddress='").append(exhibitorAddress).append('\'');
-            sb.append(", exhibitorPort=").append(exhibitorPort);
-            sb.append(", zkAddress='").append(zkAddress).append('\'');
-            sb.append(", zkPath='").append(zkPath).append('\'');
-            sb.append('}');
-            return sb.toString();
+            return "KafkaConfiguration{zkConnectionString='" + zkConnectionString + "'}";
         }
     }
 
