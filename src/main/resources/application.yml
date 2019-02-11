@@ -70,8 +70,7 @@ nakadi:
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
   zookeeper:
-    kafkaNamespace:
-    brokers: zookeeper:2181
+    conn: "zookeeper://zookeeper:2181"
     sessionTimeoutMs: 30000
     connectionTimeoutMs: 10000
   oauth2:
@@ -156,6 +155,8 @@ nakadi:
     KPI_COLLECTION: true
     DISABLE_DB_WRITE_OPERATIONS: false
     AUDIT_LOG_COLLECTION: true
+  zookeeper:
+    conn: "zookeeper://127.0.0.1:2181"
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
@@ -169,11 +170,15 @@ spring:
 
 spring:
   profiles: local
-nakadi.features.defaultFeatures:
-  CONNECTION_CLOSE_CRUTCH: false
-  DISABLE_EVENT_TYPE_CREATION: false
-  DISABLE_EVENT_TYPE_DELETION: false
-  DISABLE_SUBSCRIPTION_CREATION: false
-  REMOTE_TOKENINFO: true
-  KPI_COLLECTION: true
-  DISABLE_DB_WRITE_OPERATIONS: false
+
+nakadi:
+  zookeeper:
+    conn: "zookeeper://127.0.0.1:2181"
+  features.defaultFeatures:
+    CONNECTION_CLOSE_CRUTCH: false
+    DISABLE_EVENT_TYPE_CREATION: false
+    DISABLE_EVENT_TYPE_DELETION: false
+    DISABLE_SUBSCRIPTION_CREATION: false
+    REMOTE_TOKENINFO: true
+    KPI_COLLECTION: true
+    DISABLE_DB_WRITE_OPERATIONS: false

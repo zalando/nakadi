@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3'
 services:
 
   nakadi:
@@ -20,7 +20,7 @@ services:
       - NAKADI_FEATURES_DEFAULT_FEATURES_KPI_COLLECTION
       - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_DB_WRITE_OPERATIONS
       - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_LOG_COMPACTION
-      - NAKADI_ZOOKEEPER_BROKERS=zookeeper:2181
+      - NAKADI_ZOOKEEPER_CONN=zookeeper://zookeeper:2181
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db
       - SPRING_DATASOURCE_USERNAME=nakadi
       - SPRING_DATASOURCE_PASSWORD=nakadi
