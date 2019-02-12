@@ -12,6 +12,11 @@ public class AccessDeniedException extends NakadiBaseException {
         this.operation = operation;
     }
 
+    public AccessDeniedException(final Resource resource) {
+        this.resource = resource;
+        this.operation = null;
+    }
+
     public Resource getResource() {
         return resource;
     }
