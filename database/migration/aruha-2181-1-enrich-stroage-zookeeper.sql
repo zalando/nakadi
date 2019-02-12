@@ -1,3 +1,4 @@
+-- this script should be rolled out before releasing 2181
 -- Update exhibitor configs
 update storage
 SET st_configuration = jsonb_set(
