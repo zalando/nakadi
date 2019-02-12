@@ -47,7 +47,6 @@ public class EventType extends EventTypeBase {
         this.createdAt = createdAt;
     }
 
-
     public Resource<EventType> asResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
