@@ -64,8 +64,8 @@ public class SubscriptionAuthorization implements ValidatableAuthorization {
     @Override
     public Map<String, List<AuthorizationAttribute>> asMapValue() {
         return ImmutableMap.of(
-                "admins", getAdmins(),
-                "readers", getReaders()
+                AuthorizationService.Operation.ADMIN.toString(), getAdmins(),
+                AuthorizationService.Operation.READ.toString(), getReaders()
         );
     }
 
