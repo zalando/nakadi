@@ -8,6 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 
 import java.util.Optional;
@@ -22,12 +25,14 @@ public class NakadiAuditLogPublisher {
     private final UsernameHasher usernameHasher;
     private final String auditEventType;
     private final ObjectMapper objectMapper;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     protected NakadiAuditLogPublisher(final FeatureToggleService featureToggleService,
                                       final EventsProcessor eventsProcessor,
                                       final ObjectMapper objectMapper,
                                       final UsernameHasher usernameHasher,
+                                      final AuthorizationService authorizationService,
                                       @Value("${nakadi.audit.eventType}") final String auditEventType) {
         this.eventsProcessor = eventsProcessor;
         this.usernameHasher = usernameHasher;
@@ -35,20 +40,21 @@ public class NakadiAuditLogPublisher {
         this.auditEventType = auditEventType;
         this.featureToggleService = featureToggleService;
         this.featureToggleService.setAuditLogPublisher(this);
+        this.authorizationService = authorizationService;
     }
 
     public void publish(final Optional<Object> previousState,
                         final Optional<Object> newState,
                         final ResourceType resourceType,
                         final ActionType actionType,
-                        final String resourceId,
-                        final Optional<String> userOrNone) {
+                        final String resourceId) {
         try {
             if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.AUDIT_LOG_COLLECTION)) {
                 return;
             }
 
-            final String user = userOrNone.orElse("<anonymous>");
+            final String user = authorizationService.getSubject().map(Subject::getName)
+                    .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
 
             final Optional<String> previousEventText = previousState.map(this::serialize);
             final Optional<JSONObject> previousEventObject = previousEventText.map(JSONObject::new);

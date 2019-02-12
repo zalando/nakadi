@@ -36,7 +36,6 @@ import java.util.stream.IntStream;
 
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 public class CursorsController {
@@ -101,7 +100,7 @@ public class CursorsController {
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
-        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors), getUser(request));
+        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
         return noContent().build();
     }
 
