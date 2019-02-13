@@ -21,7 +21,6 @@ import org.zalando.nakadi.view.TimelineView;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 @RequestMapping(value = "/event-types/{name}/timelines", produces = APPLICATION_JSON_VALUE)
@@ -40,7 +39,7 @@ public class TimelinesController {
                                             final NativeWebRequest request)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
-        timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId(), getUser(request));
+        timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

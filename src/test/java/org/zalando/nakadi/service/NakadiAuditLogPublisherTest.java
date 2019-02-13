@@ -6,6 +6,8 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 
 import java.util.Optional;
@@ -21,10 +23,24 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class NakadiAuditLogPublisherTest {
 
+    public class TestSubject implements Subject {
+        String name;
+
+        public TestSubject(final String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+    }
+
     @Test
     public void testPublishAuditLog() {
         final EventsProcessor processor = mock(EventsProcessor.class);
         final FeatureToggleService toggle = mock(FeatureToggleService.class);
+        final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
         when(toggle.isFeatureEnabled(FeatureToggleService.Feature.AUDIT_LOG_COLLECTION)).thenReturn(true);
 
@@ -33,8 +49,9 @@ public class NakadiAuditLogPublisherTest {
                 processor,
                 new JsonConfig().jacksonObjectMapper(),
                 new UsernameHasher("salt"),
+                authorizationService,
                 "audit-event-type");
-
+        when(authorizationService.getSubject()).thenReturn(Optional.of(new TestSubject("user-name")));
         final DateTime now = DateTime.parse("2019-01-16T13:44:16.819Z");
         final EventType et = buildDefaultEventType();
         et.setName("new-et-name");
@@ -43,7 +60,7 @@ public class NakadiAuditLogPublisherTest {
         et.getSchema().setCreatedAt(now);
         publisher.publish(Optional.empty(), Optional.of(et),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
-                NakadiAuditLogPublisher.ActionType.CREATED, "et-name", Optional.of("user-name"));
+                NakadiAuditLogPublisher.ActionType.CREATED, "et-name");
 
         final ArgumentCaptor<JSONObject> supplierCaptor = ArgumentCaptor.forClass(JSONObject.class);
         verify(processor, times(1)).enrichAndSubmit(eq("audit-event-type"), supplierCaptor.capture());

@@ -43,13 +43,13 @@ public class StorageServiceTest {
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
 
         final JSONObject storage = createTestStorageJson("s1");
-        storageService.createStorage(storage, Optional.empty());
+        storageService.createStorage(storage);
     }
 
     @Test
     public void testDeleteUnusedStorage() {
         when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
-        storageService.deleteStorage("s3", Optional.empty());
+        storageService.deleteStorage("s3");
     }
 
     @Test(expected = StorageIsUsedException.class)
@@ -57,7 +57,7 @@ public class StorageServiceTest {
         when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
         doThrow(new StorageIsUsedException("", null)).when(storageDbRepository).deleteStorage("s");
 
-        storageService.deleteStorage("s", Optional.empty());
+        storageService.deleteStorage("s");
     }
 
     @Test(expected = NoSuchStorageException.class)
@@ -65,7 +65,7 @@ public class StorageServiceTest {
         when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
         doThrow(new NoSuchStorageException("")).when(storageDbRepository).deleteStorage("s");
 
-        storageService.deleteStorage("s", Optional.empty());
+        storageService.deleteStorage("s");
     }
 
     private JSONObject createTestStorageJson(final String id) {

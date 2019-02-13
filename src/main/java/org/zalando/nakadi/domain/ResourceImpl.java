@@ -6,6 +6,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class ResourceImpl<T> implements Resource<T> {
@@ -14,6 +15,7 @@ public class ResourceImpl<T> implements Resource<T> {
     public static final String ADMIN_RESOURCE = "nakadi";
     public static final String EVENT_TYPE_RESOURCE = "event-type";
     public static final String SUBSCRIPTION_RESOURCE = "subscription";
+    public static final String PERMISSION_RESOURCE = "permission";
 
     private final T resource;
     private final String name;
@@ -45,6 +47,14 @@ public class ResourceImpl<T> implements Resource<T> {
             return Optional.empty();
         }
         return authorization.getAttributesForOperation(operation);
+    }
+
+    @Override
+    public Map<String, List<AuthorizationAttribute>> getAuthorization() {
+        if (authorization != null) {
+            return authorization.asMapValue();
+        }
+        return null;
     }
 
     @Override

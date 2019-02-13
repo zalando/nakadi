@@ -17,8 +17,8 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
-import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.StorageService;
 
@@ -28,7 +28,6 @@ import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.util.RequestUtils.getUser;
 
 @RestController
 public class StoragesController {
@@ -61,7 +60,7 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
-        storageService.createStorage(new JSONObject(storage), getUser(request));
+        storageService.createStorage(new JSONObject(storage));
         return status(CREATED).build();
     }
 
@@ -82,7 +81,7 @@ public class StoragesController {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new ForbiddenOperationException("Admin privileges required to perform this operation");
         }
-        storageService.deleteStorage(id, getUser(request));
+        storageService.deleteStorage(id);
         return status(NO_CONTENT).build();
     }
 

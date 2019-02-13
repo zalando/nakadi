@@ -106,7 +106,7 @@ public class TimelineService {
         this.auditLogPublisher = auditLogPublisher;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId, final Optional<String> user)
+    public void createTimeline(final String eventTypeName, final String storageId)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException, DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -145,8 +145,7 @@ public class TimelineService {
                     Optional.of(nextTimeline),
                     NakadiAuditLogPublisher.ResourceType.TIMELINE,
                     NakadiAuditLogPublisher.ActionType.CREATED,
-                    String.valueOf(nextTimeline.getId()),
-                    user);
+                    String.valueOf(nextTimeline.getId()));
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
                 InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
