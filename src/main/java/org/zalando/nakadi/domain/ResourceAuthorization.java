@@ -65,7 +65,7 @@ public class ResourceAuthorization implements ValidatableAuthorization {
 
     @JsonIgnore
     public List<AuthorizationAttribute> getAll() {
-        return Stream.of(this.writers, this.admins, this.writers)
+        return Stream.of(this.writers, this.admins, this.readers)
                 .flatMap(Collection::stream).collect(Collectors.toList());
     }
 
