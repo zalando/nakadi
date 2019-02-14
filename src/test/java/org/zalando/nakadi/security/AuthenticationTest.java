@@ -182,11 +182,6 @@ public abstract class AuthenticationTest {
             return featureToggleService;
         }
 
-//        @Bean
-//        public ZooKeeperHolder mockZKHolder() {
-//            return mock(ZooKeeperHolder.class);
-//        }
-
         @Bean
         public EventTypeService eventTypeService() {
             return mock(EventTypeService.class);
