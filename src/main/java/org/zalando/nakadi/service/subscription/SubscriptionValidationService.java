@@ -17,6 +17,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -60,7 +61,8 @@ public class SubscriptionValidationService {
 
     public void validateSubscription(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
-            InconsistentStateException, WrongInitialCursorsException {
+            InconsistentStateException, WrongInitialCursorsException, UnableProcessException,
+            ServiceTemporarilyUnavailableException {
 
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
@@ -80,7 +82,7 @@ public class SubscriptionValidationService {
             validateInitialCursors(subscription, allPartitions);
         }
         // Verify that subscription authorization object is valid
-        authorizationValidator.validateAuthorization(subscription.getAuthorization());
+        authorizationValidator.validateAuthorization(subscription.asBaseResource("new-subscription"));
     }
 
     public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue)
@@ -100,7 +102,7 @@ public class SubscriptionValidationService {
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
             throw new SubscriptionUpdateConflictException("Not allowed to change initial cursors");
         }
-        authorizationValidator.validateAuthorization(old.getAuthorization(), newValue.getAuthorization());
+        authorizationValidator.validateAuthorization(old.asResource(), newValue.asBaseResource(old.getId()));
     }
 
     public void validatePartitionsToStream(final Subscription subscription, final List<EventTypePartition> partitions) {
@@ -193,7 +195,7 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toList());
         if (!missingEventTypes.isEmpty()) {
             throw new NoSuchEventTypeException(String.format("Failed to create subscription, event type(s) not " +
-                            "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
+                    "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
         }
     }
 }

@@ -106,7 +106,7 @@ public class BlacklistService {
                         "apps", getChildren(Type.PRODUCER_APP)));
     }
 
-    public void blacklist(final String name, final Type type, final Optional<String> user) throws RuntimeException {
+    public void blacklist(final String name, final Type type) throws RuntimeException {
         try {
             final boolean oldValue = isBlocked(type, name);
 
@@ -128,14 +128,13 @@ public class BlacklistService {
                     Optional.of(newEntry),
                     NakadiAuditLogPublisher.ResourceType.BLACKLIST_ENTRY,
                     actionType,
-                    newEntry.getId(),
-                    user);
+                    newEntry.getId());
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while creating node in zk", e);
         }
     }
 
-    public void whitelist(final String name, final Type type, final Optional<String> user) throws RuntimeException {
+    public void whitelist(final String name, final Type type) throws RuntimeException {
         try {
             final CuratorFramework curator = zooKeeperHolder.get();
             final String path = createBlacklistEntryPath(name, type);
@@ -148,8 +147,7 @@ public class BlacklistService {
                         Optional.empty(),
                         NakadiAuditLogPublisher.ResourceType.BLACKLIST_ENTRY,
                         NakadiAuditLogPublisher.ActionType.DELETED,
-                        entry.getId(),
-                        user);
+                        entry.getId());
             }
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while deleting node from zk", e);

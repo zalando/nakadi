@@ -164,7 +164,7 @@ public class CursorsService {
         return cursorsListBuilder.build();
     }
 
-    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Optional<String> user)
+    public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
@@ -207,8 +207,7 @@ public class CursorsService {
                     Optional.of(new ItemsWrapper<>(newCursors)),
                     NakadiAuditLogPublisher.ResourceType.CURSORS,
                     NakadiAuditLogPublisher.ActionType.UPDATED,
-                    subscriptionId,
-                    user);
+                    subscriptionId);
         }
     }
 
