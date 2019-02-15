@@ -22,12 +22,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final Pattern PATTERN_POST_PUBLISH = Pattern.compile("\\/event-types\\/.*\\/events");
     // We are using empty log name, cause it is used only for access log and we do not care about class name
     private static final Logger ACCESS_LOGGER = LoggerFactory.getLogger("ACCESS_LOG");
 
@@ -147,7 +145,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         final long currentTime = System.currentTimeMillis();
         final Long timing = currentTime - requestLogInfo.requestTime;
 
-        if (shouldLogRequest(requestLogInfo, response)) {
+        if (!isPublishingRequest(requestLogInfo, response)) {
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
                     requestLogInfo.path,
@@ -170,9 +168,10 @@ public class LoggingFilter extends OncePerRequestFilter {
                 .put("response_time_ms", timing));
     }
 
-    private boolean shouldLogRequest(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
-        return !"POST".equals(requestLogInfo.method) ||
-                !PATTERN_POST_PUBLISH.matcher(requestLogInfo.path).matches() ||
-                response.getStatus() != 200;
+    private boolean isPublishingRequest(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
+        return "POST".equals(requestLogInfo.method) &&
+                requestLogInfo.path.startsWith("/event-types/") &&
+                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.startsWith("/events/")) &&
+                response.getStatus() == 200;
     }
 }
