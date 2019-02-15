@@ -104,13 +104,12 @@ public class ResourceAuthorization implements ValidatableAuthorization {
         }
     }
 
-
     @Override
     public Map<String, List<AuthorizationAttribute>> asMapValue() {
         return ImmutableMap.of(
-                "admins", getAdmins(),
-                "readers", getReaders(),
-                "writers", getWriters());
+                AuthorizationService.Operation.ADMIN.toString(), getAdmins(),
+                AuthorizationService.Operation.READ.toString(), getReaders(),
+                AuthorizationService.Operation.WRITE.toString(), getWriters());
     }
 
     @Override
