@@ -13,9 +13,11 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
+import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
 
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.ResourceImpl.ADMIN_RESOURCE;
 import static org.zalando.nakadi.domain.ResourceImpl.ALL_DATA_ACCESS_RESOURCE;
+import static org.zalando.nakadi.domain.ResourceImpl.PERMISSION_RESOURCE;
 
 @Service
 public class AdminService {
@@ -115,16 +118,11 @@ public class AdminService {
     }
 
     private void validateAllAdmins(final List<Permission> admins) throws UnableProcessException, PluginException {
-        final List<Permission> invalid = admins.stream().filter(permission ->
-                !authorizationService.isAuthorizationAttributeValid(permission.getAuthorizationAttribute()))
-                .collect(Collectors.toList());
-        if (!invalid.isEmpty()) {
-            final String message = invalid.stream()
-                    .map(permission -> String.format("authorization attribute %s:%s is invalid",
-                            permission.getAuthorizationAttribute().getDataType(),
-                            permission.getAuthorizationAttribute().getValue()))
-                    .collect(Collectors.joining(", "));
-            throw new UnableProcessException(message);
+        try {
+            authorizationService.isAuthorizationForResourceValid(new ResourceImpl<>(PERMISSION_RESOURCE,
+                    PERMISSION_RESOURCE, ResourceAuthorization.fromPermissionsList(admins), null));
+        } catch (AuthorizationInvalidException e) {
+            throw new UnprocessableEntityException(e.getMessage());
         }
     }
 }

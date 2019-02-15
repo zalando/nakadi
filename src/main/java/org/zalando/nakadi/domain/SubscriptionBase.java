@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -125,5 +126,9 @@ public class SubscriptionBase {
     @Override
     public int hashCode() {
         return Objects.hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors);
+    }
+
+    public Resource<SubscriptionBase> asBaseResource(final String id) {
+        return new ResourceImpl<>(id, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
     }
 }
