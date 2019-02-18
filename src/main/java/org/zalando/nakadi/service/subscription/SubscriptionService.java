@@ -128,6 +128,7 @@ public class SubscriptionService {
         subscriptionValidationService.validateSubscription(subscriptionBase);
 
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
+        authorizationValidator.authorizeSubscriptionView(subscription);
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
                 .put("subscription_id", subscription.getId())
@@ -147,6 +148,7 @@ public class SubscriptionService {
                     "are blocked by feature flag.");
         }
         final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(old);
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
@@ -163,10 +165,12 @@ public class SubscriptionService {
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws InconsistentStateException, NoSuchSubscriptionException, RepositoryProblemException {
-        return subscriptionRepository.getSubscription(
+        final Subscription subscription = subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),
                 subscriptionBase.getConsumerGroup());
+        authorizationValidator.authorizeSubscriptionView(subscription);
+        return subscription;
     }
 
     public UriComponents getSubscriptionUri(final Subscription subscription) {
@@ -204,7 +208,9 @@ public class SubscriptionService {
 
     public Subscription getSubscription(final String subscriptionId)
             throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        return subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
+        return subscription;
     }
 
     public void deleteSubscription(final String subscriptionId)
@@ -215,6 +221,7 @@ public class SubscriptionService {
                     "are blocked by feature flag.");
         }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
 
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
@@ -239,6 +246,7 @@ public class SubscriptionService {
         final Subscription subscription;
         try {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
+            authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
             throw new InconsistentStateException(ex.getMessage());
         }
@@ -250,6 +258,7 @@ public class SubscriptionService {
                                                                     final StatsMode statsMode)
             throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
+        subscriptionValidationService.verifyViewAccessOnEventTypes(eventTypes);
         final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
         final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 

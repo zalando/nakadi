@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -24,8 +25,10 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 
 import java.util.concurrent.TimeUnit;
@@ -46,6 +49,8 @@ public class EventPublishingController {
     private final BlacklistService blacklistService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String kpiBatchPublishedEventType;
+    private final EventTypeService eventTypeService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -53,12 +58,16 @@ public class EventPublishingController {
                                      final BlacklistService blacklistService,
                                      final NakadiKpiPublisher nakadiKpiPublisher,
                                      @Value("${nakadi.kpi.event-types.nakadiBatchPublished}")
-                                         final String kpiBatchPublishedEventType) {
+                                         final String kpiBatchPublishedEventType,
+                                     final AuthorizationValidator authorizationValidator,
+                                     final EventTypeService eventTypeService) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.kpiBatchPublishedEventType = kpiBatchPublishedEventType;
+        this.eventTypeService = eventTypeService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -69,6 +78,10 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
+
+        final EventType eventType = eventTypeService.get(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {

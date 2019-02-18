@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -67,6 +68,8 @@ public class SubscriptionValidationService {
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
         checkEventTypesExist(eventTypesOrNone);
+        verifyViewAccessOnEventTypes(eventTypesOrNone.values().stream().map(Optional::get)
+                .collect(Collectors.toList()));
 
         // check that maximum number of partitions is not exceeded
         final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
@@ -197,5 +200,10 @@ public class SubscriptionValidationService {
             throw new NoSuchEventTypeException(String.format("Failed to create subscription, event type(s) not " +
                     "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
         }
+    }
+
+    public void verifyViewAccessOnEventTypes(final List<EventType> eventTypes)
+            throws AccessDeniedException {
+        eventTypes.forEach(et -> authorizationValidator.authorizeEventTypeView(et));
     }
 }

@@ -238,6 +238,7 @@ public class EventTypeService {
             }
             eventType = eventTypeOpt.get();
 
+            authorizationValidator.authorizeEventTypeView(eventType);
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
             if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)) {
@@ -344,6 +345,7 @@ public class EventTypeService {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
             original = eventTypeRepository.findByName(eventTypeName);
 
+            authorizationValidator.authorizeEventTypeView(original);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
@@ -455,6 +457,7 @@ public class EventTypeService {
 
     public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         return eventType;
     }
 

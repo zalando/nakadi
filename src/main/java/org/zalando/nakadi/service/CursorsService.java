@@ -90,6 +90,7 @@ public class CursorsService {
             AccessDeniedException {
         final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         validateSubscriptionCommitCursors(subscription, cursors);
@@ -145,6 +146,7 @@ public class CursorsService {
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -170,6 +172,7 @@ public class CursorsService {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         validateCursorsBelongToSubscription(subscription, cursors);

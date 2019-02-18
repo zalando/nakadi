@@ -115,7 +115,6 @@ public class TimelineService {
         }
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
