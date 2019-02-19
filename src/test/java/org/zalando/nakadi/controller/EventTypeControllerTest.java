@@ -25,6 +25,7 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
@@ -33,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -926,4 +928,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         verify(eventTypeRepository).update(any());
     }
 
+    @Test
+    public void testGetEventTypeWhenViewAccessForbidden() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final String eventTypeName = eventType.getName();
+        when(eventTypeRepository.findByName(any())).thenReturn(eventType);
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, eventType.asResource()))
+                .when(authorizationValidator).authorizeEventTypeView(eventType);
+        getEventType(eventTypeName).andExpect(status().isForbidden());
+    }
 }

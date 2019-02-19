@@ -311,6 +311,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void checkAccessAuthorized() throws AccessDeniedException {
+        this.authorizationValidator.authorizeSubscriptionView(subscription);
         this.authorizationValidator.authorizeSubscriptionRead(subscription);
     }
 
