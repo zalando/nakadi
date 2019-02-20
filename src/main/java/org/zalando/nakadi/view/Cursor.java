@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Immutable
 public class Cursor {
@@ -11,9 +12,11 @@ public class Cursor {
     public static final String BEFORE_OLDEST_OFFSET = "BEGIN";
 
     @NotNull
+    @Size(min = 1, message = "cursor partition cannot be empty")
     private final String partition;
 
     @NotNull
+    @Size(min = 1, message = "cursor offset cannot be empty")
     private final String offset;
 
     public Cursor(@JsonProperty("partition") final String partition, @JsonProperty("offset") final String offset) {
