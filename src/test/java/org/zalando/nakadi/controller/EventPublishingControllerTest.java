@@ -25,10 +25,8 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -75,8 +73,6 @@ public class EventPublishingControllerTest {
     private NakadiKpiPublisher kpiPublisher;
     private BlacklistService blacklistService;
     private AuthorizationService authorizationService;
-    private EventTypeService eventTypeService;
-    private AuthorizationValidator authorizationValidator;
 
     @Before
     public void setUp() {
@@ -86,8 +82,6 @@ public class EventPublishingControllerTest {
         kpiPublisher = mock(NakadiKpiPublisher.class);
         settings = mock(SecuritySettings.class);
         authorizationService = mock(AuthorizationService.class);
-        eventTypeService = mock(EventTypeService.class);
-        authorizationValidator = mock(AuthorizationValidator.class);
         when(authorizationService.getSubject()).thenReturn(Optional.of(() ->  "adminClientId"));
         when(settings.getAuthMode()).thenReturn(OFF);
         when(settings.getAdminClientId()).thenReturn("adminClientId");
@@ -97,7 +91,7 @@ public class EventPublishingControllerTest {
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher,
-                        "kpiEventTypeName", authorizationValidator, eventTypeService);
+                        "kpiEventTypeName");
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
