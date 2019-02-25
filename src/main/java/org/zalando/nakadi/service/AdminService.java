@@ -2,7 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,8 +59,7 @@ public class AdminService {
 
     public List<Permission> getAdmins() {
         try {
-            return ImmutableList.copyOf(
-                    addDefaultAdmin(resourceCache.get(ADMIN_RESOURCE, authorizationDbRepository::listAdmins)));
+            return addDefaultAdmin(resourceCache.get(ADMIN_RESOURCE, authorizationDbRepository::listAdmins));
         } catch (ExecutionException e) {
             return addDefaultAdmin(authorizationDbRepository.listAdmins());
         }
@@ -98,8 +96,8 @@ public class AdminService {
 
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
-            final List<Permission> permissions = ImmutableList.copyOf(resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
-                    authorizationDbRepository::listAllDataAccess));
+            final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
+                    authorizationDbRepository::listAllDataAccess);
             final Resource<Void> resource = new ResourceImpl<>(ALL_DATA_ACCESS_RESOURCE,
                     ALL_DATA_ACCESS_RESOURCE,
                     ResourceAuthorization.fromPermissionsList(permissions), null);
