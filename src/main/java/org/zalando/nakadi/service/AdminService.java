@@ -53,12 +53,16 @@ public class AdminService {
         this.authorizationService = authorizationService;
         this.featureToggleService = featureToggleService;
         this.nakadiSettings = nakadiSettings;
-        this.resourceCache = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
+        this.resourceCache = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
         this.auditLogPublisher = auditLogPublisher;
     }
 
     public List<Permission> getAdmins() {
-        return addDefaultAdmin(authorizationDbRepository.listAdmins());
+        try {
+            return addDefaultAdmin(resourceCache.get(ADMIN_RESOURCE, authorizationDbRepository::listAdmins));
+        } catch (ExecutionException e) {
+            return addDefaultAdmin(authorizationDbRepository.listAdmins());
+        }
     }
 
     public void updateAdmins(final List<Permission> newAdmins)

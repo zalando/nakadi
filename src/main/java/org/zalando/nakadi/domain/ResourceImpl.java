@@ -4,6 +4,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +23,7 @@ public class ResourceImpl<T> implements Resource<T> {
     private final ValidatableAuthorization authorization;
 
     public ResourceImpl(final String name, final String type,
-                        final ValidatableAuthorization authorization, final T resource) {
+                        @Nullable final ValidatableAuthorization authorization, final T resource) {
         this.name = name;
         this.type = type;
         this.authorization = authorization;
