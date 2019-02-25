@@ -145,7 +145,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         final long currentTime = System.currentTimeMillis();
         final Long timing = currentTime - requestLogInfo.requestTime;
 
-        if (!isPublishingRequest(requestLogInfo, response)) {
+        if (!isSuccessPublishingRequest(requestLogInfo, response)) {
             ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                     requestLogInfo.method,
                     requestLogInfo.path,
@@ -168,10 +168,11 @@ public class LoggingFilter extends OncePerRequestFilter {
                 .put("response_time_ms", timing));
     }
 
-    private boolean isPublishingRequest(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
+    private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo,
+                                               final HttpServletResponse response) {
         return "POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/event-types/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.startsWith("/events/")) &&
+                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/")) &&
                 response.getStatus() == 200;
     }
 }
