@@ -11,10 +11,8 @@ import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -85,21 +83,19 @@ public class ResourceAuthorization implements ValidatableAuthorization {
     }
 
     public static ResourceAuthorization fromPermissionsList(final List<Permission> permissions) {
-        final List<AuthorizationAttribute> admins = new ArrayList<>();
-        final List<AuthorizationAttribute> writers = new ArrayList<>();
-        final List<AuthorizationAttribute> readers = new ArrayList<>();
-        final Iterator<Permission> iterator = permissions.iterator();
+        final List<AuthorizationAttribute> admins = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.ADMIN))
+                .map(Permission::getAuthorizationAttribute)
+                .collect(Collectors.toList());
+        final List<AuthorizationAttribute> readers = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.READ))
+                .map(Permission::getAuthorizationAttribute)
+                .collect(Collectors.toList());
+        final List<AuthorizationAttribute> writers = permissions.stream()
+                .filter(p -> p.getOperation().equals(AuthorizationService.Operation.WRITE))
+                .map(Permission::getAuthorizationAttribute)
+                .collect(Collectors.toList());
 
-        while (iterator.hasNext()) {
-            final Permission permission = iterator.next();
-            if (permission.getOperation().equals(AuthorizationService.Operation.ADMIN)) {
-                admins.add(permission.getAuthorizationAttribute());
-            } else if (permission.getOperation().equals(AuthorizationService.Operation.WRITE)) {
-                writers.add(permission.getAuthorizationAttribute());
-            } else if (permission.getOperation().equals(AuthorizationService.Operation.READ)) {
-                readers.add(permission.getAuthorizationAttribute());
-            }
-        }
         return new ResourceAuthorization(admins, readers, writers);
     }
 

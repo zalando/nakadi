@@ -40,7 +40,7 @@ public class AdminService {
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
     private final NakadiSettings nakadiSettings;
-    private Cache<String, List<Permission>> resourceCache;
+    private Cache<String, Resource<Void>> resourceCache;
     private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
@@ -58,11 +58,7 @@ public class AdminService {
     }
 
     public List<Permission> getAdmins() {
-        try {
-            return addDefaultAdmin(resourceCache.get(ADMIN_RESOURCE, authorizationDbRepository::listAdmins));
-        } catch (ExecutionException e) {
             return addDefaultAdmin(authorizationDbRepository.listAdmins());
-        }
     }
 
     public void updateAdmins(final List<Permission> newAdmins)
@@ -87,20 +83,33 @@ public class AdminService {
                 "-");
     }
 
-    public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
+    private Resource<Void> getAdminResource() {
         final List<Permission> permissions = getAdmins();
-        final Resource<Void> resource = new ResourceImpl<>(ADMIN_RESOURCE, ADMIN_RESOURCE,
+        return new ResourceImpl<>(ADMIN_RESOURCE, ADMIN_RESOURCE,
                 ResourceAuthorization.fromPermissionsList(permissions), null);
+    }
+
+    private Resource<Void> getAllDataAccessResource() {
+        final List<Permission> permissions = authorizationDbRepository.listAllDataAccess();
+        return new ResourceImpl<>(ALL_DATA_ACCESS_RESOURCE,
+                ALL_DATA_ACCESS_RESOURCE,
+                ResourceAuthorization.fromPermissionsList(permissions), null);
+    }
+
+    public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
+        Resource<Void> resource;
+        try {
+            resource = resourceCache.get(ADMIN_RESOURCE, () -> getAdminResource());
+        } catch (ExecutionException e) {
+            resource = getAdminResource();
+        }
         return authorizationService.isAuthorized(operation, resource);
     }
 
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
-            final List<Permission> permissions = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
-                    authorizationDbRepository::listAllDataAccess);
-            final Resource<Void> resource = new ResourceImpl<>(ALL_DATA_ACCESS_RESOURCE,
-                    ALL_DATA_ACCESS_RESOURCE,
-                    ResourceAuthorization.fromPermissionsList(permissions), null);
+            final Resource resource = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
+                    () -> getAllDataAccessResource());
             return authorizationService.isAuthorized(operation, resource);
         } catch (ExecutionException e) {
             LOG.error("Could not determine whether this application has all data access", e);
