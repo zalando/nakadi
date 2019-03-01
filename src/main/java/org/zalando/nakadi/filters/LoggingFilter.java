@@ -43,7 +43,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         this.authorizationService = authorizationService;
     }
 
-    public class RequestLogInfo {
+    private class RequestLogInfo {
 
         private String userAgent;
         private String user;
@@ -55,7 +55,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         private String acceptEncoding;
         private Long requestTime;
 
-        public RequestLogInfo(final HttpServletRequest request, final long requestTime) {
+        private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
             this.user = authorizationService.getSubject().map(Subject::getName).orElse("-");
             this.method = request.getMethod();
