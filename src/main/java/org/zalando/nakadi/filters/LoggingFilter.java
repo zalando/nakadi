@@ -166,7 +166,8 @@ public class LoggingFilter extends OncePerRequestFilter {
         if ("POST".equals(requestLogInfo.method) && requestLogInfo.path.startsWith("/event-types/") &&
                 requestLogInfo.path.contains("/events")) {
 
-            final String eventType = requestLogInfo.path.substring(13, requestLogInfo.path.lastIndexOf("/events"));
+            final String eventType = requestLogInfo.path.substring("/event-types/".length(),
+                    requestLogInfo.path.lastIndexOf("/events"));
 
             String sloBucket = "5K-50K";
             if (requestLogInfo.contentLength < 5000) {
