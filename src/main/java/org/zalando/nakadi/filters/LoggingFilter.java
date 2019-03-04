@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -79,7 +80,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.flowId = flowId;
 
             this.requestLogInfo = new RequestLogInfo(request, startTime);
-            logToAccessLog(this.requestLogInfo, this.response.getStatus(), 0L);
+            logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
         }
 
         private void logOnEvent() {
@@ -163,8 +164,8 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if ("POST".equals(requestLogInfo.method) && requestLogInfo.path.startsWith("/event-types/") &&
-                requestLogInfo.path.contains("/events")) {
+        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+                requestLogInfo.path.startsWith("/event-types/") && requestLogInfo.path.contains("/events")) {
 
             final String eventType = requestLogInfo.path.substring("/event-types/".length(),
                     requestLogInfo.path.lastIndexOf("/events"));
