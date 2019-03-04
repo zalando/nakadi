@@ -130,14 +130,14 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
-        final Long timing = System.currentTimeMillis() - requestLogInfo.requestTime;
+        final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        logToAccessLog(requestLogInfo, statusCode, timing);
-        logToNakadi(requestLogInfo, statusCode, timing);
-        traceRequest(requestLogInfo, statusCode);
+        logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
+        logToNakadi(requestLogInfo, statusCode, timeSpentMs);
+        traceRequest(requestLogInfo, statusCode, timeSpentMs);
     }
 
-    private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timing) {
+    private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                 .put("method", requestLogInfo.method)
                 .put("path", requestLogInfo.path)
@@ -145,10 +145,10 @@ public class LoggingFilter extends OncePerRequestFilter {
                 .put("app", requestLogInfo.user)
                 .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
                 .put("status_code", statusCode)
-                .put("response_time_ms", timing));
+                .put("response_time_ms", timeSpentMs));
     }
 
-    private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timing) {
+    private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
                 requestLogInfo.method,
                 requestLogInfo.path,
@@ -156,13 +156,13 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.userAgent,
                 requestLogInfo.user,
                 statusCode,
-                timing,
+                timeSpentMs,
                 requestLogInfo.contentEncoding,
                 requestLogInfo.acceptEncoding,
                 requestLogInfo.contentLength);
     }
 
-    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         if ("POST".equals(requestLogInfo.method) && requestLogInfo.path.startsWith("/event-types/") &&
                 requestLogInfo.path.contains("/events")) {
 
@@ -190,7 +190,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .setTag("http.header.user_agent", requestLogInfo.userAgent)
                     .setTag("slo_bucket", sloBucket)
                     .setTag("content_length", requestLogInfo.contentLength)
-                    .finish();
+                    .finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
         }
     }
 }
