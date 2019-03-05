@@ -133,7 +133,9 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
+        if (!isSuccessPublishingRequest(requestLogInfo, statusCode)) {
+            logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
+        }
         logToNakadi(requestLogInfo, statusCode, timeSpentMs);
         traceRequest(requestLogInfo, statusCode, timeSpentMs);
     }
@@ -164,34 +166,46 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
-                requestLogInfo.path.startsWith("/event-types/") && requestLogInfo.path.contains("/events")) {
-
-            final String eventType = requestLogInfo.path.substring("/event-types/".length(),
-                    requestLogInfo.path.lastIndexOf("/events"));
-
-            String sloBucket = "5K-50K";
-            if (requestLogInfo.contentLength < 5000) {
-                sloBucket = "<5K";
-            } else if (requestLogInfo.contentLength > 50000) {
-                sloBucket = ">50K";
-            }
-
-            GlobalTracer.get()
-                    .buildSpan("publish_events")
-                    .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime))
-                    .start()
-                    .setTag("client_id", requestLogInfo.user)
-                    .setTag("event_type", eventType)
-                    .setTag("error", statusCode == 207 || statusCode >= 500)
-                    .setTag("http.status_code", statusCode)
-                    .setTag("http.url", requestLogInfo.path + requestLogInfo.query)
-                    .setTag("http.header.content_encoding", requestLogInfo.contentEncoding)
-                    .setTag("http.header.accept_encoding", requestLogInfo.acceptEncoding)
-                    .setTag("http.header.user_agent", requestLogInfo.userAgent)
-                    .setTag("slo_bucket", sloBucket)
-                    .setTag("content_length", requestLogInfo.contentLength)
-                    .finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
+        if (!isPublishingRequest(requestLogInfo)) {
+            return;
         }
+        final String eventType = requestLogInfo.path.substring("/event-types/".length(),
+                requestLogInfo.path.lastIndexOf("/events"));
+
+        String sloBucket = "5K-50K";
+        if (requestLogInfo.contentLength < 5000) {
+            sloBucket = "<5K";
+        }
+        // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
+        // so we also put it to ">50K" bucket to hack this problem
+        else if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
+            sloBucket = ">50K";
+        }
+
+        GlobalTracer.get()
+                .buildSpan("publish_events")
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime))
+                .start()
+                .setTag("client_id", requestLogInfo.user)
+                .setTag("event_type", eventType)
+                .setTag("error", statusCode == 207 || statusCode >= 500)
+                .setTag("http.status_code", statusCode)
+                .setTag("http.url", requestLogInfo.path + requestLogInfo.query)
+                .setTag("http.header.content_encoding", requestLogInfo.contentEncoding)
+                .setTag("http.header.accept_encoding", requestLogInfo.acceptEncoding)
+                .setTag("http.header.user_agent", requestLogInfo.userAgent)
+                .setTag("slo_bucket", sloBucket)
+                .setTag("content_length", requestLogInfo.contentLength)
+                .finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
+    }
+
+    private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+        return isPublishingRequest(requestLogInfo) && statusCode == 200;
+    }
+
+    private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
+        return requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+                requestLogInfo.path.startsWith("/event-types/") &&
+                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
     }
 }
