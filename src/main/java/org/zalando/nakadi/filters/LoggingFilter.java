@@ -173,13 +173,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.path.lastIndexOf("/events"));
 
         String sloBucket = "5K-50K";
-        if (requestLogInfo.contentLength < 5000) {
-            sloBucket = "<5K";
-        }
         // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
         // so we also put it to ">50K" bucket to hack this problem
-        else if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
+        if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
             sloBucket = ">50K";
+        } else if (requestLogInfo.contentLength < 5000) {
+            sloBucket = "<5K";
         }
 
         GlobalTracer.get()
