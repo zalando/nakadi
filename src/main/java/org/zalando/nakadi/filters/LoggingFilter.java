@@ -1,6 +1,7 @@
 package org.zalando.nakadi.filters;
 
 import com.google.common.net.HttpHeaders;
+import io.opentracing.util.GlobalTracer;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
@@ -31,7 +33,6 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
-
     private final AuthorizationService authorizationService;
 
     @Autowired
@@ -61,10 +62,8 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.method = request.getMethod();
             this.path = request.getRequestURI();
             this.query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
-            this.contentEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING))
-                    .orElse("-");
-            this.acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING))
-                    .orElse("-");
+            this.contentEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING)).orElse("-");
+            this.acceptEncoding = Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING)).orElse("-");
             this.contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
             this.requestTime = requestTime;
         }
@@ -81,22 +80,12 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.flowId = flowId;
 
             this.requestLogInfo = new RequestLogInfo(request, startTime);
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                    requestLogInfo.method,
-                    requestLogInfo.path,
-                    requestLogInfo.query,
-                    requestLogInfo.userAgent,
-                    requestLogInfo.user,
-                    HttpStatus.PROCESSING.value(),
-                    0,
-                    requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding,
-                    requestLogInfo.contentLength);
+            logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
         }
 
         private void logOnEvent() {
             FlowIdUtils.push(this.flowId);
-            writeToAccessLogAndEventType(this.requestLogInfo, this.response);
+            logRequest(this.requestLogInfo, this.response.getStatus());
             FlowIdUtils.clear();
         }
 
@@ -136,43 +125,73 @@ public class LoggingFilter extends OncePerRequestFilter {
         } finally {
             if (!request.isAsyncStarted()) {
                 final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
-                writeToAccessLogAndEventType(requestLogInfo, response);
+                logRequest(requestLogInfo, response.getStatus());
             }
         }
     }
 
-    private void writeToAccessLogAndEventType(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
-        final long currentTime = System.currentTimeMillis();
-        final Long timing = currentTime - requestLogInfo.requestTime;
+    private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+        final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        if (!isSuccessPublishingRequest(requestLogInfo, response)) {
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                    requestLogInfo.method,
-                    requestLogInfo.path,
-                    requestLogInfo.query,
-                    requestLogInfo.userAgent,
-                    requestLogInfo.user,
-                    response.getStatus(),
-                    timing,
-                    requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding,
-                    requestLogInfo.contentLength);
-        }
+        logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
+        logToNakadi(requestLogInfo, statusCode, timeSpentMs);
+        traceRequest(requestLogInfo, statusCode, timeSpentMs);
+    }
+
+    private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                 .put("method", requestLogInfo.method)
                 .put("path", requestLogInfo.path)
                 .put("query", requestLogInfo.query)
                 .put("app", requestLogInfo.user)
                 .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
-                .put("status_code", response.getStatus())
-                .put("response_time_ms", timing));
+                .put("status_code", statusCode)
+                .put("response_time_ms", timeSpentMs));
     }
 
-    private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo,
-                                               final HttpServletResponse response) {
-        return "POST".equals(requestLogInfo.method) &&
-                requestLogInfo.path.startsWith("/event-types/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/")) &&
-                response.getStatus() == 200;
+    private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+                requestLogInfo.method,
+                requestLogInfo.path,
+                requestLogInfo.query,
+                requestLogInfo.userAgent,
+                requestLogInfo.user,
+                statusCode,
+                timeSpentMs,
+                requestLogInfo.contentEncoding,
+                requestLogInfo.acceptEncoding,
+                requestLogInfo.contentLength);
+    }
+
+    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+                requestLogInfo.path.startsWith("/event-types/") && requestLogInfo.path.contains("/events")) {
+
+            final String eventType = requestLogInfo.path.substring("/event-types/".length(),
+                    requestLogInfo.path.lastIndexOf("/events"));
+
+            String sloBucket = "5K-50K";
+            if (requestLogInfo.contentLength < 5000) {
+                sloBucket = "<5K";
+            } else if (requestLogInfo.contentLength > 50000) {
+                sloBucket = ">50K";
+            }
+
+            GlobalTracer.get()
+                    .buildSpan("publish_events")
+                    .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime))
+                    .start()
+                    .setTag("client_id", requestLogInfo.user)
+                    .setTag("event_type", eventType)
+                    .setTag("error", statusCode == 207 || statusCode >= 500)
+                    .setTag("http.status_code", statusCode)
+                    .setTag("http.url", requestLogInfo.path + requestLogInfo.query)
+                    .setTag("http.header.content_encoding", requestLogInfo.contentEncoding)
+                    .setTag("http.header.accept_encoding", requestLogInfo.acceptEncoding)
+                    .setTag("http.header.user_agent", requestLogInfo.userAgent)
+                    .setTag("slo_bucket", sloBucket)
+                    .setTag("content_length", requestLogInfo.contentLength)
+                    .finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
+        }
     }
 }

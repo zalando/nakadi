@@ -168,6 +168,10 @@ dependencies {
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'org.json:json:20180130'
 
+    // open tracing
+    compile 'io.opentracing:opentracing-api:0.31.0'
+    compile 'io.opentracing:opentracing-util:0.31.0'
+
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile('junit:junit:4.12') {
