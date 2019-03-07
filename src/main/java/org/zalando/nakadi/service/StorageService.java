@@ -29,6 +29,7 @@ import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Service
 public class StorageService {
@@ -40,18 +41,21 @@ public class StorageService {
     private final DefaultStorage defaultStorage;
     private final CuratorFramework curator;
     private final FeatureToggleService featureToggleService;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
                           final StorageDbRepository storageDbRepository,
                           @Qualifier("default_storage") final DefaultStorage defaultStorage,
                           final ZooKeeperHolder zooKeeperHolder,
-                          final FeatureToggleService featureToggleService) {
+                          final FeatureToggleService featureToggleService,
+                          final NakadiAuditLogPublisher auditLogPublisher) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
         this.defaultStorage = defaultStorage;
         this.curator = zooKeeperHolder.get();
         this.featureToggleService = featureToggleService;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     @PostConstruct
@@ -136,6 +140,13 @@ public class StorageService {
             LOG.error("DB error occurred when creating storage", e);
             throw new InternalNakadiException(e.getMessage());
         }
+
+        auditLogPublisher.publish(
+                Optional.empty(),
+                Optional.of(storage),
+                NakadiAuditLogPublisher.ResourceType.STORAGE,
+                NakadiAuditLogPublisher.ActionType.CREATED,
+                storage.getId());
     }
 
     public void deleteStorage(final String id)
@@ -146,7 +157,17 @@ public class StorageService {
                     "are blocked by feature flag.");
         }
         try {
+            final Optional<Object> storageOrNone = storageDbRepository.getStorage(id)
+                    .map(Function.identity());
+
             storageDbRepository.deleteStorage(id);
+
+            auditLogPublisher.publish(
+                    storageOrNone,
+                    Optional.empty(),
+                    NakadiAuditLogPublisher.ResourceType.STORAGE,
+                    NakadiAuditLogPublisher.ActionType.DELETED,
+                    id);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB error occurred when deleting storage", e);
             throw new InternalNakadiException(e.getMessage());
@@ -159,12 +180,12 @@ public class StorageService {
     public Storage setDefaultStorage(final String defaultStorageId)
             throws NoSuchStorageException, InternalNakadiException {
         final Storage storage = getStorage(defaultStorageId);
-            try {
-                curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
-            } catch (final Exception e) {
-                LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
-                throw new InternalNakadiException("Error while setting default storage in zk");
-            }
+        try {
+            curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
+        } catch (final Exception e) {
+            LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
+            throw new InternalNakadiException("Error while setting default storage in zk");
+        }
         return storage;
     }
 }

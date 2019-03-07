@@ -1,7 +1,7 @@
 [
   {
     "name": "nakadi.batch.published",
-    "owning_application": "owning_application",
+    "owning_application": "owning_application_placeholder",
     "category": "business",
     "enrichment_strategies": [
       "metadata_enrichment"
@@ -29,7 +29,7 @@
   },
   {
     "name": "nakadi.data.streamed",
-    "owning_application": "owning_application",
+    "owning_application": "owning_application_placeholder",
     "category": "business",
     "enrichment_strategies": [
       "metadata_enrichment"
@@ -65,7 +65,7 @@
   },
   {
     "name": "nakadi.access.log",
-    "owning_application": "owning_application",
+    "owning_application": "owning_application_placeholder",
     "category": "business",
     "enrichment_strategies": [
       "metadata_enrichment"
@@ -100,7 +100,7 @@
   },
   {
     "name": "nakadi.event.type.log",
-    "owning_application": "owning_application",
+    "owning_application": "owning_application_placeholder",
     "category": "business",
     "enrichment_strategies": [
       "metadata_enrichment"
@@ -136,7 +136,7 @@
   },
   {
     "name": "nakadi.subscription.log",
-    "owning_application": "owning_application",
+    "owning_application": "owning_application_placeholder",
     "category": "business",
     "enrichment_strategies": [
       "metadata_enrichment"

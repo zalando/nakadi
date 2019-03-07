@@ -42,7 +42,6 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -59,6 +58,7 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -107,7 +107,6 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private MetricRegistry metricRegistry;
     private MetricRegistry streamMetrics;
-    private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
     private BlacklistService blacklistService;
     private EventTypeCache eventTypeCache;
@@ -128,6 +127,7 @@ public class EventStreamControllerTest {
         topicRepositoryMock = mock(TopicRepository.class);
         adminService = mock(AdminService.class);
         authorizationService = mock(AuthorizationService.class);
+        when(authorizationService.getSubject()).thenReturn(Optional.empty());
         when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
         eventTypeCache = mock(EventTypeCache.class);
@@ -149,7 +149,6 @@ public class EventStreamControllerTest {
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
-        featureToggleService = mock(FeatureToggleService.class);
         timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
@@ -172,7 +171,7 @@ public class EventStreamControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, authorizationService))
                 .build();
     }
 

@@ -12,9 +12,9 @@ import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
@@ -25,6 +25,7 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.util.Collections;
@@ -47,10 +48,12 @@ public class TimelineServiceTest {
     private final TimelineDbRepository timelineDbRepository = mock(TimelineDbRepository.class);
     private final TopicRepositoryHolder topicRepositoryHolder = mock(TopicRepositoryHolder.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+    private final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
     private final TimelineService timelineService = new TimelineService(eventTypeCache,
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage");
+            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage",
+            auditLogPublisher);
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {

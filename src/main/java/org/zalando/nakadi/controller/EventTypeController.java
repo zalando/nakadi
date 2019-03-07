@@ -94,7 +94,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName)
+    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName, final NativeWebRequest request)
             throws EventTypeDeletionException,
             AccessDeniedException,
             NoSuchEventTypeException,

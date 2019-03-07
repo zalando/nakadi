@@ -138,7 +138,7 @@ dependencies {
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
     compile 'org.apache.commons:commons-lang3:3.8.1'
-    compile 'org.zalando:nakadi-plugin-api:2.0.0'
+    compile 'org.zalando:nakadi-plugin-api:3.2.1'
     compile 'org.echocat.jomon:runtime:1.6.3'
 
     // kafka & zookeeper
@@ -167,6 +167,10 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-afterburner"
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'org.json:json:20180130'
+
+    // open tracing
+    compile 'io.opentracing:opentracing-api:0.31.0'
+    compile 'io.opentracing:opentracing-util:0.31.0'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'

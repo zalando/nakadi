@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -34,7 +35,8 @@ public class TimelinesController {
 
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createTimeline(@PathVariable("name") final String eventTypeName,
-                                            @RequestBody final TimelineRequest timelineRequest)
+                                            @RequestBody final TimelineRequest timelineRequest,
+                                            final NativeWebRequest request)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
         timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());

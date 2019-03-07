@@ -62,8 +62,9 @@ public class AdminServiceTest {
         this.authorizationService = mock(AuthorizationService.class);
         this.nakadiSettings = mock(NakadiSettings.class);
         this.featureToggleService = mock(FeatureToggleService.class);
+        final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
         this.adminService = new AdminService(authorizationDbRepository, authorizationService,
-                featureToggleService, nakadiSettings);
+                featureToggleService, nakadiSettings, auditLogPublisher);
         this.adminList = new ArrayList<>(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));
@@ -71,7 +72,7 @@ public class AdminServiceTest {
         for (final AuthorizationService.Operation operation : AuthorizationService.Operation.values()) {
             defaultAdminPermissions.add(new Permission("nakadi", operation, defaultAdmin));
         }
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+        doNothing().when(authorizationService).isAuthorizationForResourceValid(any());
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
     }
@@ -80,15 +81,6 @@ public class AdminServiceTest {
     public void whenUpdateAdminsThenOk() {
         when(authorizationDbRepository.listAdmins()).thenReturn(adminList);
         adminService.updateAdmins(newAuthz.toPermissionsList("nakadi"));
-    }
-
-    @Test
-    public void whenGetThenDefaultAdminIsIncluded() {
-        when(nakadiSettings.getDefaultAdmin()).thenReturn(defaultAdmin);
-        when(authorizationDbRepository.listAdmins()).thenReturn(adminList);
-        final List<Permission> expected = new ArrayList<>(adminList);
-        expected.addAll(defaultAdminPermissions);
-        assertEquals(adminService.getAdmins(), expected);
     }
 
     @Test

@@ -110,7 +110,7 @@ public class EventPublisher {
 
             return ok(batch);
         } catch (final EventValidationException e) {
-            LOG.debug(
+            LOG.info(
                     "Event validation error: {}",
                     Optional.ofNullable(e.getMessage()).map(s -> s.replaceAll("\n", "; ")).orElse(null)
             );

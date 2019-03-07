@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -36,6 +37,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,6 +55,7 @@ public class CursorsService {
     private final AuthorizationValidator authorizationValidator;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionCache subscriptionCache;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -63,7 +66,8 @@ public class CursorsService {
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator,
                           final TimelineService timelineService,
-                          final AuthorizationValidator authorizationValidator) {
+                          final AuthorizationValidator authorizationValidator,
+                          final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
@@ -73,6 +77,7 @@ public class CursorsService {
         this.authorizationValidator = authorizationValidator;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionCache = subscriptionCache;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     /**
@@ -85,6 +90,7 @@ public class CursorsService {
             AccessDeniedException {
         final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         validateSubscriptionCommitCursors(subscription, cursors);
@@ -140,6 +146,7 @@ public class CursorsService {
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -165,6 +172,7 @@ public class CursorsService {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         validateCursorsBelongToSubscription(subscription, cursors);
@@ -187,11 +195,22 @@ public class CursorsService {
                 zkClient, subscription, timelineService, cursorConverter));
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
         if (!cursors.isEmpty()) {
+            final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
+
             final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
                     TimeUnit.SECONDS.toMillis(1);
-            zkClient.resetCursors(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                    timeout);
+            final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
+                    .map(cursorConverter::convertToNoToken)
+                    .collect(Collectors.toList());
+
+            zkClient.resetCursors(newCursors, timeout);
+
+            auditLogPublisher.publish(
+                    Optional.of(new ItemsWrapper<>(oldCursors)),
+                    Optional.of(new ItemsWrapper<>(newCursors)),
+                    NakadiAuditLogPublisher.ResourceType.CURSORS,
+                    NakadiAuditLogPublisher.ActionType.UPDATED,
+                    subscriptionId);
         }
     }
 
