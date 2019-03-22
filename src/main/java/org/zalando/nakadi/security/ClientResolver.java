@@ -19,8 +19,6 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
-
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
@@ -49,7 +47,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
         final String clientId = authorizationService.getSubject().map(Subject::getName)
                 .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
 
-        if(settings.getAuthMode() == OFF) {
+        if(settings.getAuthMode().isNoAuthentication()) {
             return new FullAccessClient(clientId);
         } else {
             if (clientId.equals(settings.getAdminClientId())) {
