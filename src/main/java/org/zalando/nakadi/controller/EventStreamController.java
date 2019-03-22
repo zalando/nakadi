@@ -217,6 +217,7 @@ public class EventStreamController {
                     Collections.singletonList(eventTypeName))) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
+                authorizationValidator.authorizeEventTypeView(eventType);
                 authorizeStreamRead(eventTypeName);
 
                 // validate parameters

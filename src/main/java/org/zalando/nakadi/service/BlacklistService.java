@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.PostConstruct;
@@ -18,6 +17,7 @@ import javax.annotation.PreDestroy;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Component
@@ -26,15 +26,18 @@ public class BlacklistService {
     private static final Logger LOG = LoggerFactory.getLogger(BlacklistService.class);
     private static final String PATH_BLACKLIST = "/nakadi/blacklist";
 
-    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionCache subscriptionCache;
     private final ZooKeeperHolder zooKeeperHolder;
+    private final NakadiAuditLogPublisher auditLogPublisher;
     private TreeCache blacklistCache;
 
     @Autowired
-    public BlacklistService(final SubscriptionDbRepository subscriptionDbRepository,
-                            final ZooKeeperHolder zooKeeperHolder) {
+    public BlacklistService(final SubscriptionCache subscriptionCache,
+                            final ZooKeeperHolder zooKeeperHolder,
+                            final NakadiAuditLogPublisher auditLogPublisher) {
         this.zooKeeperHolder = zooKeeperHolder;
-        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionCache = subscriptionCache;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     @PostConstruct
@@ -77,7 +80,7 @@ public class BlacklistService {
     public boolean isSubscriptionConsumptionBlocked(final String subscriptionId, final String appId) {
         try {
             return isSubscriptionConsumptionBlocked(
-                    subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
+                    subscriptionCache.getSubscription(subscriptionId).getEventTypes(), appId);
         } catch (final NoSuchSubscriptionException e) {
             // It's fine, subscription doesn't exists.
         } catch (final ServiceTemporarilyUnavailableException e) {
@@ -87,14 +90,14 @@ public class BlacklistService {
     }
 
     public boolean isSubscriptionConsumptionBlocked(final Collection<String> etNames, final String appId) {
-            return etNames.stream()
-                    .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
-                    isBlocked(Type.CONSUMER_APP, appId);
+        return etNames.stream()
+                .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
+                isBlocked(Type.CONSUMER_APP, appId);
     }
 
-    public Map<String, Map> getBlacklist() {
+    public Map<String, Map<String, Set<String>>> getBlacklist() {
         return ImmutableMap.of(
-                "consumers",  ImmutableMap.of(
+                "consumers", ImmutableMap.of(
                         "event_types", getChildren(Type.CONSUMER_ET),
                         "apps", getChildren(Type.CONSUMER_APP)),
                 "producers", ImmutableMap.of(
@@ -104,11 +107,27 @@ public class BlacklistService {
 
     public void blacklist(final String name, final Type type) throws RuntimeException {
         try {
+            final boolean oldValue = isBlocked(type, name);
+
             final CuratorFramework curator = zooKeeperHolder.get();
-            final String path = createFlooderPath(name, type);
+            final String path = createBlacklistEntryPath(name, type);
             if (curator.checkExists().forPath(path) == null) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             }
+
+            final BlacklistEntry newEntry = new BlacklistEntry(type, name);
+            BlacklistEntry oldEntry = null;
+            NakadiAuditLogPublisher.ActionType actionType = NakadiAuditLogPublisher.ActionType.CREATED;
+            if (oldValue) {
+                oldEntry = newEntry;
+                actionType = NakadiAuditLogPublisher.ActionType.UPDATED;
+            }
+            auditLogPublisher.publish(
+                    Optional.ofNullable(oldEntry),
+                    Optional.of(newEntry),
+                    NakadiAuditLogPublisher.ResourceType.BLACKLIST_ENTRY,
+                    actionType,
+                    newEntry.getId());
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while creating node in zk", e);
         }
@@ -117,9 +136,17 @@ public class BlacklistService {
     public void whitelist(final String name, final Type type) throws RuntimeException {
         try {
             final CuratorFramework curator = zooKeeperHolder.get();
-            final String path = createFlooderPath(name, type);
+            final String path = createBlacklistEntryPath(name, type);
             if (curator.checkExists().forPath(path) != null) {
                 curator.delete().forPath(path);
+
+                final BlacklistEntry entry = new BlacklistEntry(type, name);
+                auditLogPublisher.publish(
+                        Optional.of(entry),
+                        Optional.empty(),
+                        NakadiAuditLogPublisher.ResourceType.BLACKLIST_ENTRY,
+                        NakadiAuditLogPublisher.ActionType.DELETED,
+                        entry.getId());
             }
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while deleting node from zk", e);
@@ -131,7 +158,7 @@ public class BlacklistService {
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
-    private String createFlooderPath(final String name, final Type type) {
+    private String createBlacklistEntryPath(final String name, final Type type) {
         return type.getZkPath() + "/" + name;
     }
 
@@ -149,6 +176,28 @@ public class BlacklistService {
 
         public String getZkPath() {
             return zkPath;
+        }
+    }
+
+    public static class BlacklistEntry {
+        private Type type;
+        private String name;
+
+        public BlacklistEntry(final Type type, final String name) {
+            this.type = type;
+            this.name = name;
+        }
+
+        public Type getType() {
+            return type;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getId() {
+            return String.format("%s:%s", type, name);
         }
     }
 

@@ -6,13 +6,14 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -36,6 +37,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,7 +45,7 @@ import java.util.stream.Stream;
 @Component
 public class CursorsService {
 
-    private final SubscriptionDbRepository subscriptionRepository;
+
     private final EventTypeCache eventTypeCache;
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
@@ -51,17 +53,21 @@ public class CursorsService {
     private final UUIDGenerator uuidGenerator;
     private final TimelineService timelineService;
     private final AuthorizationValidator authorizationValidator;
+    private final SubscriptionDbRepository subscriptionRepository;
+    private final SubscriptionCache subscriptionCache;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
+                          final SubscriptionCache subscriptionCache,
                           final EventTypeCache eventTypeCache,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
                           final UUIDGenerator uuidGenerator,
                           final TimelineService timelineService,
-                          final AuthorizationValidator authorizationValidator) {
-        this.subscriptionRepository = subscriptionRepository;
+                          final AuthorizationValidator authorizationValidator,
+                          final NakadiAuditLogPublisher auditLogPublisher) {
         this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
@@ -69,6 +75,9 @@ public class CursorsService {
         this.uuidGenerator = uuidGenerator;
         this.timelineService = timelineService;
         this.authorizationValidator = authorizationValidator;
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionCache = subscriptionCache;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     /**
@@ -79,8 +88,9 @@ public class CursorsService {
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             AccessDeniedException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionCommit(subscription);
 
         validateSubscriptionCommitCursors(subscription, cursors);
@@ -88,16 +98,21 @@ public class CursorsService {
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
 
-        validateStreamId(cursors, streamId, zkClient);
+        validateStreamId(cursors, streamId, zkClient, subscriptionId);
 
         return zkClient.commitOffsets(
                 cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
                 new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
     }
 
-    private void validateStreamId(final List<NakadiCursor> cursors, final String streamId,
-                                  final ZkSubscriptionClient subscriptionClient)
-            throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException {
+    private void validateStreamId(final List<NakadiCursor> cursors,
+                                  final String streamId,
+                                  final ZkSubscriptionClient subscriptionClient,
+                                  final String subscriptionId)
+            throws ServiceTemporarilyUnavailableException,
+            InvalidCursorException,
+            InvalidStreamIdException,
+            SubscriptionNotInitializedException {
 
         if (!uuidGenerator.isUUID(streamId)) {
             throw new InvalidStreamIdException(
@@ -105,6 +120,7 @@ public class CursorsService {
         }
 
         if (!subscriptionClient.isActiveSession(streamId)) {
+            subscriptionCache.invalidateSubscription(subscriptionId);
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);
         }
 
@@ -130,6 +146,7 @@ public class CursorsService {
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
@@ -155,6 +172,7 @@ public class CursorsService {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
+        authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         validateCursorsBelongToSubscription(subscription, cursors);
@@ -177,11 +195,22 @@ public class CursorsService {
                 zkClient, subscription, timelineService, cursorConverter));
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
         if (!cursors.isEmpty()) {
+            final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
+
             final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
                     TimeUnit.SECONDS.toMillis(1);
-            zkClient.resetCursors(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                    timeout);
+            final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
+                    .map(cursorConverter::convertToNoToken)
+                    .collect(Collectors.toList());
+
+            zkClient.resetCursors(newCursors, timeout);
+
+            auditLogPublisher.publish(
+                    Optional.of(new ItemsWrapper<>(oldCursors)),
+                    Optional.of(new ItemsWrapper<>(newCursors)),
+                    NakadiAuditLogPublisher.ResourceType.CURSORS,
+                    NakadiAuditLogPublisher.ActionType.UPDATED,
+                    subscriptionId);
         }
     }
 

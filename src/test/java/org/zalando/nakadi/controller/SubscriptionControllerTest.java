@@ -37,8 +37,10 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
+import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -100,6 +102,7 @@ public class SubscriptionControllerTest {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private final TimelineService timelineService;
+    private final SubscriptionValidationService subscriptionValidationService;
 
     public SubscriptionControllerTest() throws Exception {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -121,11 +124,13 @@ public class SubscriptionControllerTest {
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
+        subscriptionValidationService = mock(SubscriptionValidationService.class);
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
+        final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
+                zkSubscriptionClientFactory, timelineService, eventTypeRepository, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", mock(AuthorizationValidator.class));
+                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class));
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
@@ -140,6 +145,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionThenOk() throws Exception {
         final Subscription subscription = builder().build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
@@ -150,6 +156,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
         final Subscription subscription = builder().build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
@@ -237,6 +244,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         final Collection<Partition> partitions = Collections.singleton(
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
         final ZkSubscriptionNode zkSubscriptionNode =
@@ -278,6 +286,7 @@ public class SubscriptionControllerTest {
     @SuppressWarnings("unchecked")
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
@@ -326,6 +335,7 @@ public class SubscriptionControllerTest {
                 .withId(subscriptionId)
                 .withOwningApplication(owningApplication)
                 .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.getSubscription(subscriptionId)).thenReturn(subscription);
     }
 

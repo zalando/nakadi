@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
@@ -10,12 +11,14 @@ import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Immutable
 public class ResourceAuthorization implements ValidatableAuthorization {
@@ -60,6 +63,12 @@ public class ResourceAuthorization implements ValidatableAuthorization {
         return writers;
     }
 
+    @JsonIgnore
+    public List<AuthorizationAttribute> getAll() {
+        return Stream.of(this.writers, this.admins, this.readers)
+                .flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
     public List<Permission> toPermissionsList(final String resource) {
         final List<Permission> permissions = admins.stream()
                 .map(p -> new Permission(resource, AuthorizationService.Operation.ADMIN, p))
@@ -99,18 +108,19 @@ public class ResourceAuthorization implements ValidatableAuthorization {
                 return Optional.of(getWriters());
             case ADMIN:
                 return Optional.of(getAdmins());
+            case VIEW:
+                return Optional.of(getAll());
             default:
                 throw new IllegalArgumentException("Operation " + operation + " is not supported");
         }
     }
 
-
     @Override
     public Map<String, List<AuthorizationAttribute>> asMapValue() {
         return ImmutableMap.of(
-                "admins", getAdmins(),
-                "readers", getReaders(),
-                "writers", getWriters());
+                AuthorizationService.Operation.ADMIN.toString(), getAdmins(),
+                AuthorizationService.Operation.READ.toString(), getReaders(),
+                AuthorizationService.Operation.WRITE.toString(), getWriters());
     }
 
     @Override

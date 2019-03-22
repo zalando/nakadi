@@ -11,6 +11,7 @@ import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class FeatureToggleServiceZk implements FeatureToggleService {
 
@@ -18,6 +19,8 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     private static final String PREFIX = "/nakadi/feature_toggle";
 
     private final ZooKeeperHolder zkHolder;
+
+    private NakadiAuditLogPublisher auditLogPublisher;
     private PathChildrenCache featuresCache;
     private final Map<Feature, String> featurePaths;
 
@@ -30,7 +33,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
             LOG.error(e.getMessage(), e);
         }
         featurePaths = new HashMap<>(Feature.values().length);
-        for (final Feature feature: Feature.values()) {
+        for (final Feature feature : Feature.values()) {
             featurePaths.put(feature, PREFIX + "/" + feature.getId());
         }
     }
@@ -55,6 +58,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     public void setFeature(final FeatureWrapper feature) {
         try {
+            final boolean oldState = isFeatureEnabled(feature.getFeature());
             final CuratorFramework curator = zkHolder.get();
             final String path = getPath(feature.getFeature());
             if (feature.isEnabled()) {
@@ -63,6 +67,15 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
             } else {
                 curator.delete().forPath(path);
                 LOG.debug("Feature {} disabled", feature.getFeature().getId());
+            }
+
+            if (auditLogPublisher != null) {
+                auditLogPublisher.publish(
+                        Optional.of(new FeatureToggleService.FeatureWrapper(feature.getFeature(), oldState)),
+                        Optional.of(feature),
+                        NakadiAuditLogPublisher.ResourceType.FEATURE,
+                        NakadiAuditLogPublisher.ActionType.UPDATED,
+                        feature.getFeature().getId());
             }
         } catch (final KeeperException.NoNodeException nne) {
             LOG.debug("Feature {} was already disabled", feature.getFeature().getId());
@@ -75,5 +88,9 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     private String getPath(final Feature feature) {
         return featurePaths.get(feature);
+    }
+
+    public void setAuditLogPublisher(final NakadiAuditLogPublisher auditLogPublisher) {
+        this.auditLogPublisher = auditLogPublisher;
     }
 }

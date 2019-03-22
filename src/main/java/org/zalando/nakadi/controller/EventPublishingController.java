@@ -69,6 +69,7 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
+
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {

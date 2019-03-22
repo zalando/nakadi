@@ -89,6 +89,7 @@ public class PartitionsController {
                                             final NativeWebRequest request) throws NoSuchEventTypeException {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
@@ -122,6 +123,7 @@ public class PartitionsController {
             final NativeWebRequest request) throws NoSuchEventTypeException {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         if (consumedOffset != null) {

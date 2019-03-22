@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -17,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -60,11 +62,14 @@ public class SubscriptionValidationService {
 
     public void validateSubscription(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
-            InconsistentStateException, WrongInitialCursorsException {
+            InconsistentStateException, WrongInitialCursorsException, UnableProcessException,
+            ServiceTemporarilyUnavailableException {
 
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
         checkEventTypesExist(eventTypesOrNone);
+        verifyViewAccessOnEventTypes(eventTypesOrNone.values().stream().map(Optional::get)
+                .collect(Collectors.toList()));
 
         // check that maximum number of partitions is not exceeded
         final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
@@ -80,7 +85,7 @@ public class SubscriptionValidationService {
             validateInitialCursors(subscription, allPartitions);
         }
         // Verify that subscription authorization object is valid
-        authorizationValidator.validateAuthorization(subscription.getAuthorization());
+        authorizationValidator.validateAuthorization(subscription.asBaseResource("new-subscription"));
     }
 
     public void validateSubscriptionChange(final Subscription old, final SubscriptionBase newValue)
@@ -100,7 +105,7 @@ public class SubscriptionValidationService {
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
             throw new SubscriptionUpdateConflictException("Not allowed to change initial cursors");
         }
-        authorizationValidator.validateAuthorization(old.getAuthorization(), newValue.getAuthorization());
+        authorizationValidator.validateAuthorization(old.asResource(), newValue.asBaseResource(old.getId()));
     }
 
     public void validatePartitionsToStream(final Subscription subscription, final List<EventTypePartition> partitions) {
@@ -193,7 +198,12 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toList());
         if (!missingEventTypes.isEmpty()) {
             throw new NoSuchEventTypeException(String.format("Failed to create subscription, event type(s) not " +
-                            "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
+                    "found: '%s'", StringUtils.join(missingEventTypes, "', '")));
         }
+    }
+
+    public void verifyViewAccessOnEventTypes(final List<EventType> eventTypes)
+            throws AccessDeniedException {
+        eventTypes.forEach(et -> authorizationValidator.authorizeEventTypeView(et));
     }
 }

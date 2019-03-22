@@ -7,14 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.security.Principal;
-import java.util.Optional;
 
 @Component
 public class MonitoringRequestFilter extends OncePerRequestFilter {
@@ -22,15 +23,18 @@ public class MonitoringRequestFilter extends OncePerRequestFilter {
     private final Timer httpConnectionsTimer;
     private final Counter openHttpConnectionsCounter;
     private final MetricRegistry perPathMetricRegistry;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public MonitoringRequestFilter(final MetricRegistry metricRegistry,
-                                   @Qualifier("perPathMetricRegistry") final MetricRegistry perPathMetricRegistry) {
+                                   @Qualifier("perPathMetricRegistry") final MetricRegistry perPathMetricRegistry,
+                                   final AuthorizationService authorizationService) {
         openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX
                 + "general.openSynchronousHttpConnections");
         httpConnectionsTimer = metricRegistry
                 .timer(MetricUtils.NAKADI_PREFIX + "general.synchronousHttpConnections");
         this.perPathMetricRegistry = perPathMetricRegistry;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -40,9 +44,8 @@ public class MonitoringRequestFilter extends OncePerRequestFilter {
         openHttpConnectionsCounter.inc();
         final Timer.Context timerContext = httpConnectionsTimer.time();
 
-        final String clientId = Optional.ofNullable(request.getUserPrincipal())
-                .map(Principal::getName)
-                .orElse("unauthenticated");
+        final String clientId = authorizationService.getSubject().map(Subject::getName)
+                .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
         final String perPathMetricKey = MetricRegistry.name(
                 clientId,
                 request.getMethod(),

@@ -65,6 +65,7 @@ public class CursorOperationsController {
             throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         queries.getList().forEach(query -> {
@@ -93,6 +94,7 @@ public class CursorOperationsController {
             throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
@@ -113,6 +115,7 @@ public class CursorOperationsController {
             throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         final List<NakadiCursor> domainCursor = cursors.getList().stream()

@@ -2,6 +2,8 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -13,18 +15,30 @@ public class Subscription extends SubscriptionBase {
         super();
     }
 
-    public Subscription(final String id, final DateTime createdAt, final SubscriptionBase subscriptionBase) {
+    public Subscription(final String id, final DateTime createdAt, final DateTime updatedAt,
+                        final SubscriptionBase subscriptionBase) {
         super(subscriptionBase);
         this.id = id;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     private String id;
 
     private DateTime createdAt;
 
+    private DateTime updatedAt;
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<SubscriptionEventTypeStats> status;
+
+    public DateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(final DateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     public String getId() {
         return id;
@@ -42,8 +56,8 @@ public class Subscription extends SubscriptionBase {
         this.createdAt = createdAt;
     }
 
-    public SubscriptionResource asResource() {
-        return new SubscriptionResource(id, getAuthorization());
+    public Resource<Subscription> asResource() {
+        return new ResourceImpl<>(id, ResourceImpl.SUBSCRIPTION_RESOURCE, getAuthorization(), this);
     }
 
     @Nullable
@@ -65,6 +79,12 @@ public class Subscription extends SubscriptionBase {
         }
         final Subscription that = (Subscription) o;
         return super.equals(that) && Objects.equals(id, that.id) && Objects.equals(createdAt, that.createdAt);
+    }
+
+    public Subscription mergeFrom(final SubscriptionBase newValue) {
+        final Subscription subscription = new Subscription(id, createdAt, new DateTime(DateTimeZone.UTC), this);
+        subscription.setAuthorization(newValue.getAuthorization());
+        return subscription;
     }
 
     @Override

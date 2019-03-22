@@ -3,11 +3,11 @@ package org.zalando.nakadi.service;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionResource;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -46,6 +46,7 @@ public class SubscriptionServiceTest {
         final CursorOperationsService cursorOperationsService = mock(CursorOperationsService.class);
         final CursorConverter cursorConverter = mock(CursorConverter.class);
         final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+        final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
         subscriptionValidationService = mock(SubscriptionValidationService.class);
         nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         subscriptionRepository = mock(SubscriptionDbRepository.class);
@@ -55,7 +56,7 @@ public class SubscriptionServiceTest {
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                authorizationValidator);
+                nakadiAuditLogPublisher, authorizationValidator);
     }
 
     @Test
@@ -65,6 +66,7 @@ public class SubscriptionServiceTest {
         final Subscription subscription = RandomSubscriptionBuilder.builder()
                 .withId("my_subscription_id1")
                 .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
         when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
 
         subscriptionService.createSubscription(subscriptionBase);
@@ -77,6 +79,7 @@ public class SubscriptionServiceTest {
 
     @Test
     public void whenSubscriptionDeletedThenKPIEventSubmitted() {
+        when(subscriptionRepository.getSubscription(any())).thenReturn(new Subscription());
         subscriptionService.deleteSubscription("my_subscription_id1");
 
         checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
@@ -98,7 +101,8 @@ public class SubscriptionServiceTest {
 
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionModifiedAuthorizationIsValidated() throws NoSuchSubscriptionException {
-        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, new SubscriptionResource("", null)))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
@@ -109,7 +113,8 @@ public class SubscriptionServiceTest {
 
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionDeletedAuthorizationIsValidated() {
-        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, new SubscriptionResource("", null)))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         subscriptionService.deleteSubscription("test");
