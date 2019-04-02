@@ -23,10 +23,10 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ public class KafkaTopicRepositoryTest {
     public static final String ANOTHER_TOPIC = "another-topic";
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
-    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
+    private final ZookeeperConfig zookeeperSettings = mock(ZookeeperConfig.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
