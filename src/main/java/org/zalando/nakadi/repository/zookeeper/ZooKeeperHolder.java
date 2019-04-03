@@ -11,6 +11,9 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ZooKeeperHolder {
 
@@ -96,7 +99,9 @@ public class ZooKeeperHolder {
                     new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX),
                     path);
         } else if (TYPE_ZOOKEEPER.equalsIgnoreCase(type)) {
-            result = new FixedEnsembleProvider(serversAndPort + path);
+            final List<String> hosts = Arrays.asList(serversAndPort.split(","));
+            Collections.shuffle(hosts);
+            result = new FixedEnsembleProvider(String.join(",", hosts) + path);
         } else {
             throw new RuntimeException("Connection type for zookeeper ensemble provider is not supported: " + type);
         }
