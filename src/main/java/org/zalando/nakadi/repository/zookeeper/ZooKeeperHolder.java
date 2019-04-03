@@ -8,12 +8,12 @@ import org.apache.curator.ensemble.exhibitor.Exhibitors;
 import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.state.SessionConnectionStateErrorPolicy;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ZooKeeperHolder {
 
@@ -69,6 +69,7 @@ public class ZooKeeperHolder {
         final CuratorFramework framework = CuratorFrameworkFactory.builder()
                 .ensembleProvider(createEnsembleProvider(protocolAndProtocolData[0], serversAndPort, path))
                 .retryPolicy(retryPolicy)
+                .connectionStateErrorPolicy(new SessionConnectionStateErrorPolicy())
                 .build();
 
         framework.start();
