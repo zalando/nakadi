@@ -8,9 +8,12 @@ import org.apache.curator.ensemble.exhibitor.Exhibitors;
 import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.state.SessionConnectionStateErrorPolicy;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class ZooKeeperHolder {
 
@@ -66,6 +69,7 @@ public class ZooKeeperHolder {
         final CuratorFramework framework = CuratorFrameworkFactory.builder()
                 .ensembleProvider(createEnsembleProvider(protocolAndProtocolData[0], serversAndPort, path))
                 .retryPolicy(retryPolicy)
+                .connectionStateErrorPolicy(new SessionConnectionStateErrorPolicy())
                 .build();
 
         framework.start();
@@ -96,7 +100,9 @@ public class ZooKeeperHolder {
                     new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX),
                     path);
         } else if (TYPE_ZOOKEEPER.equalsIgnoreCase(type)) {
-            result = new FixedEnsembleProvider(serversAndPort + path);
+            final List<String> hosts = Arrays.asList(serversAndPort.split(","));
+            Collections.shuffle(hosts);
+            result = new FixedEnsembleProvider(String.join(",", hosts) + path);
         } else {
             throw new RuntimeException("Connection type for zookeeper ensemble provider is not supported: " + type);
         }
