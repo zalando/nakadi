@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -72,7 +72,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
-    private ZookeeperConfig zookeeperSettings;
+    private ZookeeperSettings zookeeperSettings;
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
     private NakadiTopicConfig defaultTopicConfig;
@@ -100,8 +100,7 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
                 KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT);
-        zookeeperSettings = new ZookeeperConfig(
-                "zookeeper://127.0.0.1:2181", ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
+        zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));

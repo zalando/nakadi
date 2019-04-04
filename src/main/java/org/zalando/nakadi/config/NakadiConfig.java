@@ -14,12 +14,11 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.zalando.nakadi.domain.DefaultStorage;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.zalando.nakadi.service.StorageService;
 
 import java.util.Optional;
@@ -44,7 +43,6 @@ public class NakadiConfig {
     @Qualifier("default_storage")
     public DefaultStorage defaultStorage(final StorageDbRepository storageDbRepository,
                                          final Environment environment,
-                                         final ZookeeperConfig zookeeperConfig,
                                          final ZooKeeperHolder zooKeeperHolder)
             throws InternalNakadiException {
         final String storageId = getStorageId(zooKeeperHolder, environment);
@@ -54,7 +52,11 @@ public class NakadiConfig {
             final Storage storage = new Storage();
             storage.setId(storageId);
             storage.setType(Storage.Type.KAFKA);
-            storage.setConfiguration(new Storage.KafkaConfiguration(zookeeperConfig.getZookeeperConn()));
+            storage.setConfiguration(new Storage.KafkaConfiguration(
+                    environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
+                    Integer.valueOf(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")),
+                    environment.getProperty("nakadi.zookeeper.brokers"),
+                    environment.getProperty("nakadi.zookeeper.kafkaNamespace", "")));
             try {
                 storageDbRepository.createStorage(storage);
             } catch (final DuplicatedStorageException e) {

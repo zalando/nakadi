@@ -47,7 +47,7 @@ public abstract class BaseAT {
         final Storage storage = new Storage();
         storage.setId("default");
         storage.setType(Storage.Type.KAFKA);
-        storage.setConfiguration(new Storage.KafkaConfiguration("zookeeper://" + ZOOKEEPER_URL));
+        storage.setConfiguration(new Storage.KafkaConfiguration(null, null, ZOOKEEPER_URL, ""));
         try {
             STORAGE_DB_REPOSITORY.createStorage(storage);
         } catch (final DuplicatedStorageException ignore) {
