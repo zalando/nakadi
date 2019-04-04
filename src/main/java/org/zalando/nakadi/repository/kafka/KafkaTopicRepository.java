@@ -39,7 +39,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -80,7 +80,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaFactory kafkaFactory;
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
-    private final ZookeeperConfig zookeeperSettings;
+    private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
 
@@ -88,7 +88,7 @@ public class KafkaTopicRepository implements TopicRepository {
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
-                                final ZookeeperConfig zookeeperSettings,
+                                final ZookeeperSettings zookeeperSettings,
                                 final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
         this.zkFactory = zkFactory;
         this.kafkaFactory = kafkaFactory;

@@ -36,9 +36,12 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     static Storage createStorage(final String name,
-                                 final String connectionString) {
+                                 final String exhibitorAddress,
+                                 final int exhibitorPort,
+                                 final String zkAddress,
+                                 final String zkPath) {
         final Storage.KafkaConfiguration config =
-                new Storage.KafkaConfiguration(connectionString);
+                new Storage.KafkaConfiguration(exhibitorAddress, exhibitorPort, zkAddress, zkPath);
         final Storage storage = new Storage();
         storage.setId(name);
         storage.setType(Storage.Type.KAFKA);
@@ -47,9 +50,9 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageCreated() {
+    public void testStorageCreated() throws Exception {
         final String name = randomUUID();
-        final Storage storage = createStorage(name, "exhibitor://exaddress:8181/path");
+        final Storage storage = createStorage(name, "exaddress", 8181, "address", "path");
 
         repository.createStorage(storage);
 
@@ -61,15 +64,15 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageOrdered() {
+    public void testStorageOrdered() throws Exception {
         final String namePrefix = randomValidStringOfLength(31);
 
         final Storage storage2 = repository.createStorage(
-                createStorage(namePrefix + "2", "exhibitor://exaddress:8181/path3"));
+                createStorage(namePrefix + "2", "exaddress", 8181, "address1", "path3"));
         final Storage storage1 = repository.createStorage(
-                createStorage(namePrefix + "1", "exhibitor://exaddress:8181/path2"));
+                createStorage(namePrefix + "1", "exaddress", 8181, "address2", "path2"));
         final Storage storage3 = repository.createStorage(
-                createStorage(namePrefix + "3", "exhibitor://exaddress:8181/path1"));
+                createStorage(namePrefix + "3", "exaddress", 8181, "address3", "path1"));
 
         final List<Storage> storages = repository.listStorages().stream()
                 .filter(st -> st.getId() != null)
@@ -83,23 +86,23 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageDeleted() {
+    public void testStorageDeleted() throws Exception {
         final String name = randomUUID();
-        final Storage storage = repository.createStorage(createStorage(name, "exhibitor://exaddress:8181/path2"));
+        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address2", "path2"));
         assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());
         assertFalse(repository.getStorage(storage.getId()).isPresent());
     }
 
     @Test(expected = NoSuchStorageException.class)
-    public void testDeleteNoneExistingStorage() {
+    public void testDeleteNoneExistingStorage() throws Exception {
         repository.deleteStorage(randomUUID());
     }
 
     @Test(expected = StorageIsUsedException.class)
-    public void testDeleteUsedStorage() {
+    public void testDeleteUsedStorage() throws Exception {
         final String name = randomUUID();
-        final Storage storage = repository.createStorage(createStorage(name, "exhibitor://exaddress:8181/path"));
+        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address", "path"));
 
         final EventType eventType = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
         final Timeline timeline = TimelineDbRepositoryTest.createTimeline(storage, UUID.randomUUID(), 0, "topic",

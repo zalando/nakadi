@@ -14,7 +14,7 @@ import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import javax.annotation.Nullable;
@@ -324,7 +324,7 @@ public class CursorOperationsServiceTest {
                 mock(KafkaFactory.class),
                 mock(NakadiSettings.class),
                 mock(KafkaSettings.class),
-                mock(ZookeeperConfig.class),
+                mock(ZookeeperSettings.class),
                 mock(KafkaTopicConfigFactory.class));
         when(timelineService.getTopicRepository(timeline)).thenReturn(repository);
         return timeline;

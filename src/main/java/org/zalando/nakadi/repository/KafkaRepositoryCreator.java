@@ -15,7 +15,7 @@ import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import java.util.Comparator;
 import java.util.List;
@@ -26,14 +26,14 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
 
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
-    private final ZookeeperConfig zookeeperSettings;
+    private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final MetricRegistry metricRegistry;
 
     @Autowired
     public KafkaRepositoryCreator(final NakadiSettings nakadiSettings,
                                   final KafkaSettings kafkaSettings,
-                                  final ZookeeperConfig zookeeperSettings,
+                                  final ZookeeperSettings zookeeperSettings,
                                   final KafkaTopicConfigFactory kafkaTopicConfigFactory,
                                   final MetricRegistry metricRegistry) {
         this.nakadiSettings = nakadiSettings;
@@ -47,7 +47,11 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     public TopicRepository createTopicRepository(final Storage storage) throws TopicRepositoryException {
         try {
             final Storage.KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
-            final ZooKeeperHolder zooKeeperHolder = ZooKeeperHolder.build(kafkaConfiguration.getZkConnectionString());
+            final ZooKeeperHolder zooKeeperHolder = new ZooKeeperHolder(
+                    kafkaConfiguration.getZkAddress(),
+                    kafkaConfiguration.getZkPath(),
+                    kafkaConfiguration.getExhibitorAddress(),
+                    kafkaConfiguration.getExhibitorPort());
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
@@ -55,7 +59,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             // check that it does work
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;
-        } catch (final RuntimeException e) {
+        } catch (final Exception e) {
             throw new TopicRepositoryException("Could not create topic repository", e);
         }
     }

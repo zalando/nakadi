@@ -33,7 +33,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final EventTypeDbRepository eRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
 
         storage = sRepository.createStorage(
-                StorageDbRepositoryTest.createStorage(randomUUID(), "exhibitor://localhost:8181/path"));
+                StorageDbRepositoryTest.createStorage(randomUUID(), "localhost", 8181, "test", "path"));
         testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
     }
 

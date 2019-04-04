@@ -86,7 +86,7 @@ public class StorageServiceTest {
         storage.setType(Storage.Type.KAFKA);
         storage.setId("123-abc");
         final Storage.KafkaConfiguration configuration =
-                new Storage.KafkaConfiguration("zookeeper://localhost:8181/path/to/kafka");
+                new Storage.KafkaConfiguration("https://localhost", 8181, "https://localhost", "/path/to/kafka");
         storage.setConfiguration(configuration);
         return storage;
     }
