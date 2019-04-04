@@ -13,8 +13,8 @@ public class StorageControllerAT extends BaseAT {
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
         given()
-                .body("{\"id\": \"default-test\",\"kafka_configuration\": {\"exhibitor_address\": null," +
-                        "\"exhibitor_port\": 0,\"zk_address\": \"zookeeper:2181\",\"zk_path\": \"\"}," +
+                .body("{\"id\": \"default-test\"," +
+                        "\"kafka_configuration\": {\"zk_connection_string\": \"zookeeper://zookeeper:2181\"}," +
                         "\"storage_type\": \"kafka\"}")
                 .contentType(JSON).post("/storages");
 
