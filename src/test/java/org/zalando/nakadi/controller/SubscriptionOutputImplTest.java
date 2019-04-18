@@ -21,13 +21,13 @@ public class SubscriptionOutputImplTest {
                 ssc.new SubscriptionOutputImpl(
                         new MockHttpServletResponse() {
                             @Override
-                            public void setStatus(int sc) {
+                            public void setStatus(final int sc) {
                                 Assert.assertEquals(HttpStatus.CONFLICT.value(), sc);
                             }
                         },
                         new OutputStream() {
                             @Override
-                            public void write(int b) throws IOException {
+                            public void write(final int b) throws IOException {
                                 // skip
                             }
                         });

@@ -144,9 +144,7 @@ public class SubscriptionStreamController {
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
                 }
-            } else
-
-            {
+            } else {
                 LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
             }
         }
