@@ -103,6 +103,7 @@ public class KafkaTopicRepositoryTest {
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
+        System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -327,7 +328,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         final List<BatchItem> batches = new LinkedList<>();
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 100; i++) {
             try {
                 final BatchItem batchItem = new BatchItem("{}",
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
