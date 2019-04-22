@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -12,7 +13,6 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.TimeoutException;
-import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -23,8 +23,8 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.view.Cursor;
@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -313,21 +314,48 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
+    public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws InterruptedException {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
 
+        // trigger CircuitBreaker to open since timeout
+        List<BatchItem> batches = setupResponseAndSendBatches(new TimeoutException());
+
+        BatchItem lastItem = batches.get(batches.size() - 1);
+        assertThat(lastItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(lastItem.getResponse().getDetail(), equalTo("short circuited"));
+
+        // trigger CircuitBreaker to close since no exceptions while sending a batch
+        batches = setupResponseAndSendBatches(null);
+
+        lastItem = batches.get(batches.size() - 1);
+        assertThat(lastItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        assertThat(lastItem.getResponse().getDetail(), equalTo(""));
+
+        // trigger CircuitBreaker to open again
+        batches = setupResponseAndSendBatches(new TimeoutException());
+
+        lastItem = batches.get(batches.size() - 1);
+        assertThat(lastItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(lastItem.getResponse().getDetail(), equalTo("short circuited"));
+    }
+
+    private List<BatchItem> setupResponseAndSendBatches(Exception e) throws InterruptedException {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
-            callback.onCompletion(null, new TimeoutException());
+            // null checking since `when(kafkaProducer.send(any(), any()))` triggers stub with null arguments
+            if (callback != null) {
+                callback.onCompletion(null, e);
+            }
             return null;
         });
 
         final List<BatchItem> batches = new LinkedList<>();
-        for (int i = 0; i < 1000; i++) {
+
+        for (int i = 0; i < 200; i++) {
             try {
                 final BatchItem batchItem = new BatchItem("{}",
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
@@ -335,16 +363,13 @@ public class KafkaTopicRepositoryTest {
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
+                TimeUnit.MILLISECONDS.sleep(50);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
-                fail();
-            } catch (final EventPublishingException e) {
+            } catch (final EventPublishingException ex) {
             }
         }
 
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
+        return batches;
     }
 
     private static Cursor cursor(final String partition, final String offset) {
