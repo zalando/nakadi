@@ -343,7 +343,7 @@ public class KafkaTopicRepositoryTest {
         assertThat(lastItem.getResponse().getDetail(), equalTo("short circuited"));
     }
 
-    private List<BatchItem> setupResponseAndSendBatches(Exception e) throws InterruptedException {
+    private List<BatchItem> setupResponseAndSendBatches(final Exception e) throws InterruptedException {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
             // null checking since `when(kafkaProducer.send(any(), any()))` triggers stub with null arguments
