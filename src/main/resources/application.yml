@@ -60,7 +60,6 @@ nakadi:
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
     request.timeout.ms: 30000
-    instanceType: t2.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
