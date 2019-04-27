@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
@@ -43,7 +44,10 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.problem.Status.CONFLICT;
@@ -86,15 +90,35 @@ public class SubscriptionStreamController {
         this.subscriptionValidationService = subscriptionValidationService;
     }
 
-    private class SubscriptionOutputImpl implements SubscriptionOutput {
+    class SubscriptionOutputImpl implements SubscriptionOutput {
         private boolean headersSent;
         private final HttpServletResponse response;
         private final OutputStream out;
+        private final Map<Class, Function<Exception, Problem>> exceptionProblem;
 
         SubscriptionOutputImpl(final HttpServletResponse response, final OutputStream out) {
             this.response = response;
             this.out = out;
             this.headersSent = false;
+            this.exceptionProblem = new HashMap<>();
+            assignExceptionProblem();
+        }
+
+        private void assignExceptionProblem() {
+            this.exceptionProblem.put(AccessDeniedException.class,
+                    (ex) -> Problem.valueOf(FORBIDDEN, ((AccessDeniedException) ex).explain()));
+            this.exceptionProblem.put(SubscriptionPartitionConflictException.class,
+                    (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
+            this.exceptionProblem.put(WrongStreamParametersException.class,
+                    (ex) -> Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()));
+            this.exceptionProblem.put(NoSuchSubscriptionException.class,
+                    (ex) -> Problem.valueOf(NOT_FOUND, ex.getMessage()));
+            this.exceptionProblem.put(InternalNakadiException.class,
+                    (ex) -> Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()));
+            this.exceptionProblem.put(NoStreamingSlotsAvailable.class,
+                    (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
+            this.exceptionProblem.put(ConflictException.class,
+                    (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
         }
 
         @Override
@@ -114,26 +138,8 @@ public class SubscriptionStreamController {
             if (!headersSent) {
                 headersSent = true;
                 try {
-                    if (ex instanceof AccessDeniedException) {
-                        writeProblemResponse(response, out, Problem.valueOf(FORBIDDEN,
-                                ((AccessDeniedException) ex).explain()));
-                    } else if (ex instanceof SubscriptionPartitionConflictException) {
-                        writeProblemResponse(response, out, Problem.valueOf(CONFLICT,
-                                ex.getMessage()));
-                    } else if (ex instanceof WrongStreamParametersException) {
-                        writeProblemResponse(response, out, Problem.valueOf(UNPROCESSABLE_ENTITY,
-                                ex.getMessage()));
-                    } else if (ex instanceof NoSuchSubscriptionException) {
-                        writeProblemResponse(response, out, Problem.valueOf(NOT_FOUND,
-                                ex.getMessage()));
-                    } else if (ex instanceof InternalNakadiException) {
-                        writeProblemResponse(response, out, Problem.valueOf(INTERNAL_SERVER_ERROR, ex.getMessage()));
-                    } else if (ex instanceof NoStreamingSlotsAvailable) {
-                        writeProblemResponse(response, out, Problem.valueOf(CONFLICT, ex.getMessage()));
-                    } else {
-                        writeProblemResponse(response, out, Problem.valueOf(SERVICE_UNAVAILABLE,
-                                "Failed to continue streaming"));
-                    }
+                    writeProblemResponse(response, out, exceptionProblem.getOrDefault(ex.getClass(),
+                            (e) -> Problem.valueOf(SERVICE_UNAVAILABLE, "Failed to continue streaming")).apply(ex));
                     out.flush();
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
@@ -147,6 +153,7 @@ public class SubscriptionStreamController {
         public OutputStream getOutputStream() {
             return this.out;
         }
+
     }
 
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.POST)
@@ -222,7 +229,7 @@ public class SubscriptionStreamController {
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();
-            } catch (final Exception e) {
+            } catch (final RuntimeException e) {
                 output.onException(e);
             } finally {
                 consumerCounter.dec();

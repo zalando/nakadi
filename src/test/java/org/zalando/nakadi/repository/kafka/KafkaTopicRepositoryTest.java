@@ -104,6 +104,7 @@ public class KafkaTopicRepositoryTest {
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
+        System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -314,7 +315,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws InterruptedException {
+    public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
 
@@ -343,7 +344,7 @@ public class KafkaTopicRepositoryTest {
         assertThat(lastItem.getResponse().getDetail(), equalTo("short circuited"));
     }
 
-    private List<BatchItem> setupResponseAndSendBatches(final Exception e) throws InterruptedException {
+    private List<BatchItem> setupResponseAndSendBatches(final Exception e) {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
             // null checking since `when(kafkaProducer.send(any(), any()))` triggers stub with null arguments
@@ -355,7 +356,7 @@ public class KafkaTopicRepositoryTest {
 
         final List<BatchItem> batches = new LinkedList<>();
 
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 100; i++) {
             try {
                 final BatchItem batchItem = new BatchItem("{}",
                         BatchItem.EmptyInjectionConfiguration.build(1, true),
@@ -363,7 +364,6 @@ public class KafkaTopicRepositoryTest {
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
-                TimeUnit.MILLISECONDS.sleep(50);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
             } catch (final EventPublishingException ex) {
             }
