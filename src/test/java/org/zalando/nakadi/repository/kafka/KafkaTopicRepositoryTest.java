@@ -105,6 +105,8 @@ public class KafkaTopicRepositoryTest {
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
         System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
+        System.setProperty("hystrix.command.1.metrics.rollingStats.timeInMilliseconds", "500");
+        System.setProperty("hystrix.command.1.circuitBreaker.sleepWindowInMilliseconds", "500");
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -364,8 +366,9 @@ public class KafkaTopicRepositoryTest {
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
-                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
-            } catch (final EventPublishingException ex) {
+	            TimeUnit.MILLISECONDS.sleep(5);
+	            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
+            } catch (final EventPublishingException | InterruptedException ex) {
             }
         }
 
