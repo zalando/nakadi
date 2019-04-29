@@ -610,5 +610,41 @@
       }
     },
     "errors": ["TYPE_CHANGED #/additionalItems"]
+  },
+  {
+    "description": "Detect changes from schema per item to all items",
+    "original_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": ["SCHEMA_REMOVED #/items", "NUMBER_OF_ITEMS_CHANGED #/"]
+  },
+  {
+    "description": "Detect changes from all items schema to per item",
+    "original_schema": {
+      "type": "array",
+      "items": {
+          "type": "string"
+        }
+    },
+    "update_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "errors": ["SCHEMA_REMOVED #/items", "NUMBER_OF_ITEMS_CHANGED #/"]
   }
 ]

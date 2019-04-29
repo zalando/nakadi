@@ -43,6 +43,11 @@ public class SchemaDiff {
             return;
         }
 
+        if (originalIn == null) {
+            state.addChange(SCHEMA_REMOVED);
+            return;
+        }
+
         final Schema original;
         final Schema update;
         if (!originalIn.getClass().equals(updateIn.getClass())) {
