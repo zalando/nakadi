@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller.advice;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.base.CaseFormat;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.eclipse.jetty.io.EofException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -66,6 +67,7 @@ public class NakadiProblemExceptionHandler implements ProblemHandling {
         return "ETI" + RandomStringUtils.randomAlphanumeric(24);
     }
 
+
     @Override
     @ExceptionHandler
     public ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception,
@@ -82,6 +84,11 @@ public class NakadiProblemExceptionHandler implements ProblemHandling {
             message = exception.getMessage();
         }
         return create(Problem.valueOf(BAD_REQUEST, message), request);
+    }
+
+    @ExceptionHandler(EofException.class)
+    public void handleEofException() {
+        LOG.info("Client closed connection");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
