@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -55,6 +56,7 @@ import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.TOO_MANY_REQUESTS;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
@@ -70,6 +72,7 @@ public class SubscriptionStreamController {
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final Random random;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -88,6 +91,7 @@ public class SubscriptionStreamController {
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.random = new Random();
     }
 
     class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -212,6 +216,12 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
+                if ("stups_zalos".equals(client.getClientId()) && random.nextInt(20) > 0) {
+                    writeProblemResponse(response, outputStream,
+                            Problem.valueOf(TOO_MANY_REQUESTS, "Application stups_zalos is throttled"));
+                    return;
+                }
+
                 if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
