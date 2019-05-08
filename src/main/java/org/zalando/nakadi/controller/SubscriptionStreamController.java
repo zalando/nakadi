@@ -216,7 +216,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if ("stups_zalos".equals(client.getClientId()) && random.nextInt(20) > 0) {
+                if ("stups_zalos".equals(client.getClientId()) && random.nextInt(10) >= 5) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(TOO_MANY_REQUESTS, "Application stups_zalos is throttled"));
                     return;
