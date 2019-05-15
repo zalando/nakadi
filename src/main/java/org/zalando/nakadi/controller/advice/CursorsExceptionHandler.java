@@ -19,7 +19,6 @@ import org.zalando.problem.spring.web.advice.AdviceTrait;
 import javax.annotation.Priority;
 
 import static org.zalando.problem.Status.CONFLICT;
-import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
@@ -30,7 +29,7 @@ public class CursorsExceptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException exception,
                                                                 final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
-        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
