@@ -6,10 +6,10 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
@@ -53,6 +53,7 @@ public class StartingState extends State {
      * 4. Switches to streaming state.
      */
     private void initializeStream() {
+        final long start = System.currentTimeMillis();
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         if (!subscriptionJustInitialized) {
@@ -106,6 +107,8 @@ public class StartingState extends State {
             getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
         }
+        final long elapsed = System.currentTimeMillis() - start;
+        getLog().info("Stream initialization took {} ms", elapsed);
     }
 
     public static boolean initializeSubscriptionLocked(
