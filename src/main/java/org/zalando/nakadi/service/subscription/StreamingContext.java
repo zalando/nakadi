@@ -8,8 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -268,6 +268,7 @@ public class StreamingContext implements SubscriptionStreamer {
             final List<String> newSessions = sessionListSubscription.getData();
             final String sessionsHash = ZkSubscriptionClient.Topology.calculateSessionsHash(newSessions);
             zkClient.runLocked(() -> {
+                final long start = System.currentTimeMillis();
                 final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
 
                 if (!topology.isSameHash(sessionsHash)) {
@@ -284,6 +285,8 @@ public class StreamingContext implements SubscriptionStreamer {
                 } else {
                     log.info("Skipping rebalance, because hash is the same: {}", sessionsHash);
                 }
+                final long elapsed = System.currentTimeMillis() - start;
+                log.info("Stream rebalance took {} ms", elapsed);
             });
         }
     }
