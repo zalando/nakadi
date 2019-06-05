@@ -23,16 +23,24 @@ public class ZooKeeperHolder {
     private final String zookeeperKafkaNamespace;
     private final String exhibitorAddresses;
     private final Integer exhibitorPort;
+    private final Integer sessionTimeoutMs;
+    private final Integer connectionTimeoutMs;
+
     private CuratorFramework zooKeeper;
 
     public ZooKeeperHolder(final String zookeeperBrokers,
                            final String zookeeperKafkaNamespace,
                            final String exhibitorAddresses,
-                           final Integer exhibitorPort) throws Exception {
+                           final Integer exhibitorPort,
+                           final Integer sessionTimeoutMs,
+                           final Integer connectionTimeoutMs) throws Exception {
         this.zookeeperBrokers = zookeeperBrokers;
         this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
         this.exhibitorAddresses = exhibitorAddresses;
         this.exhibitorPort = exhibitorPort;
+        this.sessionTimeoutMs = sessionTimeoutMs;
+        this.connectionTimeoutMs = connectionTimeoutMs;
+
         initExhibitor();
     }
 
@@ -53,6 +61,8 @@ public class ZooKeeperHolder {
         zooKeeper = CuratorFrameworkFactory.builder()
                 .ensembleProvider(ensembleProvider)
                 .retryPolicy(retryPolicy)
+                .sessionTimeoutMs(sessionTimeoutMs)
+                .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
         zooKeeper.start();
     }
@@ -64,7 +74,7 @@ public class ZooKeeperHolder {
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
 
         ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
-                                         final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy) {
+                                  final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy) {
             super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
         }
 

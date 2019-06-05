@@ -31,11 +31,12 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final MetricRegistry metricRegistry;
 
     @Autowired
-    public KafkaRepositoryCreator(final NakadiSettings nakadiSettings,
-                                  final KafkaSettings kafkaSettings,
-                                  final ZookeeperSettings zookeeperSettings,
-                                  final KafkaTopicConfigFactory kafkaTopicConfigFactory,
-                                  final MetricRegistry metricRegistry) {
+    public KafkaRepositoryCreator(
+            final NakadiSettings nakadiSettings,
+            final KafkaSettings kafkaSettings,
+            final ZookeeperSettings zookeeperSettings,
+            final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+            final MetricRegistry metricRegistry) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
@@ -51,7 +52,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     kafkaConfiguration.getZkAddress(),
                     kafkaConfiguration.getZkPath(),
                     kafkaConfiguration.getExhibitorAddress(),
-                    kafkaConfiguration.getExhibitorPort());
+                    kafkaConfiguration.getExhibitorPort(),
+                    zookeeperSettings.getZkSessionTimeoutMs(),
+                    zookeeperSettings.getZkConnectionTimeoutMs());
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
@@ -79,5 +82,4 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     public Storage.Type getSupportedStorageType() {
         return Storage.Type.KAFKA;
     }
-
 }
