@@ -16,8 +16,8 @@ public class ZookeeperConfig {
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),
                 environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
                 Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")),
-                Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.session-timeout-ms", "10000")),
-                Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.connection-timeout-ms", "3000"))
+                Integer.parseInt(environment.getProperty("nakadi.zookeeper.sessionTimeoutMs")),
+                Integer.parseInt(environment.getProperty("nakadi.zookeeper.connectionTimeoutMs"))
         );
     }
 }

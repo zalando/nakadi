@@ -2,7 +2,6 @@ package org.zalando.nakadi.repository;
 
 import com.codahale.metrics.MetricRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -30,8 +29,6 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final MetricRegistry metricRegistry;
-    private final Integer sessionTimeoutMs;
-    private final Integer connectionTimeoutMs;
 
     @Autowired
     public KafkaRepositoryCreator(
@@ -39,16 +36,12 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final KafkaSettings kafkaSettings,
             final ZookeeperSettings zookeeperSettings,
             final KafkaTopicConfigFactory kafkaTopicConfigFactory,
-            final MetricRegistry metricRegistry,
-            @Value("${nakadi.zookeeper.exhibitor.session-timeout-ms:10000}") final Integer sessionTimeoutMs,
-            @Value("${nakadi.zookeeper.exhibitor.connection-timeout-ms:3000}") final Integer connectionTimeoutMs) {
+            final MetricRegistry metricRegistry) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.metricRegistry = metricRegistry;
-        this.sessionTimeoutMs = sessionTimeoutMs;
-        this.connectionTimeoutMs = connectionTimeoutMs;
     }
 
     @Override
@@ -60,8 +53,8 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     kafkaConfiguration.getZkPath(),
                     kafkaConfiguration.getExhibitorAddress(),
                     kafkaConfiguration.getExhibitorPort(),
-                    sessionTimeoutMs,
-                    connectionTimeoutMs);
+                    zookeeperSettings.getZkSessionTimeoutMs(),
+                    zookeeperSettings.getZkConnectionTimeoutMs());
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
