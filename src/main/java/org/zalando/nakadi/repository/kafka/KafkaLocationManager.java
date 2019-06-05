@@ -59,8 +59,10 @@ public class KafkaLocationManager {
             final GetChildrenBuilder childrenBuilder = curator.getChildren();
             if (createWatcher) {
                 LOG.info("Creating watcher on brokers change");
-                childrenBuilder.usingWatcher((Watcher) event -> this.scheduledExecutor.schedule(
-                        () -> updateBootstrapServersSafe(true), 0, TimeUnit.MILLISECONDS));
+                childrenBuilder.usingWatcher((Watcher) event -> {
+                    this.scheduledExecutor.schedule(() -> updateBootstrapServersSafe(true), 0, TimeUnit.MILLISECONDS);
+                    LOG.info("Watcher event on brokers change received: {}", event.toString());
+                });
             }
             for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
