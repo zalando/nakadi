@@ -9,7 +9,6 @@ import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
-import org.apache.zookeeper.data.Stat;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -51,9 +50,9 @@ import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
@@ -197,7 +196,7 @@ public class SubscriptionAT extends BaseAT {
     @Test
     public void testSubscriptionWithManyEventTypesIsNotCreated() {
         final List<String> eventTypes = IntStream.range(0, 31).mapToObj(i -> createEventType())
-                .map(et -> et.getName())
+                .map(EventTypeBase::getName)
                 .collect(Collectors.toList());
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
                 "[" + eventTypes.stream().map(et -> "\"" + et + "\"").collect(Collectors.joining(",")) + "]}";
@@ -227,7 +226,7 @@ public class SubscriptionAT extends BaseAT {
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
         createSubscription(RandomSubscriptionBuilder.builder().withEventType(etName).buildSubscriptionBase());
 
-        final PaginationWrapper expectedList = new PaginationWrapper(ImmutableList.of(sub2, sub1),
+        final PaginationWrapper<Subscription> expectedList = new PaginationWrapper<>(ImmutableList.of(sub2, sub1),
                 new PaginationLinks());
 
         given()
@@ -384,17 +383,37 @@ public class SubscriptionAT extends BaseAT {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
 
+        // try reading from subscription so that the lock is created in ZK
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        // check that subscription node and lock node were created in ZK
+        assertThat(
+                CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId())),
+                not(nullValue()));
+        assertThat(
+                CURATOR.checkExists().forPath(format("/nakadi/locks/subscription_{0}", subscription.getId())),
+                not(nullValue()));
+
+        // delete subscription
         when().delete("/subscriptions/{sid}", subscription.getId())
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
+        // check that we get 404
         when().get("/subscriptions/{sid}", subscription.getId())
                 .then()
                 .statusCode(HttpStatus.SC_NOT_FOUND);
 
-        final Stat stat = CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId()));
-        final boolean subscriptionExistsInZk = stat != null;
-        assertThat(subscriptionExistsInZk, is(false));
+        // check that ZK nodes were removed
+        assertThat(
+                CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId())),
+                nullValue());
+        assertThat(
+                CURATOR.checkExists().forPath(format("/nakadi/locks/subscription_{0}", subscription.getId())),
+                nullValue());
     }
 
     @Test
@@ -439,8 +458,9 @@ public class SubscriptionAT extends BaseAT {
                 .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
                 .thenReturn();
         final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
-                new TypeReference<ItemsWrapper<Subscription>>(){});
-        for (final Subscription subscription: subsItems.getItems()) {
+                new TypeReference<ItemsWrapper<Subscription>>() {
+                });
+        for (final Subscription subscription : subsItems.getItems()) {
             if (subscription.getId().equals(s.getId())) {
                 Assert.assertNotNull(subscription.getStatus());
                 Assert.assertEquals("unassigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
@@ -448,11 +468,11 @@ public class SubscriptionAT extends BaseAT {
                 return;
             }
         }
-        Assert.assertTrue(false);
+        Assert.fail();
     }
 
     @Test
-    public void whenLightStatsOnActiveSubscriptionThenCorrectRespones() throws IOException {
+    public void whenLightStatsOnActiveSubscriptionThenCorrectResponse() throws IOException {
         final String et = createEventType().getName();
         final Subscription s = createSubscriptionForEventTypeFromBegin(et);
         final String owningApplication = s.getOwningApplication();
@@ -468,8 +488,9 @@ public class SubscriptionAT extends BaseAT {
                 .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
                 .thenReturn();
         final ItemsWrapper<Subscription> subsItems = MAPPER.readValue(response.print(),
-                new TypeReference<ItemsWrapper<Subscription>>(){});
-        for (final Subscription subscription: subsItems.getItems()) {
+                new TypeReference<ItemsWrapper<Subscription>>() {
+                });
+        for (final Subscription subscription : subsItems.getItems()) {
             if (subscription.getId().equals(s.getId())) {
                 Assert.assertNotNull(subscription.getStatus());
                 Assert.assertEquals("assigned", subscription.getStatus().get(0).getPartitions().get(0).getState());
@@ -480,7 +501,7 @@ public class SubscriptionAT extends BaseAT {
                 return;
             }
         }
-        Assert.assertTrue(false);
+        Assert.fail();
     }
 
     @Test

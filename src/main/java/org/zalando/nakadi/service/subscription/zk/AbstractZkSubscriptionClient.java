@@ -80,6 +80,10 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return "/nakadi/subscriptions/" + subscriptionId + value;
     }
 
+    protected String getSubscriptionLockPath() {
+        return "/nakadi/locks/subscription_" + subscriptionId;
+    }
+
     protected Logger getLog() {
         return log;
     }
@@ -89,7 +93,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         try {
             Exception releaseException = null;
             if (null == lock) {
-                lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
+                lock = new InterProcessSemaphoreMutex(curatorFramework, getSubscriptionLockPath());
             }
 
             final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
@@ -122,8 +126,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void deleteSubscription() {
         try {
-            final String subscriptionPath = getSubscriptionPath("");
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(subscriptionPath);
+            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionPath(""));
+            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionLockPath());
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
