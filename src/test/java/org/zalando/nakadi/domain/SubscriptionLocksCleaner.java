@@ -16,6 +16,10 @@ public class SubscriptionLocksCleaner {
         final String contextPath = "/staging";
 
         final List<String> locks = zk.getChildren(contextPath + "/nakadi/locks", false);
+
+        System.out.println(locks.size() + "Waiting 70 seconds before fetching list of subscriptions...");
+        Thread.sleep(70000); // we need to wait here to avoid deletion of locks for just started subscriptions
+
         final Set<String> subscriptions = new HashSet<>(zk.getChildren(contextPath + "/nakadi/subscriptions", false));
         System.out.println(locks.size() + " locks, " + subscriptions.size() + " subscriptions");
 
