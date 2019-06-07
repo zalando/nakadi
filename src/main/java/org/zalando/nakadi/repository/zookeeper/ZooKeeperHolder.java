@@ -9,7 +9,13 @@ import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -69,6 +75,30 @@ public class ZooKeeperHolder {
 
     public CuratorFramework get() {
         return zooKeeper;
+    }
+
+    /**
+     * Creates new fresh zookeeper instance
+     *
+     * @throws RuntimeException - in case of network failure
+     */
+    public CoordinationService newCoordinationService() throws RuntimeException {
+        final String connStr =
+                (exhibitorAddresses == null ? zookeeperBrokers : exhibitorAddresses) + zookeeperKafkaNamespace;
+        try {
+            return new ZookeeperProxy(new ZooKeeper(connStr, sessionTimeoutMs, new NakadiZookeeperWatcher()));
+        } catch (final IOException e) {
+            throw new RuntimeException("Failed to get zookeeper client", e);
+        }
+    }
+
+    private static class NakadiZookeeperWatcher implements Watcher {
+        private static final Logger LOG = LoggerFactory.getLogger(NakadiZookeeperWatcher.class);
+
+        @Override
+        public void process(final WatchedEvent event) {
+            LOG.info("{}", event);
+        }
     }
 
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
