@@ -99,8 +99,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void deleteSubscription() {
         try {
-            final String subscriptionPath = getSubscriptionPath("");
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(subscriptionPath);
+            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionPath(""));
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
