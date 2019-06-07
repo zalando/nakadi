@@ -20,7 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
-import org.zalando.nakadi.repository.zookeeper.CoordinationService;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -88,22 +87,13 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final <T> T runLocked(final Callable<T> function) {
-        try (CoordinationService coordinationService = zooKeeperHolder.newCoordinationService()) {
-            try {
-                coordinationService.lockAcquire(getLockPath(), TIMEOUT_AQUIRE_LOCK_MS);
-                return function.call();
-            } finally {
-                coordinationService.lockRelease(getLockPath());
-            }
+        try (Closeable closeable = zooKeeperHolder.newZookeeperLock(subscriptionId, TIMEOUT_AQUIRE_LOCK_MS)) {
+            return function.call();
         } catch (final NakadiRuntimeException | NakadiBaseException e) {
             throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
-    }
-
-    private String getLockPath() {
-        return "/nakadi/locks/" + subscriptionId;
     }
 
     @Override

@@ -15,7 +15,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.Closeable;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -31,6 +31,7 @@ public class ZooKeeperHolder {
     private final Integer exhibitorPort;
     private final Integer sessionTimeoutMs;
     private final Integer connectionTimeoutMs;
+    private final String connectionString;
 
     private CuratorFramework zooKeeper;
 
@@ -46,6 +47,8 @@ public class ZooKeeperHolder {
         this.exhibitorPort = exhibitorPort;
         this.sessionTimeoutMs = sessionTimeoutMs;
         this.connectionTimeoutMs = connectionTimeoutMs;
+        this.connectionString =
+                (exhibitorAddresses == null ? zookeeperBrokers : exhibitorAddresses) + zookeeperKafkaNamespace;
 
         initExhibitor();
     }
@@ -77,17 +80,13 @@ public class ZooKeeperHolder {
         return zooKeeper;
     }
 
-    /**
-     * Creates new fresh zookeeper instance
-     *
-     * @throws RuntimeException - in case of network failure
-     */
-    public CoordinationService newCoordinationService() throws RuntimeException {
-        final String connStr =
-                (exhibitorAddresses == null ? zookeeperBrokers : exhibitorAddresses) + zookeeperKafkaNamespace;
+
+    public Closeable newZookeeperLock(final String lockObject, final long timeoutMs) throws RuntimeException {
         try {
-            return new ZookeeperProxy(new ZooKeeper(connStr, sessionTimeoutMs, new NakadiZookeeperWatcher()));
-        } catch (final IOException e) {
+            final ZookeeperLock zookeeperLock = new ZookeeperLock(new ZooKeeper(connectionString,
+                    sessionTimeoutMs, new NakadiZookeeperWatcher()));
+            return zookeeperLock.tryLock(lockObject, timeoutMs);
+        } catch (final Exception e) {
             throw new RuntimeException("Failed to get zookeeper client", e);
         }
     }
