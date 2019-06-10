@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -197,13 +196,11 @@ public class CursorsService {
         if (!cursors.isEmpty()) {
             final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
 
-            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
-                    TimeUnit.SECONDS.toMillis(1);
             final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
                     .map(cursorConverter::convertToNoToken)
                     .collect(Collectors.toList());
 
-            zkClient.resetCursors(newCursors, timeout);
+            zkClient.resetCursors(newCursors);
 
             auditLogPublisher.publish(
                     Optional.of(new ItemsWrapper<>(oldCursors)),

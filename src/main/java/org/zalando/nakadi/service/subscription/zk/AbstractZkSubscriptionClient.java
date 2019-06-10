@@ -11,6 +11,7 @@ import org.apache.zookeeper.data.Stat;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -56,16 +57,19 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     private final CuratorFramework curatorFramework;
     private final String resetCursorPath;
     private final Logger log;
+    private final NakadiSettings nakadiSettings;
     private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
             final CuratorFramework curatorFramework,
-            final String loggingPath) {
+            final String loggingPath,
+            final NakadiSettings nakadiSettings) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.resetCursorPath = getSubscriptionPath("/cursor_reset");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
+        this.nakadiSettings = nakadiSettings;
     }
 
     protected CuratorFramework getCurator() {
@@ -126,6 +130,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void deleteSubscription() {
         try {
+            if (!closeSubscriptionConnections()) {
+                getLog().warn("Could not close all subscription connections before deletion, id: {}", subscriptionId);
+            }
             getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionPath(""));
             getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionLockPath());
         } catch (final KeeperException.NoNodeException nne) {
@@ -314,16 +321,16 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 path);
     }
 
-    @Override
-    public final void resetCursors(final List<SubscriptionCursorWithoutToken> cursors, final long timeout)
-            throws OperationTimeoutException, ZookeeperException, OperationInterruptedException,
-            RequestInProgressException {
+    public boolean closeSubscriptionConnections() throws Exception {
         ZkSubscription<List<String>> sessionsListener = null;
-        boolean resetWasAlreadyInitiated = false;
+        boolean connectionCloseAlreadyInitiated = false;
         try {
-            // close subscription connections
-            getCurator().create().withMode(CreateMode.EPHEMERAL).forPath(resetCursorPath);
+            // create node in ZK that will require open connections to be closed
+            getCurator().create()
+                    .withMode(CreateMode.EPHEMERAL)
+                    .forPath(resetCursorPath);
 
+            // subscribe to changes of sessions list
             final AtomicBoolean sessionsChanged = new AtomicBoolean(true);
             sessionsListener = subscribeForSessionListChanges(() -> {
                 sessionsChanged.set(true);
@@ -332,44 +339,58 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 }
             });
 
+            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
+                    TimeUnit.SECONDS.toMillis(1);
             final long finishAt = System.currentTimeMillis() + timeout;
             while (finishAt > System.currentTimeMillis()) {
                 if (sessionsChanged.compareAndSet(true, false)) {
+                    // if amount of subscription sessions is 0 - all connections were closed
                     if (sessionsListener.getData().isEmpty()) {
-                        forceCommitOffsets(cursors);
-                        return;
+                        return true;
                     }
                 }
                 synchronized (sessionsChanged) {
                     sessionsChanged.wait(100);
                 }
             }
+            return false;
+        } catch (final KeeperException.NodeExistsException e) {
+            connectionCloseAlreadyInitiated = true;
+            throw new RequestInProgressException("Connections closing is already in progress for this subscription", e);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new OperationInterruptedException("Resetting cursors is interrupted", e);
-        } catch (final KeeperException.NodeExistsException e) {
-            resetWasAlreadyInitiated = true;
-            throw new RequestInProgressException("Cursors reset is already in progress for provided subscription", e);
-        } catch (final KeeperException.NoNodeException e) {
-            throw new UnableProcessException("Impossible to reset cursors for subscription", e);
-        } catch (final Exception e) {
-            getLog().error(e.getMessage(), e);
-            throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
         } finally {
             if (sessionsListener != null) {
                 sessionsListener.close();
             }
-
             try {
-                if (!resetWasAlreadyInitiated) {
+                if (!connectionCloseAlreadyInitiated) {
                     getCurator().delete().guaranteed().forPath(resetCursorPath);
                 }
             } catch (final Exception e) {
                 getLog().error(e.getMessage(), e);
             }
         }
+    }
 
-        throw new OperationTimeoutException("Timeout resetting cursors");
+    @Override
+    public final void resetCursors(final List<SubscriptionCursorWithoutToken> cursors) throws
+            OperationTimeoutException, ZookeeperException, OperationInterruptedException, RequestInProgressException {
+        try {
+            if (closeSubscriptionConnections()) {
+                forceCommitOffsets(cursors);
+            } else {
+                throw new OperationTimeoutException("Timeout resetting cursors");
+            }
+        } catch (final KeeperException.NoNodeException e) {
+            throw new UnableProcessException("Impossible to reset cursors for subscription", e);
+        } catch (final RequestInProgressException | OperationInterruptedException e) {
+            throw e;
+        } catch (final Exception e) {
+            getLog().error(e.getMessage(), e);
+            throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
+        }
     }
 
     @Override

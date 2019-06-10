@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -67,8 +68,9 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             final String subscriptionId,
             final CuratorFramework curatorFramework,
             final String loggingPath,
-            final ObjectMapper objectMapper) {
-        super(subscriptionId, curatorFramework, loggingPath);
+            final ObjectMapper objectMapper,
+            final NakadiSettings nakadiSettings) {
+        super(subscriptionId, curatorFramework, loggingPath, nakadiSettings);
         this.objectMapper = objectMapper;
     }
 

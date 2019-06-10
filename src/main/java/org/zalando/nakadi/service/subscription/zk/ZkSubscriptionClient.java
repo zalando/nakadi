@@ -3,8 +3,8 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -145,6 +145,7 @@ public interface ZkSubscriptionClient {
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK without a lock
+     *
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
@@ -171,11 +172,10 @@ public interface ZkSubscriptionClient {
      * Resets subscription offsets for provided cursors.
      *
      * @param cursors cursors to reset to
-     * @param timeout wait until give up resetting
      * @throws OperationTimeoutException
      * @throws ZookeeperException
      */
-    void resetCursors(List<SubscriptionCursorWithoutToken> cursors, long timeout)
+    void resetCursors(List<SubscriptionCursorWithoutToken> cursors)
             throws OperationTimeoutException, ZookeeperException;
 
     class Topology {

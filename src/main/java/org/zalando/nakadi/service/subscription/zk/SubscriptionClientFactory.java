@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -13,13 +14,16 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 public class SubscriptionClientFactory {
     private final ZooKeeperHolder zkHolder;
     private final ObjectMapper objectMapper;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public SubscriptionClientFactory(
             final ZooKeeperHolder zkHolder,
-            final ObjectMapper objectMapper) {
+            final ObjectMapper objectMapper,
+            final NakadiSettings nakadiSettings) {
         this.zkHolder = zkHolder;
         this.objectMapper = objectMapper;
+        this.nakadiSettings = nakadiSettings;
     }
 
     public ZkSubscriptionClient createClient(final Subscription subscription, final String loggingPath)
@@ -29,6 +33,7 @@ public class SubscriptionClientFactory {
                 subscription.getId(),
                 zkHolder.get(),
                 loggingPath,
-                objectMapper);
+                objectMapper,
+                nakadiSettings);
     }
 }
