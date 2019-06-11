@@ -31,7 +31,6 @@ public class ZooKeeperHolder {
     private final Integer exhibitorPort;
     private final Integer sessionTimeoutMs;
     private final Integer connectionTimeoutMs;
-    private final String connectionString;
 
     private CuratorFramework zooKeeper;
 
@@ -47,8 +46,6 @@ public class ZooKeeperHolder {
         this.exhibitorPort = exhibitorPort;
         this.sessionTimeoutMs = sessionTimeoutMs;
         this.connectionTimeoutMs = connectionTimeoutMs;
-        this.connectionString =
-                (exhibitorAddresses == null ? zookeeperBrokers : exhibitorAddresses) + zookeeperKafkaNamespace;
 
         initExhibitor();
     }
@@ -83,8 +80,10 @@ public class ZooKeeperHolder {
 
     public Closeable newZookeeperLock(final String lockObject, final long timeoutMs) throws RuntimeException {
         try {
-            final ZookeeperLock zookeeperLock = new ZookeeperLock(new ZooKeeper(connectionString,
-                    sessionTimeoutMs, new NakadiZookeeperWatcher()));
+            final ZookeeperLock zookeeperLock = new ZookeeperLock(new ZooKeeper(
+                    zooKeeper.getZookeeperClient().getCurrentConnectionString(),
+                    sessionTimeoutMs,
+                    new NakadiZookeeperWatcher()));
             return zookeeperLock.tryLock(lockObject, timeoutMs);
         } catch (final Exception e) {
             throw new RuntimeException("Failed to get zookeeper client", e);
@@ -96,7 +95,7 @@ public class ZooKeeperHolder {
 
         @Override
         public void process(final WatchedEvent event) {
-            LOG.info("{}", event);
+            LOG.debug("{}", event);
         }
     }
 
