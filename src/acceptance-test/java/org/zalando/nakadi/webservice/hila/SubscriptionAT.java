@@ -393,9 +393,6 @@ public class SubscriptionAT extends BaseAT {
         assertThat(
                 CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId())),
                 not(nullValue()));
-        assertThat(
-                CURATOR.checkExists().forPath(format("/nakadi/locks/subscription_{0}", subscription.getId())),
-                not(nullValue()));
 
         // delete subscription
         when().delete("/subscriptions/{sid}", subscription.getId())
@@ -410,9 +407,6 @@ public class SubscriptionAT extends BaseAT {
         // check that ZK nodes were removed
         assertThat(
                 CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId())),
-                nullValue());
-        assertThat(
-                CURATOR.checkExists().forPath(format("/nakadi/locks/subscription_{0}", subscription.getId())),
                 nullValue());
     }
 

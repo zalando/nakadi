@@ -9,7 +9,13 @@ import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -25,6 +31,7 @@ public class ZooKeeperHolder {
     private final Integer exhibitorPort;
     private final Integer sessionTimeoutMs;
     private final Integer connectionTimeoutMs;
+    private final String connectionString;
 
     private CuratorFramework zooKeeper;
 
@@ -40,6 +47,8 @@ public class ZooKeeperHolder {
         this.exhibitorPort = exhibitorPort;
         this.sessionTimeoutMs = sessionTimeoutMs;
         this.connectionTimeoutMs = connectionTimeoutMs;
+        this.connectionString =
+                (exhibitorAddresses == null ? zookeeperBrokers : exhibitorAddresses) + zookeeperKafkaNamespace;
 
         initExhibitor();
     }
@@ -69,6 +78,26 @@ public class ZooKeeperHolder {
 
     public CuratorFramework get() {
         return zooKeeper;
+    }
+
+
+    public Closeable newZookeeperLock(final String lockObject, final long timeoutMs) throws RuntimeException {
+        try {
+            final ZookeeperLock zookeeperLock = new ZookeeperLock(new ZooKeeper(connectionString,
+                    sessionTimeoutMs, new NakadiZookeeperWatcher()));
+            return zookeeperLock.tryLock(lockObject, timeoutMs);
+        } catch (final Exception e) {
+            throw new RuntimeException("Failed to get zookeeper client", e);
+        }
+    }
+
+    private static class NakadiZookeeperWatcher implements Watcher {
+        private static final Logger LOG = LoggerFactory.getLogger(NakadiZookeeperWatcher.class);
+
+        @Override
+        public void process(final WatchedEvent event) {
+            LOG.info("{}", event);
+        }
     }
 
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
