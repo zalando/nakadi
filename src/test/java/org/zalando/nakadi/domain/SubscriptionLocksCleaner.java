@@ -7,6 +7,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * If the amount of children in /nakadi/locks is so high that it can't be fetched by zookeeper client - then
+ * this class should be run with VM parameter -Djute.maxbuffer=BUFFER_SIZE_BYTES where BUFFER_SIZE_BYTES should
+ * be the value that will fit the list of nodes, for example 41943040 (40 MB)
+ */
 public class SubscriptionLocksCleaner {
 
     public static void main(String args[]) throws Exception {
