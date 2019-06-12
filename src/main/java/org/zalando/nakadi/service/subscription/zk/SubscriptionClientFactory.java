@@ -27,7 +27,7 @@ public class SubscriptionClientFactory {
         Preconditions.checkNotNull(subscription.getId());
         return new NewZkSubscriptionClient(
                 subscription.getId(),
-                zkHolder,
+                zkHolder.get(),
                 loggingPath,
                 objectMapper);
     }
