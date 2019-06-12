@@ -135,7 +135,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public void create(final EventTypeBase eventType)
+    public void create(final EventTypeBase eventType, final boolean checkAuth)
             throws TopicCreationException,
             InternalNakadiException,
             NoSuchPartitionStrategyException,
@@ -158,7 +158,9 @@ public class EventTypeService {
         validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
-        authorizationValidator.validateAuthorization(eventType.asBaseResource());
+        if (checkAuth) {
+            authorizationValidator.validateAuthorization(eventType.asBaseResource());
+        }
 
         eventTypeRepository.saveEventType(eventType);
 
