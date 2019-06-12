@@ -17,7 +17,7 @@ public class ZookeeperLock {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZookeeperLock.class);
     private static final String NAKADI_LOCKS = "/nakadi/locks";
-    private static final int RETRY_DELAY_MS = 250;
+    private static final int RETRY_DELAY_MS = 30;
     private static final int RETRY_MAX_COUNT = 10;
     private final ZooKeeper zookeeper;
 
@@ -34,10 +34,8 @@ public class ZookeeperLock {
 
     public Closeable tryLock(final String lockNode, final long timeoutMs) throws RuntimeException {
         final String lockPath = NAKADI_LOCKS + "/" + lockNode;
-        int requestCounter = 0;
         final long finishAt = System.currentTimeMillis() + timeoutMs;
         while (finishAt > System.currentTimeMillis()) {
-            requestCounter++;
             try {
                 zookeeper.create(lockPath, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
                 return () -> lockRelease(lockPath);
@@ -53,7 +51,7 @@ public class ZookeeperLock {
                 LOG.warn("Failed to acquire lock for {}, retrying", lockPath, e);
             }
 
-            retryDelay(requestCounter);
+            retryDelay();
         }
 
         close();
@@ -80,7 +78,7 @@ public class ZookeeperLock {
                 LOG.warn("Failed to release lock for {}, retrying", lockPath, e);
             }
 
-            retryDelay(requestCounter);
+            retryDelay();
         }
         LOG.error("Failed to release lock for {}", lockPath);
         close();
@@ -96,9 +94,9 @@ public class ZookeeperLock {
         }
     }
 
-    private void retryDelay(final int requestCounter) {
+    private void retryDelay() {
         try {
-            Thread.sleep(requestCounter * RETRY_DELAY_MS);
+            Thread.sleep(RETRY_DELAY_MS);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while sleeping in retry", ie);
