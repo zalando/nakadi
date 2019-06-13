@@ -1,9 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,13 +7,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Component
@@ -25,8 +17,7 @@ import java.util.Map;
 public class NakadiKpiInitialization {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiInitialization.class);
 
-    private final ObjectMapper objectMapper;
-    private final EventTypeService eventTypeService;
+    private final SystemEventTypeInitializer systemEventTypeInitializer;
     private final FeatureToggleService featureToggleService;
 
     private String nakadiAccessLog;
@@ -37,10 +28,10 @@ public class NakadiKpiInitialization {
     private String nakadiEventTypeLog;
 
     @Autowired
-    public NakadiKpiInitialization(final ObjectMapper objectMapper, final EventTypeService eventTypeService,
-                                   final FeatureToggleService featureToggleService) {
-        this.objectMapper = objectMapper;
-        this.eventTypeService = eventTypeService;
+    public NakadiKpiInitialization(
+            final SystemEventTypeInitializer systemEventTypeInitializer,
+            final FeatureToggleService featureToggleService) {
+        this.systemEventTypeInitializer = systemEventTypeInitializer;
         this.featureToggleService = featureToggleService;
     }
 
@@ -50,12 +41,6 @@ public class NakadiKpiInitialization {
             LOG.debug("KPI collection is disabled, skip creation of kpi event types");
             return;
         }
-
-        LOG.debug("Initializing KPI event types");
-
-        String kpiEventTypesString = Resources
-                .toString(Resources.getResource("kpi_event_types.json"), Charsets.UTF_8);
-
         final Map<String, String> replacements = new HashMap<>();
         replacements.put("nakadi.event.type.log", nakadiEventTypeLog);
         replacements.put("nakadi.subscription.log", nakadiSubscriptionLog);
@@ -64,24 +49,7 @@ public class NakadiKpiInitialization {
         replacements.put("nakadi.access.log", nakadiAccessLog);
         replacements.put("owning_application_placeholder", owningApplication);
 
-        for (final Map.Entry<String, String> entry : replacements.entrySet()) {
-            kpiEventTypesString = kpiEventTypesString.replaceAll(entry.getKey(), entry.getValue());
-        }
-
-        final TypeReference<List<EventTypeBase>> typeReference = new TypeReference<List<EventTypeBase>>() {
-        };
-        final List<EventTypeBase> eventTypes = objectMapper.readValue(kpiEventTypesString, typeReference);
-
-
-        eventTypes.forEach(et -> {
-            try {
-                eventTypeService.create(et);
-            } catch (final DuplicatedEventTypeNameException e) {
-                LOG.debug("KPI event type already exists " + et.getName());
-            } catch (final NakadiBaseException e) {
-                LOG.debug("Problem creating KPI event type " + et.getName(), e);
-            }
-        });
+        systemEventTypeInitializer.createEventTypesFromResource("kpi_event_types.json", replacements);
     }
 
     public String getNakadiAccessLog() {

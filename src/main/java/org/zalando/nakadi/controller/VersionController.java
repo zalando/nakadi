@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -90,6 +91,8 @@ public class VersionController {
     private static ScmSource loadScmSource(final ObjectMapper objectMapper) {
         try (InputStream in = new FileInputStream(SCM_SOURCE_FILE)) {
             return objectMapper.readValue(in, ScmSource.class);
+        } catch (FileNotFoundException ex) {
+            LOG.warn("Failed to read scm-source.json file from " + SCM_SOURCE_FILE + ", file not found");
         } catch (IOException ex) {
             LOG.warn("Failed to read scm-source.json file from " + SCM_SOURCE_FILE, ex);
         }

@@ -88,7 +88,7 @@ public class EventTypeController {
             throw new ValidationException(errors);
         }
 
-        eventTypeService.create(eventType);
+        eventTypeService.create(eventType, true);
 
         return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
     }

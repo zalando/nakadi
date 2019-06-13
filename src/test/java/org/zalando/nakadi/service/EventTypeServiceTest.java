@@ -135,23 +135,23 @@ public class EventTypeServiceTest {
     }
 
     @Test(expected = FeatureNotAvailableException.class)
-    public void testFeatureToggleDisableLogCompaction() throws Exception {
+    public void testFeatureToggleDisableLogCompaction() {
         final EventType eventType = buildDefaultEventType();
         eventType.setCleanupPolicy(CleanupPolicy.COMPACT);
 
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_LOG_COMPACTION))
                 .thenReturn(true);
 
-        eventTypeService.create(eventType);
+        eventTypeService.create(eventType, true);
     }
 
     @Test
-    public void shouldRemoveEventTypeWhenTimelineCreationFails() throws Exception {
+    public void shouldRemoveEventTypeWhenTimelineCreationFails() {
         final EventType eventType = buildDefaultEventType();
         when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
-            eventTypeService.create(eventType);
+            eventTypeService.create(eventType, true);
             fail("should throw TopicCreationException");
         } catch (final TopicCreationException e) {
             // expected
@@ -161,9 +161,9 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeCreatedThenKPIEventSubmitted() throws Exception {
+    public void whenEventTypeCreatedThenKPIEventSubmitted() {
         final EventType et = buildDefaultEventType();
-        eventTypeService.create(et);
+        eventTypeService.create(et, true);
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()
                         .put("event_type", et.getName())
