@@ -23,6 +23,7 @@ import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.GzipBodyRequestFilter;
 
 import javax.servlet.Filter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
@@ -68,7 +69,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Override
     protected void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
-        final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+        final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(StandardCharsets.UTF_8);
         stringConverter.setWriteAcceptCharset(false);
 
         converters.add(new ByteArrayHttpMessageConverter());
