@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.EventTypeController;
+import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
@@ -32,6 +33,7 @@ public class EventTypeExceptionHandler implements AdviceTrait {
     @ExceptionHandler({InvalidEventTypeException.class,
             UnableProcessException.class,
             EventTypeOptionsValidationException.class,
+            AuthorizationSectionException.class,
             NoSuchPartitionStrategyException.class})
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {
