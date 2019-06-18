@@ -1,17 +1,18 @@
 package org.zalando.nakadi.repository.zookeeper;
 
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.ensemble.EnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
+import org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.ExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.Exhibitors;
 import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.zalando.nakadi.domain.storage.AddressPort;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.stream.Collectors;
 
 public class ZooKeeperHolder {
 
@@ -19,68 +20,56 @@ public class ZooKeeperHolder {
     private static final int EXHIBITOR_RETRY_MAX = 3;
     private static final int EXHIBITOR_POLLING_MS = 300000;
 
-    private final String zookeeperBrokers;
-    private final String zookeeperKafkaNamespace;
-    private final String exhibitorAddresses;
-    private final Integer exhibitorPort;
-    private final Integer sessionTimeoutMs;
-    private final Integer connectionTimeoutMs;
-
     private CuratorFramework zooKeeper;
 
-    public ZooKeeperHolder(final String zookeeperBrokers,
-                           final String zookeeperKafkaNamespace,
-                           final String exhibitorAddresses,
-                           final Integer exhibitorPort,
+    public ZooKeeperHolder(final ZookeeperConnection zookeeperConnection,
                            final Integer sessionTimeoutMs,
                            final Integer connectionTimeoutMs) throws Exception {
-        this.zookeeperBrokers = zookeeperBrokers;
-        this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
-        this.exhibitorAddresses = exhibitorAddresses;
-        this.exhibitorPort = exhibitorPort;
-        this.sessionTimeoutMs = sessionTimeoutMs;
-        this.connectionTimeoutMs = connectionTimeoutMs;
+        final EnsembleProvider ensembleProvider = createEnsembleProvider(zookeeperConnection);
 
-        initExhibitor();
-    }
-
-    private void initExhibitor() throws Exception {
-        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX);
-        final EnsembleProvider ensembleProvider;
-        if (exhibitorAddresses != null) {
-            final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
-            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
-                    () -> zookeeperBrokers + zookeeperKafkaNamespace);
-            final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
-            ensembleProvider = new ExhibitorEnsembleProvider(exhibitors,
-                    exhibitorRestClient, "/exhibitor/v1/cluster/list", EXHIBITOR_POLLING_MS, retryPolicy);
-            ((ExhibitorEnsembleProvider) ensembleProvider).pollForInitialEnsemble();
-        } else {
-            ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
-        }
         zooKeeper = CuratorFrameworkFactory.builder()
                 .ensembleProvider(ensembleProvider)
-                .retryPolicy(retryPolicy)
+                .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
                 .sessionTimeoutMs(sessionTimeoutMs)
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
         zooKeeper.start();
     }
 
-    public CuratorFramework get() {
-        return zooKeeper;
+    private EnsembleProvider createEnsembleProvider(final ZookeeperConnection conn) throws Exception {
+        switch (conn.getType()) {
+            case EXHIBITOR:
+                final Exhibitors exhibitors = new Exhibitors(
+                        conn.getAddresses().stream().map(AddressPort::getAddress).collect(Collectors.toList()),
+                        conn.getAddresses().get(0).getPort(),
+                        () -> {
+                            throw new RuntimeException("There is no backup connection string (or it is wrong)");
+                        });
+                final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
+                final ExhibitorEnsembleProvider result = new ExhibitorEnsembleProvider(
+                        exhibitors,
+                        exhibitorRestClient,
+                        "/exhibitor/v1/cluster/list",
+                        EXHIBITOR_POLLING_MS,
+                        new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX)) {
+                    @Override
+                    public String getConnectionString() {
+                        return super.getConnectionString() + conn.getPathPrepared();
+                    }
+                };
+                result.pollForInitialEnsemble();
+                return result;
+            case ZOOKEEPER:
+                final String address = conn.getAddresses().stream()
+                        .map(AddressPort::asAddressPort)
+                        .collect(Collectors.joining(","));
+                return new FixedEnsembleProvider(address + conn.getPathPrepared());
+            default:
+                throw new RuntimeException("Connection type " + conn.getType() + " is not supported");
+        }
     }
 
-    private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
-
-        ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
-                                  final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy) {
-            super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
-        }
-
-        @Override
-        public String getConnectionString() {
-            return super.getConnectionString() + zookeeperKafkaNamespace;
-        }
+    public CuratorFramework get() {
+        return zooKeeper;
     }
 }

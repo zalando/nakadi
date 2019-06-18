@@ -8,7 +8,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.controller.advice.SettingsExceptionHandler;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
@@ -121,8 +123,8 @@ public class StoragesControllerTest {
         final Storage storage = new Storage();
         storage.setId(id);
         storage.setType(Storage.Type.KAFKA);
-        final Storage.KafkaConfiguration config =
-                new Storage.KafkaConfiguration("https://localhost", 8181, "https://localhost", "/path/to/kafka");
+        final KafkaConfiguration config = new KafkaConfiguration(
+                ZookeeperConnection.valueOf("exhibitor://localhost:8181/path/to/kafka"));
         storage.setConfiguration(config);
 
         return storage;
@@ -133,8 +135,7 @@ public class StoragesControllerTest {
         json.put("id", id);
         json.put("storage_type", "kafka");
         final JSONObject config = new JSONObject();
-        config.put("zk_address", "http://localhost");
-        config.put("zk_path", "/path/to/kafka");
+        config.put("zoookeeper_connection", "exhibitor://localhost:8181/path/to/kafka");
         json.put("kafka_configuration", config);
 
         return json;

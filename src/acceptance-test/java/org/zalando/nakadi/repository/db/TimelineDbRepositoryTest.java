@@ -5,8 +5,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -32,8 +33,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final StorageDbRepository sRepository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
         final EventTypeDbRepository eRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
 
-        storage = sRepository.createStorage(
-                StorageDbRepositoryTest.createStorage(randomUUID(), "localhost", 8181, "test", "path"));
+        storage = sRepository.createStorage(StorageDbRepositoryTest.createStorage(
+                randomUUID(), ZookeeperConnection.valueOf("zookeeper://localhost:8181/test")));
         testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
     }
 

@@ -1,6 +1,6 @@
 package org.zalando.nakadi.service;
 
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;

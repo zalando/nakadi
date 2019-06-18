@@ -8,7 +8,9 @@ import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
@@ -25,6 +27,8 @@ public abstract class BaseAT {
     public static final String URL = "http://localhost:" + PORT;
 
     protected static final String ZOOKEEPER_URL = "localhost:2181";
+    protected static final ZookeeperConnection ZOOKEEPER_CONNECTION =
+            ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
     protected static final String KAFKA_URL = "localhost:29092";
 
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
@@ -47,7 +51,7 @@ public abstract class BaseAT {
         final Storage storage = new Storage();
         storage.setId("default");
         storage.setType(Storage.Type.KAFKA);
-        storage.setConfiguration(new Storage.KafkaConfiguration(null, null, ZOOKEEPER_URL, ""));
+        storage.setConfiguration(new KafkaConfiguration(ZOOKEEPER_CONNECTION));
         try {
             STORAGE_DB_REPOSITORY.createStorage(storage);
         } catch (final DuplicatedStorageException ignore) {

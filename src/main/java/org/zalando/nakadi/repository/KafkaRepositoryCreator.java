@@ -5,7 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
@@ -47,12 +48,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     @Override
     public TopicRepository createTopicRepository(final Storage storage) throws TopicRepositoryException {
         try {
-            final Storage.KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
+            final KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
             final ZooKeeperHolder zooKeeperHolder = new ZooKeeperHolder(
-                    kafkaConfiguration.getZkAddress(),
-                    kafkaConfiguration.getZkPath(),
-                    kafkaConfiguration.getExhibitorAddress(),
-                    kafkaConfiguration.getExhibitorPort(),
+                    kafkaConfiguration.getZookeeperConnection(),
                     zookeeperSettings.getZkSessionTimeoutMs(),
                     zookeeperSettings.getZkConnectionTimeoutMs());
             final KafkaFactory kafkaFactory =

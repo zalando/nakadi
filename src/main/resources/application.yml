@@ -70,8 +70,7 @@ nakadi:
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
   zookeeper:
-    kafkaNamespace:
-    brokers: zookeeper:2181
+    connectionString: zookeeper://zookeeper:2181
     sessionTimeoutMs: 10000
     connectionTimeoutMs: 3000
   oauth2:
