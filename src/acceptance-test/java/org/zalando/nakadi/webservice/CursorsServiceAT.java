@@ -39,6 +39,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -95,6 +96,7 @@ public class CursorsServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
+        when(zkHolder.getSubscriptionCurator(anyInt())).thenReturn(CURATOR);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         final TimelineService timelineService = mock(TimelineService.class);
@@ -109,7 +111,8 @@ public class CursorsServiceAT extends BaseAT {
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
         final SubscriptionCache subscriptionCache = mock(SubscriptionCache.class);
         when(subscriptionCache.getSubscription(sid)).thenReturn(subscription);
-        final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(zkHolder, MAPPER);
+        final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(
+                zkHolder, MAPPER, mock(NakadiSettings.class));
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
         cursorsService = new CursorsService(subscriptionRepo, subscriptionCache, null, mock(NakadiSettings.class),

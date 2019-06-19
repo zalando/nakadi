@@ -9,9 +9,11 @@ import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.zalando.nakadi.config.NakadiSettings;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 public class ZooKeeperHolder {
 
@@ -25,21 +27,25 @@ public class ZooKeeperHolder {
     private final Integer exhibitorPort;
     private final Integer sessionTimeoutMs;
     private final Integer connectionTimeoutMs;
+    private final long maxCommitTimeoutMs;
 
     private CuratorFramework zooKeeper;
+    private CuratorFramework subscriptionCurator;
 
     public ZooKeeperHolder(final String zookeeperBrokers,
                            final String zookeeperKafkaNamespace,
                            final String exhibitorAddresses,
                            final Integer exhibitorPort,
                            final Integer sessionTimeoutMs,
-                           final Integer connectionTimeoutMs) throws Exception {
+                           final Integer connectionTimeoutMs,
+                           final NakadiSettings nakadiSettings) throws Exception {
         this.zookeeperBrokers = zookeeperBrokers;
         this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
         this.exhibitorAddresses = exhibitorAddresses;
         this.exhibitorPort = exhibitorPort;
         this.sessionTimeoutMs = sessionTimeoutMs;
         this.connectionTimeoutMs = connectionTimeoutMs;
+        this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
 
         initExhibitor();
     }
@@ -65,10 +71,36 @@ public class ZooKeeperHolder {
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
         zooKeeper.start();
+
+        subscriptionCurator = CuratorFrameworkFactory.builder()
+                .ensembleProvider(ensembleProvider)
+                .retryPolicy(retryPolicy)
+                // max commit timeout is not higher than 60 seconds, it is safe to cast yo integer
+                .sessionTimeoutMs((int) maxCommitTimeoutMs)
+                .connectionTimeoutMs(connectionTimeoutMs)
+                .build();
+        subscriptionCurator.start();
     }
 
     public CuratorFramework get() {
         return zooKeeper;
+    }
+
+    public CuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) {
+        // most of the clients use default max timeout, subscriptionCurator client saves zookeeper resource
+        if (sessionTimeoutMs == maxCommitTimeoutMs) {
+            return subscriptionCurator;
+        }
+
+        final CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
+                .connectString(zooKeeper.getZookeeperClient().getCurrentConnectionString())
+                .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
+                // max commit timeout is not higher than 60 seconds, it is safe to cast yo integer
+                .sessionTimeoutMs((int) sessionTimeoutMs)
+                .connectionTimeoutMs(connectionTimeoutMs)
+                .build();
+        curatorFramework.start();
+        return curatorFramework;
     }
 
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
