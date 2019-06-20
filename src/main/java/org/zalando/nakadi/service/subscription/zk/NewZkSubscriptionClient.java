@@ -7,6 +7,7 @@ import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -68,7 +69,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             final ZooKeeperHolder zooKeeperHolder,
             final String loggingPath,
             final ObjectMapper objectMapper,
-            final long zkSessionTimeout) {
+            final long zkSessionTimeout) throws ZookeeperException {
         super(subscriptionId, zooKeeperHolder, loggingPath, zkSessionTimeout);
         this.objectMapper = objectMapper;
     }
@@ -216,4 +217,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
+    @Override
+    public void close() throws IOException {
+        getCloseableCuratorFramework().close();
+    }
 }

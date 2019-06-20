@@ -10,7 +10,10 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -47,12 +50,80 @@ public class ZooKeeperHolder {
         this.connectionTimeoutMs = connectionTimeoutMs;
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
 
-        initExhibitor();
+        zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
+        subscriptionCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
     }
 
-    private void initExhibitor() throws Exception {
-        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX);
+    public CuratorFramework get() {
+        return zooKeeper;
+    }
+
+    public CloseableCuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) throws ZookeeperException {
+        // most of the clients use default max timeout, subscriptionCurator client saves zookeeper resource
+        if (sessionTimeoutMs == maxCommitTimeoutMs) {
+            return new StaticCuratorFramework(subscriptionCurator);
+        }
+
+        try {
+            // max commit timeout is not higher than 60 seconds, it is safe to cast to integer
+            return new DisposableCuratorFramework(createCuratorFramework((int) sessionTimeoutMs, connectionTimeoutMs));
+        } catch (final Exception e) {
+            throw new ZookeeperException("Failed to create curator framework", e);
+        }
+    }
+
+    public abstract static class CloseableCuratorFramework implements Closeable {
+
+        private final CuratorFramework curatorFramework;
+
+        public CloseableCuratorFramework(final CuratorFramework curatorFramework) {
+            this.curatorFramework = curatorFramework;
+        }
+
+        public CuratorFramework getCuratorFramework() {
+            return curatorFramework;
+        }
+    }
+
+    public static class StaticCuratorFramework extends CloseableCuratorFramework {
+
+        public StaticCuratorFramework(final CuratorFramework curatorFramework) {
+            super(curatorFramework);
+        }
+
+        @Override
+        public void close() throws IOException {
+            // do not ever close this particular instance of curator
+        }
+    }
+
+    public static class DisposableCuratorFramework extends CloseableCuratorFramework {
+
+        public DisposableCuratorFramework(final CuratorFramework curatorFramework) {
+            super(curatorFramework);
+        }
+
+        @Override
+        public void close() throws IOException {
+            getCuratorFramework().close();
+        }
+    }
+
+    private CuratorFramework createCuratorFramework(final int sessionTimeoutMs,
+                                                    final int connectionTimeoutMs) throws Exception {
+        final CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
+                .ensembleProvider(createEnsembleProvider())
+                .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
+                .sessionTimeoutMs(sessionTimeoutMs)
+                .connectionTimeoutMs(connectionTimeoutMs)
+                .build();
+        curatorFramework.start();
+        return curatorFramework;
+    }
+
+    private EnsembleProvider createEnsembleProvider() throws Exception {
         final EnsembleProvider ensembleProvider;
+        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX);
         if (exhibitorAddresses != null) {
             final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
             final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
@@ -64,43 +135,7 @@ public class ZooKeeperHolder {
         } else {
             ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
         }
-        zooKeeper = CuratorFrameworkFactory.builder()
-                .ensembleProvider(ensembleProvider)
-                .retryPolicy(retryPolicy)
-                .sessionTimeoutMs(sessionTimeoutMs)
-                .connectionTimeoutMs(connectionTimeoutMs)
-                .build();
-        zooKeeper.start();
-
-        subscriptionCurator = CuratorFrameworkFactory.builder()
-                .ensembleProvider(ensembleProvider)
-                .retryPolicy(retryPolicy)
-                // max commit timeout is not higher than 60 seconds, it is safe to cast to integer
-                .sessionTimeoutMs((int) maxCommitTimeoutMs)
-                .connectionTimeoutMs(connectionTimeoutMs)
-                .build();
-        subscriptionCurator.start();
-    }
-
-    public CuratorFramework get() {
-        return zooKeeper;
-    }
-
-    public CuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) {
-        // most of the clients use default max timeout, subscriptionCurator client saves zookeeper resource
-        if (sessionTimeoutMs == maxCommitTimeoutMs) {
-            return subscriptionCurator;
-        }
-
-        final CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
-                .connectString(zooKeeper.getZookeeperClient().getCurrentConnectionString())
-                .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
-                // max commit timeout is not higher than 60 seconds, it is safe to cast to integer
-                .sessionTimeoutMs((int) sessionTimeoutMs)
-                .connectionTimeoutMs(connectionTimeoutMs)
-                .build();
-        curatorFramework.start();
-        return curatorFramework;
+        return ensembleProvider;
     }
 
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {

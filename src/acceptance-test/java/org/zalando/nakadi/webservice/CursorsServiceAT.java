@@ -96,7 +96,8 @@ public class CursorsServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
-        when(zkHolder.getSubscriptionCurator(anyInt())).thenReturn(CURATOR);
+        when(zkHolder.getSubscriptionCurator(anyInt()))
+                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         final TimelineService timelineService = mock(TimelineService.class);
