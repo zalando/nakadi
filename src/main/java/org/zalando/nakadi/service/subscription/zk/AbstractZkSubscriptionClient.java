@@ -478,4 +478,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
 
     protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
+
+    @Override
+    public void close() throws IOException {
+        getCloseableCuratorFramework().close();
+    }
 }

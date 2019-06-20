@@ -216,9 +216,4 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                     changeSet.toArray(new Partition[changeSet.size()]));
         }
     }
-
-    @Override
-    public void close() throws IOException {
-        getCloseableCuratorFramework().close();
-    }
 }
