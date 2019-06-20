@@ -55,7 +55,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     private final String subscriptionId;
     private final CuratorFramework defaultCurator;
-    private final CuratorFramework subscriptionCurator;
+    private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String resetCursorPath;
     private final Logger log;
     private InterProcessSemaphoreMutex lock;
@@ -64,16 +64,20 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final String subscriptionId,
             final ZooKeeperHolder zooKeeperHolder,
             final String loggingPath,
-            final long zkSessionTimeout) {
+            final long zkSessionTimeout) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
         this.defaultCurator = zooKeeperHolder.get();
-        this.subscriptionCurator = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
+        this.closeableCuratorFramework = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
         this.resetCursorPath = getSubscriptionPath("/cursor_reset");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
     protected CuratorFramework getCurator() {
-        return this.subscriptionCurator;
+        return this.closeableCuratorFramework.getCuratorFramework();
+    }
+
+    protected ZooKeeperHolder.CloseableCuratorFramework getCloseableCuratorFramework() {
+        return this.closeableCuratorFramework;
     }
 
     protected String getSubscriptionId() {
@@ -474,4 +478,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
 
     protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
+
+    @Override
+    public void close() throws IOException {
+        getCloseableCuratorFramework().close();
+    }
 }
