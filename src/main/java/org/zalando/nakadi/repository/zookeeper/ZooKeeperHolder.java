@@ -75,7 +75,7 @@ public class ZooKeeperHolder {
         subscriptionCurator = CuratorFrameworkFactory.builder()
                 .ensembleProvider(ensembleProvider)
                 .retryPolicy(retryPolicy)
-                // max commit timeout is not higher than 60 seconds, it is safe to cast yo integer
+                // max commit timeout is not higher than 60 seconds, it is safe to cast to integer
                 .sessionTimeoutMs((int) maxCommitTimeoutMs)
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
@@ -95,7 +95,7 @@ public class ZooKeeperHolder {
         final CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
                 .connectString(zooKeeper.getZookeeperClient().getCurrentConnectionString())
                 .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
-                // max commit timeout is not higher than 60 seconds, it is safe to cast yo integer
+                // max commit timeout is not higher than 60 seconds, it is safe to cast to integer
                 .sessionTimeoutMs((int) sessionTimeoutMs)
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
