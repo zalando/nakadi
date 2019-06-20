@@ -20,7 +20,6 @@ import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.concurrent.Executors;
@@ -87,11 +86,6 @@ public class SubscriptionStreamerFactory {
             final BlacklistService blacklistService)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1, streamParameters.getPartitions());
-        final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
-                subscription,
-                LogPathBuilder.build(subscription.getId(), session.getId()),
-                streamParameters.commitTimeoutMillis);
-
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
@@ -99,7 +93,8 @@ public class SubscriptionStreamerFactory {
                 .setParameters(streamParameters)
                 .setSession(session)
                 .setTimer(executorService)
-                .setZkClient(zkClient)
+                .setZkClient(zkClientFactory.createClient(
+                        subscription, LogPathBuilder.build(subscription.getId(), session.getId())))
                 .setRebalancer(new SubscriptionRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setConnectionReady(connectionReady)
