@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
@@ -83,13 +84,15 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
+    private final ObjectMapper objectMapper;
 
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
-                                final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
+                                final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+                                final ObjectMapper objectMapper) {
         this.zkFactory = zkFactory;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
@@ -97,6 +100,7 @@ public class KafkaTopicRepository implements TopicRepository {
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.circuitBreakers = new ConcurrentHashMap<>();
+        this.objectMapper = objectMapper;
     }
 
     private CompletableFuture<Exception> publishItem(
@@ -477,6 +481,33 @@ public class KafkaTopicRepository implements TopicRepository {
                 new RetryForSpecifiedCountStrategy(3)
                         .withWaitBetweenEachTry(5000)
                         .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+    }
+
+    @Override
+    public Map<org.zalando.nakadi.domain.TopicPartition, Long> getSizeStats() {
+        final Map<org.zalando.nakadi.domain.TopicPartition, Long> result = new HashMap<>();
+
+        try {
+            final List<String> brokers = zkFactory.get().getChildren().forPath("/bubuku/size_stats");
+
+            for (final String broker : brokers) {
+                final BubukuSizeStats stats = objectMapper.readValue(
+                        zkFactory.get().getData().forPath("/bubuku/size_stats/" + broker),
+                        BubukuSizeStats.class);
+                stats.getPerPartitionStats().forEach((topic, partitionSizes) -> {
+                    partitionSizes.forEach((partition, size) -> {
+                        final org.zalando.nakadi.domain.TopicPartition tp =
+                                new org.zalando.nakadi.domain.TopicPartition(topic, partition);
+
+                        result.compute(tp, (ignore, oldSize) ->
+                                Optional.ofNullable(oldSize).map(v -> Math.max(oldSize, size)).orElse(size));
+                    });
+                });
+            }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to acquire size statistics", e);
+        }
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {

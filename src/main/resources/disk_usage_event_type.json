@@ -1,0 +1,52 @@
+[
+  {
+    "name": "event_type_name_placeholder",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi statistics of disk usage per event-type\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"size_bytes\": {\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"size_bytes\"\n    ]\n}",
+      "version": "1.0.0",
+      "created_at": "2018-11-28T16:48:13.043Z"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 1,
+      "write_parallelism": 1
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "compatibility_mode": "forward",
+    "audience": "company-internal",
+    "authorization": {
+      "admins": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "readers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "writers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ]
+    }
+  }
+]

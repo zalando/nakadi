@@ -5,6 +5,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -15,6 +16,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface TopicRepository {
@@ -66,6 +68,12 @@ public interface TopicRepository {
             throws ServiceTemporarilyUnavailableException;
 
     List<String> listPartitionNames(String topicId);
+
+    /**
+     * Provides estimation of disk size occupied by particular topic partition. Replicated data is not included
+     * @return Maximum size occupied by topic partitions.
+     */
+    Map<TopicPartition, Long> getSizeStats();
 
     EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
             throws InvalidCursorException;
