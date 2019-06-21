@@ -17,7 +17,7 @@ public class DiskUsageStatsConfig {
         return authDataType;
     }
 
-    public void setAuthDataType(String authDataType) {
+    public void setAuthDataType(final String authDataType) {
         this.authDataType = authDataType;
     }
 
@@ -25,7 +25,7 @@ public class DiskUsageStatsConfig {
         return authValue;
     }
 
-    public void setAuthValue(String authValue) {
+    public void setAuthValue(final String authValue) {
         this.authValue = authValue;
     }
 
@@ -33,7 +33,7 @@ public class DiskUsageStatsConfig {
         return owningApplication;
     }
 
-    public void setOwningApplication(String owningApplication) {
+    public void setOwningApplication(final String owningApplication) {
         this.owningApplication = owningApplication;
     }
 
@@ -41,7 +41,7 @@ public class DiskUsageStatsConfig {
         return eventTypeName;
     }
 
-    public void setEventTypeName(String eventTypeName) {
+    public void setEventTypeName(final String eventTypeName) {
         this.eventTypeName = eventTypeName;
     }
 
@@ -49,7 +49,7 @@ public class DiskUsageStatsConfig {
         return runPeriodMs;
     }
 
-    public void setRunPeriodMs(long runPeriodMs) {
+    public void setRunPeriodMs(final long runPeriodMs) {
         this.runPeriodMs = runPeriodMs;
     }
 }

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -254,7 +255,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                kafkaTopicConfigFactory);
+                kafkaTopicConfigFactory,
+                new ObjectMapper());
     }
 
 }

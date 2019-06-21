@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -325,7 +326,8 @@ public class CursorOperationsServiceTest {
                 mock(NakadiSettings.class),
                 mock(KafkaSettings.class),
                 mock(ZookeeperSettings.class),
-                mock(KafkaTopicConfigFactory.class));
+                mock(KafkaTopicConfigFactory.class),
+                mock(ObjectMapper.class));
         when(timelineService.getTopicRepository(timeline)).thenReturn(repository);
         return timeline;
     }

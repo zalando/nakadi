@@ -74,7 +74,7 @@ public class DiskUsageStatsJob {
         final Map<String, Map<String, String>> storageTopicToEventType = new HashMap<>();
         final Map<String, Storage> storages = new HashMap<>();
         final List<Timeline> allTimelines = timelineDbRepository.listTimelinesOrdered();
-        for (Timeline t : allTimelines) {
+        for (final Timeline t : allTimelines) {
             if (t.isDeleted()) {
                 continue;
             }
@@ -86,7 +86,7 @@ public class DiskUsageStatsJob {
 
         final Map<String, Long> eventTypeSize = new HashMap<>();
 
-        for (Map.Entry<String, Map<String, String>> storageEntry : storageTopicToEventType.entrySet()) {
+        for (final Map.Entry<String, Map<String, String>> storageEntry : storageTopicToEventType.entrySet()) {
             final Map<TopicPartition, Long> data = topicRepositoryHolder
                     .getTopicRepository(storages.get(storageEntry.getKey()))
                     .getSizeStats();
@@ -94,14 +94,16 @@ public class DiskUsageStatsJob {
                     .filter(v -> storageEntry.getValue().containsKey(v.getKey().getTopic()))
                     .forEach(item -> {
                         final String eventType = storageEntry.getValue().get(item.getKey().getTopic());
-                        eventTypeSize.compute(eventType, (et, oldSize) -> null == oldSize ? item.getValue() : (oldSize + item.getValue()));
+                        eventTypeSize.compute(
+                                eventType,
+                                (et, oldSize) -> null == oldSize ? item.getValue() : (oldSize + item.getValue()));
                     });
         }
         // Stats are here.
         publishSizeStats(eventTypeSize);
     }
 
-    private void publishSizeStats(Map<String, Long> eventTypeSizes) {
+    private void publishSizeStats(final Map<String, Long> eventTypeSizes) {
         eventTypeSizes.entrySet().stream()
                 .map(x -> {
                     final JSONObject obj = new JSONObject();
