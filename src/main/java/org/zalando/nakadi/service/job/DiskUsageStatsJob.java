@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.job;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,13 @@ public class DiskUsageStatsJob {
     }
 
     private void dumpDiskStatsLocked() {
+        final Map<String, Long> eventTypeSize = loadDiskUsage();
+        // Stats are here.
+        publishSizeStats(eventTypeSize);
+    }
+
+    @VisibleForTesting
+    Map<String, Long> loadDiskUsage() {
         final Map<String, Map<String, String>> storageTopicToEventType = new HashMap<>();
         final Map<String, Storage> storages = new HashMap<>();
         final List<Timeline> allTimelines = timelineDbRepository.listTimelinesOrdered();
@@ -99,8 +107,7 @@ public class DiskUsageStatsJob {
                                 (et, oldSize) -> null == oldSize ? item.getValue() : (oldSize + item.getValue()));
                     });
         }
-        // Stats are here.
-        publishSizeStats(eventTypeSize);
+        return eventTypeSize;
     }
 
     private void publishSizeStats(final Map<String, Long> eventTypeSizes) {
