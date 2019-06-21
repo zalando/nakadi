@@ -20,11 +20,8 @@ public class CleanupState extends State {
     public void onEnter() {
         try {
             getContext().unregisterAuthorizationUpdates();
-            getContext().getZkClient().close();
         } catch (final RuntimeException ex) {
             getLog().error("Unexpected fail during removing callback for registration updates", ex);
-        } catch (IOException e) {
-            getLog().error("Unexpected fail to release zk connection", e);
         }
         try {
             if (null != exception) {
@@ -35,6 +32,12 @@ public class CleanupState extends State {
                 getContext().unregisterSession();
             } finally {
                 switchState(StreamingContext.DEAD_STATE);
+            }
+
+            try {
+                getContext().getZkClient().close();
+            } catch (final IOException e) {
+                getLog().error("Unexpected fail to release zk connection", e);
             }
         }
     }
