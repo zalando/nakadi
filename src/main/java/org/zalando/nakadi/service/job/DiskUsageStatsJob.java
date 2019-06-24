@@ -73,7 +73,6 @@ public class DiskUsageStatsJob {
 
     private void dumpDiskStatsLocked() {
         final Map<String, Long> eventTypeSize = loadDiskUsage();
-        // Stats are here.
         publishSizeStats(eventTypeSize);
     }
 

@@ -1,9 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -24,17 +21,20 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -50,6 +50,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -349,38 +350,57 @@ public class KafkaTopicRepositoryTest {
                 .count() >= 1);
     }
 
+    @Test
+    public void testGetSizeStatsWorksProperly() throws Exception {
+        final KafkaZookeeper kz = mock(KafkaZookeeper.class);
+        when(kz.getBrokerIdsForSizeStats()).thenReturn(Arrays.asList("1", "2"));
+        final Map<String, Map<String, Long>> stats1 = new HashMap<>();
+        stats1.put("t1", new HashMap<>());
+        stats1.get("t1").put("0", 1234L);
+        stats1.get("t1").put("1", 321L);
+        stats1.put("t2", new HashMap<>());
+        stats1.get("t2").put("0", 111L);
+        when(kz.getSizeStatsForBroker(eq("1"))).thenReturn(new BubukuSizeStats(null, stats1));
+        final Map<String, Map<String, Long>> stats2 = new HashMap<>();
+        stats2.put("t1", new HashMap<>());
+        stats2.get("t1").put("0", 4321L);
+        stats2.get("t1").put("1", 123L);
+        stats2.put("t3", new HashMap<>());
+        stats2.get("t3").put("0", 222L);
+        when(kz.getSizeStatsForBroker(eq("2"))).thenReturn(new BubukuSizeStats(null, stats2));
+
+        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null);
+
+        final Map<TopicPartition, Long> result = ktr.getSizeStats();
+
+        Assert.assertEquals(4, result.size());
+        Assert.assertEquals(new Long(4321L), result.get(new TopicPartition("t1", "0")));
+        Assert.assertEquals(new Long(321L), result.get(new TopicPartition("t1", "1")));
+        Assert.assertEquals(new Long(111L), result.get(new TopicPartition("t2", "0")));
+        Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
+    }
+
     private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(),
+            return new KafkaTopicRepository(createKafkaZookeeper(),
                     kafkaFactory,
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    kafkaTopicConfigFactory,
-                    new ObjectMapper());
+                    kafkaTopicConfigFactory);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private ZooKeeperHolder createZooKeeperHolder() throws Exception {
-        // GetChildrenBuilder
-        final GetChildrenBuilder getChildrenBuilder = mock(GetChildrenBuilder.class);
-        when(getChildrenBuilder.forPath("/brokers/topics")).thenReturn(allTopics());
-
-        // Curator Framework
-        final CuratorFramework curatorFramework = mock(CuratorFramework.class);
-        when(curatorFramework.getChildren()).thenReturn(getChildrenBuilder);
-
-        // ZooKeeperHolder
-        final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
-        when(zkHolder.get()).thenReturn(curatorFramework);
-
-        return zkHolder;
+    private KafkaZookeeper createKafkaZookeeper() throws Exception {
+        final KafkaZookeeper result = mock(KafkaZookeeper.class);
+        when(result.listTopics()).thenReturn(allTopics());
+        return result;
     }
 
     private static List<String> allTopics() {

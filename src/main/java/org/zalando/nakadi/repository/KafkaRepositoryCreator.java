@@ -15,6 +15,7 @@ import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaZookeeper;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
@@ -62,9 +63,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     nakadiSettings);
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
-            final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
-                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, kafkaTopicConfigFactory,
-                    objectMapper);
+            final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
+            final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zk,
+                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, kafkaTopicConfigFactory);
             // check that it does work
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;

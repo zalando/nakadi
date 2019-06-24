@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.curator.CuratorZookeeperClient;
-import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -16,7 +13,6 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
@@ -230,14 +226,8 @@ public class KafkaRepositoryAT extends BaseAT {
     }
 
     private KafkaTopicRepository createKafkaTopicRepository() {
-        final CuratorZookeeperClient zookeeperClient = mock(CuratorZookeeperClient.class);
-        when(zookeeperClient.getCurrentConnectionString()).thenReturn(ZOOKEEPER_URL);
-
-        final CuratorFramework curatorFramework = mock(CuratorFramework.class);
-        when(curatorFramework.getZookeeperClient()).thenReturn(zookeeperClient);
-
-        final ZooKeeperHolder zooKeeperHolder = mock(ZooKeeperHolder.class);
-        when(zooKeeperHolder.get()).thenReturn(curatorFramework);
+        final KafkaZookeeper kafkaZookeeper = mock(KafkaZookeeper.class);
+        when(kafkaZookeeper.getZookeeperConnectionString()).thenReturn(ZOOKEEPER_URL);
 
         final Consumer<byte[], byte[]> consumer = mock(Consumer.class);
         when(consumer.partitionsFor(any())).thenReturn(new ArrayList<>());
@@ -250,13 +240,12 @@ public class KafkaRepositoryAT extends BaseAT {
                 .when(factory)
                 .takeProducer();
 
-        return new KafkaTopicRepository(zooKeeperHolder,
+        return new KafkaTopicRepository(kafkaZookeeper,
                 factory,
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                kafkaTopicConfigFactory,
-                new ObjectMapper());
+                kafkaTopicConfigFactory);
     }
 
 }
