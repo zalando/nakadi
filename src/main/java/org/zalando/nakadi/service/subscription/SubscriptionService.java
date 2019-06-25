@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -66,6 +67,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.FORCE_SUBSCRIPTION_AUTHZ;
 
 @Component
 public class SubscriptionService {
@@ -119,11 +122,9 @@ public class SubscriptionService {
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
-            DbWriteOperationsBlockedException, UnableProcessException, ServiceTemporarilyUnavailableException {
-        if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
-            throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
-                    "are blocked by feature flag.");
-        }
+            DbWriteOperationsBlockedException, UnableProcessException,
+            AuthorizationSectionException, ServiceTemporarilyUnavailableException {
+        checkFeatureToggles(subscriptionBase);
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
 
@@ -141,12 +142,22 @@ public class SubscriptionService {
         return subscription;
     }
 
-    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
-            throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
+    private void checkFeatureToggles(final SubscriptionBase subscription) {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
                     "are blocked by feature flag.");
         }
+        if (featureToggleService.isFeatureEnabled(FORCE_SUBSCRIPTION_AUTHZ)
+                && subscription.getAuthorization() == null) {
+            throw new AuthorizationSectionException("Authorization section is mandatory");
+        }
+    }
+
+    public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
+            throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
+
+        checkFeatureToggles(newValue);
+
         final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(old);
 
