@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.state;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 
 public class CleanupState extends State {
     private final Exception exception;
@@ -31,6 +32,12 @@ public class CleanupState extends State {
                 getContext().unregisterSession();
             } finally {
                 switchState(StreamingContext.DEAD_STATE);
+            }
+
+            try {
+                getContext().getZkClient().close();
+            } catch (final IOException e) {
+                getLog().error("Unexpected fail to release zk connection", e);
             }
         }
     }
