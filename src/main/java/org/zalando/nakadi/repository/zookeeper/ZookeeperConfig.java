@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 
 @Configuration
 @Profile("!test")
