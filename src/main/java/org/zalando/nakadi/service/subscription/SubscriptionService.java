@@ -124,6 +124,7 @@ public class SubscriptionService {
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
             AuthorizationSectionException, ServiceTemporarilyUnavailableException {
+
         checkFeatureToggles(subscriptionBase);
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
