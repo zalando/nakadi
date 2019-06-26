@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service.job;
 
 import org.junit.Test;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.repository.TopicRepository;
