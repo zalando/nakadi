@@ -339,9 +339,9 @@ paths:
         is **rejected** in the first case of failure. If the offending validation rule provides
         information about the violation it will be included in the `BatchItemResponse`.  If the
         `EventType` defines schema validation it will be performed at this moment. The size of each
-        Event will also be validated. The maximum size per Event is 999,000 bytes. We use the batch
-        input to measure the size of events, so unnecessary spaces, tabs, and carriage returns will
-        count towards the event size.
+        Event will also be validated. The maximum size per Event is configured by the adminitrator. 
+        We use the batch input to measure the size of events, so unnecessary spaces, tabs, and 
+        carriage returns will count towards the event size.
 
         1. Once the validation succeeded, the content of the Event is updated according to the
         enrichment rules in the order the rules are defined in the `EventType`.  No preexisting
@@ -828,7 +828,7 @@ paths:
               The flow id of the request, which is written into the logs and passed to called services. Helpful
               for operational troubleshooting and log analysis.
             type: string
-          - name: cursors
+          - name: cursors/
             in: body
             description: |
               GET with payload.
