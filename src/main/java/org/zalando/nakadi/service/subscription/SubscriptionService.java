@@ -125,7 +125,7 @@ public class SubscriptionService {
             DbWriteOperationsBlockedException, UnableProcessException,
             AuthorizationNotPresentException, ServiceTemporarilyUnavailableException {
 
-        checkFeatureTogglesForSubscription(subscriptionBase);
+        checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
 
@@ -143,7 +143,7 @@ public class SubscriptionService {
         return subscription;
     }
 
-    private void checkFeatureTogglesForSubscription(final SubscriptionBase subscription) {
+    private void checkFeatureTogglesForCreationAndUpdate(final SubscriptionBase subscription) {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
                     "are blocked by feature flag.");
@@ -157,7 +157,7 @@ public class SubscriptionService {
     public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
             throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
 
-        checkFeatureTogglesForSubscription(newValue);
+        checkFeatureTogglesForCreationAndUpdate(newValue);
 
         final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(old);
