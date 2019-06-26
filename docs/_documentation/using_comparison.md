@@ -8,9 +8,9 @@ position: 11
 In this section, we'll look at how Nakadi fits in with the stream broker/processing ecosystems. Notably we'll compare it to Apache Kafka, as that's a common question, but also look briefly at some of the main cloud offerings in this area.
 
   - [Apache Kafka](#apache-kafka--version-0-9-)
-  - [Google Pub/Sub](#google-pub-sub)
-  - [AWS Kinesis](#aws-kinesis)
-  - [AWS Simple Queue Service (SQS)](#aws-simple-queue-service--sqs-)
+  - [Google Pub/Sub](#google-cloud-pubsub)
+  - [Amazon Kinesis](#amazon-kinesis)
+  - [AWS Simple Queue Service (SQS)](#aws-simple-queue-service-sqs)
   - [Allegro Hermes](#allegro-hermes)
 
 ### Apache Kafka (version 0.9)
@@ -72,7 +72,7 @@ The basic abstraction in SQS is a queue, which is quite different from a Nakadi 
 
 ### Allegro Hermes
 
-[Hermes](https://github.com/allegro/hermes) like Nakadi, is an API-based broker built on Apache Kafka. There are some differences worth noting:
+[Hermes](https://github.com/allegro/hermes), like Nakadi, is an API-based broker built on Apache Kafka. There are some differences worth noting:
 
 - Hermes uses webhooks to deliver messages to consumers. Consumers register a subscription with a callback url and a subscription policy that defines behaviours such as retries and delivery rates. Nakadi maintains a streaming connection to consumers, and will push events as they arrive. Whether messages are delivered in order to consumers does not appear to be a defined behaviour in the API. Similarly to Kafka, Nakadi will deliver messages to consumers in arrival order for each partition. Hermes does not appear to support partitioning in its API. Hermes has good support for tracking delivered and undelivered messages to subscribers.
 
