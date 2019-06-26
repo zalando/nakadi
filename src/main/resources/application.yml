@@ -101,6 +101,12 @@ nakadi:
     timelineCleanup:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
+    diskUsageStats:
+      runPeriodMs: 3600000 # 1 hour
+      authDataType: "*"
+      authValue: "*"
+      owningApplication: "stups_nakadi"
+      eventTypeName: "nakadi.disk.usage"
     consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
   http.pool.connection:
     max.total: 20

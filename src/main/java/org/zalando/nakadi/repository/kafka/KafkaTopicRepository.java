@@ -38,7 +38,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
@@ -76,7 +75,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
 
-    private final ZooKeeperHolder zkFactory;
+    private final KafkaZookeeper kafkaZookeeper;
     private final KafkaFactory kafkaFactory;
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
@@ -84,13 +83,13 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
 
-    public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
+    public KafkaTopicRepository(final KafkaZookeeper kafkaZookeeper,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
                                 final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
-        this.zkFactory = zkFactory;
+        this.kafkaZookeeper = kafkaZookeeper;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
@@ -161,9 +160,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     public List<String> listTopics() throws TopicRepositoryException {
         try {
-            return zkFactory.get()
-                    .getChildren()
-                    .forPath("/brokers/topics");
+            return kafkaZookeeper.listTopics();
         } catch (final Exception e) {
             throw new TopicRepositoryException("Failed to list topics", e);
         }
@@ -479,6 +476,31 @@ public class KafkaTopicRepository implements TopicRepository {
                         .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
     }
 
+    @Override
+    public Map<org.zalando.nakadi.domain.TopicPartition, Long> getSizeStats() {
+        final Map<org.zalando.nakadi.domain.TopicPartition, Long> result = new HashMap<>();
+
+        try {
+            final List<String> brokers = kafkaZookeeper.getBrokerIdsForSizeStats();
+
+            for (final String brokerId : brokers) {
+                final BubukuSizeStats stats = kafkaZookeeper.getSizeStatsForBroker(brokerId);
+                stats.getPerPartitionStats().forEach((topic, partitionSizes) -> {
+                    partitionSizes.forEach((partition, size) -> {
+                        final org.zalando.nakadi.domain.TopicPartition tp =
+                                new org.zalando.nakadi.domain.TopicPartition(topic, partition);
+
+                        result.compute(tp, (ignore, oldSize) ->
+                                Optional.ofNullable(oldSize).map(v -> Math.max(oldSize, size)).orElse(size));
+                    });
+                });
+            }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to acquire size statistics", e);
+        }
+    }
+
     public List<String> listPartitionNamesInternal(final String topicId) {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
@@ -578,9 +600,11 @@ public class KafkaTopicRepository implements TopicRepository {
     private void doWithZkUtils(final ZkUtilsAction action) throws Exception {
         ZkUtils zkUtils = null;
         try {
-            final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
-            zkUtils = ZkUtils.apply(connectionString, zookeeperSettings.getZkSessionTimeoutMs(),
-                    zookeeperSettings.getZkConnectionTimeoutMs(), false);
+            zkUtils = ZkUtils.apply(
+                    kafkaZookeeper.getZookeeperConnectionString(),
+                    zookeeperSettings.getZkSessionTimeoutMs(),
+                    zookeeperSettings.getZkConnectionTimeoutMs(),
+                    false);
             action.execute(zkUtils);
         } finally {
             if (zkUtils != null) {

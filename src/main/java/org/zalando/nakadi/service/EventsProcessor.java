@@ -91,7 +91,7 @@ public class EventsProcessor {
         }
     }
 
-    void enrichAndSubmit(final String etName, final JSONObject event) {
+    public void enrichAndSubmit(final String etName, final JSONObject event) {
         final JSONObject metadata = new JSONObject()
                 .put("occurred_at", Instant.now())
                 .put("eid", uuidGenerator.randomUUID())
