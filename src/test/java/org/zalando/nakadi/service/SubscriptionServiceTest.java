@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -57,6 +58,35 @@ public class SubscriptionServiceTest {
                 timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
                 nakadiAuditLogPublisher, authorizationValidator);
+    }
+
+    @Test(expected = AuthorizationNotPresentException.class)
+    public void whenFeatureToggleIsOnSubscriptionRequiresAuthorizationOnCreation() {
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .buildSubscriptionBase();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withId("my_subscription_id1")
+                .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
+        when(featureToggleService
+                .isFeatureEnabled(FeatureToggleService.Feature.FORCE_SUBSCRIPTION_AUTHZ)).thenReturn(true);
+
+        subscriptionService.createSubscription(subscriptionBase);
+    }
+
+    @Test(expected = AuthorizationNotPresentException.class)
+    public void whenFeatureToggleIsOnSubscriptionRequiresAuthorizationOnUpdation() {
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .buildSubscriptionBase();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withId("my_subscription_id1")
+                .build();
+        subscription.setUpdatedAt(subscription.getCreatedAt());
+        when(featureToggleService
+                .isFeatureEnabled(FeatureToggleService.Feature.FORCE_SUBSCRIPTION_AUTHZ)).thenReturn(true);
+        when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
+        subscriptionService.createSubscription(subscriptionBase);
+        subscriptionService.updateSubscription("my_subscription_id1", subscription);
     }
 
     @Test

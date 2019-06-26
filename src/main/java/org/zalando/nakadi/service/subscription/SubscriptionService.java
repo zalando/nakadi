@@ -23,7 +23,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.Try;
-import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
+import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -123,9 +123,9 @@ public class SubscriptionService {
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
-            AuthorizationSectionException, ServiceTemporarilyUnavailableException {
+            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException {
 
-        checkFeatureToggles(subscriptionBase);
+        checkFeatureTogglesForSubscription(subscriptionBase);
 
         subscriptionValidationService.validateSubscription(subscriptionBase);
 
@@ -143,21 +143,21 @@ public class SubscriptionService {
         return subscription;
     }
 
-    private void checkFeatureToggles(final SubscriptionBase subscription) {
+    private void checkFeatureTogglesForSubscription(final SubscriptionBase subscription) {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create subscription: write operations on DB " +
                     "are blocked by feature flag.");
         }
         if (featureToggleService.isFeatureEnabled(FORCE_SUBSCRIPTION_AUTHZ)
                 && subscription.getAuthorization() == null) {
-            throw new AuthorizationSectionException("Authorization section is mandatory");
+            throw new AuthorizationNotPresentException("Authorization section is mandatory");
         }
     }
 
     public Subscription updateSubscription(final String subscriptionId, final SubscriptionBase newValue)
             throws NoSuchSubscriptionException, SubscriptionUpdateConflictException {
 
-        checkFeatureToggles(newValue);
+        checkFeatureTogglesForSubscription(newValue);
 
         final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(old);
