@@ -353,6 +353,11 @@ public class EventTypeService {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
             original = eventTypeRepository.findByName(eventTypeName);
 
+            if (featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ)
+                    && eventTypeBase.getAuthorization() == null) {
+                throw new AuthorizationSectionException("Authorization section is mandatory");
+            }
+
             authorizationValidator.authorizeEventTypeView(original);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
