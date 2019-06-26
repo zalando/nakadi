@@ -25,7 +25,7 @@ Relative to Apache Kafka, Nakadi provides a number of benefits while still lever
 
 - An event type registry with schema validation. Producers can define event types using JSON Schema. Having events validated against a published schema allows consumers to know they will.  There are projects in the Kafka ecosystem from Confluent that provide similar features such as the rest-proxy and the schema-registry, but they're slightly optimised for analytics, and not quite ideal for microservices where it's more common to use regular JSON rather than Avro. The schema registry in particular is dependent on Avro. Also the consumer connection model for the rest-proxy requires clients are pinned to servers which complicates clients - the hope for the Nakadi is that its managed subscription API, when that's available, will not require session affinity in this way.
 
-- Inbuilt event types. Nakadi also optionally supports events that describe business processes and data changes. These provide common primitives for event identity, timestamps, causality, operations on data and header propagation. Teams could define their own structures, but there's value in having some basic things that consumers and producers can coordinate on independently of the payload, and which are being checked before being propagated to multiple consumers.
+- Inbuilt event types. Nakadi also optionally supports events that describe business processes and data changes. These provide common primitives for event identity, timestamps, causality, operations on data and header propagation. Teams could define their own structures, but there's value in having some basic things that consumers and producers can coordinate on, independently of the payload, and which are being checked before being propagated to multiple consumers.
 
 - Operations is also a factor in Nakadi's design. Managing upgrades to systems like Kafka becomes easier when technology sits behind an API and isn't a shared dependency between microservices. Asynchronous event delivery can be a simpler overall option for a microservice architecture compared to synchronized and deep call paths that have to be mitigated with caches, bulkheads and circuit breakers.
 
@@ -78,7 +78,7 @@ The basic abstraction in SQS is a queue, which is quite different from a Nakadi 
 
 - Hermes supports JSON Schema and Avro validation in its schema registry. Nakadi's registry currently only supports JSON Schema, but may support Avro in the future. Hermes does not provide inbuilt event types, whereas Nakadi defines optional types to support data change and business process events, with some uniform fields producers and consumers can coordinate on.
 
-- Hermes allows topics (event types in Nakadi) to be collated into groups that are administrated by a single publisher. Consumers access data at a per topic level, the same as Nakadi currently; Nakadi may support multi-topic subscriptions in the future via a subscription API.
+- Hermes allows topics (event types in Nakadi) to be collated into groups that are administered by a single publisher. Consumers access data at a per topic level, the same as Nakadi currently; Nakadi may support multi-topic subscriptions in the future via a subscription API.
 
 - The Hermes project supports a Java client driver for publishing messages. Nakadi does not ship with a client.
 
