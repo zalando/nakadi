@@ -15,7 +15,7 @@ import org.mockito.Matchers;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.RepositoriesConfig;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;

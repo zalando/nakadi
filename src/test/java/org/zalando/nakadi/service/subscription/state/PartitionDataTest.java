@@ -4,7 +4,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 

@@ -13,9 +13,14 @@ public class StorageControllerAT extends BaseAT {
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
         given()
-                .body("{\"id\": \"default-test\",\"kafka_configuration\": {\"exhibitor_address\": null," +
-                        "\"exhibitor_port\": 0,\"zk_address\": \"zookeeper:2181\",\"zk_path\": \"\"}," +
-                        "\"storage_type\": \"kafka\"}")
+                .body("{" +
+                        "\"id\": \"default-test\"," +
+                        "\"kafka_configuration\": {" +
+                            "\"zookeeper_connection\":{" +
+                                "\"type\": \"zookeeper\"," +
+                                "\"addresses\":[{\"address\":\"zookeeper\", \"port\":2181}]" +
+                            "}" +
+                        "},\"storage_type\": \"kafka\"}")
                 .contentType(JSON).post("/storages");
 
         NakadiTestUtils.createEventTypeInNakadi(EventTypeTestBuilder.builder().name("event_a").build());

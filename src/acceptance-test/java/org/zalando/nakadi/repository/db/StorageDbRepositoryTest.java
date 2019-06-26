@@ -3,8 +3,10 @@ package org.zalando.nakadi.repository.db;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.utils.TestUtils;
@@ -35,13 +37,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         eventTypeDbRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
     }
 
-    static Storage createStorage(final String name,
-                                 final String exhibitorAddress,
-                                 final int exhibitorPort,
-                                 final String zkAddress,
-                                 final String zkPath) {
-        final Storage.KafkaConfiguration config =
-                new Storage.KafkaConfiguration(exhibitorAddress, exhibitorPort, zkAddress, zkPath);
+    static Storage createStorage(final String name, final ZookeeperConnection zkConnection) {
+        final KafkaConfiguration config = new KafkaConfiguration(zkConnection);
         final Storage storage = new Storage();
         storage.setId(name);
         storage.setType(Storage.Type.KAFKA);
@@ -50,9 +47,9 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageCreated() throws Exception {
+    public void testStorageCreated() {
         final String name = randomUUID();
-        final Storage storage = createStorage(name, "exaddress", 8181, "address", "path");
+        final Storage storage = createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path"));
 
         repository.createStorage(storage);
 
@@ -64,15 +61,15 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageOrdered() throws Exception {
+    public void testStorageOrdered() {
         final String namePrefix = randomValidStringOfLength(31);
 
         final Storage storage2 = repository.createStorage(
-                createStorage(namePrefix + "2", "exaddress", 8181, "address1", "path3"));
+                createStorage(namePrefix + "2", ZookeeperConnection.valueOf("exhibitor://exaddress1:8181/path3")));
         final Storage storage1 = repository.createStorage(
-                createStorage(namePrefix + "1", "exaddress", 8181, "address2", "path2"));
+                createStorage(namePrefix + "1", ZookeeperConnection.valueOf("exhibitor://exaddress2:8181/path2")));
         final Storage storage3 = repository.createStorage(
-                createStorage(namePrefix + "3", "exaddress", 8181, "address3", "path1"));
+                createStorage(namePrefix + "3", ZookeeperConnection.valueOf("exhibitor://exaddress3:8181/path1")));
 
         final List<Storage> storages = repository.listStorages().stream()
                 .filter(st -> st.getId() != null)
@@ -86,23 +83,25 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageDeleted() throws Exception {
+    public void testStorageDeleted() {
         final String name = randomUUID();
-        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address2", "path2"));
+        final Storage storage = repository.createStorage(
+                createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path")));
         assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());
         assertFalse(repository.getStorage(storage.getId()).isPresent());
     }
 
     @Test(expected = NoSuchStorageException.class)
-    public void testDeleteNoneExistingStorage() throws Exception {
+    public void testDeleteNoneExistingStorage() {
         repository.deleteStorage(randomUUID());
     }
 
     @Test(expected = StorageIsUsedException.class)
-    public void testDeleteUsedStorage() throws Exception {
+    public void testDeleteUsedStorage() {
         final String name = randomUUID();
-        final Storage storage = repository.createStorage(createStorage(name, "exaddress", 8181, "address", "path"));
+        final Storage storage = repository.createStorage(
+                createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path")));
 
         final EventType eventType = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
         final Timeline timeline = TimelineDbRepositoryTest.createTimeline(storage, UUID.randomUUID(), 0, "topic",

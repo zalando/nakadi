@@ -12,8 +12,10 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.zalando.nakadi.domain.DefaultStorage;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
@@ -46,11 +48,8 @@ public class NakadiConfig {
             final Storage storage = new Storage();
             storage.setId(storageId);
             storage.setType(Storage.Type.KAFKA);
-            storage.setConfiguration(new Storage.KafkaConfiguration(
-                    environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
-                    Integer.valueOf(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")),
-                    environment.getProperty("nakadi.zookeeper.brokers"),
-                    environment.getProperty("nakadi.zookeeper.kafkaNamespace", "")));
+            storage.setConfiguration(new KafkaConfiguration(
+                    ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connectionString"))));
             try {
                 storageDbRepository.createStorage(storage);
             } catch (final DuplicatedStorageException e) {

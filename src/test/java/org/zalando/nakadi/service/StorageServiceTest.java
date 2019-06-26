@@ -3,8 +3,10 @@ package org.zalando.nakadi.service;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.DefaultStorage;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
@@ -85,8 +87,8 @@ public class StorageServiceTest {
         final Storage storage = new Storage();
         storage.setType(Storage.Type.KAFKA);
         storage.setId("123-abc");
-        final Storage.KafkaConfiguration configuration =
-                new Storage.KafkaConfiguration("https://localhost", 8181, "https://localhost", "/path/to/kafka");
+        final KafkaConfiguration configuration =
+                new KafkaConfiguration(ZookeeperConnection.valueOf("exhibitor://localhost:8181/path/to/kafka"));
         storage.setConfiguration(configuration);
         return storage;
     }

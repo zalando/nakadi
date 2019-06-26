@@ -7,7 +7,7 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.EventConsumer;

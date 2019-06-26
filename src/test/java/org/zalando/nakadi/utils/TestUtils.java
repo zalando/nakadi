@@ -19,7 +19,7 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
