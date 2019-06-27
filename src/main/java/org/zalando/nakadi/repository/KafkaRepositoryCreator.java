@@ -1,11 +1,13 @@
 package org.zalando.nakadi.repository;
 
 import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
@@ -14,6 +16,7 @@ import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaZookeeper;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
@@ -29,6 +32,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final MetricRegistry metricRegistry;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public KafkaRepositoryCreator(
@@ -36,28 +40,29 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final KafkaSettings kafkaSettings,
             final ZookeeperSettings zookeeperSettings,
             final KafkaTopicConfigFactory kafkaTopicConfigFactory,
-            final MetricRegistry metricRegistry) {
+            final MetricRegistry metricRegistry,
+            final ObjectMapper objectMapper) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.metricRegistry = metricRegistry;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public TopicRepository createTopicRepository(final Storage storage) throws TopicRepositoryException {
         try {
-            final Storage.KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
+            final KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
             final ZooKeeperHolder zooKeeperHolder = new ZooKeeperHolder(
-                    kafkaConfiguration.getZkAddress(),
-                    kafkaConfiguration.getZkPath(),
-                    kafkaConfiguration.getExhibitorAddress(),
-                    kafkaConfiguration.getExhibitorPort(),
+                    kafkaConfiguration.getZookeeperConnection(),
                     zookeeperSettings.getZkSessionTimeoutMs(),
-                    zookeeperSettings.getZkConnectionTimeoutMs());
+                    zookeeperSettings.getZkConnectionTimeoutMs(),
+                    nakadiSettings);
             final KafkaFactory kafkaFactory =
                     new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
-            final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
+            final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
+            final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zk,
                     kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, kafkaTopicConfigFactory);
             // check that it does work
             kafkaTopicRepository.listTopics();

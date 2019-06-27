@@ -20,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -46,30 +47,37 @@ import static com.google.common.base.Charsets.UTF_8;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
-    public static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
-    protected static final String NODE_TOPOLOGY = "/topology";
+    private static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
+    protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
-    private final CuratorFramework curatorFramework;
+    private final CuratorFramework defaultCurator;
+    private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String resetCursorPath;
     private final Logger log;
     private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
-            final CuratorFramework curatorFramework,
-            final String loggingPath) {
+            final ZooKeeperHolder zooKeeperHolder,
+            final String loggingPath,
+            final long zkSessionTimeout) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.curatorFramework = curatorFramework;
+        this.defaultCurator = zooKeeperHolder.get();
+        this.closeableCuratorFramework = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
         this.resetCursorPath = getSubscriptionPath("/cursor_reset");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
     protected CuratorFramework getCurator() {
-        return this.curatorFramework;
+        return this.closeableCuratorFramework.getCuratorFramework();
+    }
+
+    protected ZooKeeperHolder.CloseableCuratorFramework getCloseableCuratorFramework() {
+        return this.closeableCuratorFramework;
     }
 
     protected String getSubscriptionId() {
@@ -93,7 +101,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         try {
             Exception releaseException = null;
             if (null == lock) {
-                lock = new InterProcessSemaphoreMutex(curatorFramework, getSubscriptionLockPath());
+                lock = new InterProcessSemaphoreMutex(defaultCurator, getSubscriptionLockPath());
             }
 
             final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
@@ -470,4 +478,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     protected abstract byte[] serializeSession(Session session) throws NakadiRuntimeException;
 
     protected abstract Session deserializeSession(String sessionId, byte[] sessionZkData) throws NakadiRuntimeException;
+
+    @Override
+    public void close() throws IOException {
+        getCloseableCuratorFramework().close();
+    }
 }

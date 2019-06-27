@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;

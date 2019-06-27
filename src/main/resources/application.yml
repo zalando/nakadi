@@ -70,8 +70,7 @@ nakadi:
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
   zookeeper:
-    kafkaNamespace:
-    brokers: zookeeper:2181
+    connectionString: zookeeper://zookeeper:2181
     sessionTimeoutMs: 10000
     connectionTimeoutMs: 3000
   oauth2:
@@ -102,6 +101,12 @@ nakadi:
     timelineCleanup:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
+    diskUsageStats:
+      runPeriodMs: 3600000 # 1 hour
+      authDataType: "*"
+      authValue: "*"
+      owningApplication: "stups_nakadi"
+      eventTypeName: "nakadi.disk.usage"
     consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
   http.pool.connection:
     max.total: 20
@@ -177,4 +182,5 @@ nakadi.features.defaultFeatures:
   REMOTE_TOKENINFO: true
   KPI_COLLECTION: true
   DISABLE_DB_WRITE_OPERATIONS: false
-  FORCE_EVENT_TYPE_AUTHZ: true
+  FORCE_EVENT_TYPE_AUTHZ: false
+  FORCE_SUBSCRIPTION_AUTHZ: false

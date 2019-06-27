@@ -8,7 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;

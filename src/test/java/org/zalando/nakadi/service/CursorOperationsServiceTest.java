@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -13,7 +13,7 @@ import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.kafka.KafkaZookeeper;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -320,7 +320,7 @@ public class CursorOperationsServiceTest {
         when(timeline.isActive()).thenReturn(null == latestOffset);
 
         final TopicRepository repository = new KafkaTopicRepository(
-                mock(ZooKeeperHolder.class),
+                mock(KafkaZookeeper.class),
                 mock(KafkaFactory.class),
                 mock(NakadiSettings.class),
                 mock(KafkaSettings.class),

@@ -7,8 +7,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.core.env.Environment;
-import org.zalando.nakadi.domain.DefaultStorage;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.StorageService;
@@ -28,7 +28,8 @@ public class NakadiConfigTest {
         zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
         Mockito.when(zooKeeperHolder.get()).thenReturn(curatorFramework);
         Mockito.when(curatorFramework.getData()).thenReturn(dataBuilder);
-        Mockito.when(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0")).thenReturn("0");
+        Mockito.when(environment.getProperty("nakadi.zookeeper.connectionString"))
+                .thenReturn("exhibitor://localhost:8181/path");
     }
 
     @Test

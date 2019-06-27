@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;

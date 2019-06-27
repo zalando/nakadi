@@ -3,8 +3,8 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
@@ -25,7 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
-public interface ZkSubscriptionClient {
+public interface ZkSubscriptionClient extends Closeable {
 
     /**
      * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
@@ -145,6 +145,7 @@ public interface ZkSubscriptionClient {
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK without a lock
+     *
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */

@@ -3,11 +3,12 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -65,10 +66,11 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     public NewZkSubscriptionClient(
             final String subscriptionId,
-            final CuratorFramework curatorFramework,
+            final ZooKeeperHolder zooKeeperHolder,
             final String loggingPath,
-            final ObjectMapper objectMapper) {
-        super(subscriptionId, curatorFramework, loggingPath);
+            final ObjectMapper objectMapper,
+            final long zkSessionTimeout) throws ZookeeperException {
+        super(subscriptionId, zooKeeperHolder, loggingPath, zkSessionTimeout);
         this.objectMapper = objectMapper;
     }
 
@@ -214,5 +216,4 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                     changeSet.toArray(new Partition[changeSet.size()]));
         }
     }
-
 }

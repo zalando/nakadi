@@ -41,6 +41,7 @@ public interface FeatureToggleService {
         DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
         DISABLE_LOG_COMPACTION("disable_log_compaction"),
         FORCE_EVENT_TYPE_AUTHZ("force_event_type_authz");
+        FORCE_SUBSCRIPTION_AUTHZ("force_subscription_authz");
 
         private final String id;
 

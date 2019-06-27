@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.util.UUIDGenerator;
 

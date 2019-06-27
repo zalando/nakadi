@@ -8,7 +8,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;

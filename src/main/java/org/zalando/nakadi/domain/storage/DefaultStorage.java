@@ -1,4 +1,4 @@
-package org.zalando.nakadi.domain;
+package org.zalando.nakadi.domain.storage;
 
 public class DefaultStorage {
 
