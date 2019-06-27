@@ -39,7 +39,8 @@ public interface FeatureToggleService {
         KPI_COLLECTION("kpi_collection"),
         AUDIT_LOG_COLLECTION("audit_log_collection"),
         DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
-        DISABLE_LOG_COMPACTION("disable_log_compaction");
+        DISABLE_LOG_COMPACTION("disable_log_compaction"),
+        FORCE_SUBSCRIPTION_AUTHZ("force_subscription_authz");
 
         private final String id;
 

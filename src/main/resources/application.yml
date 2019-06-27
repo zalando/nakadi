@@ -182,3 +182,4 @@ nakadi.features.defaultFeatures:
   REMOTE_TOKENINFO: true
   KPI_COLLECTION: true
   DISABLE_DB_WRITE_OPERATIONS: false
+  FORCE_SUBSCRIPTION_AUTHZ: false
