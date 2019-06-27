@@ -26,6 +26,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -70,6 +71,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.FORCE_EVENT_TYPE_AUTHZ;
 
 @Component
 public class EventTypeService {
@@ -136,7 +138,8 @@ public class EventTypeService {
     }
 
     public void create(final EventTypeBase eventType, final boolean checkAuth)
-            throws TopicCreationException,
+            throws AuthorizationSectionException,
+            TopicCreationException,
             InternalNakadiException,
             NoSuchPartitionStrategyException,
             DuplicatedEventTypeNameException,
@@ -158,6 +161,9 @@ public class EventTypeService {
         validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
+        if (featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ) && eventType.getAuthorization() == null) {
+            throw new AuthorizationSectionException("Authorization section is mandatory");
+        }
         if (checkAuth) {
             authorizationValidator.validateAuthorization(eventType.asBaseResource());
         }
@@ -346,6 +352,11 @@ public class EventTypeService {
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
             original = eventTypeRepository.findByName(eventTypeName);
+
+            if (featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ)
+                    && eventTypeBase.getAuthorization() == null) {
+                throw new AuthorizationSectionException("Authorization section is mandatory");
+            }
 
             authorizationValidator.authorizeEventTypeView(original);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
