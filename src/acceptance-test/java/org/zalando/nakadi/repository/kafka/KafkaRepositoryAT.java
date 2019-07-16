@@ -56,6 +56,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_DELIVERY_TIMEOUT = 30000;
     private static final int KAFKA_MAX_BLOCK_TIMEOUT = 5000;
     private static final int KAFKA_BATCH_SIZE = 1048576;
+    private static final long KAFKA_BUFFER_MEMORY = KAFKA_BATCH_SIZE * 10L;
     private static final int KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
@@ -94,7 +95,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
                 DEFAULT_WARN_LOG_COMPACTION_MESSAGE);
 
-        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
+        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
                 KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);

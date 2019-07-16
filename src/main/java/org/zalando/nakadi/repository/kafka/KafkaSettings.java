@@ -15,6 +15,7 @@ public class KafkaSettings {
     // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
     // /kafka/clients/producer/ProducerConfig.java#L232
     private final int batchSize;
+    private final long bufferMemory;
     private final int lingerMs;
     private final boolean enableAutoCommit;
     private final int maxRequestSize;
@@ -24,6 +25,7 @@ public class KafkaSettings {
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
+                         @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
                          @Value("${nakadi.kafka.linger.ms}") final int lingerMs,
                          @Value("${nakadi.kafka.enable.auto.commit}") final boolean enableAutoCommit,
                          @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize,
@@ -31,6 +33,7 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
+        this.bufferMemory = bufferMemory;
         this.lingerMs = lingerMs;
         this.enableAutoCommit = enableAutoCommit;
         this.maxRequestSize = maxRequestSize;
@@ -44,6 +47,10 @@ public class KafkaSettings {
 
     public int getBatchSize() {
         return batchSize;
+    }
+
+    public long getBufferMemory() {
+        return bufferMemory;
     }
 
     public int getLingerMs() {
