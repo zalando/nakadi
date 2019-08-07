@@ -226,6 +226,7 @@ public class AuthorizationValidator {
             return;
         }
 
+        validateAuthorization(oldValue);
         validateAuthorization(newValue);
     }
 }
