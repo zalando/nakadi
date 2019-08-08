@@ -222,11 +222,10 @@ public class AuthorizationValidator {
                     "Changing authorization object to `null` is not possible due to existing one");
         }
 
-        if (oldAuth != null && oldAuth.equals(newAuth)) {
+        if (oldAuth != null) {
             return;
         }
 
-        validateAuthorization(oldValue);
         validateAuthorization(newValue);
     }
 }
