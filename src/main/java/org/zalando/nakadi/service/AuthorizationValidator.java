@@ -221,11 +221,6 @@ public class AuthorizationValidator {
             throw new UnableProcessException(
                     "Changing authorization object to `null` is not possible due to existing one");
         }
-
-        if (oldAuth != null) {
-            return;
-        }
-
         validateAuthorization(newValue);
     }
 }
