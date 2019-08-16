@@ -39,9 +39,9 @@ In this section, the `admins` list includes the attributes that authorize a subj
 the `readers` list includes the attributes that authorize a subject to perform the `read` operation; and the `writers` 
 list includes the attributes that authorize a subject to perform the `write` operation;
 
-Similarly, protecting a subscription can be done during it's creation or as an update to the subscription.
+Similarly, protecting a subscription can be done during its creation or as an update to the subscription.
 Authorization section for a subscription looks like below, and contains only the `admins` and the `readers` lists. The
-list of admins specifies the attributes that can do admin operations like deletion or updating a subscription and i
+list of admins specifies the attributes that can do admin operations like deletion or updating a subscription and
 the list of readers specifies the attributes that can read and commit to that subscription.
 
 ```json
@@ -88,7 +88,7 @@ curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-t
 For creating a subscription, the sample request is as follows:
 
 ```bash
-curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/subscriptions/ea2d7472-ddc6-4b9e-91f1-5bcd0b7b4fa4 -d '{
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/subscriptions -d '{
   "owning_application": "acme-order-service",
   "consumer_group": "acme-orders",
   "event-types": ["orders_received"],
