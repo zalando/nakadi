@@ -22,7 +22,7 @@ An authorization request is represented by the tuple
 The request will be approved iff the `resource` policy has at least one attribute for `operation` that matches the 
 subject.
 
-## Protecting an event type and subscription
+## Protecting an event type or a subscription
 
 Protecting an event type can be done either during the creation of the event type, or later, as an update to the event 
 type. Users simply need to add an authorization section to their event type description, which looks like this:
@@ -54,7 +54,7 @@ the list of readers specifies the attributes that can read and commit to that su
 Whenever an event type and subscription is created, or its authorization section is updated, all attributes are validated. The exact 
 nature of the validation depends on the plugin implementation.
 
-### Creating an event type or subscription with authorization
+### Creating an event type or a subscription with authorization
 
 Here is a sample request with an authorization section. It gives read, write, and admin access to a single attribute, 
 of type `service`:
@@ -101,8 +101,8 @@ curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/subscri
 
 ### Updating an event type
 
-Updating an event type is similar to creating one. Here is a sample request, that gives read, write, and admin access 
-to the same application:
+Updating an event type or a subscription is similar to creating one. Here is a sample request, that gives read, write, 
+and admin access to the same application (for an event-type):
 
 ```bash
 curl -v -XPUT -H "Content-Type: application/json" http://localhost:8080/event-types/order_received -d '{
