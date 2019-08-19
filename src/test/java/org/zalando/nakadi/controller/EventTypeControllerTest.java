@@ -822,12 +822,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostOptionsRetentionTimeSmallerThanMin() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        defaultEventType.getOptions().setRetentionTime(86399999L);
+        defaultEventType.getOptions().setRetentionTime(1079999L);
 
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
-                        "Field \\\"options.retention_time\\\" can not be less than 86400000")));
+                        "Field \\\"options.retention_time\\\" can not be less than 10800000")));
     }
 
     @Test

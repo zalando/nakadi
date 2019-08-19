@@ -48,7 +48,7 @@ import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 public class EventTypeServiceTest {
 
     private static final String KPI_ET_LOG_EVENT_TYPE = "et-log";
-    protected static final long TOPIC_RETENTION_MIN_MS = 86400000;
+    protected static final long TOPIC_RETENTION_MIN_MS = 10800000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
 
     private final Enrichment enrichment = mock(Enrichment.class);
