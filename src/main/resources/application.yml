@@ -39,7 +39,7 @@ nakadi:
   authz.warnAllDataAccessMessage: "Data access warning"
   topic:
     min:
-      retentionMs: 86400000 # 1 days
+      retentionMs: 10800000 # 3 hours
     max:
       partitionNum: 8
       retentionMs: 345600000 # 4 days
@@ -47,7 +47,7 @@ nakadi:
       partitionNum: 1
       replicaFactor: 1
       retentionMs: 172800000 # 2 days
-      rotationMs: 86400000 # 1 day
+      rotationMs: 10800000 # 3 hours
     compacted:
       rotationMs: 10800000 # 3 hours
       segmentBytes: 1073741824 # 1 GB

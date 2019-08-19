@@ -61,7 +61,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTestCase {
 
-    protected static final long TOPIC_RETENTION_MIN_MS = 86400000;
+    protected static final long TOPIC_RETENTION_MIN_MS = 10800000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
     protected static final long TOPIC_RETENTION_TIME_MS = 172800000;
     protected static final int NAKADI_SEND_TIMEOUT = 10000;
