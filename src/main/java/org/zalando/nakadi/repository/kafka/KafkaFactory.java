@@ -148,7 +148,6 @@ public class KafkaFactory {
 
     public Consumer<byte[], byte[]> getConsumer(@Nullable final String clientId) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
-        // properties.put("client.id", clientId);
         return this.getConsumer(properties);
     }
 
