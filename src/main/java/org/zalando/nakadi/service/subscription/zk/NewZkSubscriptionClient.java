@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -99,6 +100,42 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             final String newSessionsHash, final Partition[] partitions) throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
         final Topology newTopology = getTopology().withUpdatedPartitions(newSessionsHash, partitions);
+        try {
+            getLog().info("Updating topology to {}", newTopology);
+            getCurator().setData().forPath(
+                    getSubscriptionPath(NODE_TOPOLOGY),
+                    objectMapper.writeValueAsBytes(newTopology));
+        } catch (final Exception ex) {
+            throw new NakadiRuntimeException(ex);
+        }
+    }
+
+    @Override
+    public void repartitionSubscription(final String eventType, final int partitionsNumber)
+            throws NakadiRuntimeException {
+        final Topology currentTopology = getTopology();
+        final List<Partition> partitionList = Lists.newArrayList(currentTopology.getPartitions());
+        for (int i = currentTopology.getPartitions().length; i < partitionsNumber; i++) {
+            final String partition = String.valueOf(i);
+            partitionList.add(new Partition(
+                    eventType,
+                    partition,
+                    null,
+                    null,
+                    Partition.State.UNASSIGNED));
+            try {
+                getCurator().create().creatingParentsIfNeeded().forPath(
+                        getOffsetPath(new EventTypePartition(eventType, partition)),
+                        "-1".getBytes(UTF_8));
+            } catch (final Exception ex) {
+                throw new NakadiRuntimeException(ex);
+            }
+        }
+
+        final Topology newTopology = new Topology(
+                partitionList.toArray(new Partition[0]),
+                currentTopology.getSessionsHash(),
+                currentTopology.getVersion() + 1);
         try {
             getLog().info("Updating topology to {}", newTopology);
             getCurator().setData().forPath(

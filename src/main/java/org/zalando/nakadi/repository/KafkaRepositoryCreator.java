@@ -6,9 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
@@ -59,11 +59,16 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     zookeeperSettings.getZkSessionTimeoutMs(),
                     zookeeperSettings.getZkConnectionTimeoutMs(),
                     nakadiSettings);
-            final KafkaFactory kafkaFactory =
-                    new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
+            final KafkaLocationManager kafkaLocationManager = new KafkaLocationManager(zooKeeperHolder, kafkaSettings);
+            final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager, metricRegistry);
             final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
             final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zk,
-                    kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, kafkaTopicConfigFactory);
+                    kafkaFactory,
+                    nakadiSettings,
+                    kafkaSettings,
+                    zookeeperSettings,
+                    kafkaTopicConfigFactory,
+                    kafkaLocationManager);
             // check that it does work
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;

@@ -128,6 +128,10 @@ public class KafkaLocationManager {
         return producerProps;
     }
 
+    public Properties getProperties() {
+        return (Properties) kafkaProperties.clone();
+    }
+
     public void addIpAddressChangeListener(final Runnable listener) {
         this.ipAddressChangeListeners.add(listener);
     }

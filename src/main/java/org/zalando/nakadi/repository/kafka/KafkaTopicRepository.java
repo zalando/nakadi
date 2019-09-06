@@ -1,9 +1,12 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -82,13 +85,15 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
+    private final KafkaLocationManager kafkaLocationManager;
 
     public KafkaTopicRepository(final KafkaZookeeper kafkaZookeeper,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
-                                final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
+                                final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+                                final KafkaLocationManager kafkaLocationManager) {
         this.kafkaZookeeper = kafkaZookeeper;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
@@ -96,6 +101,7 @@ public class KafkaTopicRepository implements TopicRepository {
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.circuitBreakers = new ConcurrentHashMap<>();
+        this.kafkaLocationManager = kafkaLocationManager;
     }
 
     private CompletableFuture<Exception> publishItem(
@@ -585,6 +591,17 @@ public class KafkaTopicRepository implements TopicRepository {
             });
         } catch (final Exception e) {
             throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
+        }
+    }
+
+    @Override
+    public void repartition(final String topic, final int partitionsNumber) throws TopicConfigException {
+        try {
+            final AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties());
+            adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
+            adminClient.close();
+        } catch (final Exception e) {
+            throw new TopicConfigException("Unable to repartition topic " + topic, e);
         }
     }
 

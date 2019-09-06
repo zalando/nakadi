@@ -71,6 +71,7 @@ public interface TopicRepository {
 
     /**
      * Provides estimation of disk size occupied by particular topic partition. Replicated data is not included
+     *
      * @return Maximum size occupied by topic partitions.
      */
     Map<TopicPartition, Long> getSizeStats();
@@ -82,4 +83,6 @@ public interface TopicRepository {
             ServiceTemporarilyUnavailableException;
 
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
+
+    void repartition(String topic, int partitionsNumber) throws TopicConfigException;
 }

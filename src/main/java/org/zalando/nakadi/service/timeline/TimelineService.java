@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,14 +14,15 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ResourceImpl;
-import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -47,11 +49,15 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -78,6 +84,8 @@ public class TimelineService {
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
     private final NakadiAuditLogPublisher auditLogPublisher;
+    private final SubscriptionClientFactory subscriptionClientFactory;
+    private final SubscriptionDbRepository subscriptionDbRepository;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -91,7 +99,9 @@ public class TimelineService {
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
-                           @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
+                           @Lazy final NakadiAuditLogPublisher auditLogPublisher,
+                           final SubscriptionClientFactory subscriptionClientFactory,
+                           final SubscriptionDbRepository subscriptionDbRepository) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -104,6 +114,8 @@ public class TimelineService {
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
         this.auditLogPublisher = auditLogPublisher;
+        this.subscriptionClientFactory = subscriptionClientFactory;
+        this.subscriptionDbRepository = subscriptionDbRepository;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId)
@@ -366,4 +378,31 @@ public class TimelineService {
         timelineDbRepository.updateTimelime(timeline);
     }
 
+    public void repartition(final EventTypeBase original, final int partitionsCount) {
+        final Timeline activeTimeline = getActiveTimeline(original);
+        getTopicRepository(original).repartition(activeTimeline.getTopic(), partitionsCount);
+
+        for (final Timeline timeline : getAllTimelinesOrdered(original.getName())) {
+            // TODO use StaticStorageWorkerFactory
+            final Timeline.KafkaStoragePosition latestPosition =
+                    (Timeline.KafkaStoragePosition) timeline.getLatestPosition();
+            if (latestPosition == null) {
+                continue;
+            }
+            while (partitionsCount - latestPosition.getOffsets().size() > 0) {
+                latestPosition.getOffsets().add(Long.valueOf(-1));
+            }
+            timelineDbRepository.updateTimelime(timeline);
+        }
+
+        final List<Subscription> subscriptions = subscriptionDbRepository.listSubscriptions(
+                ImmutableSet.of(original.getName()),
+                Optional.empty(),
+                0, 1000);
+        for (final Subscription subscription : subscriptions) {
+            final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
+                    LogPathBuilder.build(subscription.getId(), "repartition"));
+            zkClient.repartitionSubscription(original.getName(), partitionsCount);
+        }
+    }
 }

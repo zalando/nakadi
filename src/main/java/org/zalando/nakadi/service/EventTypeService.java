@@ -370,8 +370,8 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            eventType.setDefaultStatistic(
-                    validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
+            final EventTypeStatistics eventTypeStatistics = validateStatisticsUpdate(original, eventType);
+            eventType.setDefaultStatistic(eventTypeStatistics);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -491,15 +491,31 @@ public class EventTypeService {
     }
 
     private EventTypeStatistics validateStatisticsUpdate(
-            final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+            final EventType original,
+            final EventType changedEventType) throws InvalidEventTypeException {
+        EventTypeStatistics existing = original.getDefaultStatistic();
+        EventTypeStatistics newStatistics = changedEventType.getDefaultStatistic();
         if (existing != null && newStatistics == null) {
             return existing;
         }
-        if (!Objects.equals(existing, newStatistics)) {
-            throw new InvalidEventTypeException("default statistics must not be changed");
+
+        int newPartitionsCount = partitionsCalculator.getBestPartitionsCount(newStatistics);
+        if (partitionsCalculator.getBestPartitionsCount(existing) >= newPartitionsCount) {
+            throw new InvalidEventTypeException("Number of partitions can not be decreased (only increased)");
         }
+
+        if (newPartitionsCount > 60) {
+            throw new InvalidEventTypeException("60 partitions is current limit");
+        }
+
+        repartitionEventType(original, newPartitionsCount);
+
         return newStatistics;
+    }
+
+    private void repartitionEventType(final EventType original, final int newPartitionsCount) {
+        timelineService.repartition(original, newPartitionsCount);
+        eventTypeRepository.update(original);
     }
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {

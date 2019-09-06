@@ -171,7 +171,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
             final byte[] topologyData = createTopologyAndOffsets(cursors);
             getCurator().create()
-                    .withMode(CreateMode.PERSISTENT)
                     .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
 
             getLog().info("updating state");

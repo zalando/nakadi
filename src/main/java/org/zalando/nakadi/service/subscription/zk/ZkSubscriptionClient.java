@@ -73,6 +73,9 @@ public interface ZkSubscriptionClient extends Closeable {
     void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
             SubscriptionNotInitializedException;
 
+    void repartitionSubscription(final String eventType, final int partitionsNumber)
+            throws NakadiRuntimeException;
+
     /**
      * Returns session list in zk related to this subscription.
      *
@@ -270,6 +273,11 @@ public interface ZkSubscriptionClient extends Closeable {
 
         public String getSessionsHash() {
             return sessionsHash;
+        }
+
+        @Nullable
+        public Integer getVersion() {
+            return version;
         }
     }
 }
