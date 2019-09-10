@@ -2,7 +2,7 @@ import java.util.concurrent.TimeUnit
 
 buildscript {
     ext {
-        springBootVersion = '1.5.20.RELEASE'
+        springBootVersion = '1.5.22.RELEASE'
     }
 
     repositories {
