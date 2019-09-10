@@ -41,7 +41,7 @@ Nakadi is high-load production ready.
 Zalando uses Nakadi as its central Event Bus Service. 
 Nakadi reliably handles the traffic from thousands event types with 
 the throughput of more than hundreds gigabytes per second.
-The project is in active development. See the [changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)   
+The project is in active development.
   
 #### Features
 
@@ -75,8 +75,6 @@ The project is in active development. See the [changelog](https://github.com/zal
         moving actual data and any service degradation.
         * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
         (like AWS Kinesis, Google pub/sub etc.)
-    
- Read more about latest development in our [Changelog](https://github.com/zalando/nakadi/blob/master/CHANGELOG.md)
  
 
 #### Additional features that we plan to cover in the future are:
