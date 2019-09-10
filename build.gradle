@@ -87,7 +87,7 @@ dependencies {
         curatorVersion = '4.2.0'
         zookeeperVersion = '3.4.14'
         jacksonVersion = '2.9.8'
-        springFrameworkVersion = '4.3.23.RELEASE'
+        springFrameworkVersion = '4.3.25.RELEASE'
     }
     // Override spring-boot BOM versions
     ext['json.version'] = '20180130'
