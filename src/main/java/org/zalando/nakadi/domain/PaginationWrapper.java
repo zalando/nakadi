@@ -6,7 +6,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.List;
 
 @Immutable
-public class PaginationWrapper<T> extends ItemsWrapper {
+public class PaginationWrapper<T> extends ItemsWrapper<T> {
 
     @JsonProperty("_links")
     private final PaginationLinks links;
