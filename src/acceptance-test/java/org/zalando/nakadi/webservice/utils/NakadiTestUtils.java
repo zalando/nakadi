@@ -14,6 +14,8 @@ import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -45,6 +47,7 @@ import static org.springframework.http.HttpStatus.OK;
 
 public class NakadiTestUtils {
 
+    private static final Logger LOG = LoggerFactory.getLogger(NakadiTestUtils.class);
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     public static EventType createEventType() throws JsonProcessingException {
@@ -98,10 +101,29 @@ public class NakadiTestUtils {
 
     public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
         final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
-        given()
+        final Response resp = given()
                 .body("[" + events + "]")
                 .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
+        if (resp.getStatusCode() != 200) {
+            LOG.error("Failed to publish events: {} \n{}", resp.getStatusCode(), resp.getBody().prettyPrint());
+        }
+    }
+
+    public static void repartitionEventType(final EventType eventType, final int partitionsNumber)
+            throws JsonProcessingException {
+        final EventTypeStatistics defaultStatistic = eventType.getDefaultStatistic();
+        defaultStatistic.setReadParallelism(partitionsNumber);
+        defaultStatistic.setWriteParallelism(partitionsNumber);
+        eventType.setDefaultStatistic(defaultStatistic);
+        final int statusCode = given()
+                .body(MAPPER.writeValueAsString(eventType))
+                .contentType(JSON)
+                .put(format("/event-types/{0}", eventType.getName()))
+                .getStatusCode();
+        if (statusCode != 200) {
+            throw new RuntimeException("Failed to repartition event type");
+        }
     }
 
     public static void createTimeline(final String eventType) {

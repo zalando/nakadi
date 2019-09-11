@@ -8,10 +8,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -22,10 +22,12 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.util.Collections;
@@ -53,7 +55,7 @@ public class TimelineServiceTest {
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
             new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage",
-            auditLogPublisher);
+            auditLogPublisher, mock(SubscriptionClientFactory.class), mock(SubscriptionDbRepository.class));
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {

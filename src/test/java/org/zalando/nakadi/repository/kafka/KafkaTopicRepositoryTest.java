@@ -369,7 +369,7 @@ public class KafkaTopicRepositoryTest {
         stats2.get("t3").put("0", 222L);
         when(kz.getSizeStatsForBroker(eq("2"))).thenReturn(new BubukuSizeStats(null, stats2));
 
-        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null);
+        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null, null);
 
         final Map<TopicPartition, Long> result = ktr.getSizeStats();
 
@@ -391,7 +391,8 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    kafkaTopicConfigFactory);
+                    kafkaTopicConfigFactory,
+                    null);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

@@ -579,4 +579,39 @@ public class HilaAT extends BaseAT {
         });
 
     }
+
+    @Test(timeout = 30000)
+    public void whenEventTypeRepartitinedSubscriptionStartsStreamNewPartitions() throws Exception {
+        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
+        final Subscription subscription = createSubscription(
+                RandomSubscriptionBuilder.builder()
+                        .withEventType(eventType.getName())
+                        .withStartFrom(BEGIN)
+                        .buildSubscriptionBase());
+
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
+
+        // create session, read from subscription and wait for events to be sent
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        Assert.assertEquals("0", client.getBatches().get(0).getCursor().getPartition());
+
+        NakadiTestUtils.repartitionEventType(eventType, 2);
+        waitFor(() -> assertThat(client.isRunning(), is(false)));
+
+        final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
+
+        waitFor(() -> assertThat(clientAfterRepartitioning.getBatches(), hasSize(3)));
+        Assert.assertEquals("1", clientAfterRepartitioning.getBatches().get(2).getCursor().getPartition());
+    }
+
 }

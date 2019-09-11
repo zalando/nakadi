@@ -596,10 +596,23 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void repartition(final String topic, final int partitionsNumber) throws TopicConfigException {
-        try {
-            final AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties());
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
-            adminClient.close();
+            final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+            final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                            return consumer.partitionsFor(topic).size() == partitionsNumber;
+                        }
+                    },
+                    new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                            .withWaitBetweenEachTry(100L)
+                            .withResultsThatForceRetry(Boolean.FALSE));
+            if (!Boolean.TRUE.equals(allowsConsumption)) {
+                throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
+            }
+            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.releaseProducer(producer);
         } catch (final Exception e) {
             throw new TopicConfigException("Unable to repartition topic " + topic, e);
         }

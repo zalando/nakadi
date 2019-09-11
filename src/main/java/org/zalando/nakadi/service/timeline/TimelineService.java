@@ -403,6 +403,7 @@ public class TimelineService {
             final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
                     LogPathBuilder.build(subscription.getId(), "repartition"));
             zkClient.repartitionSubscription(original.getName(), partitionsCount);
+            zkClient.resetCursors(Collections.emptyList(), 60000); // TODO refactror reset cursor to just close subs
         }
     }
 }
