@@ -378,7 +378,7 @@ public class TimelineService {
         timelineDbRepository.updateTimelime(timeline);
     }
 
-    public void repartition(final EventTypeBase original, final int partitionsCount) {
+    public void repartition(final EventTypeBase original, final int partitionsCount) throws Exception {
         final Timeline activeTimeline = getActiveTimeline(original);
         getTopicRepository(original).repartition(activeTimeline.getTopic(), partitionsCount);
 
@@ -394,6 +394,8 @@ public class TimelineService {
             }
             timelineDbRepository.updateTimelime(timeline);
         }
+
+//  TODO test it     eventTypeCache.updated(original.getName());
 
         final List<Subscription> subscriptions = subscriptionDbRepository.listSubscriptions(
                 ImmutableSet.of(original.getName()),
