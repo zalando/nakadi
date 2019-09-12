@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
@@ -43,7 +44,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.buildResourceAuthorization;
 import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
+import static org.zalando.nakadi.utils.TestUtils.createSubscription;
 
 public class EventTypeServiceTest {
 
@@ -132,6 +135,64 @@ public class EventTypeServiceTest {
 
         eventTypeService.delete(eventType.getName());
         // no exception should be thrown
+    }
+
+    @Test
+    public void testFeatureToggleAllowsDeletEventTypeWithAuthzSectionAndDeletableSubscription() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setAuthorization(buildResourceAuthorization());
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(ImmutableList.of(createSubscription("nakadi_archiver", "nakadi_to_s3")))
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
+                .thenReturn(true);
+
+        eventTypeService.delete(eventType.getName());
+        // no exception should be thrown
+    }
+
+    @Test
+    public void testFeatureToggleForbidsDeleteEventTypeWithoutAuthzSection() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(ImmutableList.of(createSubscription("nakadi_archiver", "nakadi_to_s3")))
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, -1);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
+                .thenReturn(true);
+
+        try {
+            eventTypeService.delete(eventType.getName());
+        } catch (AccessDeniedException e) {
+            return;
+        }
+        fail("Should throw AccessDeniedException");
+    }
+
+    @Test
+    public void testFeatureToggleForbidsDeleteEventTypeWithNonDeletableSubscription() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setAuthorization(buildResourceAuthorization());
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(ImmutableList.of(createSubscription("someone", "something")))
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, -1);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
+                .thenReturn(true);
+
+        try {
+            eventTypeService.delete(eventType.getName());
+        } catch (AccessDeniedException e) {
+            return;
+        }
+        fail("Should throw AccessDeniedException");
     }
 
     @Test(expected = FeatureNotAvailableException.class)

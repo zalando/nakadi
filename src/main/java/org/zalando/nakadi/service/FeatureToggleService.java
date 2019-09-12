@@ -34,6 +34,7 @@ public interface FeatureToggleService {
         DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
         DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS("delete_event_type_with_subscriptions"),
+        EVENT_TYPE_DELETION_ONLY_ADMINS("event_type_deletion_only_admins"),
         DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
         REMOTE_TOKENINFO("remote_tokeninfo"),
         KPI_COLLECTION("kpi_collection"),

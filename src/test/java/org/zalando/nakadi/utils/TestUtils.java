@@ -19,10 +19,12 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -30,6 +32,7 @@ import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -141,6 +144,13 @@ public class TestUtils {
         return EventTypeTestBuilder.builder().build();
     }
 
+    public static ResourceAuthorization buildResourceAuthorization() {
+        final List<AuthorizationAttribute> admins = new ArrayList<>();
+        final List<AuthorizationAttribute> readers = new ArrayList<>();
+        final List<AuthorizationAttribute> writers = new ArrayList<>();
+        return new ResourceAuthorization(admins, readers, writers);
+    }
+
     public static AccessDeniedException mockAccessDeniedException() {
         final Resource resource = mock(Resource.class);
         when(resource.getName()).thenReturn("some-name");
@@ -222,6 +232,10 @@ public class TestUtils {
 
     public static List<Subscription> createRandomSubscriptions(final int count) {
         return createRandomSubscriptions(count, randomTextString());
+    }
+
+    public static Subscription createSubscription(final String owningApp, final String consumerGroup) {
+        return builder().withConsumerGroup(consumerGroup).withOwningApplication(owningApp).build();
     }
 
     public static Timeline buildTimeline(final String etName) {
