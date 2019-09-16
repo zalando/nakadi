@@ -348,7 +348,8 @@ public class EventTypeService {
         while (!subs.isEmpty()) {
             for (final Subscription sub : subs) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
-                        || !sub.getOwningApplication().equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
+                        || !sub.getOwningApplication()
+                        .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
                     return true;
                 }
             }
