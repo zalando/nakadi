@@ -148,11 +148,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
 
         queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ");
-        if (limit >= 0) {
-            params.add(limit);
-        } else {
-            params.add("NULL");
-        }
+        params.add(limit);
         params.add(offset);
         try {
             return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
