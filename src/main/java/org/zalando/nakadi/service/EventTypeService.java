@@ -342,13 +342,19 @@ public class EventTypeService {
     }
 
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
-        final List<Subscription> subs = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), 0, -1);
-        for (final Subscription sub : subs) {
-            if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
-                    || !sub.getOwningApplication().equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
-                return true;
+        int offset = 0;
+        List<Subscription> subs = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+        while (!subs.isEmpty()) {
+            for (final Subscription sub : subs) {
+                if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
+                        || !sub.getOwningApplication().equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
+                    return true;
+                }
             }
+            offset += 20;
+            subs = subscriptionRepository.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
         }
         return false;
     }

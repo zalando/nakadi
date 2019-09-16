@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import org.assertj.core.util.Lists;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -145,7 +146,15 @@ public class EventTypeServiceTest {
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         doReturn(ImmutableList.of(createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
+        doReturn(ImmutableList.of(createSubscription("nakadi_archiver", "nakadi_to_s3")))
+                .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+        doReturn(Lists.emptyList())
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
+        doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
                 .thenReturn(true);
@@ -161,7 +170,12 @@ public class EventTypeServiceTest {
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         doReturn(ImmutableList.of(createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, -1);
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
+        doReturn(Lists.emptyList())
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
+        doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
                 .thenReturn(true);
@@ -182,7 +196,12 @@ public class EventTypeServiceTest {
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         doReturn(ImmutableList.of(createSubscription("someone", "something")))
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, -1);
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
+        doReturn(Lists.emptyList())
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
+        doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
                 .thenReturn(true);
