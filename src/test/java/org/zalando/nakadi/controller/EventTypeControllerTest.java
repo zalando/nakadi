@@ -21,6 +21,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
@@ -263,6 +264,53 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
                 .cleanupPolicy(CleanupPolicy.DELETE)
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenDecreaseNumberOfPartitionThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(1, 1))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenIncreaseNumberOfPartitionThen200() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(3, 3))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenIncreaseNumberOfPartitionThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .defaultStatistic(new EventTypeStatistics(100, 100))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
