@@ -496,8 +496,15 @@ public class EventTypeService {
         if (existing != null && newStatistics == null) {
             return existing;
         }
-        if (!Objects.equals(existing, newStatistics)) {
-            throw new InvalidEventTypeException("default statistics must not be changed");
+        if ((newStatistics.getReadParallelism() > nakadiSettings.getMaxTopicPartitionCount())
+                || (newStatistics.getWriteParallelism() > nakadiSettings.getMaxTopicPartitionCount())) {
+            throw new InvalidEventTypeException("Number of partitions should not be more than "
+                    + nakadiSettings.getMaxTopicPartitionCount());
+        }
+        if ((newStatistics.getReadParallelism() < existing.getReadParallelism())
+                || (newStatistics.getWriteParallelism()
+                < existing.getWriteParallelism())) {
+            throw new InvalidEventTypeException("Number of partitions cannot be reduced");
         }
         return newStatistics;
     }

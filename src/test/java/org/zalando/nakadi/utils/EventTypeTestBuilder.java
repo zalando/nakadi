@@ -61,6 +61,7 @@ public class EventTypeTestBuilder {
         this.cleanupPolicy = CleanupPolicy.DELETE;
         this.createdAt = new DateTime(DateTimeZone.UTC);
         this.updatedAt = this.createdAt;
+        this.defaultStatistic = new EventTypeStatistics(2,2);
         this.authorization = null;
         this.audience = null;
     }
