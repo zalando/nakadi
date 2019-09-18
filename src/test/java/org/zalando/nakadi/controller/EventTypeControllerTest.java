@@ -21,6 +21,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
@@ -137,6 +138,62 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.getSchema().setSchema("{}");
         postEventType(eventType).andExpect(status().isCreated()).andExpect(
                 header().string("Warning", "299 nakadi \"I am warning you. I am warning you, even more\""));
+    }
+
+    @Test
+    public void whenChangeDefaultStatiticsWithoutAnyChangeInPartitionThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(1, 1))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+
+        final EventType updatedEventType1 = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(100, 100))
+                .build();
+        putEventType(updatedEventType1, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+
+        final EventType updatedEventType2 = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(1, 2))
+                .build();
+        putEventType(updatedEventType2, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+
+
+    }
+
+    @Test
+    public void whenIncreaseNumberOfPartitionThen200() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(3, 3))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isOk());
+
+        final EventType updatedEventType2 = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(2, 2))
+                .build();
+
+        putEventType(updatedEventType2, originalEventType.getName())
+                .andExpect(status().isOk());
     }
 
     @Test

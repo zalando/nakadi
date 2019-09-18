@@ -63,51 +63,38 @@ public class NakadiAuditLogPublisherTest {
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name");
 
         final ArgumentCaptor<JSONObject> supplierCaptor = ArgumentCaptor.forClass(JSONObject.class);
-        verify(processor, times(1)).enrichAndSubmit(eq("audit-event-type"), supplierCaptor.capture());
-
-        assertThat(new JSONObject("{" +
-                        "\"data_op\":\"C\"," +
-                        "\"data\":{" +
-                        "\"new_object\":{" +
-                        "\"schema\":{" +
-                        "\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\"" +
-                        " } } }\"," +
-                        "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
-                        "\"type\":\"json_schema\"," +
-                        "\"version\":\"1.0.0\"" +
-                        "}," +
-                        "\"compatibility_mode\":\"compatible\"," +
-                        "\"ordering_key_fields\":[]," +
-                        "\"created_at\":\"2019-01-16T13:44:16.819Z\"," +
-                        "\"cleanup_policy\":\"delete\"," +
-                        "\"ordering_instance_ids\":[]," +
-                        "\"authorization\":null," +
-                        "\"partition_key_fields\":[]," +
+        verify(processor, times(1)).enrichAndSubmit(eq("audit-event-type"),
+                supplierCaptor.capture());
+        assertThat(new JSONObject("{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
+                        "{\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\" " +
+                        "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +
+                        "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[]," +
+                        "\"created_at\":\"2019-01-16T13:44:16.819Z\",\"cleanup_policy\":\"delete\"," +
+                        "\"ordering_instance_ids\":[],\"authorization\":null,\"partition_key_fields\":[]," +
                         "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
-                        "\"default_statistic\":null," +
-                        "\"name\":\"new-et-name\"," +
-                        "\"options\":{\"retention_time\":172800000}," +
-                        "\"partition_strategy\":\"random\"," +
-                        "\"owning_application\":\"event-producer-application\"," +
-                        "\"enrichment_strategies\":[]," +
-                        "\"category\":\"undefined\"" +
-                        "}," +
-                        "\"new_text\":\"{\\\"name\\\":\\\"new-et-name\\\",\\\"owning_application\\\":\\\"event" +
-                        "-producer-application\\\",\\\"category\\\":\\\"undefined\\\",\\\"enrichment_strategies\\\"" +
-                        ":[],\\\"partition_strategy\\\":\\\"random\\\",\\\"partition_key_fields\\\":[],\\\"cleanup" +
-                        "_policy\\\":\\\"delete\\\",\\\"ordering_key_fields\\\":[],\\\"ordering_instance_ids\\\":[" +
-                        "],\\\"schema\\\":{\\\"type\\\":\\\"json_schema\\\",\\\"schema\\\":\\\"{ \\\\\\\"propertie" +
-                        "s\\\\\\\": { \\\\\\\"foo\\\\\\\": { \\\\\\\"type\\\\\\\": \\\\\\\"string\\\\\\\" } } }\\\"" +
-                        ",\\\"version\\\":\\\"1.0.0\\\",\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"},\\\"d" +
-                        "efault_statistic\\\":null,\\\"options\\\":{\\\"retention_time\\\":172800000},\\\"authoriz" +
-                        "ation\\\":null,\\\"compatibility_mode\\\":\\\"compatible\\\",\\\"updated_at\\\":\\\"2019-" +
-                        "01-16T13:44:16.819Z\\\",\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}\"," +
-                        "\"resource_type\":\"event_type\"," +
-                        "\"resource_id\":\"et-name\"," +
-                        "\"user\":\"user-name\"," +
-                        "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"" +
-                        "}," +
-                        "\"data_type\":\"event_type\"}").toString(),
+                        "\"default_statistic\":{\"read_parallelism\":2," +
+                        "\"messages_per_minute\":1,\"message_size\":1,\"write_parallelism\":2}," +
+                        "\"name\":\"new-et-name\",\"options\":{\"retention_time\":172800000}," +
+                        "\"partition_strategy\":\"random\",\"owning_application\":\"event-producer-application\"," +
+                        "\"enrichment_strategies\":[],\"category\":\"undefined\"}," +
+                        "\"new_text\":\"{\\\"name\\\":\\\"new-et-name\\\"," +
+                        "\\\"owning_application\\\":\\\"event-producer-application\\\"," +
+                        "\\\"category\\\":\\\"undefined\\\",\\\"enrichment_strategies\\\":[]," +
+                        "\\\"partition_strategy\\\":\\\"random\\\",\\\"partition_key_fields\\\":[]," +
+                        "\\\"cleanup_policy\\\":\\\"delete\\\",\\\"ordering_key_fields\\\":[]," +
+                        "\\\"ordering_instance_ids\\\":[],\\\"schema\\\":{\\\"type\\\":\\\"json_schema\\\"," +
+                        "\\\"schema\\\":\\\"{ \\\\\\\"properties\\\\\\\": { \\\\\\\"foo\\\\\\\": " +
+                        "{ \\\\\\\"type\\\\\\\": \\\\\\\"string\\\\\\\" } } }\\\",\\\"version\\\":\\\"1.0.0\\\"," +
+                        "\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}," +
+                        "\\\"default_statistic\\\":{\\\"messages_per_minute\\\":1,\\\"message_size\\\":1," +
+                        "\\\"read_parallelism\\\":2,\\\"write_parallelism\\\":2}," +
+                        "\\\"options\\\":{\\\"retention_time\\\":172800000}," +
+                        "\\\"authorization\\\":null,\\\"compatibility_mode\\\":\\\"compatible\\\"," +
+                        "\\\"updated_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"," +
+                        "\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}\"," +
+                        "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"," +
+                        "\"resource_type\":\"event_type\",\"resource_id\":\"et-name\",\"user\":\"user-name\"}," +
+                        "\"data_type\":\"event_type\"}\n").toString(),
                 sameJSONAs(supplierCaptor.getValue().toString()));
     }
 

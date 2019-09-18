@@ -57,6 +57,7 @@ public class EventTypeTestBuilder {
                 "1.0.0", randomDate());
         this.options = new EventTypeOptions();
         this.options.setRetentionTime(172800000L);
+        this.defaultStatistic = new EventTypeStatistics(2,2);
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;
         this.cleanupPolicy = CleanupPolicy.DELETE;
         this.createdAt = new DateTime(DateTimeZone.UTC);
