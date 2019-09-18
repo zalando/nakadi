@@ -147,7 +147,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(1, 1))
+                .defaultStatistic(new EventTypeStatistics(0,1))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -161,14 +161,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .build();
         putEventType(updatedEventType1, originalEventType.getName())
                 .andExpect(status().isUnprocessableEntity());
-
-        final EventType updatedEventType2 = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(1, 2))
-                .build();
-        putEventType(updatedEventType2, originalEventType.getName())
-                .andExpect(status().isUnprocessableEntity());
-
 
     }
 
@@ -187,10 +179,20 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isOk());
 
+        final EventType updatedEventType1 = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .defaultStatistic(new EventTypeStatistics(1, 1))
+                .build();
+
+        putEventType(updatedEventType1, originalEventType.getName())
+                .andExpect(status().isOk());
+
         final EventType updatedEventType2 = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(2, 2))
+                .defaultStatistic(null)
                 .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
 
         putEventType(updatedEventType2, originalEventType.getName())
                 .andExpect(status().isOk());

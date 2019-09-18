@@ -72,8 +72,8 @@ public class NakadiAuditLogPublisherTest {
                         "\"created_at\":\"2019-01-16T13:44:16.819Z\",\"cleanup_policy\":\"delete\"," +
                         "\"ordering_instance_ids\":[],\"authorization\":null,\"partition_key_fields\":[]," +
                         "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
-                        "\"default_statistic\":{\"read_parallelism\":2," +
-                        "\"messages_per_minute\":1,\"message_size\":1,\"write_parallelism\":2}," +
+                        "\"default_statistic\":{\"read_parallelism\":1," +
+                        "\"messages_per_minute\":1,\"message_size\":1,\"write_parallelism\":1}," +
                         "\"name\":\"new-et-name\",\"options\":{\"retention_time\":172800000}," +
                         "\"partition_strategy\":\"random\",\"owning_application\":\"event-producer-application\"," +
                         "\"enrichment_strategies\":[],\"category\":\"undefined\"}," +
@@ -87,7 +87,7 @@ public class NakadiAuditLogPublisherTest {
                         "{ \\\\\\\"type\\\\\\\": \\\\\\\"string\\\\\\\" } } }\\\",\\\"version\\\":\\\"1.0.0\\\"," +
                         "\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}," +
                         "\\\"default_statistic\\\":{\\\"messages_per_minute\\\":1,\\\"message_size\\\":1," +
-                        "\\\"read_parallelism\\\":2,\\\"write_parallelism\\\":2}," +
+                        "\\\"read_parallelism\\\":1,\\\"write_parallelism\\\":1}," +
                         "\\\"options\\\":{\\\"retention_time\\\":172800000}," +
                         "\\\"authorization\\\":null,\\\"compatibility_mode\\\":\\\"compatible\\\"," +
                         "\\\"updated_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"," +
