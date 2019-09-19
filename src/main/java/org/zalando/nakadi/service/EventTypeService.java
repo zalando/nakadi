@@ -496,8 +496,8 @@ public class EventTypeService {
         if (existing != null && newStatistics == null) {
             return existing;
         }
-        if (existing == null && newStatistics == null) {
-            return null;
+        if ((existing == null && newStatistics == null) || (existing.equals(newStatistics))) {
+            return existing;
         }
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
