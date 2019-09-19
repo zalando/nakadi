@@ -178,7 +178,7 @@ public class EventTypeServiceTest {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
-
+        when(nakadiSettings.getMaxTopicPartitionCount()).thenReturn(32);
         eventTypeService.update(et.getName(), et);
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()

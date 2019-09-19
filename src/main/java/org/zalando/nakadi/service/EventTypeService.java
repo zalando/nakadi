@@ -496,8 +496,28 @@ public class EventTypeService {
         if (existing != null && newStatistics == null) {
             return existing;
         }
-        if (!Objects.equals(existing, newStatistics)) {
-            throw new InvalidEventTypeException("default statistics must not be changed");
+        if ((existing == null && newStatistics == null) || (existing.equals(newStatistics))) {
+            return existing;
+        }
+        final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
+                newStatistics.getWriteParallelism());
+        final int oldMaxPartitions = Math.max(existing.getReadParallelism(),
+                existing.getWriteParallelism());
+
+        if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
+            throw new InvalidEventTypeException("Number of partitions should not be more than "
+                    + nakadiSettings.getMaxTopicPartitionCount());
+        }
+        if (newMaxPartitions < oldMaxPartitions) {
+            throw new InvalidEventTypeException("Read and write parallelism should be greater " +
+                    "than existing values.");
+        }
+        if (newMaxPartitions == oldMaxPartitions) {
+            if ((existing.getReadParallelism() != newStatistics.getReadParallelism()) ||
+                    (existing.getWriteParallelism() != newStatistics.getWriteParallelism())) {
+                throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
+                        "the number of partition (max of read and write parallelism)");
+            }
         }
         return newStatistics;
     }
