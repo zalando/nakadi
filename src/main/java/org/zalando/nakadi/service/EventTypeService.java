@@ -372,7 +372,7 @@ public class EventTypeService {
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            updateRetentionTime(original, eventType);
+            updateEventType(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException(
@@ -405,7 +405,7 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private void updateRetentionTime(final EventType original, final EventType eventType) {
+    private void updateEventType(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
         if (oldRetentionTime == null) {
@@ -419,6 +419,7 @@ public class EventTypeService {
             } else {
                 eventType.setOptions(original.getOptions());
             }
+            timelineService.repartitionET(eventType, getNumberOfPartitionsFromStats(eventType.getDefaultStatistic()));
             updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
             retentionTimeUpdated = true;
         } finally {
@@ -429,7 +430,8 @@ public class EventTypeService {
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
-                                     final Long oldRetentionTime) throws InternalNakadiException {
+                                     final Long oldRetentionTime)
+            throws InternalNakadiException {
         final InternalNakadiException exception = transactionTemplate.execute(action -> {
             try {
                 updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
@@ -490,19 +492,33 @@ public class EventTypeService {
         }
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(
-            final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-        if (existing != null && newStatistics == null) {
-            return existing;
+    private int getNumberOfPartitionsFromStats(final EventTypeStatistics eventTypeStatistics) {
+        if (eventTypeStatistics == null) {
+            return 1;
         }
-        if ((existing == null && newStatistics == null) || (existing.equals(newStatistics))) {
-            return existing;
+        return Math.max(eventTypeStatistics.getReadParallelism(),
+                eventTypeStatistics.getWriteParallelism());
+    }
+
+    private EventTypeStatistics validateStatisticsUpdate(
+            final EventTypeStatistics existingStatistics,
+            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+
+        if (existingStatistics != null && newStatistics == null) {
+            return existingStatistics;
+        }
+        if (existingStatistics == null && newStatistics == null) {
+            return null;
+        }
+        if (existingStatistics == null && newStatistics != null) {
+            return newStatistics;
         }
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
-        final int oldMaxPartitions = Math.max(existing.getReadParallelism(),
-                existing.getWriteParallelism());
+
+        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
+                existingStatistics.getWriteParallelism());
+
 
         if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
             throw new InvalidEventTypeException("Number of partitions should not be more than "
@@ -513,8 +529,8 @@ public class EventTypeService {
                     "than existing values.");
         }
         if (newMaxPartitions == oldMaxPartitions) {
-            if ((existing.getReadParallelism() != newStatistics.getReadParallelism()) ||
-                    (existing.getWriteParallelism() != newStatistics.getWriteParallelism())) {
+            if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
+                    (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
                 throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
                         "the number of partition (max of read and write parallelism)");
             }

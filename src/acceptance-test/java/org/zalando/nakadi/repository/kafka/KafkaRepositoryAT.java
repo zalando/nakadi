@@ -246,7 +246,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                kafkaTopicConfigFactory);
+                kafkaTopicConfigFactory, null);
     }
 
 }

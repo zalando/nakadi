@@ -52,6 +52,10 @@ public class KafkaLocationManager {
         }
     }
 
+    public Properties getProperties() {
+        return (Properties) kafkaProperties.clone();
+    }
+
     private void updateBootstrapServers(final boolean createWatcher) {
         final List<Broker> brokers = new ArrayList<>();
         try {
@@ -136,7 +140,7 @@ public class KafkaLocationManager {
         this.ipAddressChangeListeners.remove(brokerIpAddressChangeListener);
     }
 
-    private static class Broker implements Comparable<Broker> {
+    public static class Broker implements Comparable<Broker> {
         final String host;
         final Integer port;
 

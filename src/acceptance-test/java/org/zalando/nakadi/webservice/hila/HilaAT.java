@@ -101,6 +101,26 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(SC_NO_CONTENT, statusCode);
     }
 
+    @Test(timeout = 30000)
+    public void whenEventTypeRepartitionedTheNewSubscriptionShouldHaveUpdatedPartition() throws Exception {
+        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
+        NakadiTestUtils.repartitionEventType(eventType, 2);
+        final Subscription subscription = createSubscription(
+                RandomSubscriptionBuilder.builder()
+                        .withEventType(eventType.getName())
+                        .withStartFrom(BEGIN)
+                        .buildSubscriptionBase());
+        final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
+        waitFor(() -> assertThat(clientAfterRepartitioning.getBatches(), hasSize(2)));
+        Assert.assertEquals("1", clientAfterRepartitioning.getBatches().get(1).getCursor().getPartition());
+    }
+
     @Test(timeout = 10000)
     public void whenStreamTimeoutReachedThenEventsFlushed() throws Exception {
         final TestStreamingClient client = TestStreamingClient

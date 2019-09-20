@@ -1,0 +1,18 @@
+{
+  "name": "NAME_PLACEHOLDER",
+  "owning_application": "OWNING_APP_PLACEHOLDER",
+  "category": "undefined",
+  "compatibility_mode": "compatible",
+  "schema": {
+    "version": "1.0.0",
+    "type": "json_schema",
+    "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"
+  },
+  "default_statistic": {
+    "messages_per_minute": 1000,
+    "message_size":	5,
+    "read_parallelism":	3,
+    "write_parallelism": 3
+  },
+  "audience": "external-public"
+}
