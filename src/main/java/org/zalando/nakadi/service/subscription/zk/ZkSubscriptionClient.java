@@ -162,6 +162,15 @@ public interface ZkSubscriptionClient extends Closeable {
             throws NakadiRuntimeException, UnsupportedOperationException;
 
     /**
+     * Extends topology for subscription after event type partitions increased
+     *
+     * @param eventTypeName Name of the event-type that was repartitioned
+     * @param newPartitionsCount Count of the number of partitions of the event type after repartitioning
+     */
+    void repartitionTopology(String eventTypeName, int newPartitionsCount)
+            throws NakadiRuntimeException;
+
+    /**
      * Gets current status of cursor reset request.
      *
      * @return true if cursor reset in progress
@@ -270,6 +279,10 @@ public interface ZkSubscriptionClient extends Closeable {
 
         public String getSessionsHash() {
             return sessionsHash;
+        }
+
+        public Integer getVersion() {
+            return version;
         }
     }
 }
