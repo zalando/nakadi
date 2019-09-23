@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
@@ -96,6 +97,7 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
+    private final AtomicBoolean isRepartitionRequired;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -132,6 +134,7 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
+        this.isRepartitionRequired = new AtomicBoolean(false);
     }
 
     public List<EventType> list() {
@@ -422,7 +425,10 @@ public class EventTypeService {
             } else {
                 eventType.setOptions(original.getOptions());
             }
-            timelineService.repartitionET(eventType, getNumberOfPartitionsFromStats(eventType.getDefaultStatistic()));
+            if (isRepartitionRequired.compareAndSet(true, false)) {
+                timelineService.repartitionEventType(eventType,
+                        getNumberOfPartitionsFromStats(eventType.getDefaultStatistic()));
+            }
             updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
             retentionTimeUpdated = true;
         } finally {
@@ -507,14 +513,15 @@ public class EventTypeService {
             final EventTypeStatistics existingStatistics,
             final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
 
-        if (existingStatistics != null && newStatistics == null) {
-            return existingStatistics;
-        }
         if (existingStatistics == null && newStatistics == null) {
             return null;
         }
         if (existingStatistics == null && newStatistics != null) {
+            isRepartitionRequired.set(true);
             return newStatistics;
+        }
+        if ((existingStatistics != null && newStatistics == null) || (existingStatistics.equals(newStatistics))) {
+            return existingStatistics;
         }
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
@@ -538,6 +545,7 @@ public class EventTypeService {
                         "the number of partition (max of read and write parallelism)");
             }
         }
+        isRepartitionRequired.set(true);
         return newStatistics;
     }
 

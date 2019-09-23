@@ -140,7 +140,7 @@ public class KafkaLocationManager {
         this.ipAddressChangeListeners.remove(brokerIpAddressChangeListener);
     }
 
-    public static class Broker implements Comparable<Broker> {
+    private static class Broker implements Comparable<Broker> {
         final String host;
         final Integer port;
 

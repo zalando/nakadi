@@ -178,7 +178,7 @@ public class KafkaTopicRepository implements TopicRepository {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
             final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
-            final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+            final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
                         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
                             return consumer.partitionsFor(topic).size() == partitionsNumber;
                         }
@@ -186,7 +186,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
                             .withWaitBetweenEachTry(100L)
                             .withResultsThatForceRetry(Boolean.FALSE));
-            if (!Boolean.TRUE.equals(allowsConsumption)) {
+            if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
             final Producer<String, String> producer = kafkaFactory.takeProducer();

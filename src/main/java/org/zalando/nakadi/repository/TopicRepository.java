@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -45,7 +46,8 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws TopicRepositoryException;
 
-    void repartition(String topic, int partitionsNumber) throws TopicConfigException;
+    void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
+            TopicConfigException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
@@ -73,6 +75,7 @@ public interface TopicRepository {
 
     /**
      * Provides estimation of disk size occupied by particular topic partition. Replicated data is not included
+     *
      * @return Maximum size occupied by topic partitions.
      */
     Map<TopicPartition, Long> getSizeStats();
