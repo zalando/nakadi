@@ -118,7 +118,8 @@ public class HilaAT extends BaseAT {
         NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
         waitFor(() -> assertThat(clientAfterRepartitioning.getBatches(), hasSize(2)));
-        Assert.assertEquals("1", clientAfterRepartitioning.getBatches().get(1).getCursor().getPartition());
+        Assert.assertTrue(clientAfterRepartitioning.getBatches().stream()
+                .anyMatch(event -> event.getCursor().getPartition().equals("1")));
     }
 
     @Test(timeout = 10000)
