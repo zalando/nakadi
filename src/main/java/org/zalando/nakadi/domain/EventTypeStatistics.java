@@ -68,7 +68,9 @@ public class EventTypeStatistics {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
+        if ((this ==null) && (o ==null)){
+            return true;
+        }
         final EventTypeStatistics that = (EventTypeStatistics) o;
         return Objects.equals(messagesPerMinute, that.messagesPerMinute)
                 && Objects.equals(messageSize, that.messageSize)

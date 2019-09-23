@@ -34,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.FailedToRollBackDBException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -69,7 +70,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
@@ -97,7 +97,6 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
-    private final AtomicBoolean isRepartitionRequired;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -134,7 +133,6 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-        this.isRepartitionRequired = new AtomicBoolean(false);
     }
 
     public List<EventType> list() {
@@ -375,9 +373,8 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            eventType.setDefaultStatistic(
-                    validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            updateEventType(original, eventType);
+            updateDefaultStatistics(original, eventType);
+            updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException(
@@ -410,8 +407,7 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private void updateEventType(final EventType original, final EventType eventType) throws
-            CannotAddPartitionToTopicException, TopicConfigException, InternalNakadiException {
+    private void updateRetentionTime(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
         if (oldRetentionTime == null) {
@@ -424,10 +420,6 @@ public class EventTypeService {
                 updateTopicRetentionTime(original.getName(), newRetentionTime);
             } else {
                 eventType.setOptions(original.getOptions());
-            }
-            if (isRepartitionRequired.compareAndSet(true, false)) {
-                timelineService.repartitionEventType(eventType,
-                        getNumberOfPartitionsFromStats(eventType.getDefaultStatistic()));
             }
             updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
             retentionTimeUpdated = true;
@@ -501,28 +493,21 @@ public class EventTypeService {
         }
     }
 
-    private int getNumberOfPartitionsFromStats(final EventTypeStatistics eventTypeStatistics) {
-        if (eventTypeStatistics == null) {
-            return 1;
+    private void updateDefaultStatistics(
+            final EventType original,
+            final EventType newEventType) throws InvalidEventTypeException {
+        final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
+        final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
+        if ((newStatistics == null) || (existingStatistics.equals(newStatistics))) {
+            return;
         }
-        return Math.max(eventTypeStatistics.getReadParallelism(),
-                eventTypeStatistics.getWriteParallelism());
-    }
+        
+        if (existingStatistics == null) {
+            updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
+                    newStatistics.getWriteParallelism()));
+            return;
+        }
 
-    private EventTypeStatistics validateStatisticsUpdate(
-            final EventTypeStatistics existingStatistics,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-
-        if (existingStatistics == null && newStatistics == null) {
-            return null;
-        }
-        if (existingStatistics == null && newStatistics != null) {
-            isRepartitionRequired.set(true);
-            return newStatistics;
-        }
-        if ((existingStatistics != null && newStatistics == null) || (existingStatistics.equals(newStatistics))) {
-            return existingStatistics;
-        }
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
 
@@ -545,8 +530,26 @@ public class EventTypeService {
                         "the number of partition (max of read and write parallelism)");
             }
         }
-        isRepartitionRequired.set(true);
-        return newStatistics;
+        updateNumberOfPartitions(original, newEventType, newMaxPartitions);
+    }
+
+    private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
+            throws InternalNakadiException, FailedToRollBackDBException {
+        eventTypeRepository.update(eventType);
+        try {
+            timelineService.repartitionEventType(eventType, partitions);
+        } catch (CannotAddPartitionToTopicException | TopicConfigException e) {
+            rollBackDB(original);
+            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), e);
+        }
+    }
+
+    public void rollBackDB(final EventType originalEventType) throws FailedToRollBackDBException {
+        try {
+            eventTypeRepository.update(originalEventType);
+        } catch (InternalNakadiException | NoSuchEventTypeException e) {
+            throw new FailedToRollBackDBException("Failed to rollback event type: " + originalEventType.getName(), e);
+        }
     }
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
