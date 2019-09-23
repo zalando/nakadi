@@ -22,6 +22,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
@@ -155,7 +156,8 @@ public class TimelineService {
         }
     }
 
-    public void repartitionET(final EventType eventType, final int partitions) {
+    public void repartitionET(final EventType eventType, final int partitions) throws
+            CannotAddPartitionToTopicException, TopicConfigException {
 
         final Timeline currentTimeline = getActiveTimeline(eventType);
         getTopicRepository(eventType).repartition(currentTimeline.getTopic(), partitions);

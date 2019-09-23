@@ -31,7 +31,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.CannotAddParitionToTopicException;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -173,7 +173,8 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public void repartition(final String topic, final int partitionsNumber) {
+    public void repartition(final String topic, final int partitionsNumber) throws CannotAddPartitionToTopicException,
+            TopicConfigException {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
             final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
@@ -192,8 +193,9 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaFactory.terminateProducer(producer);
             kafkaFactory.releaseProducer(producer);
         } catch (Exception e) {
-            throw new CannotAddParitionToTopicException(String
-                    .format("Failed to repartition topic to %s", topic), e);
+            throw new CannotAddPartitionToTopicException(String
+                    .format("Failed to increase the number of partition for %s topic to %s", topic,
+                            partitionsNumber), e);
         }
     }
 

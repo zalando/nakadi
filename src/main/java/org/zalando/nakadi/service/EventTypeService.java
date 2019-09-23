@@ -27,6 +27,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -341,6 +342,7 @@ public class EventTypeService {
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
             DbWriteOperationsBlockedException,
+            CannotAddPartitionToTopicException,
             EventTypeOptionsValidationException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
@@ -405,7 +407,8 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private void updateEventType(final EventType original, final EventType eventType) {
+    private void updateEventType(final EventType original, final EventType eventType) throws
+            CannotAddPartitionToTopicException, TopicConfigException, InternalNakadiException {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
         if (oldRetentionTime == null) {

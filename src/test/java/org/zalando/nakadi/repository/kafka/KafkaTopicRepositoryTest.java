@@ -64,6 +64,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
+    private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
@@ -391,7 +392,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    kafkaTopicConfigFactory, null);
+                    kafkaTopicConfigFactory, kafkaLocationManager);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
