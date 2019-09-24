@@ -64,6 +64,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
+    private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
@@ -369,7 +370,7 @@ public class KafkaTopicRepositoryTest {
         stats2.get("t3").put("0", 222L);
         when(kz.getSizeStatsForBroker(eq("2"))).thenReturn(new BubukuSizeStats(null, stats2));
 
-        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null);
+        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null, null);
 
         final Map<TopicPartition, Long> result = ktr.getSizeStats();
 
@@ -391,7 +392,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    kafkaTopicConfigFactory);
+                    kafkaTopicConfigFactory, kafkaLocationManager);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

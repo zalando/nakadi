@@ -27,6 +27,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -37,6 +38,7 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -341,6 +343,7 @@ public class EventTypeService {
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
             DbWriteOperationsBlockedException,
+            CannotAddPartitionToTopicException,
             EventTypeOptionsValidationException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
@@ -370,8 +373,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            eventType.setDefaultStatistic(
-                    validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
+            repartitionEventType(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -429,7 +431,8 @@ public class EventTypeService {
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
-                                     final Long oldRetentionTime) throws InternalNakadiException {
+                                     final Long oldRetentionTime)
+            throws InternalNakadiException {
         final InternalNakadiException exception = transactionTemplate.execute(action -> {
             try {
                 updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
@@ -490,19 +493,30 @@ public class EventTypeService {
         }
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(
-            final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-        if (existing != null && newStatistics == null) {
-            return existing;
+    private void repartitionEventType(
+            final EventType original,
+            final EventType newEventType) throws InvalidEventTypeException {
+        final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
+        final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
+        if (newStatistics == null) {
+            return;
         }
-        if ((existing == null && newStatistics == null) || (existing.equals(newStatistics))) {
-            return existing;
+
+        if (existingStatistics == null) {
+            updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
+                    newStatistics.getWriteParallelism()));
+            return;
         }
+        if (existingStatistics.equals(newStatistics)) {
+            return;
+        }
+
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
-        final int oldMaxPartitions = Math.max(existing.getReadParallelism(),
-                existing.getWriteParallelism());
+
+        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
+                existingStatistics.getWriteParallelism());
+
 
         if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
             throw new InvalidEventTypeException("Number of partitions should not be more than "
@@ -513,14 +527,32 @@ public class EventTypeService {
                     "than existing values.");
         }
         if (newMaxPartitions == oldMaxPartitions) {
-            if ((existing.getReadParallelism() != newStatistics.getReadParallelism()) ||
-                    (existing.getWriteParallelism() != newStatistics.getWriteParallelism())) {
+            if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
+                    (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
                 throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
                         "the number of partition (max of read and write parallelism)");
             }
         }
-        return newStatistics;
+        updateNumberOfPartitions(original, newEventType, newMaxPartitions);
     }
+
+    private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
+            throws InternalNakadiException {
+        final NakadiBaseException exception = transactionTemplate.execute(action -> {
+            try {
+                eventTypeRepository.update(eventType);
+                timelineService.updateTimeLineForRepartition(eventType, partitions);
+                return null;
+            } catch (CannotAddPartitionToTopicException | InternalNakadiException | TopicConfigException e) {
+                return e;
+            }
+        });
+
+        if (exception != null) {
+            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), exception);
+        }
+    }
+
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {

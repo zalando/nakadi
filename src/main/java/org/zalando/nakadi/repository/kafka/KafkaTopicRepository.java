@@ -1,9 +1,12 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,6 +31,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -82,18 +86,21 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
+    private final KafkaLocationManager kafkaLocationManager;
 
     public KafkaTopicRepository(final KafkaZookeeper kafkaZookeeper,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
-                                final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
+                                final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+                                final KafkaLocationManager kafkaLocationManager) {
         this.kafkaZookeeper = kafkaZookeeper;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
+        this.kafkaLocationManager = kafkaLocationManager;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
@@ -163,6 +170,32 @@ public class KafkaTopicRepository implements TopicRepository {
             return kafkaZookeeper.listTopics();
         } catch (final Exception e) {
             throw new TopicRepositoryException("Failed to list topics", e);
+        }
+    }
+
+    public void repartition(final String topic, final int partitionsNumber) throws CannotAddPartitionToTopicException,
+            TopicConfigException {
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
+            adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
+            final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+            final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
+                        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                            return consumer.partitionsFor(topic).size() == partitionsNumber;
+                        }
+                    },
+                    new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                            .withWaitBetweenEachTry(100L)
+                            .withResultsThatForceRetry(Boolean.FALSE));
+            if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
+                throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
+            }
+            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.releaseProducer(producer);
+        } catch (Exception e) {
+            throw new CannotAddPartitionToTopicException(String
+                    .format("Failed to increase the number of partition for %s topic to %s", topic,
+                            partitionsNumber), e);
         }
     }
 
