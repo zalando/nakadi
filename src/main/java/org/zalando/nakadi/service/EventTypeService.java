@@ -498,13 +498,16 @@ public class EventTypeService {
             final EventType newEventType) throws InvalidEventTypeException {
         final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
         final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
-        if ((newStatistics == null) || (existingStatistics.equals(newStatistics))) {
+        if (newStatistics == null) {
             return;
         }
-        
+
         if (existingStatistics == null) {
             updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
                     newStatistics.getWriteParallelism()));
+            return;
+        }
+        if (existingStatistics.equals(newStatistics)) {
             return;
         }
 
