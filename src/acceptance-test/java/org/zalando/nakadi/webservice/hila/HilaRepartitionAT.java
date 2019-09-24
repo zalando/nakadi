@@ -49,7 +49,8 @@ public class HilaRepartitionAT extends BaseAT {
 
         Assert.assertEquals(subscriptionClient.getTopology().getPartitions().length, 2);
         Assert.assertEquals(subscriptionClient.getTopology().getPartitions()[1].getPartition(), "1");
-        Assert.assertEquals(subscriptionClient.getTopology().getPartitions()[0].getState(), Partition.State.UNASSIGNED);
+        Assert.assertEquals(subscriptionClient.getTopology().getPartitions()[1].getState(), Partition.State.UNASSIGNED);
+        Assert.assertEquals(subscriptionClient.getTopology().getPartitions()[0].getState(), Partition.State.ASSIGNED);
 
         // test that offset path was created for new partition
         Assert.assertNotNull(CURATOR.checkExists().forPath(getOffsetPath(eventTypeName, "1")));
@@ -80,7 +81,7 @@ public class HilaRepartitionAT extends BaseAT {
         final List<Partition> eTPartitions =
                 Arrays.stream(subscriptionClient.getTopology().getPartitions())
                         .filter(p -> p.getEventType().equals(secondEventTypeName)).collect(Collectors.toList());
-        Assert.assertEquals(eTPartitions.get(0).getState(), Partition.State.UNASSIGNED);
+        Assert.assertEquals(eTPartitions.get(0).getState(), Partition.State.ASSIGNED);
     }
 
     private String subscriptionPath() {

@@ -224,20 +224,15 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             throws NakadiRuntimeException {
         final Topology currentTopology = getTopology();
         final List<Partition> partitionsList = Lists.newArrayList(currentTopology.getPartitions());
-        final List<Partition> newPartitionsList = new ArrayList<>();
 
-        // Set other event type's partition state to unassigned
-        for (final Partition partition : partitionsList) {
-            if (!partition.getEventType().equals(eventTypeName)) {
-                newPartitionsList.add(
-                        partition.toState(Partition.State.UNASSIGNED, null, null));
-            }
-        }
+        final int oldPartitionsCount = (int) partitionsList.stream().
+                filter(partition -> partition.getEventType().equals(eventTypeName)).count();
 
-        // Set this event type's partitions to unassigned, create nodes for partitions' offset if not present
-        for (int index=0; index < newPartitionsCount; index++) {
+        // Partitions can only be increased for an event type.
+        // Add new partitions & create nodes for partitions' offset
+        for (int index=oldPartitionsCount; index < newPartitionsCount; index++) {
             final String partition = String.valueOf(index);
-            newPartitionsList.add(new Partition(
+            partitionsList.add(new Partition(
                     eventTypeName, partition, null, null, Partition.State.UNASSIGNED
             ));
 
@@ -250,7 +245,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
 
         final Topology partitionedTopology = new Topology(
-                newPartitionsList.toArray(new Partition[0]),
+                partitionsList.toArray(new Partition[0]),
                 currentTopology.getSessionsHash(),
                 Optional.ofNullable(currentTopology.getVersion()).map(v -> v+1).orElse(0)
         );
