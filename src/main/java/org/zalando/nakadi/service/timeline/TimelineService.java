@@ -156,7 +156,7 @@ public class TimelineService {
         }
     }
 
-    public void repartitionEventType(final EventType eventType, final int partitions) throws
+    public void updateTimeLineForRepartition(final EventType eventType, final int partitions) throws
             CannotAddPartitionToTopicException, TopicConfigException {
 
         final Timeline currentTimeline = getActiveTimeline(eventType);

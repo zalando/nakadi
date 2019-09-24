@@ -34,11 +34,11 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.FailedToRollBackDBException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -373,7 +373,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            updateDefaultStatistics(original, eventType);
+            repartitionEventType(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -493,7 +493,7 @@ public class EventTypeService {
         }
     }
 
-    private void updateDefaultStatistics(
+    private void repartitionEventType(
             final EventType original,
             final EventType newEventType) throws InvalidEventTypeException {
         final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
@@ -537,23 +537,22 @@ public class EventTypeService {
     }
 
     private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
-            throws InternalNakadiException, FailedToRollBackDBException {
-        eventTypeRepository.update(eventType);
-        try {
-            timelineService.repartitionEventType(eventType, partitions);
-        } catch (CannotAddPartitionToTopicException | TopicConfigException e) {
-            rollBackDB(original);
-            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), e);
+            throws InternalNakadiException {
+        final NakadiBaseException exception = transactionTemplate.execute(action -> {
+            try {
+                eventTypeRepository.update(eventType);
+                timelineService.updateTimeLineForRepartition(eventType, partitions);
+                return null;
+            } catch (CannotAddPartitionToTopicException | InternalNakadiException | TopicConfigException e) {
+                return e;
+            }
+        });
+
+        if (exception != null) {
+            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), exception);
         }
     }
 
-    public void rollBackDB(final EventType originalEventType) throws FailedToRollBackDBException {
-        try {
-            eventTypeRepository.update(originalEventType);
-        } catch (InternalNakadiException | NoSuchEventTypeException e) {
-            throw new FailedToRollBackDBException("Failed to rollback event type: " + originalEventType.getName(), e);
-        }
-    }
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
