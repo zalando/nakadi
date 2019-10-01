@@ -100,7 +100,7 @@ public class EventTypeControllerTestCase {
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "I am warning you",
-                "I am warning you, even more");
+                "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3");
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
