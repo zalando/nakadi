@@ -1,5 +1,8 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableMap;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,20 +78,20 @@ public class EventPublisher {
         this.authValidator = authValidator;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName)
+    public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
             EventTypeTimeoutException,
             AccessDeniedException,
             ServiceTemporarilyUnavailableException,
-            PartitioningException{
-        return publishInternal(events, eventTypeName, true);
+            PartitioningException {
+        return publishInternal(events, eventTypeName, true, parentSpan);
     }
 
     EventPublishResult publishInternal(final String events,
                                        final String eventTypeName,
-                                       final boolean useAuthz)
+                                       final boolean useAuthz, final Span parentSpan)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException, EnrichmentException, PartitioningException {
 
@@ -99,14 +102,14 @@ public class EventPublisher {
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             if (useAuthz) {
-                authValidator.authorizeEventTypeWrite(eventType);
+                authValidator.authorizeEventTypeWrite(eventType, parentSpan);
             }
 
-            validate(batch, eventType);
-            partition(batch, eventType);
-            setEventKey(batch, eventType);
-            enrich(batch, eventType);
-            submit(batch, eventType);
+            validate(batch, eventType, parentSpan);
+            partition(batch, eventType, parentSpan);
+            setEventKey(batch, eventType, parentSpan);
+            enrich(batch, eventType, parentSpan);
+            submit(batch, eventType, parentSpan);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -142,15 +145,27 @@ public class EventPublisher {
         }
     }
 
-    private void enrich(final List<BatchItem> batch, final EventType eventType) throws EnrichmentException {
+    private void enrich(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+            throws EnrichmentException {
+        final Scope enrichmentScope = TracingService.getScope("enrichment",
+                true, parentSpan, eventType.getName());
         for (final BatchItem batchItem : batch) {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
                 enrichment.enrich(batchItem, eventType);
             } catch (EnrichmentException e) {
-                batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                handlePublishingException(enrichmentScope, batchItem, e.getMessage());
                 throw e;
             }
+        }
+    }
+
+    private void handlePublishingException(final Scope scope, final BatchItem batchItem, final String error) {
+        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, error);
+        if (batchItem.getEvent().has("metadata")) {
+            scope.span().log(
+                    ImmutableMap.of("event.id", batchItem.getEvent().getJSONObject("metadata")
+                            .getString("eid"), "error", error));
         }
     }
 
@@ -160,21 +175,26 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void partition(final List<BatchItem> batch, final EventType eventType)
+    private void partition(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
             throws PartitioningException {
+        final Scope partitionScope = TracingService.getScope("partition_resolving",
+                true, parentSpan, eventType.getName());
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
                 final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                handlePublishingException(partitionScope, item, e.getMessage());
                 throw e;
             }
         }
     }
 
-    private void setEventKey(final List<BatchItem> batch, final EventType eventType) {
+    private void setEventKey(final List<BatchItem> batch, final EventType eventType, final Span parentSpan) {
+        final Scope eventKeyScope = TracingService.getScope(eventType + "_",
+                true, parentSpan);
+
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()
@@ -200,30 +220,37 @@ public class EventPublisher {
         }
     }
 
-    private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
-            InternalNakadiException, NoSuchEventTypeException {
+    private void validate(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+            throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
+        final Scope validationScope = TracingService.getScope("validation",
+                true, parentSpan, eventType.getName());
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateSchema(item.getEvent(), eventType);
                 validateEventSize(item);
             } catch (final EventValidationException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                handlePublishingException(validationScope, item, e.getMessage());
                 throw e;
             }
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
+    private void submit(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+            throws EventPublishingException {
+        final Scope submittingScope = TracingService.getScope("submit_to_kafka", true,
+                parentSpan, eventType.getName());
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
-        timelineService.getTopicRepository(eventType).syncPostBatch(activeTimeline.getTopic(), batch);
+        submittingScope.span().setTag("topic", activeTimeline.getTopic());
+        timelineService.getTopicRepository(eventType).syncPostBatch(activeTimeline.getTopic(), batch,
+                submittingScope.span(), eventType.getName());
     }
 
-    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
-            InternalNakadiException, NoSuchEventTypeException {
+    private void validateSchema(final JSONObject event, final EventType eventType)
+            throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
+
         final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
         final Optional<ValidationError> validationError = validator.validate(event);
-
         if (validationError.isPresent()) {
             throw new EventValidationException(validationError.get().getMessage());
         }

@@ -37,11 +37,8 @@ public class HashPartitionStrategy implements PartitionStrategy {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
                     "has no partition key fields configured.");
         }
-
         try {
-
             final JsonPathAccess traversableJsonEvent = new JsonPathAccess(event);
-
             final int hashValue = partitionKeyFields.stream()
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()

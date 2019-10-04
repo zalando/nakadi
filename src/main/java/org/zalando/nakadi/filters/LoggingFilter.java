@@ -180,7 +180,6 @@ public class LoggingFilter extends OncePerRequestFilter {
         } else if (requestLogInfo.contentLength < 5000) {
             sloBucket = "<5K";
         }
-
         GlobalTracer.get()
                 .buildSpan("publish_events")
                 .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime))
