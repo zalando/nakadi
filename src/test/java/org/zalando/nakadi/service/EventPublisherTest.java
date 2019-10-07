@@ -112,7 +112,7 @@ public class EventPublisherTest {
                 .when(authzValidator)
                 .authorizeEventTypeWrite(Mockito.eq(et), any());
 
-        publisher.publish(buildDefaultBatch(1).toString(), et.getName(), any());
+        publisher.publish(buildDefaultBatch(1).toString(), et.getName(), null);
     }
 
     @Test
@@ -147,7 +147,7 @@ public class EventPublisherTest {
     @Test(expected = EventTypeTimeoutException.class)
     public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
-        publisher.publish(buildDefaultBatch(0).toString(), "blahET", any());
+        publisher.publish(buildDefaultBatch(0).toString(), "blahET", null);
     }
 
     @Test
@@ -343,7 +343,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), any());
+                eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -360,7 +360,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), any());
+                eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -466,7 +466,7 @@ public class EventPublisherTest {
     @SuppressWarnings("unchecked")
     private List<BatchItem> capturePublishedBatch() {
         final ArgumentCaptor<List> batchCaptor = ArgumentCaptor.forClass(List.class);
-        verify(topicRepository, atLeastOnce()).syncPostBatch(any(), batchCaptor.capture(), null, null);
+        verify(topicRepository, atLeastOnce()).syncPostBatch(any(), batchCaptor.capture(), any(), any());
         return (List<BatchItem>) batchCaptor.getValue();
     }
 
@@ -501,7 +501,7 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(),
-                eventType.getName(), any());
+                eventType.getName(), null);
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }

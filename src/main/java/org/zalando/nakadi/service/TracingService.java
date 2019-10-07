@@ -68,7 +68,9 @@ public class TracingService {
 
     public static void setErrorTags(final Scope scope, final String error) {
         Tags.ERROR.set(scope.span(), true);
-        scope.span().log(ImmutableMap.of("error:", error));
+        if (error != null) {
+            scope.span().log(ImmutableMap.of("error:", error));
+        }
     }
 
     public static void setCustomTags(final Scope scope, final String... tags) {
