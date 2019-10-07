@@ -37,11 +37,6 @@ nakadi:
     dataType: service
     value: stups_nakadi
   authz.warnAllDataAccessMessage: "Data access warning"
-  tracing:
-    componentName: "nakadi"
-    accessToken: ""
-    collectorHost: "localhost"
-    collectorPort: 8444
   eventType.deletableSubscription:
     owningApplication: "nakadi_archiver"
     consumerGroup: "nakadi_to_s3"

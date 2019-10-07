@@ -3,33 +3,16 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Scope;
 import io.opentracing.Span;
-import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-
-import javax.annotation.PostConstruct;
 
 
 @Configuration
 public class TracingService {
     private static final Logger LOG = LoggerFactory.getLogger(TracingService.class);
-    private Tracer tracer;
-
-    @Autowired
-    public TracingService(final Tracer tracer) {
-        this.tracer = tracer;
-    }
-
-    @PostConstruct
-    public void registerGlobalTracer() {
-        if (!GlobalTracer.isRegistered()) {
-            GlobalTracer.register(tracer);
-        }
-    }
 
     public static Scope getScope(final String operationName, final boolean autoCloseSpan, final Span parent,
                                  final String... eventType) {
