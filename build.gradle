@@ -173,10 +173,6 @@ dependencies {
     // open tracing
     compile 'io.opentracing:opentracing-api:0.31.0'
     compile 'io.opentracing:opentracing-util:0.31.0'
-    compile "com.lightstep.tracer:lightstep-tracer-jre:0.15.0"
-    compile "com.lightstep.tracer:tracer-grpc:0.16.0"
-    compile "io.grpc:grpc-netty:1.18.0"
-    compile "io.netty:netty-tcnative-boringssl-static:2.0.20.Final"
 
 
     // tests
