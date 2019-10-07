@@ -173,7 +173,7 @@ dependencies {
     // open tracing
     compile 'io.opentracing:opentracing-api:0.31.0'
     compile 'io.opentracing:opentracing-util:0.31.0'
-    
+
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile('junit:junit:4.12') {
