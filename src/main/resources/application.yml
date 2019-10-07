@@ -42,6 +42,9 @@ nakadi:
     accessToken: ""
     collectorHost: "localhost"
     collectorPort: 8444
+  eventType.deletableSubscription:
+    owningApplication: "nakadi_archiver"
+    consumerGroup: "nakadi_to_s3"
   topic:
     min:
       retentionMs: 10800000 # 3 hours

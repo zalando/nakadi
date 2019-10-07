@@ -71,6 +71,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.FORCE_EVENT_TYPE_AUTHZ;
 
 @Component
@@ -250,7 +251,14 @@ public class EventTypeService {
             authorizationValidator.authorizeEventTypeView(eventType);
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
-            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)) {
+            if (featureToggleService.isFeatureEnabled(EVENT_TYPE_DELETION_ONLY_ADMINS)) {
+                if (eventType.getAuthorization() == null || hasNonDeletableSubscriptions(eventType.getName())) {
+                    throw new AccessDeniedException(eventType.asResource());
+                }
+            }
+
+            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
+                    || featureToggleService.isFeatureEnabled(EVENT_TYPE_DELETION_ONLY_ADMINS)) {
                 topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
             } else {
                 topicsToDelete = deleteEventTypeIfNoSubscriptions(eventTypeName);
@@ -332,6 +340,25 @@ public class EventTypeService {
         final List<Subscription> subs = subscriptionRepository.listSubscriptions(
                 ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
         return !subs.isEmpty();
+    }
+
+    private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
+        int offset = 0;
+        List<Subscription> subs = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+        while (!subs.isEmpty()) {
+            for (final Subscription sub : subs) {
+                if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
+                        || !sub.getOwningApplication()
+                        .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
+                    return true;
+                }
+            }
+            offset += 20;
+            subs = subscriptionRepository.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+        }
+        return false;
     }
 
     public void update(final String eventTypeName,
