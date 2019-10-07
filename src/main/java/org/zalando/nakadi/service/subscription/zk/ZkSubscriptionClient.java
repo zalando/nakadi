@@ -127,7 +127,7 @@ public interface ZkSubscriptionClient extends Closeable {
      * @param cursors - offsets to set for subscription
      * @throws Exception
      */
-    void forceCommitOffsets(final List<SubscriptionCursorWithoutToken> cursors) throws NakadiRuntimeException;
+    void forceCommitOffsets(List<SubscriptionCursorWithoutToken> cursors) throws NakadiRuntimeException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);
