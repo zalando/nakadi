@@ -44,6 +44,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.TracingService;
 
 import javax.annotation.Nullable;
@@ -271,7 +272,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, publishingSpan));
                     } else {
                         shortCircuited++;
-                        item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
+                        handlePublishingException(kafkaPublishingScope, item, "short circuited");
                     }
                 }
                 if (shortCircuited > 0) {

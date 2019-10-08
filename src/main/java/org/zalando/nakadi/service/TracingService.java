@@ -44,7 +44,7 @@ public class TracingService {
             } else if (entry.getValue() instanceof String) {
                 scope.span().setTag(entry.getKey(), (String) entry.getValue());
             } else {
-                LOG.error("Tag is not of the expected type");
+                LOG.warn("Tag is not of the expected type");
                 continue;
             }
         }

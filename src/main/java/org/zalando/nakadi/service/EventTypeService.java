@@ -132,7 +132,6 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-
     }
 
     public List<EventType> list() {
