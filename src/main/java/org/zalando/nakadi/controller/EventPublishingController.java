@@ -30,13 +30,14 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.TracingService;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
-import static org.zalando.nakadi.service.TracingService.getScopeIgnoreParent;
 import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
@@ -58,7 +59,7 @@ public class EventPublishingController {
                                      final BlacklistService blacklistService,
                                      final NakadiKpiPublisher nakadiKpiPublisher,
                                      @Value("${nakadi.kpi.event-types.nakadiBatchPublished}") final
-                                         String kpiBatchPublishedEventType) {
+                                     String kpiBatchPublishedEventType) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
@@ -74,9 +75,10 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
-
-        final Scope publishingScope = getScopeIgnoreParent(eventTypeName,
-                true);
+        final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
+        final Scope publishingScope = TracingService
+                .getScope("controller", true,
+                        (Span) httpServletRequest.getAttribute("span"));
         publishingScope.span()
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId())
                 .setTag("event_type", eventTypeName);

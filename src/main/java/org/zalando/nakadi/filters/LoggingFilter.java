@@ -26,7 +26,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
@@ -76,19 +75,20 @@ public class LoggingFilter extends OncePerRequestFilter {
         private final HttpServletResponse response;
         private final String flowId;
         private final RequestLogInfo requestLogInfo;
+        private final Span currentSpan;
 
         private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
-                                     final long startTime, final String flowId) {
+                                     final long startTime, final String flowId, final Span span) {
             this.response = response;
             this.flowId = flowId;
-
             this.requestLogInfo = new RequestLogInfo(request, startTime);
+            this.currentSpan = span;
             logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
         }
 
         private void logOnEvent() {
             FlowIdUtils.push(this.flowId);
-            logRequest(this.requestLogInfo, this.response.getStatus());
+            logRequest(this.requestLogInfo, this.response.getStatus(), currentSpan);
             FlowIdUtils.clear();
         }
 
@@ -118,29 +118,46 @@ public class LoggingFilter extends OncePerRequestFilter {
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws IOException, ServletException {
         final long start = System.currentTimeMillis();
+        final Span publishingSpan = TracingService.getNewSpan("publish_events",
+                start);
         try {
+            final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
+            if (isPublishingRequest(requestLogInfo)) {
+                final Scope scope = TracingService.activateSpan(publishingSpan, false);
+                TracingService.setCustomTags(scope,
+                        ImmutableMap.<String, Object>builder()
+                                .put("client_id", requestLogInfo.user)
+                                .put("http.url", requestLogInfo.path + requestLogInfo.query)
+                                .put("http.header.content_encoding", requestLogInfo.contentEncoding)
+                                .put("http.header.accept_encoding", requestLogInfo.acceptEncoding)
+                                .put("http.header.user_agent", requestLogInfo.userAgent)
+                                .build());
+                request.setAttribute("span", publishingSpan);
+            }
             //execute request
             filterChain.doFilter(request, response);
             if (request.isAsyncStarted()) {
                 final String flowId = FlowIdUtils.peek();
-                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start, flowId));
+                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start, flowId,
+                        publishingSpan));
             }
         } finally {
             if (!request.isAsyncStarted()) {
                 final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
-                logRequest(requestLogInfo, response.getStatus());
+                logRequest(requestLogInfo, response.getStatus(), publishingSpan);
             }
+            publishingSpan.finish();
         }
     }
 
-    private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+    private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Span publishingSpan) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
         if (!isSuccessPublishingRequest(requestLogInfo, statusCode)) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
         logToNakadi(requestLogInfo, statusCode, timeSpentMs);
-        traceRequest(requestLogInfo, statusCode, timeSpentMs);
+        traceRequest(requestLogInfo, statusCode, timeSpentMs, publishingSpan);
     }
 
     private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
@@ -168,13 +185,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.contentLength);
     }
 
-    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs,
+                              final Span publishingSpan) {
         if (!isPublishingRequest(requestLogInfo)) {
             return;
         }
-        final String eventType = requestLogInfo.path.substring("/event-types/".length(),
-                requestLogInfo.path.lastIndexOf("/events"));
-
+        final Scope scope = TracingService.activateSpan(publishingSpan, false);
         String sloBucket = "5K-50K";
         // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
         // so we also put it to ">50K" bucket to hack this problem
@@ -183,25 +199,14 @@ public class LoggingFilter extends OncePerRequestFilter {
         } else if (requestLogInfo.contentLength < 5000) {
             sloBucket = "<5K";
         }
-        final Span publishingSpan = TracingService.getNewSpan("publish_events",
-                requestLogInfo.requestTime);
-        try (Scope scope = TracingService.activateSpan(publishingSpan, false)) {
-            TracingService.setCustomTags(scope,
-                    ImmutableMap.<String, Object>builder()
-                            .put("client_id", requestLogInfo.user)
-                            .put("event_type", eventType)
-                            .put("http.status_code", statusCode)
-                            .put("error", statusCode == 207 || statusCode >= 500)
-                            .put("http.url", requestLogInfo.path + requestLogInfo.query)
-                            .put("http.header.content_encoding", requestLogInfo.contentEncoding)
-                            .put("http.header.accept_encoding", requestLogInfo.acceptEncoding)
-                            .put("http.header.user_agent", requestLogInfo.userAgent)
-                            .put("slo_bucket", sloBucket)
-                            .put("content_length", requestLogInfo.contentLength)
-                            .build());
-        } finally {
-            publishingSpan.finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
-        }
+        final String eventType = requestLogInfo.path.substring("/event-types/".length(),
+                requestLogInfo.path.lastIndexOf("/events"));
+        TracingService.setCustomTags(scope, ImmutableMap.<String, Object>builder()
+                .put("event_type", eventType)
+                .put("http.status_code", statusCode)
+                .put("slo_bucket", sloBucket)
+                .put("content_length", requestLogInfo.contentLength)
+                .put("error", statusCode == 207 || statusCode >= 500).build());
     }
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
