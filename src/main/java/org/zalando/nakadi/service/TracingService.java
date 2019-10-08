@@ -9,6 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 
 @Configuration
 public class TracingService {
@@ -31,24 +34,37 @@ public class TracingService {
         }
     }
 
-    public static void setCustomTags(final Scope scope, final String... tags) {
-        if (tags.length % 2 != 0) {
-            LOG.error("Number of tags don't match the number of values.");
-            return;
-        }
-        for (int i = 0; i < tags.length - 1; i += 2) {
-            scope.span().setTag(tags[i], tags[i + 1]);
+    public static void setCustomTags(final Scope scope, final Map<String, Object> tags) {
+
+        for (final Map.Entry<String, Object> entry : tags.entrySet()) {
+            if (entry.getValue() instanceof Boolean) {
+                scope.span().setTag(entry.getKey(), (Boolean) entry.getValue());
+            } else if (entry.getValue() instanceof Number) {
+                scope.span().setTag(entry.getKey(), (Number) entry.getValue());
+            } else if (entry.getValue() instanceof String) {
+                scope.span().setTag(entry.getKey(), (String) entry.getValue());
+            } else {
+                LOG.error("Tag is not of the expected type");
+                continue;
+            }
         }
     }
 
-    public static Scope activateSpan(final Span span) {
-        return GlobalTracer.get().scopeManager().activate(span, false);
+    public static Scope activateSpan(final Span span, final boolean autoCloseSpan) {
+        return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
     }
 
     public static Scope getScopeIgnoreParent(final String operationName, final boolean autoCloseSpan) {
         return GlobalTracer.get()
                 .buildSpan(operationName)
                 .ignoreActiveSpan().startActive(autoCloseSpan);
+    }
+
+    public static Span getNewSpan(final String operationName, final Long timeStamp) {
+        return GlobalTracer.get()
+                .buildSpan(operationName)
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
+                .ignoreActiveSpan().start();
     }
 
 }

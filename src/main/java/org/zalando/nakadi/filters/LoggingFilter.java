@@ -1,7 +1,9 @@
 package org.zalando.nakadi.filters;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.net.HttpHeaders;
-import io.opentracing.util.GlobalTracer;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 import javax.servlet.AsyncEvent;
@@ -180,21 +183,25 @@ public class LoggingFilter extends OncePerRequestFilter {
         } else if (requestLogInfo.contentLength < 5000) {
             sloBucket = "<5K";
         }
-        GlobalTracer.get()
-                .buildSpan("publish_events")
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime))
-                .start()
-                .setTag("client_id", requestLogInfo.user)
-                .setTag("event_type", eventType)
-                .setTag("error", statusCode == 207 || statusCode >= 500)
-                .setTag("http.status_code", statusCode)
-                .setTag("http.url", requestLogInfo.path + requestLogInfo.query)
-                .setTag("http.header.content_encoding", requestLogInfo.contentEncoding)
-                .setTag("http.header.accept_encoding", requestLogInfo.acceptEncoding)
-                .setTag("http.header.user_agent", requestLogInfo.userAgent)
-                .setTag("slo_bucket", sloBucket)
-                .setTag("content_length", requestLogInfo.contentLength)
-                .finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
+        final Span publishingSpan = TracingService.getNewSpan("publish_events",
+                requestLogInfo.requestTime);
+        try (Scope scope = TracingService.activateSpan(publishingSpan, false)) {
+            TracingService.setCustomTags(scope,
+                    ImmutableMap.<String, Object>builder()
+                            .put("client_id", requestLogInfo.user)
+                            .put("event_type", eventType)
+                            .put("http.status_code", statusCode)
+                            .put("error", statusCode == 207 || statusCode >= 500)
+                            .put("http.url", requestLogInfo.path + requestLogInfo.query)
+                            .put("http.header.content_encoding", requestLogInfo.contentEncoding)
+                            .put("http.header.accept_encoding", requestLogInfo.acceptEncoding)
+                            .put("http.header.user_agent", requestLogInfo.userAgent)
+                            .put("slo_bucket", sloBucket)
+                            .put("content_length", requestLogInfo.contentLength)
+                            .build());
+        } finally {
+            publishingSpan.finish(TimeUnit.MILLISECONDS.toMicros(requestLogInfo.requestTime + timeSpentMs));
+        }
     }
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {

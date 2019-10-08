@@ -110,7 +110,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final BatchItem item,
             final HystrixKafkaCircuitBreaker circuitBreaker,
             final Span currentSpan) throws EventPublishingException {
-        final Scope publishScope = TracingService.activateSpan(currentSpan);
+        final Scope publishScope = TracingService.activateSpan(currentSpan, false);
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
@@ -121,7 +121,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
-                final Scope producerScope = TracingService.activateSpan(currentSpan);
+                final Scope producerScope = TracingService.activateSpan(currentSpan, false);
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
                     handlePublishingException(producerScope, item, "internal error");
@@ -250,7 +250,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 .start();
         publishingSpan.setTag("event_type", eventType);
         Tags.MESSAGE_BUS_DESTINATION.set(publishingSpan, topicId);
-        try (Scope kafkaPublishingScope = TracingService.activateSpan(publishingSpan)) {
+        try (Scope kafkaPublishingScope = TracingService.activateSpan(publishingSpan, false)) {
             final Producer<String, String> producer = kafkaFactory.takeProducer();
             try {
                 final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
@@ -295,18 +295,21 @@ public class KafkaTopicRepository implements TopicRepository {
             } catch (final TimeoutException ex) {
                 kafkaFactory.terminateProducer(producer);
                 failUnpublished(batch, "timed out");
-                TracingService.setCustomTags(kafkaPublishingScope, "failure_reason", "timed out");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "timed out").build());
                 TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } catch (final ExecutionException ex) {
                 failUnpublished(batch, "internal error");
-                TracingService.setCustomTags(kafkaPublishingScope, "failure_reason", "internal error");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "internal error").build());
                 TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } catch (final InterruptedException ex) {
                 Thread.currentThread().interrupt();
                 failUnpublished(batch, "interrupted");
-                TracingService.setCustomTags(kafkaPublishingScope, "failure_reason", "interrupted");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "interrupted").build());
                 TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } finally {
@@ -316,7 +319,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
             if (atLeastOneFailed) {
                 failUnpublished(batch, "internal error");
-                TracingService.setCustomTags(kafkaPublishingScope, "failure_reason", "internal error");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "internal error").build());
                 TracingService.setErrorTags(kafkaPublishingScope, "Internal Kafka Error");
                 throw new EventPublishingException("Error publishing message to kafka");
             }
