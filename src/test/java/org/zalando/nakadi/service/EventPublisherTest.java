@@ -110,7 +110,7 @@ public class EventPublisherTest {
 
         Mockito.doThrow(new AccessDeniedException(null, null))
                 .when(authzValidator)
-                .authorizeEventTypeWrite(Mockito.eq(et), any());
+                .authorizeEventTypeWrite(Mockito.eq(et));
 
         publisher.publish(buildDefaultBatch(1).toString(), et.getName(), null);
     }

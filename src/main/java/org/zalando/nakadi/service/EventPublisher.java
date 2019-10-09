@@ -102,13 +102,12 @@ public class EventPublisher {
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             if (useAuthz) {
-                authValidator.authorizeEventTypeWrite(eventType, parentSpan);
+                authValidator.authorizeEventTypeWrite(eventType);
             }
-
             validate(batch, eventType, parentSpan);
-            partition(batch, eventType, parentSpan);
-            setEventKey(batch, eventType, parentSpan);
-            enrich(batch, eventType, parentSpan);
+            partition(batch, eventType);
+            setEventKey(batch, eventType);
+            enrich(batch, eventType);
             submit(batch, eventType, parentSpan);
 
             return ok(batch);
@@ -145,23 +144,20 @@ public class EventPublisher {
         }
     }
 
-    private void enrich(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+    private void enrich(final List<BatchItem> batch, final EventType eventType)
             throws EnrichmentException {
-        final Scope enrichmentScope = TracingService.getScope("enrichment",
-                true, parentSpan, eventType.getName());
         for (final BatchItem batchItem : batch) {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
                 enrichment.enrich(batchItem, eventType);
             } catch (EnrichmentException e) {
-                handlePublishingException(enrichmentScope, batchItem, e.getMessage());
+                batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
         }
     }
 
-    private void handlePublishingException(final Scope scope, final BatchItem batchItem, final String error) {
-        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, error);
+    private void traceEventPublishingError(final Scope scope, final BatchItem batchItem, final String error) {
         if (batchItem.getEvent().has("metadata")) {
             scope.span().log(
                     ImmutableMap.of("event.id", batchItem.getEvent().getJSONObject("metadata")
@@ -175,26 +171,21 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void partition(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+    private void partition(final List<BatchItem> batch, final EventType eventType)
             throws PartitioningException {
-        final Scope partitionScope = TracingService.getScope("partition_resolving",
-                true, parentSpan, eventType.getName());
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
                 final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
-                handlePublishingException(partitionScope, item, e.getMessage());
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
         }
     }
 
-    private void setEventKey(final List<BatchItem> batch, final EventType eventType, final Span parentSpan) {
-        final Scope eventKeyScope = TracingService.getScope(eventType + "_",
-                true, parentSpan);
-
+    private void setEventKey(final List<BatchItem> batch, final EventType eventType) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()
@@ -222,28 +213,30 @@ public class EventPublisher {
 
     private void validate(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
-        final Scope validationScope = TracingService.getScope("validation",
-                true, parentSpan, eventType.getName());
-        for (final BatchItem item : batch) {
-            item.setStep(EventPublishingStep.VALIDATING);
-            try {
-                validateSchema(item.getEvent(), eventType);
-                validateEventSize(item);
-            } catch (final EventValidationException e) {
-                handlePublishingException(validationScope, item, e.getMessage());
-                throw e;
+        final Span validationSpan = TracingService.getNewSpan("validation", System.currentTimeMillis(),
+                parentSpan);
+        try (Scope validationScope = TracingService.activateSpan(validationSpan, false)) {
+            for (final BatchItem item : batch) {
+                item.setStep(EventPublishingStep.VALIDATING);
+                try {
+                    validateSchema(item.getEvent(), eventType);
+                    validateEventSize(item);
+                } catch (final EventValidationException e) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                    traceEventPublishingError(validationScope, item, e.getMessage());
+                    throw e;
+                }
             }
+        } finally {
+            validationSpan.finish();
         }
     }
 
     private void submit(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
             throws EventPublishingException {
-        final Scope submittingScope = TracingService.getScope("submit_to_kafka", true,
-                parentSpan, eventType.getName());
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
-        submittingScope.span().setTag("topic", activeTimeline.getTopic());
         timelineService.getTopicRepository(eventType).syncPostBatch(activeTimeline.getTopic(), batch,
-                submittingScope.span(), eventType.getName());
+                parentSpan, eventType.getName());
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType)

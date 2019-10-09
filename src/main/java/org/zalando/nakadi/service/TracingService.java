@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Scope;
 import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import org.slf4j.Logger;
@@ -54,11 +55,26 @@ public class TracingService {
         return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
     }
 
+    public static Span getNewSpan(final String operationName, final Long timeStamp, final Span parentSpan) {
+        return GlobalTracer.get()
+                .buildSpan(operationName)
+                .asChildOf(parentSpan)
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
+                .start();
+    }
+
     public static Span getNewSpan(final String operationName, final Long timeStamp) {
         return GlobalTracer.get()
                 .buildSpan(operationName)
                 .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
                 .ignoreActiveSpan().start();
+    }
+
+    public static Span getNewSpan(final String operationName, final Long timeStamp, final SpanContext spanContext) {
+        return GlobalTracer.get()
+                .buildSpan(operationName)
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
+                .asChildOf(spanContext).start();
     }
 
 }

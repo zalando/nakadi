@@ -371,6 +371,12 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: span_ctx
+          in: header
+          description: |
+              The span context, which is used to trace the spans and passed to called services. Helpful
+              for operational troubleshooting and will help users integrate Nakadi as a part of their trace.
+          type: string
         - name: event
           in: body
           description: The Event being published
@@ -382,6 +388,10 @@ paths:
       responses:
         '200':
           description: All events in the batch have been successfully published.
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
         '207':
           description: |
             At least one event has failed to be submitted. The batch might be partially submitted.
@@ -389,10 +399,19 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
+
         '401':
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
         '422':
           description: |
             At least one event failed to be validated, enriched or partitioned. None were submitted.
@@ -400,10 +419,18 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
         '403':
           description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
 
     get:
       deprecated: true
@@ -804,73 +831,73 @@ paths:
             $ref: '#/definitions/Problem'
 
   '/event-types/{name}/shifted-cursors':
-      post:
-        tags:
-          - unmanaged-api
-          - monitoring
-          - management-api
-        security:
-          - oauth2: ['nakadi.event_stream.read']
-        description: |
-          Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
-          for randomly access events in the stream.
-          If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
+        for randomly access events in the stream.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
 
-        parameters:
-          - name: name
-            in: path
-            description: EventType name
-            type: string
-            required: true
-          - name: X-Flow-Id
-            in: header
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: cursors
+          in: body
+          description: |
+            GET with payload.
+
+            Cursors indicating the positions to be calculated. Given a initial cursor, with partition and offset, it's
+            possible to obtain another cursor that is relatively forward or backward to it. When `shift` is positive,
+            Nakadi will respond with a cursor that in forward `shif` positions based on the initial `partition` and
+            `offset`. In case `shift` is negative, Nakadi will move the cursor backward.
+
+            Note: It's not currently possible to shift cursors based on time. It's only possible to shift cursors
+            based on the number of events to forward of backward given by `shift`.
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ShiftedCursor'
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
             description: |
-              The flow id of the request, which is written into the logs and passed to called services. Helpful
-              for operational troubleshooting and log analysis.
-            type: string
-          - name: cursors
-            in: body
-            description: |
-              GET with payload.
+              An array of `Cursor`s with shift applied to the offset. The response should contain cursors in the same
+              order as the request.
+            items:
+              $ref: '#/definitions/Cursor'
+        '422':
+          description: |
+            It's only possible to navigate from a valid cursor to another valid cursor, i.e. `partition`s and
+            `offset`s must exist and not be expired. Any combination of parameters that might break this rule will
+            result in 422. For example:
 
-              Cursors indicating the positions to be calculated. Given a initial cursor, with partition and offset, it's
-              possible to obtain another cursor that is relatively forward or backward to it. When `shift` is positive,
-              Nakadi will respond with a cursor that in forward `shif` positions based on the initial `partition` and
-              `offset`. In case `shift` is negative, Nakadi will move the cursor backward.
-
-              Note: It's not currently possible to shift cursors based on time. It's only possible to shift cursors
-              based on the number of events to forward of backward given by `shift`.
-            required: true
-            schema:
-              type: array
-              items:
-                $ref: '#/definitions/ShiftedCursor'
-        responses:
-          '200':
-            description: OK
-            schema:
-              type: array
-              description: |
-                An array of `Cursor`s with shift applied to the offset. The response should contain cursors in the same
-                order as the request.
-              items:
-                $ref: '#/definitions/Cursor'
-          '422':
-            description: |
-              It's only possible to navigate from a valid cursor to another valid cursor, i.e. `partition`s and
-              `offset`s must exist and not be expired. Any combination of parameters that might break this rule will
-              result in 422. For example:
-
-              - if the initial `partition` and `offset` are expired.
-              - if the `shift` provided leads to a already expired cursor.
-              - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
-              some cursor yet to be generated in the future.
-            schema:
-              $ref: '#/definitions/Problem'
-          '403':
-            description: Access forbidden because of missing scope or EventType authorization failure.
-            schema:
-              $ref: '#/definitions/Problem'
+            - if the initial `partition` and `offset` are expired.
+            - if the `shift` provided leads to a already expired cursor.
+            - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
+            some cursor yet to be generated in the future.
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
@@ -1986,9 +2013,9 @@ definitions:
       DataChangeEvent below.
     schema:
       oneOf:
-      - $ref: '#/definitions/BusinessEvent'
-      - $ref: '#/definitions/DataChangeEvent'
-      - $ref: '#/definitions/UndefinedEvent'
+        - $ref: '#/definitions/BusinessEvent'
+        - $ref: '#/definitions/DataChangeEvent'
+        - $ref: '#/definitions/UndefinedEvent'
 
   EventMetadata:
     type: object
@@ -2097,9 +2124,9 @@ definitions:
     type: object
     properties:
       metadata:
-          $ref: '#/definitions/EventMetadata'
+        $ref: '#/definitions/EventMetadata'
     required:
-        - metadata
+      - metadata
 
   DataChangeEvent:
     description: |
@@ -2126,12 +2153,12 @@ definitions:
       data:
         type: object
         description: |
-            The payload of the type
+          The payload of the type
     required:
-        - data
-        - metadata
-        - data_type
-        - data_op
+      - data
+      - metadata
+      - data_type
+      - data_op
 
   UndefinedEvent:
     description: |
@@ -2457,39 +2484,39 @@ definitions:
         items:
           $ref: '#/definitions/SubscriptionEventTypeStatus'
       authorization:
-          $ref: '#/definitions/SubscriptionAuthorization'
+        $ref: '#/definitions/SubscriptionAuthorization'
     required:
       - owning_application
       - event_types
 
   SubscriptionAuthorization:
-      type: object
-      description: |
-        Authorization section of a Subscription. This section defines two access control lists: one for consuming
-        events and committing cursors ('readers'), and one for administering a subscription ('admins').
-        Regardless of the values of the authorization properties, administrator accounts will always be authorized.
-      properties:
-        admins:
-          type: array
-          description: |
-            An array of subject attributes that are required for updating the subscription. Any one of the attributes
-            defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
-            i.e. if it is present, all users are authorized.
-          items:
-            $ref: '#/definitions/AuthorizationAttribute'
-          minItems: 1
-        readers:
-          type: array
-          description: |
-            An array of subject attributes that are required for reading events and committing cursors to this
-            subscription. Any one of the attributes defined in this array is sufficient to be authorized. The wildcard
-            item takes precedence over all others, i.e., if it is present, all users are authorized.
-          items:
-            $ref: '#/definitions/AuthorizationAttribute'
-          minItems: 1
-      required:
-        - admins
-        - readers
+    type: object
+    description: |
+      Authorization section of a Subscription. This section defines two access control lists: one for consuming
+      events and committing cursors ('readers'), and one for administering a subscription ('admins').
+      Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+    properties:
+      admins:
+        type: array
+        description: |
+          An array of subject attributes that are required for updating the subscription. Any one of the attributes
+          defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+          i.e. if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      readers:
+        type: array
+        description: |
+          An array of subject attributes that are required for reading events and committing cursors to this
+          subscription. Any one of the attributes defined in this array is sufficient to be authorized. The wildcard
+          item takes precedence over all others, i.e., if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+    required:
+      - admins
+      - readers
 
   EventType:
     description: An event type defines the schema and its runtime properties.
