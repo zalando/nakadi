@@ -54,12 +54,6 @@ public class TracingService {
         return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
     }
 
-    public static Scope getScopeIgnoreParent(final String operationName, final boolean autoCloseSpan) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .ignoreActiveSpan().startActive(autoCloseSpan);
-    }
-
     public static Span getNewSpan(final String operationName, final Long timeStamp) {
         return GlobalTracer.get()
                 .buildSpan(operationName)

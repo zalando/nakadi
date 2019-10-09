@@ -77,8 +77,7 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
         final Scope publishingScope = TracingService
-                .getScope("controller", true,
-                        (Span) httpServletRequest.getAttribute("span"));
+                .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
         publishingScope.span()
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId())
                 .setTag("event_type", eventTypeName);

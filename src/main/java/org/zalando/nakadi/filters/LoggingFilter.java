@@ -205,8 +205,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                 .put("event_type", eventType)
                 .put("http.status_code", statusCode)
                 .put("slo_bucket", sloBucket)
-                .put("content_length", requestLogInfo.contentLength)
-                .put("error", statusCode == 207 || statusCode >= 500).build());
+                .put("content_length", requestLogInfo.contentLength).build());
     }
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
