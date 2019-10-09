@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.base.Strings;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
@@ -101,9 +103,12 @@ public class AuthorizationValidator {
     }
 
 
-    public void authorizeEventTypeWrite(final EventType eventType)
+    public void authorizeEventTypeWrite(final EventType eventType, final Span parentSpan)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
+        final Scope authorizationScope = TracingService.getScope("write_authorization",
+                true, parentSpan);
         if (eventType.getAuthorization() == null) {
+            authorizationScope.span().setTag("authorized", true);
             return;
         }
         final Resource<EventType> resource = eventType.asResource();
@@ -112,11 +117,14 @@ public class AuthorizationValidator {
                     AuthorizationService.Operation.WRITE,
                     resource);
             if (!authorized) {
+                authorizationScope.span().setTag("authorized", false);
                 throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
             }
         } catch (final PluginException ex) {
+            TracingService.setErrorTags(authorizationScope, ex.getMessage());
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
         }
+        authorizationScope.span().setTag("authorized", true);
     }
 
     private void authorizeResourceAdmin(final Resource resource) throws AccessDeniedException {

@@ -1,6 +1,11 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
@@ -39,6 +44,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.service.TracingService;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -102,7 +108,9 @@ public class KafkaTopicRepository implements TopicRepository {
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
-            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
+            final HystrixKafkaCircuitBreaker circuitBreaker,
+            final Span currentSpan) throws EventPublishingException {
+        final Scope publishScope = TracingService.activateSpan(currentSpan, false);
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
@@ -113,9 +121,10 @@ public class KafkaTopicRepository implements TopicRepository {
 
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
+                final Scope producerScope = TracingService.activateSpan(currentSpan, false);
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+                    handlePublishingException(producerScope, item, "internal error");
                     if (hasKafkaConnectionException(exception)) {
                         circuitBreaker.markFailure();
                     } else {
@@ -132,15 +141,25 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final InterruptException e) {
             Thread.currentThread().interrupt();
             circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            handlePublishingException(publishScope, item, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
             circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            handlePublishingException(publishScope, item, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
+
+    private void handlePublishingException(final Scope scope, final BatchItem batchItem, final String error) {
+        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, error);
+        if (batchItem.getEvent().has("metadata")) {
+            scope.span().log(
+                    ImmutableMap.of("event.id", batchItem.getEvent().getJSONObject("metadata")
+                            .getString("eid"), "error", error));
+        }
+    }
+
 
     private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
         if (null == exception) {
@@ -222,67 +241,91 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
-        final Producer<String, String> producer = kafkaFactory.takeProducer();
-        try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
-                    Collectors.toMap(p -> String.valueOf(p.partition()), p -> String.valueOf(p.leader().id())));
-            batch.forEach(item -> {
-                Preconditions.checkNotNull(
-                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-                item.setBrokerId(partitionToBroker.get(item.getPartition()));
-            });
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch, final Span parentSpan,
+                              final String eventType)
+            throws EventPublishingException {
+        final Span publishingSpan = GlobalTracer.get()
+                .buildSpan("publishing_to_kafka")
+                .asChildOf(parentSpan)
+                .start();
+        publishingSpan.setTag("event_type", eventType);
+        Tags.MESSAGE_BUS_DESTINATION.set(publishingSpan, topicId);
+        try (Scope kafkaPublishingScope = TracingService.activateSpan(publishingSpan, false)) {
+            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            try {
+                final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
+                        Collectors.toMap(p -> String.valueOf(p.partition()), p -> String.valueOf(p.leader().id())));
+                batch.forEach(item -> {
+                    Preconditions.checkNotNull(
+                            item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
+                    item.setBrokerId(partitionToBroker.get(item.getPartition()));
+                });
 
-            int shortCircuited = 0;
-            final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
-            for (final BatchItem item : batch) {
-                item.setStep(EventPublishingStep.PUBLISHING);
-                final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
-                if (circuitBreaker.allowRequest()) {
-                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
-                } else {
-                    shortCircuited++;
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
+                int shortCircuited = 0;
+                final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
+                for (final BatchItem item : batch) {
+                    item.setStep(EventPublishingStep.PUBLISHING);
+                    final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
+                            item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
+                    if (circuitBreaker.allowRequest()) {
+                        sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, publishingSpan));
+                    } else {
+                        shortCircuited++;
+                        handlePublishingException(kafkaPublishingScope, item, "short circuited");
+                    }
                 }
-            }
-            if (shortCircuited > 0) {
-                LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
-                        shortCircuited, topicId);
-            }
-            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
-                    sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+                if (shortCircuited > 0) {
+                    LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
+                            shortCircuited, topicId);
+                }
+                final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
+                        sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
+                multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
 
-            // Now lets check for errors
-            final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                    .map(entry -> entry.getValue().getNow(null))
-                    .findAny();
-            if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
+                // Now lets check for errors
+                final Optional<Exception> needReset = sendFutures.entrySet().stream()
+                        .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+                        .map(entry -> entry.getValue().getNow(null))
+                        .findAny();
+                if (needReset.isPresent()) {
+                    LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
+                            topicId, needReset.get());
+                    kafkaFactory.terminateProducer(producer);
+                }
+            } catch (final TimeoutException ex) {
                 kafkaFactory.terminateProducer(producer);
+                failUnpublished(batch, "timed out");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "timed out").build());
+                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                throw new EventPublishingException("Error publishing message to kafka", ex);
+            } catch (final ExecutionException ex) {
+                failUnpublished(batch, "internal error");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "internal error").build());
+                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                throw new EventPublishingException("Error publishing message to kafka", ex);
+            } catch (final InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                failUnpublished(batch, "interrupted");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "interrupted").build());
+                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                throw new EventPublishingException("Error publishing message to kafka", ex);
+            } finally {
+                kafkaFactory.releaseProducer(producer);
             }
-        } catch (final TimeoutException ex) {
-            kafkaFactory.terminateProducer(producer);
-            failUnpublished(batch, "timed out");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final ExecutionException ex) {
-            failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            failUnpublished(batch, "interrupted");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
+            final boolean atLeastOneFailed = batch.stream()
+                    .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+            if (atLeastOneFailed) {
+                failUnpublished(batch, "internal error");
+                TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
+                        .put("failure_reason", "internal error").build());
+                TracingService.setErrorTags(kafkaPublishingScope, "Internal Kafka Error");
+                throw new EventPublishingException("Error publishing message to kafka");
+            }
         } finally {
-            kafkaFactory.releaseProducer(producer);
-        }
-        final boolean atLeastOneFailed = batch.stream()
-                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        if (atLeastOneFailed) {
-            failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka");
+            publishingSpan.finish();
         }
     }
 

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository;
 
+import io.opentracing.Span;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -45,7 +46,8 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws TopicRepositoryException;
 
-    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
+    void syncPostBatch(String topicId, List<BatchItem> batch, Span parentSpan, String eventTypeName)
+            throws EventPublishingException;
 
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceTemporarilyUnavailableException;
@@ -71,6 +73,7 @@ public interface TopicRepository {
 
     /**
      * Provides estimation of disk size occupied by particular topic partition. Replicated data is not included
+     *
      * @return Maximum size occupied by topic partitions.
      */
     Map<TopicPartition, Long> getSizeStats();

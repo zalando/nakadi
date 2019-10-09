@@ -32,6 +32,7 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
@@ -88,7 +89,7 @@ public class EventTypeControllerTestCase {
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-
+    protected final TracingService tracingService = mock(TracingService.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() throws IOException {
@@ -116,8 +117,8 @@ public class EventTypeControllerTestCase {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService);
+                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
+                eventTypeOptionsValidator, adminService);
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();
