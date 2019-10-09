@@ -215,6 +215,8 @@ public class EventPublisher {
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
         final Span validationSpan = TracingService.getNewSpan("validation", System.currentTimeMillis(),
                 parentSpan);
+        TracingService.setCustomTags(validationSpan, ImmutableMap.<String, Object>builder()
+                .put("event_type", eventType).build());
         try (Scope validationScope = TracingService.activateSpan(validationSpan, false)) {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
