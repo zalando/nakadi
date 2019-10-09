@@ -86,7 +86,7 @@ public class StartingState extends State {
             }
         }
 
-        if (getZk().isCursorResetInProgress()) {
+        if (getZk().isCloseSubscriptionStreamsInProgress()) {
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
