@@ -56,6 +56,9 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
@@ -97,6 +100,7 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
+    private final SubscriptionClientFactory subscriptionClientFactory;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -115,7 +119,8 @@ public class EventTypeService {
                             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
                             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                             final EventTypeOptionsValidator eventTypeOptionsValidator,
-                            final AdminService adminService) {
+                            final AdminService adminService,
+                            final SubscriptionClientFactory subscriptionClientFactory) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -133,6 +138,7 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
+        this.subscriptionClientFactory = subscriptionClientFactory;
     }
 
     public List<EventType> list() {
@@ -537,13 +543,13 @@ public class EventTypeService {
     }
 
     private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
-            throws InternalNakadiException {
+            throws InternalNakadiException, NakadiRuntimeException {
         final NakadiBaseException exception = transactionTemplate.execute(action -> {
             try {
                 eventTypeRepository.update(eventType);
                 timelineService.updateTimeLineForRepartition(eventType, partitions);
                 return null;
-            } catch (CannotAddPartitionToTopicException | InternalNakadiException | TopicConfigException e) {
+            } catch (NakadiBaseException e) {
                 return e;
             }
         });
@@ -551,8 +557,22 @@ public class EventTypeService {
         if (exception != null) {
             throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), exception);
         }
+
+        updateSubscriptionsForRepartitioning(eventType, partitions);
     }
 
+    public void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
+            throws NakadiBaseException {
+        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1000);
+        for (final Subscription subscription : subscriptions) {
+            final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
+                    LogPathBuilder.build(subscription.getId(), "repartition"));
+            zkClient.repartitionTopology(eventType.getName(), partitions);
+            zkClient.closeSubscriptionStreams(
+                    () -> LOG.info("subscription streams were closed, after repartitioning"), 60000);
+        }
+    }
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {

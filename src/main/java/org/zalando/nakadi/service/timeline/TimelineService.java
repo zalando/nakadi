@@ -22,13 +22,13 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -156,9 +156,8 @@ public class TimelineService {
         }
     }
 
-    public void updateTimeLineForRepartition(final EventType eventType, final int partitions) throws
-            CannotAddPartitionToTopicException, TopicConfigException {
-
+    public void updateTimeLineForRepartition(final EventType eventType, final int partitions)
+            throws NakadiBaseException {
         final Timeline currentTimeline = getActiveTimeline(eventType);
         getTopicRepository(eventType).repartition(currentTimeline.getTopic(), partitions);
         for (final Timeline timeline : getAllTimelinesOrdered(eventType.getName())) {
@@ -171,6 +170,12 @@ public class TimelineService {
                 latestPosition.getOffsets().add(Long.valueOf(-1));
             }
             timelineDbRepository.updateTimelime(timeline);
+        }
+
+        try {
+            eventTypeCache.updated(eventType.getName());
+        } catch (Exception e) {
+            throw new NakadiBaseException(e.getMessage(), e);
         }
     }
 
