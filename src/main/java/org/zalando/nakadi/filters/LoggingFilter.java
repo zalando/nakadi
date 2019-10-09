@@ -4,6 +4,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.net.HttpHeaders;
 import io.opentracing.Scope;
 import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.propagation.TextMapExtractAdapter;
+import io.opentracing.propagation.TextMapInjectAdapter;
+import io.opentracing.util.GlobalTracer;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +29,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
 
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
@@ -117,11 +127,23 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws IOException, ServletException {
-        final long start = System.currentTimeMillis();
-        final Span publishingSpan = TracingService.getNewSpan("publish_events",
-                start);
+        final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
+                .stream()
+                .collect(Collectors.toMap(h -> h, request::getHeader));
+        final SpanContext spanContext = GlobalTracer.get()
+                .extract(HTTP_HEADERS, new TextMapExtractAdapter(requestHeaders));
+        final Span publishingSpan;
+        final long startTime = System.currentTimeMillis();
+        if (spanContext != null) {
+            publishingSpan = TracingService.getNewSpan("publish_events",
+                    startTime, spanContext);
+        } else {
+            publishingSpan = TracingService.getNewSpan("publish_events",
+                    startTime);
+        }
+
         try {
-            final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
+            final RequestLogInfo requestLogInfo = new RequestLogInfo(request, startTime);
             if (isPublishingRequest(requestLogInfo)) {
                 final Scope scope = TracingService.activateSpan(publishingSpan, false);
                 TracingService.setCustomTags(scope,
@@ -138,14 +160,18 @@ public class LoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             if (request.isAsyncStarted()) {
                 final String flowId = FlowIdUtils.peek();
-                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, start, flowId,
+                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, startTime, flowId,
                         publishingSpan));
             }
         } finally {
             if (!request.isAsyncStarted()) {
-                final RequestLogInfo requestLogInfo = new RequestLogInfo(request, start);
+                final RequestLogInfo requestLogInfo = new RequestLogInfo(request, startTime);
                 logRequest(requestLogInfo, response.getStatus(), publishingSpan);
             }
+            final Map<String, String> spanContextToInject = new HashMap<>();
+            GlobalTracer.get().inject(publishingSpan.context(),
+                    HTTP_HEADERS, new TextMapInjectAdapter(spanContextToInject));
+            response.setHeader("span_ctx",spanContextToInject.toString());
             publishingSpan.finish();
         }
     }
