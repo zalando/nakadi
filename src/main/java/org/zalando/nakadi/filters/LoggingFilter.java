@@ -42,7 +42,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     // We are using empty log name, cause it is used only for access log and we do not care about class name
     private static final Logger ACCESS_LOGGER = LoggerFactory.getLogger("ACCESS_LOG");
-
+    private static final String SPAN_CONTEXT = "span_ctx";
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
     private final AuthorizationService authorizationService;
@@ -171,7 +171,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             final Map<String, String> spanContextToInject = new HashMap<>();
             GlobalTracer.get().inject(publishingSpan.context(),
                     HTTP_HEADERS, new TextMapInjectAdapter(spanContextToInject));
-            response.setHeader("span_ctx",spanContextToInject.toString());
+            response.setHeader(SPAN_CONTEXT, spanContextToInject.toString());
             publishingSpan.finish();
         }
     }
