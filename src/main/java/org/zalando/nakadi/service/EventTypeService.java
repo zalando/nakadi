@@ -101,6 +101,7 @@ public class EventTypeService {
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
     private final SubscriptionClientFactory subscriptionClientFactory;
+    private final Integer repartitioningSubscriptionsLimit;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -120,7 +121,8 @@ public class EventTypeService {
                             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                             final EventTypeOptionsValidator eventTypeOptionsValidator,
                             final AdminService adminService,
-                            final SubscriptionClientFactory subscriptionClientFactory) {
+                            final SubscriptionClientFactory subscriptionClientFactory,
+                            @Value("${nakadi.repartitioning.subscriptions.limit:1000}") final Integer repartitioningSubscriptionsLimit) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -139,6 +141,7 @@ public class EventTypeService {
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
         this.subscriptionClientFactory = subscriptionClientFactory;
+        this.repartitioningSubscriptionsLimit = repartitioningSubscriptionsLimit;
     }
 
     public List<EventType> list() {
@@ -564,13 +567,13 @@ public class EventTypeService {
     public void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
             throws NakadiBaseException {
         final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1000);
+                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit);
         for (final Subscription subscription : subscriptions) {
             final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
                     LogPathBuilder.build(subscription.getId(), "repartition"));
             zkClient.repartitionTopology(eventType.getName(), partitions);
             zkClient.closeSubscriptionStreams(
-                    () -> LOG.info("subscription streams were closed, after repartitioning"), 60000);
+                    () -> LOG.info("subscription streams were closed, after repartitioning"), nakadiSettings.getMaxCommitTimeout());
         }
     }
 
