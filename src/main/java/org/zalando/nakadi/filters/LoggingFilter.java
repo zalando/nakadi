@@ -231,8 +231,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                 .put("event_type", eventType)
                 .put("http.status_code", statusCode)
                 .put("slo_bucket", sloBucket)
-                .put("content_length", requestLogInfo.contentLength)
-                .put("error", statusCode == 207 || statusCode >= 500).build());
+                .put("content_length", requestLogInfo.contentLength).build());
     }
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
@@ -242,12 +241,6 @@ public class LoggingFilter extends OncePerRequestFilter {
     private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
         return requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/event-types/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
-    }
-
-    private boolean isConsumptionRequest(final RequestLogInfo requestLogInfo) {
-        return requestLogInfo.path != null && "GET".equals(requestLogInfo.method) &&
-                requestLogInfo.path.startsWith("/subscriptions/") &&
                 (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
     }
 }
