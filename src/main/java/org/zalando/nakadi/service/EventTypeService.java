@@ -104,25 +104,27 @@ public class EventTypeService {
     private final Integer repartitioningSubscriptionsLimit;
 
     @Autowired
-    public EventTypeService(final EventTypeRepository eventTypeRepository,
-                            final TimelineService timelineService,
-                            final PartitionResolver partitionResolver,
-                            final Enrichment enrichment,
-                            final SubscriptionDbRepository subscriptionRepository,
-                            final SchemaEvolutionService schemaEvolutionService,
-                            final PartitionsCalculator partitionsCalculator,
-                            final FeatureToggleService featureToggleService,
-                            final AuthorizationValidator authorizationValidator,
-                            final TimelineSync timelineSync,
-                            final TransactionTemplate transactionTemplate,
-                            final NakadiSettings nakadiSettings,
-                            final NakadiKpiPublisher nakadiKpiPublisher,
-                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
-                            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                            final EventTypeOptionsValidator eventTypeOptionsValidator,
-                            final AdminService adminService,
-                            final SubscriptionClientFactory subscriptionClientFactory,
-                            @Value("${nakadi.repartitioning.subscriptions.limit:1000}") final Integer repartitioningSubscriptionsLimit) {
+    public EventTypeService(
+            final EventTypeRepository eventTypeRepository,
+            final TimelineService timelineService,
+            final PartitionResolver partitionResolver,
+            final Enrichment enrichment,
+            final SubscriptionDbRepository subscriptionRepository,
+            final SchemaEvolutionService schemaEvolutionService,
+            final PartitionsCalculator partitionsCalculator,
+            final FeatureToggleService featureToggleService,
+            final AuthorizationValidator authorizationValidator,
+            final TimelineSync timelineSync,
+            final TransactionTemplate transactionTemplate,
+            final NakadiSettings nakadiSettings,
+            final NakadiKpiPublisher nakadiKpiPublisher,
+            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
+            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+            final EventTypeOptionsValidator eventTypeOptionsValidator,
+            final AdminService adminService,
+            final SubscriptionClientFactory subscriptionClientFactory,
+            @Value("${nakadi.repartitioning.subscriptions.limit:1000}")
+            final Integer repartitioningSubscriptionsLimit) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -573,7 +575,8 @@ public class EventTypeService {
                     LogPathBuilder.build(subscription.getId(), "repartition"));
             zkClient.repartitionTopology(eventType.getName(), partitions);
             zkClient.closeSubscriptionStreams(
-                    () -> LOG.info("subscription streams were closed, after repartitioning"), nakadiSettings.getMaxCommitTimeout());
+                    () -> LOG.info("subscription streams were closed, after repartitioning"),
+                    nakadiSettings.getMaxCommitTimeout());
         }
     }
 
