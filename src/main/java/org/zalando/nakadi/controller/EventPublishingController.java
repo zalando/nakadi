@@ -79,15 +79,14 @@ public class EventPublishingController {
         final Scope publishingScope = TracingService
                 .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
         publishingScope.span()
-                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId())
-                .setTag("event_type", eventTypeName);
+                .setTag("event_type", eventTypeName)
+                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
 
         Tags.HTTP_METHOD.set(publishingScope.span(), POST.toString());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             publishingScope.span().setTag("status_code", FORBIDDEN.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
             throw new BlockedException("Application or event type is blocked");
         }
         try {
@@ -99,11 +98,9 @@ public class EventPublishingController {
         } catch (final NoSuchEventTypeException exception) {
             eventTypeMetrics.incrementResponseCount(NOT_FOUND.getStatusCode());
             Tags.HTTP_STATUS.set(publishingScope.span(), NOT_FOUND.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
             throw exception;
         } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
             Tags.HTTP_STATUS.set(publishingScope.span(), INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }

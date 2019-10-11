@@ -39,6 +39,6 @@ public class CursorsServiceTest {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionCommit(any());
-        service.commitCursors("test", "test", Collections.emptyList());
+        service.commitCursors("test", "test", Collections.emptyList(), null);
     }
 }

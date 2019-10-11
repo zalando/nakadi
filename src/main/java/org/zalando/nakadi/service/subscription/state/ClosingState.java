@@ -4,6 +4,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -40,6 +41,8 @@ class ClosingState extends State {
         } catch (final NakadiRuntimeException | NakadiBaseException ex) {
             // In order not to stuck here one will just log this exception, without rethrowing
             getLog().error("Failed to transfer partitions when leaving ClosingState", ex);
+            TracingService.logErrorInSpan(TracingService.activateSpan(getContext().getCurrentSpan(), false),
+                    "Failed to transfer partitions when leaving ClosingState " + ex.getMessage());
         } finally {
             if (null != topologyListener) {
                 try {
@@ -72,6 +75,8 @@ class ClosingState extends State {
 
     private void onTopologyChanged() {
         if (topologyListener == null) {
+            TracingService.logErrorInSpan(TracingService.activateSpan(getContext().getCurrentSpan(), false),
+                    "IllegalStateException: topologyListener should not be null when calling onTopologyChanged method");
             throw new IllegalStateException(
                     "topologyListener should not be null when calling onTopologyChanged method");
         }
@@ -152,6 +157,8 @@ class ClosingState extends State {
                     listener.close();
                 } catch (final RuntimeException ex) {
                     exceptionCaught = ex;
+                    TracingService.logErrorInSpan(TracingService.activateSpan(getContext().getCurrentSpan(), false),
+                            String.format("Failed to cancel offsets listener {} {}" , listener, ex.getMessage() ));
                     getLog().error("Failed to cancel offsets listener {}", listener, ex);
                 }
             }

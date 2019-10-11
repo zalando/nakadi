@@ -1,6 +1,9 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -84,25 +87,34 @@ public class CursorsService {
      * It is guaranteed, that len(cursors) == len(result)
      **/
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
-                                       final List<NakadiCursor> cursors)
+                                       final List<NakadiCursor> cursors, final Span parentSpan)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             AccessDeniedException {
-        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
+        final Scope commitScope = TracingService.activateSpan(parentSpan, false);
+        try {
+            final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
 
-        authorizationValidator.authorizeSubscriptionView(subscription);
-        authorizationValidator.authorizeSubscriptionCommit(subscription);
+            authorizationValidator.authorizeSubscriptionView(subscription);
+            authorizationValidator.authorizeSubscriptionCommit(subscription);
+            validateSubscriptionCommitCursors(subscription, cursors);
+            TracingService.setCustomTags(commitScope.span(), ImmutableMap.<String, Object>builder()
+                    .put("subscription", subscriptionId)
+                    .put("stream.id", streamId)
+                    .build());
+            final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
+                    subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
 
-        validateSubscriptionCommitCursors(subscription, cursors);
+            validateStreamId(cursors, streamId, zkClient, subscriptionId);
 
-        final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
-                subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
-
-        validateStreamId(cursors, streamId, zkClient, subscriptionId);
-
-        return zkClient.commitOffsets(
-                cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
+            return zkClient.commitOffsets(
+                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
+                    new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
+        } catch (
+                Exception e) {
+            TracingService.logErrorInSpan(commitScope, e.getMessage());
+            throw e;
+        }
     }
 
     private void validateStreamId(final List<NakadiCursor> cursors,

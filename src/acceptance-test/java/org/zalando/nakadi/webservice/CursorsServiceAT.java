@@ -139,7 +139,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, null);
         assertThat(commitResult, equalTo(ImmutableList.of(true)));
         checkCurrentOffsetInZk(P1, NEW_OFFSET);
     }
@@ -147,7 +147,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenStreamIdInvalidThenException() throws Exception {
         try {
-            cursorsService.commitCursors("wrong-stream-id", sid, testCursors);
+            cursorsService.commitCursors("wrong-stream-id", sid, testCursors, null);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -158,14 +158,14 @@ public class CursorsServiceAT extends BaseAT {
     public void shouldThrowInvalidStreamIdWhenStreamIdIsNotUUID() throws Exception {
         when(uuidGenerator.isUUID(any())).thenReturn(false);
         final String streamId = "/";
-        cursorsService.commitCursors(streamId, sid, testCursors);
+        cursorsService.commitCursors(streamId, sid, testCursors, null);
     }
 
     @Test
     public void whenPartitionIsStreamedToDifferentClientThenFalse() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, "wrong-stream-id", null, Partition.State.ASSIGNED)});
         try {
-            cursorsService.commitCursors(streamId, sid, testCursors);
+            cursorsService.commitCursors(streamId, sid, testCursors, null);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -178,7 +178,7 @@ public class CursorsServiceAT extends BaseAT {
         registerNakadiCursor(cursor);
         testCursors = ImmutableList.of(cursor);
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, null);
         assertThat(commitResult, equalTo(ImmutableList.of(false)));
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
     }
@@ -193,7 +193,7 @@ public class CursorsServiceAT extends BaseAT {
         setPartitions(new Partition[]{
                 new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED),
                 new Partition(etName, P2, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors, null);
 
         assertFalse(result.get(0));
         assertTrue(result.get(1));
@@ -227,7 +227,7 @@ public class CursorsServiceAT extends BaseAT {
         );
         testCursors.forEach(this::registerNakadiCursor);
 
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, null);
         assertThat(commitResult, equalTo(
                 ImmutableList.of(
                         true,

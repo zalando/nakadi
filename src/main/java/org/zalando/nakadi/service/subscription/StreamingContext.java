@@ -3,13 +3,14 @@ package org.zalando.nakadi.service.subscription;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
+import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -65,6 +66,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeChangeListener eventTypeChangeListener;
     private final Comparator<NakadiCursor> cursorComparator;
     private final NakadiKpiPublisher kpiPublisher;
+    private final Span currentSpan;
     private final String kpiDataStreamedEventType;
 
     private final long kpiCollectionFrequencyMs;
@@ -102,6 +104,11 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
+        this.currentSpan = builder.currentSpan;
+    }
+
+    public Span getCurrentSpan() {
+        return currentSpan;
     }
 
     public TimelineService getTimelineService() {
@@ -173,7 +180,8 @@ public class StreamingContext implements SubscriptionStreamer {
         switchState(new CleanupState(null));
     }
 
-    void streamInternal(final State firstState) throws InterruptedException {
+    void streamInternal(final State firstState)
+            throws InterruptedException {
         // Add first task - switch to starting state.
         switchState(firstState);
 
@@ -347,6 +355,12 @@ public class StreamingContext implements SubscriptionStreamer {
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
+        private Span currentSpan;
+
+        public Builder setCurrentSpan(final Span span) {
+            this.currentSpan = span;
+            return this;
+        }
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;

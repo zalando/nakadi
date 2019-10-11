@@ -47,6 +47,23 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final String accessLogEventType;
     private final AuthorizationService authorizationService;
 
+    private enum RequestType {
+        PUBLISHING("publish_events"),
+        COMMIT("commit_events"),
+        CONSUMPTION("consume_events"),
+        OTHER("other");
+
+        private String operationName;
+
+        public String getOperationName() {
+            return this.operationName;
+        }
+
+        RequestType(final String operationName) {
+            this.operationName = operationName;
+        }
+    }
+
     @Autowired
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
                          final AuthorizationService authorizationService,
@@ -127,52 +144,84 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws IOException, ServletException {
+        final long startTime = System.currentTimeMillis();
+        final RequestLogInfo requestLogInfo = new RequestLogInfo(request, startTime);
+        final RequestType requestType = getRequestType(requestLogInfo);
+        if (requestType.equals(RequestType.OTHER)) {
+            handleNonTracedRequests(request, response, filterChain, requestLogInfo, startTime);
+        } else {
+            handleTracedRequests(request, response, filterChain, requestLogInfo, startTime,
+                    requestType.getOperationName());
+        }
+    }
+
+    private void handleNonTracedRequests(final HttpServletRequest request,
+                                         final HttpServletResponse response, final FilterChain filterChain,
+                                         final RequestLogInfo requestLogInfo, final long startTime)
+            throws IOException, ServletException {
+        try {
+            filterChain.doFilter(request, response);
+            if (request.isAsyncStarted()) {
+                final String flowId = FlowIdUtils.peek();
+                request.getAsyncContext().addListener(new AsyncRequestListener(request, response,
+                        startTime, flowId, null));
+            }
+        } finally {
+            if (!request.isAsyncStarted()) {
+                logRequest(requestLogInfo, response.getStatus(), null);
+            }
+        }
+    }
+
+    private void handleTracedRequests(final HttpServletRequest request,
+                                      final HttpServletResponse response, final FilterChain filterChain,
+                                      final RequestLogInfo requestLogInfo, final long startTime,
+                                      final String operationName)
+            throws IOException, ServletException {
         final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
                 .stream()
                 .collect(Collectors.toMap(h -> h, request::getHeader));
         final SpanContext spanContext = GlobalTracer.get()
                 .extract(HTTP_HEADERS, new TextMapExtractAdapter(requestHeaders));
-        final Span publishingSpan;
-        final long startTime = System.currentTimeMillis();
+        final Span baseSpan;
         if (spanContext != null) {
-            publishingSpan = TracingService.getNewSpan("publish_events",
-                    startTime, spanContext);
+            if (operationName.equals(RequestType.COMMIT.getOperationName())) {
+                baseSpan = TracingService.getNewSpanWithReference(operationName, startTime, spanContext);
+            } else {
+                baseSpan = TracingService.getNewSpanWithParent(operationName,
+                        startTime, spanContext);
+            }
         } else {
-            publishingSpan = TracingService.getNewSpan("publish_events",
+            baseSpan = TracingService.getNewSpan(operationName,
                     startTime);
         }
-
         try {
-            final RequestLogInfo requestLogInfo = new RequestLogInfo(request, startTime);
-            if (isPublishingRequest(requestLogInfo)) {
-                final Scope scope = TracingService.activateSpan(publishingSpan, false);
-                TracingService.setCustomTags(scope,
-                        ImmutableMap.<String, Object>builder()
-                                .put("client_id", requestLogInfo.user)
-                                .put("http.url", requestLogInfo.path + requestLogInfo.query)
-                                .put("http.header.content_encoding", requestLogInfo.contentEncoding)
-                                .put("http.header.accept_encoding", requestLogInfo.acceptEncoding)
-                                .put("http.header.user_agent", requestLogInfo.userAgent)
-                                .build());
-                request.setAttribute("span", publishingSpan);
-            }
+            final Scope scope = TracingService.activateSpan(baseSpan, false);
+            TracingService.setCustomTags(scope.span(),
+                    ImmutableMap.<String, Object>builder()
+                            .put("client_id", requestLogInfo.user)
+                            .put("http.url", requestLogInfo.path + requestLogInfo.query)
+                            .put("http.header.content_encoding", requestLogInfo.contentEncoding)
+                            .put("http.header.accept_encoding", requestLogInfo.acceptEncoding)
+                            .put("http.header.user_agent", requestLogInfo.userAgent)
+                            .build());
+            request.setAttribute("span", baseSpan);
             //execute request
             filterChain.doFilter(request, response);
             if (request.isAsyncStarted()) {
                 final String flowId = FlowIdUtils.peek();
                 request.getAsyncContext().addListener(new AsyncRequestListener(request, response, startTime, flowId,
-                        publishingSpan));
+                        baseSpan));
             }
         } finally {
             if (!request.isAsyncStarted()) {
-                final RequestLogInfo requestLogInfo = new RequestLogInfo(request, startTime);
-                logRequest(requestLogInfo, response.getStatus(), publishingSpan);
+                logRequest(requestLogInfo, response.getStatus(), baseSpan);
             }
             final Map<String, String> spanContextToInject = new HashMap<>();
-            GlobalTracer.get().inject(publishingSpan.context(),
+            GlobalTracer.get().inject(baseSpan.context(),
                     HTTP_HEADERS, new TextMapInjectAdapter(spanContextToInject));
             response.setHeader(SPAN_CONTEXT, spanContextToInject.toString());
-            publishingSpan.finish();
+            baseSpan.finish();
         }
     }
 
@@ -182,11 +231,13 @@ public class LoggingFilter extends OncePerRequestFilter {
         if (!isSuccessPublishingRequest(requestLogInfo, statusCode)) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
-        logToNakadi(requestLogInfo, statusCode, timeSpentMs);
-        traceRequest(requestLogInfo, statusCode, timeSpentMs, publishingSpan);
+        logToKpiPublisher(requestLogInfo, statusCode, timeSpentMs);
+        if (publishingSpan != null) {
+            traceRequest(requestLogInfo, statusCode, publishingSpan);
+        }
     }
 
-    private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+    private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                 .put("method", requestLogInfo.method)
                 .put("path", requestLogInfo.path)
@@ -211,43 +262,57 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.contentLength);
     }
 
-    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs,
-                              final Span publishingSpan) {
-        if (!isPublishingRequest(requestLogInfo)) {
+    private void traceRequest(final RequestLogInfo requestLogInfo, final int statusCode,
+                              final Span span) {
+        final RequestType requestType = getRequestType(requestLogInfo);
+        if (requestType.equals(RequestType.OTHER)) {
             return;
         }
-        final Scope scope = TracingService.activateSpan(publishingSpan, false);
-        String sloBucket = "5K-50K";
-        // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
-        // so we also put it to ">50K" bucket to hack this problem
-        if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
-            sloBucket = ">50K";
-        } else if (requestLogInfo.contentLength < 5000) {
-            sloBucket = "<5K";
+        final Map<String, Object> tags = new HashMap<String, Object>() {{
+            put("http.status_code", statusCode);
+            put("content_length", requestLogInfo.contentLength);
+        }};
+
+        if (requestType.equals(RequestType.PUBLISHING)) {
+            String sloBucket = "5K-50K";
+            // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
+            // so we also put it to ">50K" bucket to hack this problem
+            if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
+                sloBucket = ">50K";
+            } else if (requestLogInfo.contentLength < 5000) {
+                sloBucket = "<5K";
+            }
+            tags.put("slo_bucket", sloBucket);
+            tags.put("error", statusCode == 207 || statusCode >= 500);
+        } else {
+            tags.put("error", statusCode >= 500);
         }
-        final String eventType = requestLogInfo.path.substring("/event-types/".length(),
-                requestLogInfo.path.lastIndexOf("/events"));
-        TracingService.setCustomTags(scope, ImmutableMap.<String, Object>builder()
-                .put("event_type", eventType)
-                .put("http.status_code", statusCode)
-                .put("slo_bucket", sloBucket)
-                .put("content_length", requestLogInfo.contentLength)
-                .put("error", statusCode == 207 || statusCode >= 500).build());
+
+        final Scope scope = TracingService.activateSpan(span, false);
+        TracingService.setCustomTags(scope.span(), tags);
     }
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
-        return isPublishingRequest(requestLogInfo) && statusCode == 200;
+        return getRequestType(requestLogInfo).equals(RequestType.PUBLISHING) && statusCode == 200;
     }
 
-    private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
-        return requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+    private RequestType getRequestType(final RequestLogInfo requestLogInfo) {
+        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/event-types/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
-    }
-
-    private boolean isConsumptionRequest(final RequestLogInfo requestLogInfo) {
-        return requestLogInfo.path != null && "GET".equals(requestLogInfo.method) &&
+                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
+            return RequestType.PUBLISHING;
+        }
+        if (requestLogInfo.path != null
+                && ("GET".equals(requestLogInfo.method) || "POST".equals(requestLogInfo.method))
+                && requestLogInfo.path.startsWith("/subscriptions/")
+                && (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
+            return RequestType.CONSUMPTION;
+        }
+        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/subscriptions/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
+                (requestLogInfo.path.endsWith("/cursors") || requestLogInfo.path.endsWith("/cursors/"))) {
+            return RequestType.COMMIT;
+        }
+        return RequestType.OTHER;
     }
 }
