@@ -72,6 +72,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -576,7 +577,7 @@ public class EventTypeService {
             zkClient.repartitionTopology(eventType.getName(), partitions);
             zkClient.closeSubscriptionStreams(
                     () -> LOG.info("subscription streams were closed, after repartitioning"),
-                    nakadiSettings.getMaxCommitTimeout());
+                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
         }
     }
 
