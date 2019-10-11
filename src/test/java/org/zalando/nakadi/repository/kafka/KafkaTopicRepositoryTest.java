@@ -111,7 +111,6 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
-
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
     }
@@ -242,7 +241,8 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, null,
+                    "random");
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -269,7 +269,8 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, null,
+                    "random");
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -306,7 +307,8 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, null,
+                    "random");
             fail();
         } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -339,7 +341,8 @@ public class KafkaTopicRepositoryTest {
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
-                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
+                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem),
+                        null, "random");
                 fail();
             } catch (final EventPublishingException e) {
             }

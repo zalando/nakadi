@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository;
 
+import io.opentracing.Span;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -46,11 +47,12 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws TopicRepositoryException;
 
+    void syncPostBatch(String topicId, List<BatchItem> batch, Span parentSpan, String eventTypeName)
+            throws EventPublishingException;
+
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;
-
-    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
-
+    
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceTemporarilyUnavailableException;
 

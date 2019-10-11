@@ -33,6 +33,7 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
@@ -89,7 +90,7 @@ public class EventTypeControllerTestCase {
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-
+    protected final TracingService tracingService = mock(TracingService.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() throws IOException {
@@ -101,7 +102,7 @@ public class EventTypeControllerTestCase {
         final NakadiSettings nakadiSettings = new NakadiSettings(32, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "nakadi", "I am warning you",
-                "I am warning you, even more");
+                "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3");
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
@@ -117,8 +118,8 @@ public class EventTypeControllerTestCase {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(SubscriptionClientFactory.class), 1000);
+                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
+                eventTypeOptionsValidator, adminService, mock(SubscriptionClientFactory.class), 1000);
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

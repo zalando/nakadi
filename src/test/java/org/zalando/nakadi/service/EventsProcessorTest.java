@@ -19,7 +19,8 @@ public class EventsProcessorTest {
         eventsProcessor.enrichAndSubmit("test_et_name", event);
         TestUtils.waitFor(() -> {
             try {
-                Mockito.verify(eventPublisher).publishInternal(Mockito.any(), Mockito.any(), Mockito.eq(false));
+                Mockito.verify(eventPublisher).publishInternal(Mockito.any(), Mockito.any(),
+                        Mockito.eq(false), Mockito.any());
             } catch (final Exception e) {
                 throw new AssertionError(e);
             }
