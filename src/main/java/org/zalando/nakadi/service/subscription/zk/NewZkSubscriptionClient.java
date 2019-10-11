@@ -238,7 +238,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
             try {
                 getCurator().create().creatingParentsIfNeeded().forPath(
-                        getOffsetPath(new EventTypePartition(eventTypeName, partition)));
+                        getOffsetPath(new EventTypePartition(eventTypeName, partition)),
+                        "-1".getBytes(UTF_8));
             } catch (final Exception e) {
                 throw new NakadiRuntimeException(e);
             }
