@@ -78,11 +78,16 @@ public class EventPublishingController {
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
         final Scope publishingScope = TracingService
                 .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
+        String sloBucket = "5K-50K";
+        if (httpServletRequest.getContentLength() > 50000 || httpServletRequest.getContentLength() == 0) {
+            sloBucket = ">50K";
+        } else if (httpServletRequest.getContentLength() < 5000) {
+            sloBucket = "<5K";
+        }
         publishingScope.span()
                 .setTag("event_type", eventTypeName)
+                .setTag("slo_bucket", sloBucket)
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
-
-        Tags.HTTP_METHOD.set(publishingScope.span(), POST.toString());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
@@ -93,18 +98,14 @@ public class EventPublishingController {
             final ResponseEntity response = postEventInternal(
                     eventTypeName, eventsAsString, request, eventTypeMetrics, client, publishingScope.span());
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
-            Tags.HTTP_STATUS.set(publishingScope.span(), response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
             eventTypeMetrics.incrementResponseCount(NOT_FOUND.getStatusCode());
-            Tags.HTTP_STATUS.set(publishingScope.span(), NOT_FOUND.getStatusCode());
             throw exception;
         } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
-            Tags.HTTP_STATUS.set(publishingScope.span(), INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
-
     }
 
     private ResponseEntity postEventInternal(final String eventTypeName,
