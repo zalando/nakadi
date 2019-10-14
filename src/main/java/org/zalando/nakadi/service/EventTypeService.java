@@ -546,7 +546,8 @@ public class EventTypeService {
                     newStatistics.getWriteParallelism()));
             return;
         }
-        if (existingStatistics.equals(newStatistics)) {
+        if (existingStatistics.getReadParallelism().equals(newStatistics.getReadParallelism())
+                && existingStatistics.getWriteParallelism().equals(newStatistics.getWriteParallelism())) {
             return;
         }
 
