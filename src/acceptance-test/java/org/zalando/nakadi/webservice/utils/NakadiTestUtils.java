@@ -104,6 +104,22 @@ public class NakadiTestUtils {
                 .post(format("/event-types/{0}/events", eventType));
     }
 
+    public static void repartitionEventType(final EventType eventType, final int partitionsNumber)
+            throws JsonProcessingException {
+        final EventTypeStatistics defaultStatistic = eventType.getDefaultStatistic();
+        defaultStatistic.setReadParallelism(partitionsNumber);
+        defaultStatistic.setWriteParallelism(partitionsNumber);
+        eventType.setDefaultStatistic(defaultStatistic);
+        final int statusCode = given()
+                .body(MAPPER.writeValueAsString(eventType))
+                .contentType(JSON)
+                .put(format("/event-types/{0}", eventType.getName()))
+                .getStatusCode();
+        if (statusCode != 200) {
+            throw new RuntimeException("Failed to repartition event type");
+        }
+    }
+
     public static void createTimeline(final String eventType) {
         given()
                 .body("{\"storage_id\": \"default\"}")

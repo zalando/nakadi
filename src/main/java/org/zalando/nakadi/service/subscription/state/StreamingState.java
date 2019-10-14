@@ -109,7 +109,7 @@ class StreamingState extends State {
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        cursorResetSubscription = getZk().subscribeForCursorsReset(
+        cursorResetSubscription = getZk().subscribeForStreamClose(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
     }
 

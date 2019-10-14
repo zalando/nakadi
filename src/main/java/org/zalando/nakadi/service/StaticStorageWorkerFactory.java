@@ -13,7 +13,7 @@ public class StaticStorageWorkerFactory {
         long totalEventsInPartition(Timeline timeline, String partitionString);
 
         String getBeforeFirstOffset();
-
+        Timeline.KafkaStoragePosition getLatestPosition(Timeline timeline);
     }
 
     public static StaticStorageWorker get(final Storage storage) {
@@ -42,6 +42,11 @@ public class StaticStorageWorkerFactory {
         @Override
         public String getBeforeFirstOffset() {
             return "-1"; // Yes, it is always like that for kafka.
+        }
+
+        @Override
+        public Timeline.KafkaStoragePosition getLatestPosition(final Timeline timeline) {
+            return (Timeline.KafkaStoragePosition) timeline.getLatestPosition();
         }
 
     }

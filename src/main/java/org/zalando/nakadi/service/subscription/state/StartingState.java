@@ -97,9 +97,7 @@ public class StartingState extends State {
             }
         }
 
-        if (getZk().isCursorResetInProgress()) {
-            TracingService.logStreamCloseReason(startingStateScope,
-                    "Resetting subscription cursors request is still in progress");
+        if (getZk().isCloseSubscriptionStreamsInProgress()) {
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
