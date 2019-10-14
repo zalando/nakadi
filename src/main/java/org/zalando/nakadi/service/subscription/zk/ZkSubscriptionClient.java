@@ -121,6 +121,14 @@ public interface ZkSubscriptionClient extends Closeable {
     Map<EventTypePartition, SubscriptionCursorWithoutToken> getOffsets(Collection<EventTypePartition> keys)
             throws NakadiRuntimeException;
 
+    /**
+     * Forcefully set commits offsets specified in {@link SubscriptionCursorWithoutToken}
+     *
+     * @param cursors - offsets to set for subscription
+     * @throws Exception
+     */
+    void forceCommitOffsets(List<SubscriptionCursorWithoutToken> cursors) throws NakadiRuntimeException;
+
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);
 
@@ -153,30 +161,39 @@ public interface ZkSubscriptionClient extends Closeable {
             throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
-     * Subscribes to cursor reset event.
+     * Subscribes for subscription stream close event.
      *
-     * @param listener callback which is called when cursor reset happens
+     * @param listener callback which is called when stream is closed
      * @return {@link Closeable}
      */
-    Closeable subscribeForCursorsReset(Runnable listener)
+    Closeable subscribeForStreamClose(Runnable listener)
             throws NakadiRuntimeException, UnsupportedOperationException;
 
     /**
-     * Gets current status of cursor reset request.
+     * Extends topology for subscription after event type partitions increased
+     *
+     * @param eventTypeName      Name of the event-type that was repartitioned
+     * @param newPartitionsCount Count of the number of partitions of the event type after repartitioning
+     */
+    void repartitionTopology(String eventTypeName, int newPartitionsCount)
+            throws NakadiRuntimeException;
+
+    /**
+     * Gets current status of subscription stream closing.
      *
      * @return true if cursor reset in progress
      */
-    boolean isCursorResetInProgress();
+    boolean isCloseSubscriptionStreamsInProgress();
 
     /**
-     * Resets subscription offsets for provided cursors.
+     * Close subscription streams and perform provided action when streams are closed.
      *
-     * @param cursors cursors to reset to
+     * @param action  perform action once streams are closed
      * @param timeout wait until give up resetting
      * @throws OperationTimeoutException
      * @throws ZookeeperException
      */
-    void resetCursors(List<SubscriptionCursorWithoutToken> cursors, long timeout)
+    void closeSubscriptionStreams(Runnable action, long timeout)
             throws OperationTimeoutException, ZookeeperException;
 
     class Topology {
@@ -270,6 +287,10 @@ public interface ZkSubscriptionClient extends Closeable {
 
         public String getSessionsHash() {
             return sessionsHash;
+        }
+
+        public Integer getVersion() {
+            return version;
         }
     }
 }

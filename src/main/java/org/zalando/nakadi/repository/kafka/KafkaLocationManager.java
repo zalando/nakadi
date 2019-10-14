@@ -52,6 +52,10 @@ public class KafkaLocationManager {
         }
     }
 
+    public Properties getProperties() {
+        return (Properties) kafkaProperties.clone();
+    }
+
     private void updateBootstrapServers(final boolean createWatcher) {
         final List<Broker> brokers = new ArrayList<>();
         try {

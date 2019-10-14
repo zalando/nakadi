@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -49,6 +50,9 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, Span parentSpan, String eventTypeName)
             throws EventPublishingException;
 
+    void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
+            TopicConfigException;
+    
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceTemporarilyUnavailableException;
 
