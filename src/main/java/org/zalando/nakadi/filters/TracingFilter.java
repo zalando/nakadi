@@ -135,11 +135,7 @@ public class TracingFilter extends OncePerRequestFilter {
             throws IOException, ServletException {
         final RequestInfo requestInfo = new RequestInfo(request, System.currentTimeMillis());
         final RequestType requestType = getRequestType(requestInfo);
-
         //Skip filter in case of non traced request
-        if (requestType.equals(RequestType.OTHER)) {
-            return;
-        }
         final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
                 .stream()
                 .collect(Collectors.toMap(h -> h, request::getHeader));
