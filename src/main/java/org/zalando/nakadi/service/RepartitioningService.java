@@ -46,6 +46,7 @@ public class RepartitioningService {
     private final Integer repartitioningSubscriptionsLimit;
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public RepartitioningService(
@@ -56,7 +57,8 @@ public class RepartitioningService {
             final SubscriptionClientFactory subscriptionClientFactory,
             @Value("${nakadi.repartitioning.subscriptions.limit:1000}") final Integer repartitioningSubscriptionsLimit,
             final NakadiSettings nakadiSettings,
-            final CursorConverter cursorConverter) {
+            final CursorConverter cursorConverter,
+            final FeatureToggleService featureToggleService) {
         this.transactionTemplate = transactionTemplate;
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -65,6 +67,7 @@ public class RepartitioningService {
         this.repartitioningSubscriptionsLimit = repartitioningSubscriptionsLimit;
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
+        this.featureToggleService = featureToggleService;
     }
 
     public void repartition(final EventType eventType, final int partitions)
@@ -125,6 +128,10 @@ public class RepartitioningService {
     public void checkAndRepartition(final EventType original,
                                     final EventType newEventType)
             throws InvalidEventTypeException {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.REPARTITIONING)) {
+            return;
+        }
+
         final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
         final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
         if (newStatistics == null) {

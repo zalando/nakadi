@@ -37,6 +37,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
@@ -151,17 +152,11 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(true).when(featureToggleService)
+                .isFeatureEnabled(FeatureToggleService.Feature.REPARTITIONING);
 
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isUnprocessableEntity());
-
-        final EventType updatedEventType1 = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(100, 100))
-                .build();
-        putEventType(updatedEventType1, originalEventType.getName())
-                .andExpect(status().isUnprocessableEntity());
-
     }
 
     @Test
@@ -175,6 +170,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(true).when(featureToggleService)
+                .isFeatureEnabled(FeatureToggleService.Feature.REPARTITIONING);
 
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isOk());
