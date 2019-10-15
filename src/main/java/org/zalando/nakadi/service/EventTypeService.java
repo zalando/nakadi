@@ -542,20 +542,22 @@ public class EventTypeService {
         }
 
         if (existingStatistics == null) {
-            updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
-                    newStatistics.getWriteParallelism()));
-            return;
+            // number of existing partitions = 1
+            if (getMaxPartitions(newStatistics) == 1) {
+                return;
+            } else {
+                updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
+                        newStatistics.getWriteParallelism()));
+                return;
+            }
         }
-        if (existingStatistics.getReadParallelism().equals(newStatistics.getReadParallelism())
-                && existingStatistics.getWriteParallelism().equals(newStatistics.getWriteParallelism())) {
+
+        if (existingStatistics.equals(newStatistics)) {
             return;
         }
 
-        final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
-                newStatistics.getWriteParallelism());
-
-        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
-                existingStatistics.getWriteParallelism());
+        final int newMaxPartitions = getMaxPartitions(newStatistics);
+        final int oldMaxPartitions = getMaxPartitions(existingStatistics);
 
 
         if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
@@ -574,6 +576,10 @@ public class EventTypeService {
             }
         }
         updateNumberOfPartitions(original, newEventType, newMaxPartitions);
+    }
+
+    private int getMaxPartitions(final EventTypeStatistics eventTypeStatistics) {
+        return Math.max(eventTypeStatistics.getReadParallelism(), eventTypeStatistics.getWriteParallelism());
     }
 
     private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
