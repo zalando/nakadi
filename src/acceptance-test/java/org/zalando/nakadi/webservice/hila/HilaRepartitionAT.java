@@ -57,7 +57,7 @@ public class HilaRepartitionAT extends BaseAT {
         final Partition[] eventTypePartitions = {new Partition(
                 eventTypeName, "0", null, null, Partition.State.ASSIGNED)};
         setInitialTopology(eventTypePartitions);
-        subscriptionClient.repartitionTopology(eventTypeName, 2);
+        subscriptionClient.repartitionTopology(eventTypeName, 2, "001-0001--1");
 
         Assert.assertEquals(subscriptionClient.getTopology().getPartitions().length, 2);
         Assert.assertEquals(subscriptionClient.getTopology().getPartitions()[1].getPartition(), "1");
@@ -87,7 +87,7 @@ public class HilaRepartitionAT extends BaseAT {
                 new Partition(eventTypeName, "0", null, null, Partition.State.ASSIGNED),
                 new Partition(secondEventTypeName, "0", null, null, Partition.State.ASSIGNED)};
         setInitialTopology(eventTypePartitions);
-        subscriptionClient.repartitionTopology(eventTypeName, 2);
+        subscriptionClient.repartitionTopology(eventTypeName, 2, "001-0001--1");
 
         Assert.assertEquals(subscriptionClient.getTopology().getPartitions().length, 3);
         final List<Partition> eTPartitions =
@@ -150,4 +150,40 @@ public class HilaRepartitionAT extends BaseAT {
         Assert.assertEquals("1", clientAfterRepartitioning.getBatches().get(0).getCursor().getPartition());
     }
 
+    @Test(timeout = 30000)
+    public void shouldRepartitionTimelinedEventType() throws Exception {
+        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
+        final Subscription subscription = NakadiTestUtils.createSubscription(
+                RandomSubscriptionBuilder.builder()
+                        .withEventType(eventType.getName())
+                        .withStartFrom(SubscriptionBase.InitialPosition.BEGIN)
+                        .buildSubscriptionBase());
+
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
+
+        // create session, read from subscription and wait for events to be sent
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .startWithAutocommit(streamBatches -> LOG.info("{}", streamBatches));
+
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(client.getBatches(), Matchers.hasSize(1)));
+        Assert.assertEquals("0", client.getBatches().get(0).getCursor().getPartition());
+
+        NakadiTestUtils.createTimeline(eventType.getName());
+
+        NakadiTestUtils.repartitionEventType(eventType, 2);
+
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(client.isRunning(), Matchers.is(false)));
+
+        final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .startWithAutocommit(streamBatches -> LOG.info("{}", streamBatches));
+
+        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+                eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
+
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(clientAfterRepartitioning.getBatches(), Matchers.hasSize(1)));
+        Assert.assertEquals("1", clientAfterRepartitioning.getBatches().get(0).getCursor().getPartition());
+    }
 }

@@ -174,8 +174,9 @@ public interface ZkSubscriptionClient extends Closeable {
      *
      * @param eventTypeName      Name of the event-type that was repartitioned
      * @param newPartitionsCount Count of the number of partitions of the event type after repartitioning
+     * @param offset             Offset to start consume from, usually it is begin, but have to preserve timelines
      */
-    void repartitionTopology(String eventTypeName, int newPartitionsCount)
+    void repartitionTopology(String eventTypeName, int newPartitionsCount, String offset)
             throws NakadiRuntimeException;
 
     /**
