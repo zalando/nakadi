@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -19,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -29,10 +31,12 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
@@ -213,6 +217,21 @@ public class EventTypeServiceTest {
             return;
         }
         fail("Should throw AccessDeniedException");
+    }
+
+    @Test
+    public void testAllowCreatingEventTypeWithInformationalFieldsFromEffectiveSchema() {
+        final EventType et = EventTypeTestBuilder.builder()
+                .category(EventCategory.DATA)
+                .build();
+        et.setOrderingKeyFields(Collections.singletonList("metadata.occurred_at"));
+        et.setOrderingInstanceIds(Collections.singletonList("metadata.partition"));
+
+        try {
+            eventTypeService.create(et, true);
+        } catch (final InvalidEventTypeException e) {
+            fail("Cannot create event with informational fields from effective schema");
+        }
     }
 
     @Test(expected = FeatureNotAvailableException.class)
