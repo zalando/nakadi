@@ -402,7 +402,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            repartitioningService.checkForRepartitioning(original, eventType);
+            repartitioningService.checkAndRepartition(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();

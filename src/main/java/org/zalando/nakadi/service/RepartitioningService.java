@@ -122,8 +122,8 @@ public class RepartitioningService {
         }
     }
 
-    public void checkForRepartitioning(final EventType original,
-                                       final EventType newEventType)
+    public void checkAndRepartition(final EventType original,
+                                    final EventType newEventType)
             throws InvalidEventTypeException {
         final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
         final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
@@ -131,22 +131,16 @@ public class RepartitioningService {
             return;
         }
 
+        final int oldMaxPartitions;
         if (existingStatistics == null) {
-            repartition(newEventType,
-                    Math.max(newStatistics.getReadParallelism(), newStatistics.getWriteParallelism()));
-            return;
-        }
-        if (existingStatistics.equals(newStatistics)) {
-            return;
+            oldMaxPartitions = 1;
+        } else {
+            oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
+                    existingStatistics.getWriteParallelism());
         }
 
         final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
                 newStatistics.getWriteParallelism());
-
-        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
-                existingStatistics.getWriteParallelism());
-
-
         if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
             throw new InvalidEventTypeException("Number of partitions should not be more than "
                     + nakadiSettings.getMaxTopicPartitionCount());
@@ -156,12 +150,15 @@ public class RepartitioningService {
                     "than existing values.");
         }
         if (newMaxPartitions == oldMaxPartitions) {
+            // avoid shuffling
             if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
                     (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
                 throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
                         "the number of partition (max of read and write parallelism)");
             }
+            return;
         }
+
         repartition(newEventType, newMaxPartitions);
     }
 
