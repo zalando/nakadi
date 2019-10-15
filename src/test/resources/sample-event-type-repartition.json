@@ -8,8 +8,11 @@
     "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"
   },
-  "options" : {
-    "retention_time": 86400000
+  "default_statistic": {
+    "messages_per_minute": 1000,
+    "message_size":	5,
+    "read_parallelism":	3,
+    "write_parallelism": 3
   },
   "audience": "external-public"
 }

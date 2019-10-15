@@ -9,6 +9,8 @@ import io.opentracing.util.GlobalTracer;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -33,6 +35,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -88,18 +91,21 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZookeeperSettings zookeeperSettings;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
+    private final KafkaLocationManager kafkaLocationManager;
 
     public KafkaTopicRepository(final KafkaZookeeper kafkaZookeeper,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
-                                final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
+                                final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+                                final KafkaLocationManager kafkaLocationManager) {
         this.kafkaZookeeper = kafkaZookeeper;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
+        this.kafkaLocationManager = kafkaLocationManager;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
@@ -182,6 +188,33 @@ public class KafkaTopicRepository implements TopicRepository {
             return kafkaZookeeper.listTopics();
         } catch (final Exception e) {
             throw new TopicRepositoryException("Failed to list topics", e);
+        }
+    }
+
+    @Override
+    public void repartition(final String topic, final int partitionsNumber) throws CannotAddPartitionToTopicException,
+            TopicConfigException {
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
+            adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
+            final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+            final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
+                        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                            return consumer.partitionsFor(topic).size() == partitionsNumber;
+                        }
+                    },
+                    new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                            .withWaitBetweenEachTry(100L)
+                            .withResultsThatForceRetry(Boolean.FALSE));
+            if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
+                throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
+            }
+            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.releaseProducer(producer);
+        } catch (Exception e) {
+            throw new CannotAddPartitionToTopicException(String
+                    .format("Failed to increase the number of partition for %s topic to %s", topic,
+                            partitionsNumber), e);
         }
     }
 
@@ -297,20 +330,20 @@ public class KafkaTopicRepository implements TopicRepository {
                 failUnpublished(batch, "timed out");
                 TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
                         .put("failure_reason", "timed out").build());
-                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                TracingService.logErrorInSpan(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } catch (final ExecutionException ex) {
                 failUnpublished(batch, "internal error");
                 TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
                         .put("failure_reason", "internal error").build());
-                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                TracingService.logErrorInSpan(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } catch (final InterruptedException ex) {
                 Thread.currentThread().interrupt();
                 failUnpublished(batch, "interrupted");
                 TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
                         .put("failure_reason", "interrupted").build());
-                TracingService.setErrorTags(kafkaPublishingScope, ex.getMessage());
+                TracingService.logErrorInSpan(kafkaPublishingScope, ex.getMessage());
                 throw new EventPublishingException("Error publishing message to kafka", ex);
             } finally {
                 kafkaFactory.releaseProducer(producer);
@@ -321,7 +354,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 failUnpublished(batch, "internal error");
                 TracingService.setCustomTags(kafkaPublishingScope, ImmutableMap.<String, Object>builder()
                         .put("failure_reason", "internal error").build());
-                TracingService.setErrorTags(kafkaPublishingScope, "Internal Kafka Error");
+                TracingService.logErrorInSpan(kafkaPublishingScope, "Internal Kafka Error");
                 throw new EventPublishingException("Error publishing message to kafka");
             }
         } finally {

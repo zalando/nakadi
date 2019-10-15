@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -25,13 +26,16 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
@@ -80,7 +84,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService);
+                adminService, mock(SubscriptionClientFactory.class), 1000);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -214,6 +218,16 @@ public class EventTypeServiceTest {
         fail("Should throw AccessDeniedException");
     }
 
+    @Test
+    public void testAllowCreatingEventTypeWithInformationalFieldsFromEffectiveSchema(){
+        final EventType et = EventTypeTestBuilder.builder()
+                .category(EventCategory.DATA)
+                .build();
+        et.setOrderingKeyFields(Collections.singletonList("metadata.occurred_at"));
+        et.setOrderingInstanceIds(Collections.singletonList("metadata.partition"));
+        eventTypeService.create(et, true);
+    }
+
     @Test(expected = FeatureNotAvailableException.class)
     public void testFeatureToggleDisableLogCompaction() {
         final EventType eventType = buildDefaultEventType();
@@ -258,7 +272,7 @@ public class EventTypeServiceTest {
         final EventType et = buildDefaultEventType();
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
-
+        when(nakadiSettings.getMaxTopicPartitionCount()).thenReturn(32);
         eventTypeService.update(et.getName(), et);
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
                 new JSONObject()

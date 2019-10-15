@@ -27,6 +27,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
+import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
@@ -37,6 +38,7 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -54,10 +56,14 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
+import org.zalando.nakadi.service.subscription.LogPathBuilder;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
@@ -67,6 +73,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -95,26 +102,33 @@ public class EventTypeService {
     private final String etLogEventType;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
+    private final JsonSchemaEnrichment jsonSchemaEnrichment;
     private final AdminService adminService;
+    private final SubscriptionClientFactory subscriptionClientFactory;
+    private final Integer repartitioningSubscriptionsLimit;
 
     @Autowired
-    public EventTypeService(final EventTypeRepository eventTypeRepository,
-                            final TimelineService timelineService,
-                            final PartitionResolver partitionResolver,
-                            final Enrichment enrichment,
-                            final SubscriptionDbRepository subscriptionRepository,
-                            final SchemaEvolutionService schemaEvolutionService,
-                            final PartitionsCalculator partitionsCalculator,
-                            final FeatureToggleService featureToggleService,
-                            final AuthorizationValidator authorizationValidator,
-                            final TimelineSync timelineSync,
-                            final TransactionTemplate transactionTemplate,
-                            final NakadiSettings nakadiSettings,
-                            final NakadiKpiPublisher nakadiKpiPublisher,
-                            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
-                            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                            final EventTypeOptionsValidator eventTypeOptionsValidator,
-                            final AdminService adminService) {
+    public EventTypeService(
+            final EventTypeRepository eventTypeRepository,
+            final TimelineService timelineService,
+            final PartitionResolver partitionResolver,
+            final Enrichment enrichment,
+            final SubscriptionDbRepository subscriptionRepository,
+            final SchemaEvolutionService schemaEvolutionService,
+            final PartitionsCalculator partitionsCalculator,
+            final FeatureToggleService featureToggleService,
+            final AuthorizationValidator authorizationValidator,
+            final TimelineSync timelineSync,
+            final TransactionTemplate transactionTemplate,
+            final NakadiSettings nakadiSettings,
+            final NakadiKpiPublisher nakadiKpiPublisher,
+            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
+            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+            final EventTypeOptionsValidator eventTypeOptionsValidator,
+            final AdminService adminService,
+            final SubscriptionClientFactory subscriptionClientFactory,
+            @Value("${nakadi.repartitioning.subscriptions.limit:1000}")
+            final Integer repartitioningSubscriptionsLimit) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -131,7 +145,10 @@ public class EventTypeService {
         this.etLogEventType = etLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
+        this.jsonSchemaEnrichment = new JsonSchemaEnrichment();
         this.adminService = adminService;
+        this.subscriptionClientFactory = subscriptionClientFactory;
+        this.repartitioningSubscriptionsLimit = repartitioningSubscriptionsLimit;
     }
 
     public List<EventType> list() {
@@ -368,6 +385,7 @@ public class EventTypeService {
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
             DbWriteOperationsBlockedException,
+            CannotAddPartitionToTopicException,
             EventTypeOptionsValidationException {
         if (featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
@@ -397,8 +415,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            eventType.setDefaultStatistic(
-                    validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
+            repartitionEventType(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -456,7 +473,8 @@ public class EventTypeService {
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
-                                     final Long oldRetentionTime) throws InternalNakadiException {
+                                     final Long oldRetentionTime)
+            throws InternalNakadiException {
         final InternalNakadiException exception = transactionTemplate.execute(action -> {
             try {
                 updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
@@ -517,16 +535,80 @@ public class EventTypeService {
         }
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(
-            final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-        if (existing != null && newStatistics == null) {
-            return existing;
+    private void repartitionEventType(
+            final EventType original,
+            final EventType newEventType) throws InvalidEventTypeException {
+        final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
+        final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
+        if (newStatistics == null) {
+            return;
         }
-        if (!Objects.equals(existing, newStatistics)) {
-            throw new InvalidEventTypeException("default statistics must not be changed");
+
+        if (existingStatistics == null) {
+            updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
+                    newStatistics.getWriteParallelism()));
+            return;
         }
-        return newStatistics;
+        if (existingStatistics.equals(newStatistics)) {
+            return;
+        }
+
+        final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
+                newStatistics.getWriteParallelism());
+
+        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
+                existingStatistics.getWriteParallelism());
+
+
+        if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
+            throw new InvalidEventTypeException("Number of partitions should not be more than "
+                    + nakadiSettings.getMaxTopicPartitionCount());
+        }
+        if (newMaxPartitions < oldMaxPartitions) {
+            throw new InvalidEventTypeException("Read and write parallelism should be greater " +
+                    "than existing values.");
+        }
+        if (newMaxPartitions == oldMaxPartitions) {
+            if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
+                    (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
+                throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
+                        "the number of partition (max of read and write parallelism)");
+            }
+        }
+        updateNumberOfPartitions(original, newEventType, newMaxPartitions);
+    }
+
+    private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
+            throws InternalNakadiException, NakadiRuntimeException {
+        final NakadiBaseException exception = transactionTemplate.execute(action -> {
+            try {
+                eventTypeRepository.update(eventType);
+                timelineService.updateTimeLineForRepartition(eventType, partitions);
+                return null;
+            } catch (NakadiBaseException e) {
+                return e;
+            }
+        });
+
+        if (exception != null) {
+            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), exception);
+        }
+
+        updateSubscriptionsForRepartitioning(eventType, partitions);
+    }
+
+    public void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
+            throws NakadiBaseException {
+        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit);
+        for (final Subscription subscription : subscriptions) {
+            final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
+                    LogPathBuilder.build(subscription.getId(), "repartition"));
+            zkClient.repartitionTopology(eventType.getName(), partitions);
+            zkClient.closeSubscriptionStreams(
+                    () -> LOG.info("subscription streams were closed, after repartitioning"),
+                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
+        }
     }
 
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
@@ -565,8 +647,12 @@ public class EventTypeService {
                 throw new InvalidEventTypeException(
                         "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
             }
-            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, schema);
-            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, schema);
+
+            final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+            final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
+
+            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
+            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);

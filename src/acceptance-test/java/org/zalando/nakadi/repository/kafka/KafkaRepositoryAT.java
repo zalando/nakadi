@@ -239,7 +239,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         final KafkaFactory factory = mock(KafkaFactory.class);
         when(factory.getConsumer()).thenReturn(consumer);
-
+        final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
         Mockito
                 .doReturn(kafkaHelper.createProducer())
                 .when(factory)
@@ -250,7 +250,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                kafkaTopicConfigFactory);
+                kafkaTopicConfigFactory, kafkaLocationManager);
     }
 
 }

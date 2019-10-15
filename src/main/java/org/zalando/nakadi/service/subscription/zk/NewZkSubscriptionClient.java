@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -214,6 +216,48 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             updatePartitionsConfiguration(
                     topology.getSessionsHash(),
                     changeSet.toArray(new Partition[changeSet.size()]));
+        }
+    }
+
+    @Override
+    public void repartitionTopology(final String eventTypeName, final int newPartitionsCount)
+            throws NakadiRuntimeException {
+        final Topology currentTopology = getTopology();
+        final List<Partition> partitionsList = Lists.newArrayList(currentTopology.getPartitions());
+
+        final int oldPartitionsCount = (int) partitionsList.stream().
+                filter(partition -> partition.getEventType().equals(eventTypeName)).count();
+
+        // Partitions can only be increased for an event type.
+        // Add new partitions & create nodes for partitions' offset
+        for (int index=oldPartitionsCount; index < newPartitionsCount; index++) {
+            final String partition = String.valueOf(index);
+            partitionsList.add(new Partition(
+                    eventTypeName, partition, null, null, Partition.State.UNASSIGNED
+            ));
+
+            try {
+                getCurator().create().creatingParentsIfNeeded().forPath(
+                        getOffsetPath(new EventTypePartition(eventTypeName, partition)),
+                        "-1".getBytes(UTF_8));
+            } catch (final Exception e) {
+                throw new NakadiRuntimeException(e);
+            }
+        }
+
+        final Topology partitionedTopology = new Topology(
+                partitionsList.toArray(new Partition[0]),
+                currentTopology.getSessionsHash(),
+                Optional.ofNullable(currentTopology.getVersion()).map(v -> v+1).orElse(0)
+        );
+
+        try {
+            getLog().info("Updating topology due to repartitioning event type: {} to {}", eventTypeName,
+                    partitionedTopology);
+            getCurator().setData().forPath(getSubscriptionPath(NODE_TOPOLOGY),
+                    objectMapper.writeValueAsBytes(partitionedTopology));
+        } catch (final Exception exception) {
+            throw new NakadiRuntimeException(exception);
         }
     }
 }

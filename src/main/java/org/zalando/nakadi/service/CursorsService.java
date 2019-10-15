@@ -203,7 +203,7 @@ public class CursorsService {
                     .map(cursorConverter::convertToNoToken)
                     .collect(Collectors.toList());
 
-            zkClient.resetCursors(newCursors, timeout);
+            zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
 
             auditLogPublisher.publish(
                     Optional.of(new ItemsWrapper<>(oldCursors)),

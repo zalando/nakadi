@@ -13,14 +13,14 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ResourceImpl;
-import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -28,6 +28,7 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -52,6 +53,7 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.service.StaticStorageWorkerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -151,6 +153,29 @@ public class TimelineService {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
+        }
+    }
+
+    public void updateTimeLineForRepartition(final EventType eventType, final int partitions)
+            throws NakadiBaseException {
+        final Timeline currentTimeline = getActiveTimeline(eventType);
+        getTopicRepository(eventType).repartition(currentTimeline.getTopic(), partitions);
+        for (final Timeline timeline : getAllTimelinesOrdered(eventType.getName())) {
+            final Timeline.KafkaStoragePosition latestPosition = StaticStorageWorkerFactory.get(timeline)
+                    .getLatestPosition(timeline);
+            if (latestPosition == null) {
+                continue;
+            }
+            while (partitions - latestPosition.getOffsets().size() > 0) {
+                latestPosition.getOffsets().add(Long.valueOf(-1));
+            }
+            timelineDbRepository.updateTimelime(timeline);
+        }
+
+        try {
+            eventTypeCache.updated(eventType.getName());
+        } catch (Exception e) {
+            throw new NakadiBaseException(e.getMessage(), e);
         }
     }
 

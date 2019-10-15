@@ -59,6 +59,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
+    private String eventTypeRepartitionUpdate;
 
     public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
                                                   final String owningApp)
@@ -74,6 +75,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
+        eventTypeRepartitionUpdate = getEventTypeJsonFromFile("sample-event-type-repartition.json",
+                eventTypeName, owningApp);
         createEventType();
     }
 
@@ -209,6 +212,27 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("unconsumed_events[0]", equalTo(1));
     }
 
+    @Test(timeout = 3000)
+    public void testRepartition(){
+        //repartition Event Type
+        jsonRequestSpec()
+                .body(eventTypeRepartitionUpdate)
+                .when()
+                .put("/event-types/" + eventTypeName)
+                .then()
+                .body(equalTo(""))
+                .statusCode(OK.value());
+
+        // check number of partitions is 3
+        jsonRequestSpec()
+                .when()
+                .get("/event-types/" + eventTypeName + "/partitions")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(3));
+
+
+    }
     @Test(timeout = 3000)
     public void testEventTypeDeletion() {
         // The reason for separating this test is https://issues.apache.org/jira/browse/KAFKA-2948
