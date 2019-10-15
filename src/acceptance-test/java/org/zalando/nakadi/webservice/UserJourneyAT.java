@@ -230,9 +230,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(3));
-
-
     }
+
     @Test(timeout = 3000)
     public void testEventTypeDeletion() {
         // The reason for separating this test is https://issues.apache.org/jira/browse/KAFKA-2948

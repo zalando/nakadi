@@ -21,7 +21,6 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -38,7 +37,6 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -56,9 +54,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.service.subscription.LogPathBuilder;
-import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
@@ -73,7 +68,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -103,8 +97,7 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
-    private final SubscriptionClientFactory subscriptionClientFactory;
-    private final Integer repartitioningSubscriptionsLimit;
+    private final RepartitioningService repartitioningService;
     private final JsonSchemaEnrichment jsonSchemaEnrichment;
 
     @Autowired
@@ -126,9 +119,7 @@ public class EventTypeService {
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
             final AdminService adminService,
-            final SubscriptionClientFactory subscriptionClientFactory,
-            @Value("${nakadi.repartitioning.subscriptions.limit:1000}")
-            final Integer repartitioningSubscriptionsLimit) {
+            final RepartitioningService repartitioningService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -146,8 +137,7 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-        this.subscriptionClientFactory = subscriptionClientFactory;
-        this.repartitioningSubscriptionsLimit = repartitioningSubscriptionsLimit;
+        this.repartitioningService = repartitioningService;
         this.jsonSchemaEnrichment = new JsonSchemaEnrichment();
     }
 
@@ -415,7 +405,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            repartitionEventType(original, eventType);
+            repartitioningService.checkAndRepartition(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -532,82 +522,6 @@ public class EventTypeService {
         } catch (InternalNakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
-        }
-    }
-
-    private void repartitionEventType(
-            final EventType original,
-            final EventType newEventType) throws InvalidEventTypeException {
-        final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
-        final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
-        if (newStatistics == null) {
-            return;
-        }
-
-        if (existingStatistics == null) {
-            updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
-                    newStatistics.getWriteParallelism()));
-            return;
-        }
-        if (existingStatistics.equals(newStatistics)) {
-            return;
-        }
-
-        final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
-                newStatistics.getWriteParallelism());
-
-        final int oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
-                existingStatistics.getWriteParallelism());
-
-
-        if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
-            throw new InvalidEventTypeException("Number of partitions should not be more than "
-                    + nakadiSettings.getMaxTopicPartitionCount());
-        }
-        if (newMaxPartitions < oldMaxPartitions) {
-            throw new InvalidEventTypeException("Read and write parallelism should be greater " +
-                    "than existing values.");
-        }
-        if (newMaxPartitions == oldMaxPartitions) {
-            if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
-                    (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
-                throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
-                        "the number of partition (max of read and write parallelism)");
-            }
-        }
-        updateNumberOfPartitions(original, newEventType, newMaxPartitions);
-    }
-
-    private void updateNumberOfPartitions(final EventType original, final EventType eventType, final int partitions)
-            throws InternalNakadiException, NakadiRuntimeException {
-        final NakadiBaseException exception = transactionTemplate.execute(action -> {
-            try {
-                eventTypeRepository.update(eventType);
-                timelineService.updateTimeLineForRepartition(eventType, partitions);
-                return null;
-            } catch (NakadiBaseException e) {
-                return e;
-            }
-        });
-
-        if (exception != null) {
-            throw new InternalNakadiException("Cannot repartition Event type " + original.getName(), exception);
-        }
-
-        updateSubscriptionsForRepartitioning(eventType, partitions);
-    }
-
-    public void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
-            throws NakadiBaseException {
-        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit);
-        for (final Subscription subscription : subscriptions) {
-            final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
-                    LogPathBuilder.build(subscription.getId(), "repartition"));
-            zkClient.repartitionTopology(eventType.getName(), partitions);
-            zkClient.closeSubscriptionStreams(
-                    () -> LOG.info("subscription streams were closed, after repartitioning"),
-                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
         }
     }
 
