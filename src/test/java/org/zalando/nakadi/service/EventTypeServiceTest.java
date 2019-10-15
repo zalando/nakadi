@@ -20,7 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -53,6 +52,7 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildResourceAuthorization;
 import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 import static org.zalando.nakadi.utils.TestUtils.createSubscription;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class EventTypeServiceTest {
 
@@ -227,11 +227,7 @@ public class EventTypeServiceTest {
         et.setOrderingKeyFields(Collections.singletonList("metadata.occurred_at"));
         et.setOrderingInstanceIds(Collections.singletonList("metadata.partition"));
 
-        try {
-            eventTypeService.create(et, true);
-        } catch (final InvalidEventTypeException e) {
-            fail("Cannot create event with informational fields from effective schema");
-        }
+        assertDoesNotThrow(() -> eventTypeService.create(et, true));
     }
 
     @Test(expected = FeatureNotAvailableException.class)
