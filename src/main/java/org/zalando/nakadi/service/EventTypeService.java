@@ -546,8 +546,7 @@ public class EventTypeService {
             if (getMaxPartitions(newStatistics) == 1) {
                 return;
             } else {
-                updateNumberOfPartitions(original, newEventType, Math.max(newStatistics.getReadParallelism(),
-                        newStatistics.getWriteParallelism()));
+                updateNumberOfPartitions(original, newEventType, getMaxPartitions(newStatistics));
                 return;
             }
         }
