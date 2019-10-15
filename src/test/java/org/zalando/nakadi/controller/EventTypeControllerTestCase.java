@@ -32,6 +32,7 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -119,7 +120,7 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, adminService, mock(SubscriptionClientFactory.class), 1000);
+                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class));
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

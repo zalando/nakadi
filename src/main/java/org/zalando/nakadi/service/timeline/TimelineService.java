@@ -158,8 +158,10 @@ public class TimelineService {
 
     public void updateTimeLineForRepartition(final EventType eventType, final int partitions)
             throws NakadiBaseException {
-        final Timeline currentTimeline = getActiveTimeline(eventType);
-        getTopicRepository(eventType).repartition(currentTimeline.getTopic(), partitions);
+        for (final Timeline timeline : getAllTimelinesOrdered(eventType.getName())) {
+            getTopicRepository(eventType).repartition(timeline.getTopic(), partitions);
+        }
+
         for (final Timeline timeline : getAllTimelinesOrdered(eventType.getName())) {
             final Timeline.KafkaStoragePosition latestPosition = StaticStorageWorkerFactory.get(timeline)
                     .getLatestPosition(timeline);

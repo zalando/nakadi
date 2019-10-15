@@ -220,7 +220,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public void repartitionTopology(final String eventTypeName, final int newPartitionsCount)
+    public void repartitionTopology(final String eventTypeName, final int newPartitionsCount, final String offset)
             throws NakadiRuntimeException {
         final Topology currentTopology = getTopology();
         final List<Partition> partitionsList = Lists.newArrayList(currentTopology.getPartitions());
@@ -230,7 +230,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
         // Partitions can only be increased for an event type.
         // Add new partitions & create nodes for partitions' offset
-        for (int index=oldPartitionsCount; index < newPartitionsCount; index++) {
+        for (int index = oldPartitionsCount; index < newPartitionsCount; index++) {
             final String partition = String.valueOf(index);
             partitionsList.add(new Partition(
                     eventTypeName, partition, null, null, Partition.State.UNASSIGNED
@@ -239,7 +239,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             try {
                 getCurator().create().creatingParentsIfNeeded().forPath(
                         getOffsetPath(new EventTypePartition(eventTypeName, partition)),
-                        "-1".getBytes(UTF_8));
+                        offset.getBytes(UTF_8));
             } catch (final Exception e) {
                 throw new NakadiRuntimeException(e);
             }
@@ -248,7 +248,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         final Topology partitionedTopology = new Topology(
                 partitionsList.toArray(new Partition[0]),
                 currentTopology.getSessionsHash(),
-                Optional.ofNullable(currentTopology.getVersion()).map(v -> v+1).orElse(0)
+                Optional.ofNullable(currentTopology.getVersion()).map(v -> v + 1).orElse(0)
         );
 
         try {
