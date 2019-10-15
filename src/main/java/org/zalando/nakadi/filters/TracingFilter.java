@@ -37,23 +37,6 @@ public class TracingFilter extends OncePerRequestFilter {
     private static final String SPAN_CONTEXT = "span_ctx";
     private final AuthorizationService authorizationService;
 
-    private enum RequestType {
-        PUBLISHING("publish_events"),
-        COMMIT("commit_events"),
-        CONSUMPTION("consume_events"),
-        OTHER("other");
-
-        private String operationName;
-
-        public String getOperationName() {
-            return this.operationName;
-        }
-
-        RequestType(final String operationName) {
-            this.operationName = operationName;
-        }
-    }
-
     private class RequestInfo {
 
         private String userAgent;
@@ -90,21 +73,18 @@ public class TracingFilter extends OncePerRequestFilter {
         private final String flowId;
         private final RequestInfo requestLogInfo;
         private final Span currentSpan;
-        private final RequestType requestType;
 
         private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
-                                     final long startTime, final String flowId, final Span span,
-                                     final RequestType requestType) {
+                                     final long startTime, final String flowId, final Span span) {
             this.response = response;
             this.flowId = flowId;
             this.requestLogInfo = new RequestInfo(request, startTime);
             this.currentSpan = span;
-            this.requestType = requestType;
         }
 
         private void logOnEvent() {
             FlowIdUtils.push(this.flowId);
-            traceRequest(this.requestLogInfo, this.response.getStatus(), currentSpan, requestType);
+            traceRequest(this.requestLogInfo, this.response.getStatus(), currentSpan);
             FlowIdUtils.clear();
         }
 
@@ -134,12 +114,7 @@ public class TracingFilter extends OncePerRequestFilter {
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws IOException, ServletException {
         final RequestInfo requestInfo = new RequestInfo(request, System.currentTimeMillis());
-        final RequestType requestType = getRequestType(requestInfo);
 
-        //Skip filter in case of non traced request
-        if (requestType.equals(RequestType.OTHER)) {
-            return;
-        }
         final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
                 .stream()
                 .collect(Collectors.toMap(h -> h, request::getHeader));
@@ -147,18 +122,16 @@ public class TracingFilter extends OncePerRequestFilter {
         final SpanContext spanContext = GlobalTracer.get()
                 .extract(HTTP_HEADERS, new TextMapExtractAdapter(requestHeaders));
         final Span baseSpan;
-
-
         if (spanContext != null) {
-            if (requestType.equals(RequestType.COMMIT)) {
-                baseSpan = TracingService.getNewSpanWithReference(requestType.getOperationName(),
+            if (isCommitRequest(requestInfo)) {
+                baseSpan = TracingService.getNewSpanWithReference("commit_events",
                         requestInfo.requestTime, spanContext);
             } else {
-                baseSpan = TracingService.getNewSpanWithParent(requestType.getOperationName(),
+                baseSpan = TracingService.getNewSpanWithParent("default",
                         requestInfo.requestTime, spanContext);
             }
         } else {
-            baseSpan = TracingService.getNewSpan(requestType.getOperationName(), requestInfo.requestTime);
+            baseSpan = TracingService.getNewSpan("default", requestInfo.requestTime);
         }
 
         try {
@@ -177,11 +150,11 @@ public class TracingFilter extends OncePerRequestFilter {
             if (request.isAsyncStarted()) {
                 final String flowId = FlowIdUtils.peek();
                 request.getAsyncContext().addListener(new AsyncRequestListener(request, response,
-                        requestInfo.requestTime, flowId, baseSpan, requestType));
+                        requestInfo.requestTime, flowId, baseSpan));
             }
         } finally {
             if (!request.isAsyncStarted()) {
-                traceRequest(requestInfo, response.getStatus(), baseSpan, requestType);
+                traceRequest(requestInfo, response.getStatus(), baseSpan);
             }
             final Map<String, String> spanContextToInject = new HashMap<>();
             GlobalTracer.get().inject(baseSpan.context(),
@@ -192,53 +165,20 @@ public class TracingFilter extends OncePerRequestFilter {
     }
 
 
-    private RequestType getRequestType(final RequestInfo requestLogInfo) {
-        if (requestLogInfo.path == null) {
-            return RequestType.OTHER;
-        }
-        if ("POST".equals(requestLogInfo.method) &&
-                requestLogInfo.path.startsWith("/event-types/") &&
-                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
-            return RequestType.PUBLISHING;
-        }
-        if (("GET".equals(requestLogInfo.method) || "POST".equals(requestLogInfo.method))
-                && requestLogInfo.path.startsWith("/subscriptions/")
-                && (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
-            return RequestType.CONSUMPTION;
-        }
-        if ("POST".equals(requestLogInfo.method) &&
-                requestLogInfo.path.startsWith("/subscriptions/") &&
-                (requestLogInfo.path.endsWith("/cursors") || requestLogInfo.path.endsWith("/cursors/"))) {
-            return RequestType.COMMIT;
-        }
-        return RequestType.OTHER;
+    private boolean isCommitRequest(final RequestInfo requestInfo) {
+        return (requestInfo.path != null && "POST".equals(requestInfo.method) &&
+                requestInfo.path.startsWith("/subscriptions/") &&
+                (requestInfo.path.endsWith("/cursors") || requestInfo.path.endsWith("/cursors/")));
     }
 
     private void traceRequest(final RequestInfo requestLogInfo, final int statusCode,
-                              final Span span, final RequestType requestType) {
+                              final Span span) {
         final Scope scope = TracingService.activateSpan(span, false);
-        if (requestType.equals(RequestType.OTHER)) {
-            return;
-        }
         final Map<String, Object> tags = new HashMap<String, Object>() {{
             put("http.status_code", statusCode);
             put("content_length", requestLogInfo.contentLength);
         }};
-
-        if (requestType.equals(RequestType.PUBLISHING)) {
-            String sloBucket = "5K-50K";
-            // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
-            // so we also put it to ">50K" bucket to hack this problem
-            if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
-                sloBucket = ">50K";
-            } else if (requestLogInfo.contentLength < 5000) {
-                sloBucket = "<5K";
-            }
-            tags.put("slo_bucket", sloBucket);
-            tags.put("error", statusCode == 207 || statusCode >= 500);
-        } else {
-            tags.put("error", statusCode >= 500);
-        }
+        tags.put("error", statusCode == 207 || statusCode >= 500);
         TracingService.setCustomTags(scope.span(), tags);
     }
 }

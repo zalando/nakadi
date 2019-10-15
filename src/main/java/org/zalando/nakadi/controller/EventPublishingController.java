@@ -78,6 +78,7 @@ public class EventPublishingController {
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
         final Scope publishingScope = TracingService
                 .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
+        publishingScope.span().setOperationName("publish_events");
         String sloBucket = "5K-50K";
         if (httpServletRequest.getContentLength() > 50000 || httpServletRequest.getContentLength() == 0) {
             sloBucket = ">50K";

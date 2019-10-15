@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import io.opentracing.Scope;
 import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -91,13 +93,13 @@ public class CursorsController {
         if (cursors.isEmpty()) {
             throw new CursorsAreEmptyException();
         }
-
+        final Scope commitScope = TracingService.activateSpan((Span) request.getAttribute("span"), false);
+        commitScope.span().setOperationName("commit_events");
         if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+            TracingService.logErrorInSpan(commitScope, "Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
-
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors,
-                (Span) request.getAttribute("span"));
+        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitScope.span());
 
         final boolean allCommitted = items.stream().allMatch(item -> item);
         if (allCommitted) {

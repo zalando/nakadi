@@ -110,8 +110,7 @@ public class CursorsService {
             return zkClient.commitOffsets(
                     cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
                     new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
-        } catch (
-                Exception e) {
+        } catch (Exception e) {
             TracingService.logErrorInSpan(commitScope, e.getMessage());
             throw e;
         }

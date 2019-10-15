@@ -202,7 +202,7 @@ public class SubscriptionStreamController {
 
         return outputStream -> {
             FlowIdUtils.push(flowId);
-
+            parentSubscriptionSpan.setOperationName("stream_events");
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
