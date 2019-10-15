@@ -69,9 +69,9 @@ nakadi:
     batch.size: 5242880
     max.request.size: 2098152
     buffer.memory: 83886080 # May be defined as X * Y  * Z, where:
-                            # X - avg incoming traffic per instance per second (here: 4Mb/s)
-                            # Y - spike koeff, to get traffic for loaded instance out of average traffic (here: 2)
-                            # Z - seconds to tolerate networking issues (here: 10)
+    # X - avg incoming traffic per instance per second (here: 4Mb/s)
+    # Y - spike koeff, to get traffic for loaded instance out of average traffic (here: 2)
+    # Z - seconds to tolerate networking issues (here: 10)
     linger.ms: 0
     enable.auto.commit: false
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
@@ -168,6 +168,7 @@ nakadi:
     KPI_COLLECTION: true
     DISABLE_DB_WRITE_OPERATIONS: false
     AUDIT_LOG_COLLECTION: true
+    REPARTITIONING: true
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
@@ -191,3 +192,4 @@ nakadi.features.defaultFeatures:
   DISABLE_DB_WRITE_OPERATIONS: false
   FORCE_EVENT_TYPE_AUTHZ: false
   FORCE_SUBSCRIPTION_AUTHZ: false
+  REPARTITIONING: true
