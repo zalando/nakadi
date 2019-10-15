@@ -20,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -219,13 +220,18 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void testAllowCreatingEventTypeWithInformationalFieldsFromEffectiveSchema(){
+    public void testAllowCreatingEventTypeWithInformationalFieldsFromEffectiveSchema() {
         final EventType et = EventTypeTestBuilder.builder()
                 .category(EventCategory.DATA)
                 .build();
         et.setOrderingKeyFields(Collections.singletonList("metadata.occurred_at"));
         et.setOrderingInstanceIds(Collections.singletonList("metadata.partition"));
-        eventTypeService.create(et, true);
+
+        try {
+            eventTypeService.create(et, true);
+        } catch (final InvalidEventTypeException e) {
+            fail("Cannot create event with informational fields from effective schema");
+        }
     }
 
     @Test(expected = FeatureNotAvailableException.class)
