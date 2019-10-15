@@ -135,7 +135,11 @@ public class TracingFilter extends OncePerRequestFilter {
             throws IOException, ServletException {
         final RequestInfo requestInfo = new RequestInfo(request, System.currentTimeMillis());
         final RequestType requestType = getRequestType(requestInfo);
+
         //Skip filter in case of non traced request
+        if (requestType.equals(RequestType.OTHER)) {
+            return;
+        }
         final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
                 .stream()
                 .collect(Collectors.toMap(h -> h, request::getHeader));
@@ -189,18 +193,20 @@ public class TracingFilter extends OncePerRequestFilter {
 
 
     private RequestType getRequestType(final RequestInfo requestLogInfo) {
-        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+        if (requestLogInfo.path == null) {
+            return RequestType.OTHER;
+        }
+        if ("POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/event-types/") &&
                 (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
             return RequestType.PUBLISHING;
         }
-        if (requestLogInfo.path != null
-                && ("GET".equals(requestLogInfo.method) || "POST".equals(requestLogInfo.method))
+        if (("GET".equals(requestLogInfo.method) || "POST".equals(requestLogInfo.method))
                 && requestLogInfo.path.startsWith("/subscriptions/")
                 && (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"))) {
             return RequestType.CONSUMPTION;
         }
-        if (requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+        if ("POST".equals(requestLogInfo.method) &&
                 requestLogInfo.path.startsWith("/subscriptions/") &&
                 (requestLogInfo.path.endsWith("/cursors") || requestLogInfo.path.endsWith("/cursors/"))) {
             return RequestType.COMMIT;
@@ -211,12 +217,24 @@ public class TracingFilter extends OncePerRequestFilter {
     private void traceRequest(final RequestInfo requestLogInfo, final int statusCode,
                               final Span span, final RequestType requestType) {
         final Scope scope = TracingService.activateSpan(span, false);
+        if (requestType.equals(RequestType.OTHER)) {
+            return;
+        }
         final Map<String, Object> tags = new HashMap<String, Object>() {{
             put("http.status_code", statusCode);
             put("content_length", requestLogInfo.contentLength);
         }};
 
         if (requestType.equals(RequestType.PUBLISHING)) {
+            String sloBucket = "5K-50K";
+            // contentLength == 0 actually means that contentLength is very big and wasn't reported on time,
+            // so we also put it to ">50K" bucket to hack this problem
+            if (requestLogInfo.contentLength > 50000 || requestLogInfo.contentLength == 0) {
+                sloBucket = ">50K";
+            } else if (requestLogInfo.contentLength < 5000) {
+                sloBucket = "<5K";
+            }
+            tags.put("slo_bucket", sloBucket);
             tags.put("error", statusCode == 207 || statusCode >= 500);
         } else {
             tags.put("error", statusCode >= 500);
