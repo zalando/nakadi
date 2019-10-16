@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import io.opentracing.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,10 +25,12 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
@@ -78,6 +81,7 @@ public class CursorsController {
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursorsIn,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
+                                           final HttpServletRequest request,
                                            final Client client)
             throws NoSuchEventTypeException,
             NoSuchSubscriptionException,
@@ -88,15 +92,16 @@ public class CursorsController {
         if (cursors.isEmpty()) {
             throw new CursorsAreEmptyException();
         }
-
+        final Scope commitScope = TracingService.activateSpan(request, false);
+        commitScope.span().setOperationName("commit_events");
         if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+            TracingService.logErrorInSpan(commitScope, "Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
+        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitScope.span());
 
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
-
-        final boolean allCommited = items.stream().allMatch(item -> item);
-        if (allCommited) {
+        final boolean allCommitted = items.stream().allMatch(item -> item);
+        if (allCommitted) {
             return noContent().build();
         } else {
             final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())

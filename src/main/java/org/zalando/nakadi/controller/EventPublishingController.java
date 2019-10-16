@@ -76,38 +76,39 @@ public class EventPublishingController {
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
-        final Scope publishingScope = TracingService
-                .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
+        final Scope publishingScope = TracingService.activateSpan(httpServletRequest, false);
+        publishingScope.span().setOperationName("publish_events");
         publishingScope.span()
-                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId())
-                .setTag("event_type", eventTypeName);
-
-        Tags.HTTP_METHOD.set(publishingScope.span(), POST.toString());
+                .setTag("event_type", eventTypeName)
+                .setTag("slo_bucket", getSLOBucket(httpServletRequest.getContentLength()))
+                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             publishingScope.span().setTag("status_code", FORBIDDEN.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
             throw new BlockedException("Application or event type is blocked");
         }
         try {
             final ResponseEntity response = postEventInternal(
                     eventTypeName, eventsAsString, request, eventTypeMetrics, client, publishingScope.span());
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
-            Tags.HTTP_STATUS.set(publishingScope.span(), response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
             eventTypeMetrics.incrementResponseCount(NOT_FOUND.getStatusCode());
-            Tags.HTTP_STATUS.set(publishingScope.span(), NOT_FOUND.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
             throw exception;
         } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
-            Tags.ERROR.set(publishingScope.span(), true);
-            Tags.HTTP_STATUS.set(publishingScope.span(), INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
+    }
 
+    private String getSLOBucket(final long contentLength) {
+        if (contentLength > 50000 || contentLength == 0) {
+            return ">50K";
+        } else if (contentLength < 5000) {
+            return "<5K";
+        }
+        return "5K-50K";
     }
 
     private ResponseEntity postEventInternal(final String eventTypeName,

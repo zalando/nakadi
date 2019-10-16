@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
 import com.google.common.base.Preconditions;
+import io.opentracing.Scope;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -9,15 +10,16 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.NakadiKpiPublisher;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -162,12 +164,16 @@ class StreamingState extends State {
     }
 
     private void shutdownGracefully(final String reason) {
+        final Scope shutDownScope = TracingService.activateSpan(getContext().getCurrentSpan(), false);
+        TracingService.logStreamCloseReason(shutDownScope, "Shutting down gracefully. Reason: " + reason);
         getLog().info("Shutting down gracefully. Reason: {}", reason);
         switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
 
     private void pollDataFromKafka() {
         if (eventConsumer == null) {
+            TracingService.logErrorInSpan(TracingService.activateSpan(getContext().getCurrentSpan(), false),
+                    "Illegal state: kafkaConsumer should not be null when calling pollDataFromKafka method");
             throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }
 
@@ -297,7 +303,6 @@ class StreamingState extends State {
         final long bytes = kpiDataPerEventType.get(eventTypeName).getAndResetBytesSent();
         final long count = kpiDataPerEventType.get(eventTypeName).getAndResetNumberOfEventsSent();
         final String appNameHashed = kpiPublisher.hash(client.getClientId());
-
         getLog().info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} " +
                         "numberOfEvents={} bytesStreamed={} subscription={}", "hila",
                 eventTypeName, client.getClientId(), appNameHashed, count, bytes,
@@ -346,6 +351,7 @@ class StreamingState extends State {
     public void logExtendedCommitInformation() {
         // We need to log situation when commit timeout was reached, and check that current committed offset is the
         // same as it is in zk.
+        final Scope scope = TracingService.activateSpan(getContext().getCurrentSpan(), false);
         if (!commitTimeoutReached) {
             return;
         }
@@ -374,9 +380,11 @@ class StreamingState extends State {
                             ", ZkCommitted: " + realCommitted.get(etp) + ")";
                 }).collect(Collectors.joining(", "));
                 getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
+                TracingService.logWarning(scope, "Stale offsets during streaming commit timeout: " + bustedData);
             }
         } catch (NakadiRuntimeException ex) {
             getLog().warn("Failed to get nakadi cursors for logging purposes.");
+            TracingService.logWarning(scope, "Failed to get nakadi cursors for logging purposes.");
         }
     }
 
@@ -542,6 +550,8 @@ class StreamingState extends State {
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
         if (eventConsumer == null) {
+            TracingService.logErrorInSpan(TracingService.activateSpan(getContext().getCurrentSpan(), false),
+                    "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
             throw new IllegalStateException(
                     "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
         }
@@ -678,12 +688,15 @@ class StreamingState extends State {
     }
 
     private void removeFromStreaming(final EventTypePartition key) {
+        final Scope scope = TracingService.activateSpan(getContext().getCurrentSpan(), false);
         getLog().info("Removing partition {} from streaming", key);
         releasingPartitions.remove(key);
         final PartitionData data = offsets.remove(key);
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
+                    TracingService.logWarning(scope, String.format("Skipping commits: {}, commit={}, sent={}",
+                            key, data.getCommitOffset(), data.getSentOffset()));
                     getLog().warn("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }

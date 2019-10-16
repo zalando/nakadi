@@ -18,6 +18,8 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.zalando.nakadi.filters.TracingFilter;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.GzipBodyRequestFilter;
@@ -36,6 +38,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Autowired
     private ClientResolver clientResolver;
+    @Autowired
+    private AuthorizationService authorizationService;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -51,6 +55,10 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
         return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
+    }
+    @Bean
+    public FilterRegistrationBean traceRequestFilter() {
+        return createFilterRegistrationBean(new TracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 1);
     }
 
     @Bean

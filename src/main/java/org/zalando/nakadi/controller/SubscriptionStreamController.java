@@ -4,6 +4,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -163,11 +164,10 @@ public class SubscriptionStreamController {
             final HttpServletRequest request,
             final HttpServletResponse response,
             final Client client) {
-
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
-
-        return stream(subscriptionId, request, response, client, streamParameters);
+        return stream(subscriptionId, request, response, client, streamParameters,
+                (Span) request.getAttribute("span"));
     }
 
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
@@ -183,26 +183,26 @@ public class SubscriptionStreamController {
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
-
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimeout,
                 streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(), commitTimeout);
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
 
-        return stream(subscriptionId, request, response, client, streamParameters);
+        return stream(subscriptionId, request, response, client, streamParameters,
+                (Span) request.getAttribute("span"));
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
                                          final HttpServletRequest request,
                                          final HttpServletResponse response,
                                          final Client client,
-                                         final StreamParameters streamParameters) {
+                                         final StreamParameters streamParameters, final Span parentSubscriptionSpan) {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
             FlowIdUtils.push(flowId);
-
+            parentSubscriptionSpan.setOperationName("stream_events");
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
@@ -223,7 +223,7 @@ public class SubscriptionStreamController {
                         streamParameters.getPartitions());
 
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, blacklistService);
+                        connectionReady, blacklistService, parentSubscriptionSpan);
 
                 streamer.stream();
             } catch (final InterruptedException ex) {

@@ -124,7 +124,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitValidCursorsThenNoContent() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenReturn(ImmutableList.of());
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
@@ -132,7 +132,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenReturn(DUMMY_CURSORS.stream().map(v -> Boolean.FALSE).collect(Collectors.toList()));
         final ItemsWrapper<CursorCommitResult> expectation = new ItemsWrapper<>(
                 DUMMY_CURSORS.stream()
@@ -145,7 +145,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoSubscriptionThenNotFound() throws Exception {
-        when(cursorsService.commitCursors(any(), eq(SUBSCRIPTION_ID), any()))
+        when(cursorsService.commitCursors(any(), eq(SUBSCRIPTION_ID), any(), any()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -154,7 +154,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoEventTypeThenUnprocessableEntity() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow(new NoSuchEventTypeException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "dummy-message");
 
@@ -163,7 +163,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenServiceUnavailableExceptionThenServiceUnavailable() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
@@ -172,7 +172,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION,
                         new SubscriptionCursor(null, null, null, null))));
 
