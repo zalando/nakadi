@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -53,6 +54,15 @@ public class TracingService {
 
     public static Scope activateSpan(final Span span, final boolean autoCloseSpan) {
         return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
+    }
+
+    public static Scope activateSpan(final HttpServletRequest request, final boolean autoCloseSpan) {
+        final Span span = (Span) request.getAttribute("span");
+        if (span != null) {
+            return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
+        }
+        LOG.warn("Starting Default span");
+        return GlobalTracer.get().buildSpan("default_Span").startActive(autoCloseSpan);
     }
 
     public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,

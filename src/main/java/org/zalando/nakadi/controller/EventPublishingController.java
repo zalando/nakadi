@@ -76,18 +76,11 @@ public class EventPublishingController {
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
-        final Scope publishingScope = TracingService
-                .activateSpan((Span) httpServletRequest.getAttribute("span"), false);
+        final Scope publishingScope = TracingService.activateSpan(httpServletRequest, false);
         publishingScope.span().setOperationName("publish_events");
-        String sloBucket = "5K-50K";
-        if (httpServletRequest.getContentLength() > 50000 || httpServletRequest.getContentLength() == 0) {
-            sloBucket = ">50K";
-        } else if (httpServletRequest.getContentLength() < 5000) {
-            sloBucket = "<5K";
-        }
         publishingScope.span()
                 .setTag("event_type", eventTypeName)
-                .setTag("slo_bucket", sloBucket)
+                .setTag("slo_bucket", getSLOBucket(httpServletRequest.getContentLength()))
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
@@ -107,6 +100,15 @@ public class EventPublishingController {
             eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
+    }
+
+    private String getSLOBucket(final long contentLength) {
+        if (contentLength > 50000 || contentLength == 0) {
+            return ">50K";
+        } else if (contentLength < 5000) {
+            return "<5K";
+        }
+        return "5K-50K";
     }
 
     private ResponseEntity postEventInternal(final String eventTypeName,
