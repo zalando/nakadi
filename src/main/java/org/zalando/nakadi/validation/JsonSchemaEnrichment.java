@@ -6,7 +6,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,7 +31,7 @@ public class JsonSchemaEnrichment {
             "items");
     private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
 
-    public JSONObject effectiveSchema(final EventType eventType) throws JSONException {
+    public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
 
         if (eventType.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
@@ -116,7 +116,7 @@ public class JsonSchemaEnrichment {
         );
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventType eventType) {
+    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventTypeBase eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
@@ -147,7 +147,7 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    private static JSONObject addMetadata(final JSONObject schema, final EventType eventType) {
+    private static JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
         normalizeSchema(schema);
 
         final JSONObject metadata = new JSONObject();

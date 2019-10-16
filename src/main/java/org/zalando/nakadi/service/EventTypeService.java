@@ -58,6 +58,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
@@ -97,6 +98,7 @@ public class EventTypeService {
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
     private final RepartitioningService repartitioningService;
+    private final JsonSchemaEnrichment jsonSchemaEnrichment;
 
     @Autowired
     public EventTypeService(
@@ -136,6 +138,7 @@ public class EventTypeService {
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
         this.repartitioningService = repartitioningService;
+        this.jsonSchemaEnrichment = new JsonSchemaEnrichment();
     }
 
     public List<EventType> list() {
@@ -558,8 +561,10 @@ public class EventTypeService {
                 throw new InvalidEventTypeException(
                         "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
             }
-            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, schema);
-            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, schema);
+            final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+            final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
+            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
+            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);

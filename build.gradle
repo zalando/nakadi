@@ -176,7 +176,7 @@ dependencies {
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('junit:junit:4.12') {
+    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
         exclude module: "hamcrest-core"
     }
     testCompile "org.springframework:spring-test"
