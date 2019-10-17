@@ -4,6 +4,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import io.opentracing.Scope;
 import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -201,8 +203,14 @@ public class SubscriptionStreamController {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
+            final Scope scope = TracingService.activateSpan(parentSubscriptionSpan, false);
             FlowIdUtils.push(flowId);
-            parentSubscriptionSpan.setOperationName("stream_events");
+            scope.span().setOperationName("stream_events_request");
+            scope.span().setTag("subscription.id", subscriptionId);
+            scope.span().log(String.format("Stream Parameters: batchLimitEvents: {}," +
+                            " batchTimeout:{}, streamTimeout: {}, maxUncommittedMessages: {}",
+                    streamParameters.batchLimitEvents, streamParameters.batchTimeoutMillis,
+                    streamParameters.streamTimeoutMillis, streamParameters.maxUncommittedMessages));
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
@@ -234,6 +242,7 @@ public class SubscriptionStreamController {
             } finally {
                 consumerCounter.dec();
                 outputStream.close();
+                scope.span().finish();
             }
         };
     }

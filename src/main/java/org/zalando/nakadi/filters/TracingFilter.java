@@ -100,11 +100,11 @@ public class TracingFilter extends OncePerRequestFilter {
                 baseSpan = TracingService.getNewSpanWithReference("commit_events",
                         startTime, spanContext);
             } else {
-                baseSpan = TracingService.getNewSpanWithParent("default",
+                baseSpan = TracingService.getNewSpanWithParent("all_requests",
                         startTime, spanContext);
             }
         } else {
-            baseSpan = TracingService.getNewSpan("default", startTime);
+            baseSpan = TracingService.getNewSpan("all_requests", startTime);
         }
 
         try {

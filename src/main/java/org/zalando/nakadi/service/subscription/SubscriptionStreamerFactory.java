@@ -95,10 +95,8 @@ public class SubscriptionStreamerFactory {
                 streamParameters.commitTimeoutMillis);
         final Span streamSpan;
         if (parentSpan != null) {
-            streamSpan = TracingService.getNewSpanWithReference("stream_span",
+            streamSpan = TracingService.getNewSpanWithReference("streaming_async",
                     System.currentTimeMillis(), parentSpan.context());
-
-            streamSpan.setTag("subscription_id", subscription.getId());
         } else {
             streamSpan = null;
         }
