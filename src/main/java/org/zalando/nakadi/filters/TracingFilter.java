@@ -1,7 +1,5 @@
 package org.zalando.nakadi.filters;
 
-import com.google.common.collect.ImmutableMap;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.propagation.TextMapExtractAdapter;
@@ -108,19 +106,16 @@ public class TracingFilter extends OncePerRequestFilter {
         }
 
         try {
-            final Scope scope = TracingService.activateSpan(baseSpan, false);
-            TracingService.setCustomTags(scope.span(),
-                    ImmutableMap.<String, Object>builder()
-                            .put("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"))
-                            .put("http.url", request.getRequestURI() +
-                                    Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                            .put("http.header.content_encoding",
-                                    Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                            .put("http.header.accept_encoding",
-                                    Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                            .put("http.header.user_agent",
-                                    Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"))
-                            .build());
+            TracingService.activateSpan(baseSpan, false)
+                    .setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"))
+                    .setTag("http.url", request.getRequestURI() +
+                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                    .setTag("http.header.content_encoding",
+                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                    .setTag("http.header.accept_encoding",
+                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                    .setTag("http.header.user_agent",
+                            Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
             request.setAttribute("span", baseSpan);
             //execute request
             filterChain.doFilter(request, response);
@@ -149,12 +144,9 @@ public class TracingFilter extends OncePerRequestFilter {
 
     private void traceRequest(final long contentLength, final int statusCode,
                               final Span span) {
-        final Scope scope = TracingService.activateSpan(span, false);
-        final Map<String, Object> tags = new HashMap<String, Object>() {{
-            put("http.status_code", statusCode);
-            put("content_length", contentLength);
-        }};
-        tags.put("error", statusCode == 207 || statusCode >= 500);
-        TracingService.setCustomTags(scope.span(), tags);
+        TracingService.activateSpan(span, false)
+                .setTag("http.status_code", statusCode)
+                .setTag("content_length", contentLength)
+                .setTag("error", statusCode == 207 || statusCode >= 500);
     }
 }

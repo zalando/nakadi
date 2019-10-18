@@ -1,8 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -91,27 +89,22 @@ public class CursorsService {
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             AccessDeniedException {
-        final Scope commitScope = TracingService.activateSpan(parentSpan, false);
+        TracingService.activateSpan(parentSpan, false)
+                .setTag("subscription", subscriptionId)
+                .setTag("stream.id", streamId);
         try {
             final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
-
             authorizationValidator.authorizeSubscriptionView(subscription);
             authorizationValidator.authorizeSubscriptionCommit(subscription);
             validateSubscriptionCommitCursors(subscription, cursors);
-            TracingService.setCustomTags(commitScope.span(), ImmutableMap.<String, Object>builder()
-                    .put("subscription", subscriptionId)
-                    .put("stream.id", streamId)
-                    .build());
             final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                     subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
-
             validateStreamId(cursors, streamId, zkClient, subscriptionId);
-
             return zkClient.commitOffsets(
                     cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
                     new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
         } catch (Exception e) {
-            TracingService.logErrorInSpan(commitScope, e.getMessage());
+            TracingService.logErrorInSpan(parentSpan, e.getMessage());
             throw e;
         }
     }

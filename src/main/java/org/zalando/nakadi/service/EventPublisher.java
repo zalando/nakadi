@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -157,9 +156,9 @@ public class EventPublisher {
         }
     }
 
-    private void traceEventPublishingError(final Scope scope, final BatchItem batchItem, final String error) {
+    private void traceEventPublishingError(final Span span, final BatchItem batchItem, final String error) {
         if (batchItem.getEvent().has("metadata")) {
-            scope.span().log(
+            span.log(
                     ImmutableMap.of("event.id", batchItem.getEvent().getJSONObject("metadata")
                             .getString("eid"), "error", error));
         }
@@ -215,9 +214,8 @@ public class EventPublisher {
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
         final Span validationSpan = TracingService.getNewSpanWithParent("validation", System.currentTimeMillis(),
                 parentSpan);
-        TracingService.setCustomTags(validationSpan, ImmutableMap.<String, Object>builder()
-                .put("event_type", eventType).build());
-        try (Scope validationScope = TracingService.activateSpan(validationSpan, false)) {
+        validationSpan.setTag("event_type", eventType.getName());
+        try  {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
@@ -225,7 +223,7 @@ public class EventPublisher {
                     validateEventSize(item);
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-                    traceEventPublishingError(validationScope, item, e.getMessage());
+                    traceEventPublishingError(validationSpan, item, e.getMessage());
                     throw e;
                 }
             }
