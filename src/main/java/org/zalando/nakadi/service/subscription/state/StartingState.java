@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import com.google.common.collect.ImmutableMap;
-import io.opentracing.Scope;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -58,11 +56,7 @@ public class StartingState extends State {
     private void initializeStream() {
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
-        final Scope startingStateScope = TracingService.activateSpan(getContext().getCurrentSpan(), false);
-        TracingService.setCustomTags(startingStateScope.span(), ImmutableMap.<String, Object>builder()
-                .put("subscription.id", getContext().getSubscription().getId())
-                .put("session.id", getContext().getSessionId())
-                .build());
+        getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
         if (!subscriptionJustInitialized) {
             // check if there are streaming slots available
             final Collection<Session> sessions = getZk().listSessions();
@@ -78,7 +72,7 @@ public class StartingState extends State {
                         .filter(s -> s.getRequestedPartitions().isEmpty())
                         .count();
                 if (autoBalanceSessionsCount >= autoSlotsCount) {
-                    TracingService.logStreamCloseReason(startingStateScope, "No streaming slots available");
+                    TracingService.logStreamCloseReason(getContext().getCurrentSpan(), "No streaming slots available");
                     switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                     return;
                 }
@@ -90,7 +84,7 @@ public class StartingState extends State {
                     .filter(requestedPartitions::contains)
                     .collect(Collectors.toList());
             if (!conflictPartitions.isEmpty()) {
-                TracingService.logStreamCloseReason(startingStateScope,
+                TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
                         "Partition already taken by other stream of the subscription");
                 switchState(new CleanupState(SubscriptionPartitionConflictException.of(conflictPartitions)));
                 return;
@@ -98,6 +92,8 @@ public class StartingState extends State {
         }
 
         if (getZk().isCloseSubscriptionStreamsInProgress()) {
+            TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
+                    "Resetting subscription cursors request is still in progress");
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
@@ -106,7 +102,6 @@ public class StartingState extends State {
         try {
             getContext().registerSession();
         } catch (Exception ex) {
-            TracingService.logErrorInSpan(startingStateScope, ex.getMessage());
             switchState(new CleanupState(ex));
             return;
         }

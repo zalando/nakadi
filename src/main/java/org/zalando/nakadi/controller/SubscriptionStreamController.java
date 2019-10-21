@@ -4,7 +4,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,31 +191,24 @@ public class SubscriptionStreamController {
                 nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters,
-                (Span) request.getAttribute("span"));
+                TracingService.extractSpan(request, "stream_events_request")
+                        .setTag("subscription.id", subscriptionId));
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
                                          final HttpServletRequest request,
                                          final HttpServletResponse response,
                                          final Client client,
-                                         final StreamParameters streamParameters, final Span parentSubscriptionSpan) {
+                                         final StreamParameters streamParameters,
+                                         final Span parentSubscriptionSpan) {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
-            final Scope scope = TracingService.activateSpan(parentSubscriptionSpan, false);
             FlowIdUtils.push(flowId);
-            scope.span().setOperationName("stream_events_request");
-            scope.span().setTag("subscription.id", subscriptionId);
-            scope.span().log(String.format("Stream Parameters: batchLimitEvents: {}," +
-                            " batchTimeout:{}, streamTimeout: {}, maxUncommittedMessages: {}",
-                    streamParameters.batchLimitEvents, streamParameters.batchTimeoutMillis,
-                    streamParameters.streamTimeoutMillis, streamParameters.maxUncommittedMessages));
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
-
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
-
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
@@ -225,14 +217,11 @@ public class SubscriptionStreamController {
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
-
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
-
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService, parentSubscriptionSpan);
-
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
@@ -242,7 +231,6 @@ public class SubscriptionStreamController {
             } finally {
                 consumerCounter.dec();
                 outputStream.close();
-                scope.span().finish();
             }
         };
     }

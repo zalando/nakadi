@@ -2,7 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.References;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.util.GlobalTracer;
@@ -11,58 +10,30 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class TracingService {
     private static final Logger LOG = LoggerFactory.getLogger(TracingService.class);
 
-    public static void logErrorInSpan(final Scope scope, final String error) {
+    public static void logErrorInSpan(final Span span, final String error) {
         if (error != null) {
-            scope.span().log(ImmutableMap.of("error.description", error));
+            span.log(ImmutableMap.of("error.description", error));
         }
     }
 
-    public static void logStreamCloseReason(final Scope scope, final String error) {
+    public static void logStreamCloseReason(final Span span, final String error) {
         if (error != null) {
-            scope.span().log(ImmutableMap.of("stream.close.reason", error));
+            span.log(ImmutableMap.of("stream.close.reason", error));
         }
     }
-
-    public static void logWarning(final Scope scope, final String warning) {
-        if (warning != null) {
-            scope.span().log(ImmutableMap.of("warning:", warning));
-        }
-    }
-
-    public static void setCustomTags(final Span span, final Map<String, Object> tags) {
-        for (final Map.Entry<String, Object> entry : tags.entrySet()) {
-            if (entry.getValue() instanceof Boolean) {
-                span.setTag(entry.getKey(), (Boolean) entry.getValue());
-            } else if (entry.getValue() instanceof Number) {
-                span.setTag(entry.getKey(), (Number) entry.getValue());
-            } else if (entry.getValue() instanceof String) {
-                span.setTag(entry.getKey(), (String) entry.getValue());
-            } else {
-                LOG.warn("Tag is not of the expected type");
-                continue;
-            }
-        }
-    }
-
-
-    public static Scope activateSpan(final Span span, final boolean autoCloseSpan) {
-        return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
-    }
-
-    public static Scope activateSpan(final HttpServletRequest request, final boolean autoCloseSpan) {
+    
+    public static Span extractSpan(final HttpServletRequest request, final String operation) {
         final Span span = (Span) request.getAttribute("span");
         if (span != null) {
-            return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan);
+            return span.setOperationName(operation);
         }
-        LOG.warn("Starting Default span");
-        return GlobalTracer.get().buildSpan("default_Span").startActive(autoCloseSpan);
+        return GlobalTracer.get().buildSpan("default_Span").start();
     }
 
     public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,
@@ -95,6 +66,12 @@ public class TracingService {
                 .buildSpan(operationName)
                 .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
                 .asChildOf(spanContext).start();
+    }
+
+    public static Span getNewSpanWithParent(final Span span, final String operationName) {
+        return GlobalTracer.get()
+                .buildSpan(operationName)
+                .asChildOf(span).start();
     }
 
 }

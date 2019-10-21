@@ -1,7 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
 import org.json.JSONObject;
@@ -38,7 +37,6 @@ import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
-import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
 
@@ -76,21 +74,17 @@ public class EventPublishingController {
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
-        final Scope publishingScope = TracingService.activateSpan(httpServletRequest, false);
-        publishingScope.span().setOperationName("publish_events");
-        publishingScope.span()
+        final Span publishingSpan = TracingService.extractSpan(httpServletRequest, "publish_events")
                 .setTag("event_type", eventTypeName)
                 .setTag("slo_bucket", getSLOBucket(httpServletRequest.getContentLength()))
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
-
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
-            publishingScope.span().setTag("status_code", FORBIDDEN.getStatusCode());
             throw new BlockedException("Application or event type is blocked");
         }
         try {
             final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, request, eventTypeMetrics, client, publishingScope.span());
+                    eventTypeName, eventsAsString, eventTypeMetrics, client, publishingSpan);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -113,7 +107,6 @@ public class EventPublishingController {
 
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
-                                             final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client, final Span parentSpan)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException, InternalNakadiException,

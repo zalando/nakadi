@@ -1,6 +1,6 @@
 package org.zalando.nakadi.controller;
 
-import io.opentracing.Scope;
+import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
@@ -92,13 +91,12 @@ public class CursorsController {
         if (cursors.isEmpty()) {
             throw new CursorsAreEmptyException();
         }
-        final Scope commitScope = TracingService.activateSpan(request, false);
-        commitScope.span().setOperationName("commit_events");
+        final Span commitSpan = TracingService.extractSpan(request, "commit_events");
         if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            TracingService.logErrorInSpan(commitScope, "Application or subscription is blocked");
+            TracingService.logErrorInSpan(commitSpan, "Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitScope.span());
+        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitSpan);
 
         final boolean allCommitted = items.stream().allMatch(item -> item);
         if (allCommitted) {
@@ -115,14 +113,16 @@ public class CursorsController {
     public ResponseEntity<?> resetCursors(
             @PathVariable("subscriptionId") final String subscriptionId,
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
-            final NativeWebRequest request,
+            final HttpServletRequest request,
             final Client client)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
         if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
             throw new BlockedException("Application or subscription is blocked");
         }
 
-        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
+        cursorsService.resetCursors(subscriptionId,
+                convertToNakadiCursors(cursors),
+                TracingService.extractSpan(request, "reset_cursors"));
         return noContent().build();
     }
 
