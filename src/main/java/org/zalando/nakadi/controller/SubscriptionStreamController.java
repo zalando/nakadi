@@ -191,24 +191,19 @@ public class SubscriptionStreamController {
                 nakadiSettings.getMaxCommitTimeout(), client);
 
         return stream(subscriptionId, request, response, client, streamParameters,
-                (Span) request.getAttribute("span"));
+                TracingService.extractSpan(request, "stream_events_request")
+                        .setTag("subscription.id", subscriptionId));
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
                                          final HttpServletRequest request,
                                          final HttpServletResponse response,
                                          final Client client,
-                                         final StreamParameters streamParameters, final Span parentSubscriptionSpan) {
+                                         final StreamParameters streamParameters,
+                                         final Span parentSubscriptionSpan) {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
-            TracingService.activateSpan(parentSubscriptionSpan, false)
-                    .setOperationName("stream_events_request")
-                    .setTag("subscription.id", subscriptionId)
-                    .log(String.format("Stream Parameters: batchLimitEvents: {}," +
-                            " batchTimeout:{}, streamTimeout: {}, maxUncommittedMessages: {}",
-                    streamParameters.batchLimitEvents, streamParameters.batchTimeoutMillis,
-                    streamParameters.streamTimeoutMillis, streamParameters.maxUncommittedMessages));
             FlowIdUtils.push(flowId);
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);

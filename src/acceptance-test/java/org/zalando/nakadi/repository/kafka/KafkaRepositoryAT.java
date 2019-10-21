@@ -218,7 +218,7 @@ public class KafkaRepositoryAT extends BaseAT {
             items.add(item);
         }
 
-        kafkaTopicRepository.syncPostBatch(topicId, items, null, null);
+        kafkaTopicRepository.syncPostBatch(topicId, items, null);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));

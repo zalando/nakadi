@@ -78,7 +78,6 @@ class StreamingState extends State {
 
     @Override
     public void onEnter() {
-        TracingService.activateSpan(getContext().getCurrentSpan(), false);
         final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
                 this.getContext().getParameters().getConsumingClient().getClientId(),
                 this.getContext().getSubscription().getId()
@@ -172,8 +171,6 @@ class StreamingState extends State {
 
     private void pollDataFromKafka() {
         if (eventConsumer == null) {
-            TracingService.logErrorInSpan(getContext().getCurrentSpan(),
-                    "Illegal state: kafkaConsumer should not be null when calling pollDataFromKafka method");
             throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }
 
@@ -379,13 +376,9 @@ class StreamingState extends State {
                             ", ZkCommitted: " + realCommitted.get(etp) + ")";
                 }).collect(Collectors.joining(", "));
                 getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
-                TracingService.logWarning(getContext().getCurrentSpan(),
-                        "Stale offsets during streaming commit timeout: " + bustedData);
             }
         } catch (NakadiRuntimeException ex) {
             getLog().warn("Failed to get nakadi cursors for logging purposes.");
-            TracingService.logWarning(getContext().getCurrentSpan(),
-                    "Failed to get nakadi cursors for logging purposes.");
         }
     }
 
@@ -551,8 +544,6 @@ class StreamingState extends State {
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
         if (eventConsumer == null) {
-            TracingService.logErrorInSpan(getContext().getCurrentSpan(),
-                    "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
             throw new IllegalStateException(
                     "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
         }
@@ -695,9 +686,6 @@ class StreamingState extends State {
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
-                    TracingService.logWarning(getContext().getCurrentSpan(),
-                            String.format("Skipping commits: {}, commit={}, sent={}",
-                                    key, data.getCommitOffset(), data.getSentOffset()));
                     getLog().warn("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }

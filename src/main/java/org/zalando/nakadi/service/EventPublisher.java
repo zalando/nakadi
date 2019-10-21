@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
+import io.opentracing.tag.Tags;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,14 +157,6 @@ public class EventPublisher {
         }
     }
 
-    private void traceEventPublishingError(final Span span, final BatchItem batchItem, final String error) {
-        if (batchItem.getEvent().has("metadata")) {
-            span.log(
-                    ImmutableMap.of("event.id", batchItem.getEvent().getJSONObject("metadata")
-                            .getString("eid"), "error", error));
-        }
-    }
-
     private List<BatchItemResponse> responses(final List<BatchItem> batch) {
         return batch.stream()
                 .map(BatchItem::getResponse)
@@ -215,7 +208,7 @@ public class EventPublisher {
         final Span validationSpan = TracingService.getNewSpanWithParent("validation", System.currentTimeMillis(),
                 parentSpan);
         validationSpan.setTag("event_type", eventType.getName());
-        try  {
+        try {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
@@ -223,7 +216,12 @@ public class EventPublisher {
                     validateEventSize(item);
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-                    traceEventPublishingError(validationSpan, item, e.getMessage());
+                    if (eventType.getCategory() != EventCategory.UNDEFINED) {
+                        validationSpan.log(ImmutableMap.of(
+                                "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
+                                "error", e.getMessage()));
+                    }
+
                     throw e;
                 }
             }
@@ -235,8 +233,17 @@ public class EventPublisher {
     private void submit(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
             throws EventPublishingException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
-        timelineService.getTopicRepository(eventType).syncPostBatch(activeTimeline.getTopic(), batch,
-                parentSpan, eventType.getName());
+        final String topic = activeTimeline.getTopic();
+        final Span publishSpan = TracingService.getNewSpanWithParent(parentSpan, "publishing_to_kafka")
+                .setTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic);
+        try {
+            timelineService.getTopicRepository(eventType).syncPostBatch(topic, batch, eventType.getName());
+        } catch (final EventPublishingException epe) {
+            publishSpan.log(epe.getMessage());
+            throw epe;
+        } finally {
+            publishSpan.finish();
+        }
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType)

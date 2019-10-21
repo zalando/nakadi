@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 
 import javax.annotation.Nullable;
@@ -19,12 +18,9 @@ public class CleanupState extends State {
 
     @Override
     public void onEnter() {
-      TracingService.activateSpan(getContext().getCurrentSpan(), false);
         try {
             getContext().unregisterAuthorizationUpdates();
         } catch (final RuntimeException ex) {
-            TracingService.logErrorInSpan(getContext().getCurrentSpan(),
-                    "Unexpected fail during removing callback for registration updates " + ex.getMessage());
             getLog().error("Unexpected fail during removing callback for registration updates", ex);
         }
         try {
@@ -42,8 +38,6 @@ public class CleanupState extends State {
             try {
                 getContext().getZkClient().close();
             } catch (final IOException e) {
-                TracingService.logErrorInSpan(getContext().getCurrentSpan(),
-                        "Unexpected fail to release zk connection " + e.getMessage());
                 getLog().error("Unexpected fail to release zk connection", e);
             }
             getContext().getCurrentSpan().finish();

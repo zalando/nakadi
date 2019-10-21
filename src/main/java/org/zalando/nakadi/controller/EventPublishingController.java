@@ -74,8 +74,7 @@ public class EventPublishingController {
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
-        final Span publishingSpan = TracingService.activateSpan(httpServletRequest, false)
-                .setOperationName("publish_events")
+        final Span publishingSpan = TracingService.extractSpan(httpServletRequest, "publish_events")
                 .setTag("event_type", eventTypeName)
                 .setTag("slo_bucket", getSLOBucket(httpServletRequest.getContentLength()))
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());

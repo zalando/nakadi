@@ -56,9 +56,7 @@ public class StartingState extends State {
     private void initializeStream() {
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
-        TracingService.activateSpan(getContext().getCurrentSpan(), false)
-                .setTag("subscription.id", getContext().getSubscription().getId())
-                .setTag("session.id", getContext().getSessionId());
+        getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
         if (!subscriptionJustInitialized) {
             // check if there are streaming slots available
             final Collection<Session> sessions = getZk().listSessions();
@@ -94,6 +92,8 @@ public class StartingState extends State {
         }
 
         if (getZk().isCloseSubscriptionStreamsInProgress()) {
+            TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
+                    "Resetting subscription cursors request is still in progress");
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
@@ -102,7 +102,6 @@ public class StartingState extends State {
         try {
             getContext().registerSession();
         } catch (Exception ex) {
-            TracingService.logErrorInSpan(getContext().getCurrentSpan(), ex.getMessage());
             switchState(new CleanupState(ex));
             return;
         }

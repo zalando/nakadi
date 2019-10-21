@@ -27,24 +27,13 @@ public class TracingService {
             span.log(ImmutableMap.of("stream.close.reason", error));
         }
     }
-
-    public static void logWarning(final Span span, final String warning) {
-        if (warning != null) {
-            span.log(ImmutableMap.of("warning:", warning));
-        }
-    }
-
-    public static Span activateSpan(final Span span, final boolean autoCloseSpan) {
-        return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan).span();
-    }
-
-    public static Span activateSpan(final HttpServletRequest request, final boolean autoCloseSpan) {
+    
+    public static Span extractSpan(final HttpServletRequest request, final String operation) {
         final Span span = (Span) request.getAttribute("span");
         if (span != null) {
-            return GlobalTracer.get().scopeManager().activate(span, autoCloseSpan).span();
+            return span.setOperationName(operation);
         }
-        LOG.debug("Starting Default span");
-        return GlobalTracer.get().buildSpan("default_Span").startActive(autoCloseSpan).span();
+        return GlobalTracer.get().buildSpan("default_Span").start();
     }
 
     public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,
@@ -77,6 +66,12 @@ public class TracingService {
                 .buildSpan(operationName)
                 .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
                 .asChildOf(spanContext).start();
+    }
+
+    public static Span getNewSpanWithParent(final Span span, final String operationName) {
+        return GlobalTracer.get()
+                .buildSpan(operationName)
+                .asChildOf(span).start();
     }
 
 }

@@ -106,7 +106,7 @@ public class TracingFilter extends OncePerRequestFilter {
         }
 
         try {
-            TracingService.activateSpan(baseSpan, false)
+            baseSpan
                     .setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"))
                     .setTag("http.url", request.getRequestURI() +
                             Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
@@ -144,8 +144,7 @@ public class TracingFilter extends OncePerRequestFilter {
 
     private void traceRequest(final long contentLength, final int statusCode,
                               final Span span) {
-        TracingService.activateSpan(span, false)
-                .setTag("http.status_code", statusCode)
+        span.setTag("http.status_code", statusCode)
                 .setTag("content_length", contentLength)
                 .setTag("error", statusCode == 207 || statusCode >= 500);
     }
