@@ -273,7 +273,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
                         item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
-                if (circuitBreaker.attemptExecution()) {
+                if (circuitBreaker.allowRequest()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {
                     shortCircuited++;
