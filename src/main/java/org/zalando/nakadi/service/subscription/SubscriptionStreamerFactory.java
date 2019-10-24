@@ -86,7 +86,8 @@ public class SubscriptionStreamerFactory {
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
-            final BlacklistService blacklistService, final Span parentSpan)
+            final BlacklistService blacklistService,
+            final Span parentSpan, final String clientId)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1, streamParameters.getPartitions());
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
@@ -97,6 +98,8 @@ public class SubscriptionStreamerFactory {
         if (parentSpan != null) {
             streamSpan = TracingService.getNewSpanWithReference("streaming_async",
                     System.currentTimeMillis(), parentSpan.context());
+            streamSpan.setTag("client", clientId);
+            streamSpan.setTag("subscription.id", subscription.getId());
         } else {
             streamSpan = null;
         }
