@@ -221,7 +221,7 @@ public class SubscriptionStreamController {
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, blacklistService, parentSubscriptionSpan);
+                        connectionReady, blacklistService, parentSubscriptionSpan, client.getClientId());
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
