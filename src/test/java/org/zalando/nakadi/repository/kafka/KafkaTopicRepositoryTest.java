@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -107,6 +108,8 @@ public class KafkaTopicRepositoryTest {
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
         System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
+        System.setProperty("hystrix.command.1.metrics.rollingStats.timeInMilliseconds", "500");
+        System.setProperty("hystrix.command.1.circuitBreaker.sleepWindowInMilliseconds", "500");
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -316,19 +319,42 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void whenKafkaPublishTimeoutThenCircuitIsOpened() {
-
+    public void checkCircuitBreakerStateBasedOnKafkaResponse() {
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
-
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
 
+        //Timeout Exception should cause circuit breaker to open
+        List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException());
+        Assert.assertTrue(batches.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
+                        item.getResponse().getDetail().equals("short circuited"))
+                .count() >= 1);
+
+        //No exception should close the circuit
+        batches = setResponseForSendingBatches(null);
+        Assert.assertTrue(batches.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED &&
+                        item.getResponse().getDetail().equals(""))
+                .count() >= 1);
+
+        //Timeout Exception should cause circuit breaker to open again
+        batches = setResponseForSendingBatches(new TimeoutException());
+        Assert.assertTrue(batches.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
+                        item.getResponse().getDetail().equals("short circuited"))
+                .count() >= 1);
+
+    }
+
+    private List<BatchItem> setResponseForSendingBatches(final Exception e) {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
-            callback.onCompletion(null, new TimeoutException());
+            if (callback != null) {
+                callback.onCompletion(null, e);
+            }
             return null;
         });
-
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 100; i++) {
             try {
@@ -338,17 +364,13 @@ public class KafkaTopicRepositoryTest {
                         Collections.emptyList());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
+                TimeUnit.MILLISECONDS.sleep(5);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(),
                         ImmutableList.of(batchItem), "random");
-                fail();
-            } catch (final EventPublishingException e) {
+            } catch (final EventPublishingException | InterruptedException ex) {
             }
         }
-
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
+        return batches;
     }
 
     @Test
