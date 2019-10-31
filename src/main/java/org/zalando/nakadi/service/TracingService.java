@@ -5,16 +5,18 @@ import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.util.GlobalTracer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 
-@Component
 public class TracingService {
-    private static final Logger LOG = LoggerFactory.getLogger(TracingService.class);
+
+    private static final String BUCKET_NAME_5_50_KB = "5K-50K";
+    private static final String BUCKET_NAME_5_KB = "<5K";
+    private static final String BUCKET_NAME_MORE_THAN_50_KB = ">50K";
+
+    private static final Long BUCKET_5_KB = 5000L;
+    private static final Long BUCKET_MORE_THAN_50_KB = 50000L;
 
     public static void logErrorInSpan(final Span span, final String error) {
         if (error != null) {
@@ -27,7 +29,7 @@ public class TracingService {
             span.log(ImmutableMap.of("stream.close.reason", error));
         }
     }
-    
+
     public static Span extractSpan(final HttpServletRequest request, final String operation) {
         final Span span = (Span) request.getAttribute("span");
         if (span != null) {
@@ -72,6 +74,15 @@ public class TracingService {
         return GlobalTracer.get()
                 .buildSpan(operationName)
                 .asChildOf(span).start();
+    }
+
+    public static String getSLOBucket(final long batchSize) {
+        if (batchSize > BUCKET_MORE_THAN_50_KB) {
+            return BUCKET_NAME_MORE_THAN_50_KB;
+        } else if (batchSize < BUCKET_5_KB) {
+            return BUCKET_NAME_5_KB;
+        }
+        return BUCKET_NAME_5_50_KB;
     }
 
 }
