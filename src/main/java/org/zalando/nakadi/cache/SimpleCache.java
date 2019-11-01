@@ -1,15 +1,16 @@
 package org.zalando.nakadi.cache;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class BulletproofCache
+public class SimpleCache
         <T, Versioned extends VersionedEntity<Version>, Version extends Comparable>
         implements Cache<T> {
 
@@ -22,7 +23,7 @@ public class BulletproofCache
     private final ConcurrentHashMap<String, T> activeData = new ConcurrentHashMap<>();
     private final List<Consumer<String>> invalidationListeners = new CopyOnWriteArrayList<>();
 
-    public BulletproofCache(
+    public SimpleCache(
             final CacheDataProvider<Versioned, Version> dataProvider,
             final Function<Versioned, T> rawDataConverter) {
         this.dataProvider = dataProvider;
@@ -70,9 +71,9 @@ public class BulletproofCache
     public synchronized void refresh() { // synchronized on object to avoid multiple sy
         // someone detected, that cache should be refreshed. The event of refresh is taking place after
         // the actual data change, so it is safe to work on a data that is a bit older, and we do not care about
-        final List<Versioned> currentKeys;
+        final Set<Versioned> currentKeys;
         synchronized (versionedDataLock) {
-            currentKeys = new ArrayList<>(versionedData.values()); // We are intentionally creating copy of values
+            currentKeys = new HashSet<>(versionedData.values()); // We are intentionally creating copy of values
         }
 
         final CacheChange fullChangeList = this.dataProvider.getFullChangeList(currentKeys);

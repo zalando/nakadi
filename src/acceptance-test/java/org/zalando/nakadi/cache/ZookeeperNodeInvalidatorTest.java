@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 public class ZookeeperNodeInvalidatorTest extends BaseAT {
     private static final ZooKeeperHolder CURATOR = ZookeeperTestUtils.createZkHolder(ZOOKEEPER_URL);
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     public void cacheUpdateTriggeredOnNodeChange() throws InterruptedException {
         final int parralelism = 10;
         final List<Cache> caches = new ArrayList<>();
@@ -35,9 +35,9 @@ public class ZookeeperNodeInvalidatorTest extends BaseAT {
             // Notify about updates several times and ensure that all caches are updated.
             for (int idx = 0; idx < 10; ++idx) {
                 invalidators.get(idx % invalidators.size()).notifyUpdate();
-                Thread.sleep(50);
+                Thread.sleep(100);
 
-                for (Cache c : caches) {
+                for (final Cache c : caches) {
                     Mockito.verify(c, Mockito.times(idx + 2)).refresh();
                 }
             }

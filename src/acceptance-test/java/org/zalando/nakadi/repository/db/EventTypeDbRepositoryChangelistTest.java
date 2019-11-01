@@ -41,7 +41,9 @@ public class EventTypeDbRepositoryChangelistTest extends AbstractDbRepositoryTes
             final EventType eventType = buildDefaultEventType();
             eventType.setName(etName);
             final EventType created = repository.saveEventType(eventType);
-            existentEventTypes.put(created.getName(), JsonUtils.serializeDateTime(repository.jsonMapper, eventType.getUpdatedAt()));
+            existentEventTypes.put(
+                    created.getName(),
+                    JsonUtils.serializeDateTime(repository.jsonMapper, eventType.getUpdatedAt()));
         });
     }
 

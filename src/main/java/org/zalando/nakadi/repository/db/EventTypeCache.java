@@ -2,9 +2,9 @@ package org.zalando.nakadi.repository.db;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.cache.BulletproofCache;
 import org.zalando.nakadi.cache.Cache;
 import org.zalando.nakadi.cache.EventTypeDataProvider;
+import org.zalando.nakadi.cache.SimpleCache;
 import org.zalando.nakadi.cache.ZookeeperNodeInvalidator;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
@@ -43,9 +43,9 @@ public class EventTypeCache {
             final EventTypeDataProvider eventTypeDataProvider,
             final TimelineDbRepository timelineRepository,
             final TimelineSync timelineSync) {
-        cache = new BulletproofCache<>(
+        cache = new SimpleCache<>(
                 eventTypeDataProvider,
-                this::convert
+                this::convertAndRegister
         );
         nodeInvalidator = new ZookeeperNodeInvalidator(
                 cache,
@@ -65,9 +65,11 @@ public class EventTypeCache {
     @PreDestroy
     public void stop() {
         this.nodeInvalidator.stop();
+        this.timelineRegistrations.forEach((s, listenerRegistration) -> listenerRegistration.cancel());
+        this.timelineRegistrations.clear();
     }
 
-    private CachedValue convert(final EventTypeDataProvider.EventTypeProxy eventTypeProxy) {
+    private CachedValue convertAndRegister(final EventTypeDataProvider.EventTypeProxy eventTypeProxy) {
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeProxy.getEventType().getName());
 
@@ -81,18 +83,18 @@ public class EventTypeCache {
         );
     }
 
-    public void updated(final String name) throws Exception {
+    public void updated(final String name) {
         cache.invalidate(name);
         created(name);
     }
 
-    public void created(final String name) throws Exception {
+    public void created(final String name) {
         nodeInvalidator.notifyUpdate();
         timelineRegistrations.computeIfAbsent(name,
                 n -> timelineSync.registerTimelineChangeListener(n, cache::invalidate));
     }
 
-    public void removed(final String name) throws Exception {
+    public void removed(final String name) {
         cache.invalidate(name);
         Optional.ofNullable(timelineRegistrations.remove(name))
                 .ifPresent(TimelineSync.ListenerRegistration::cancel);
