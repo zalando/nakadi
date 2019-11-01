@@ -180,9 +180,7 @@ public class ZookeeperNodeInvalidator {
             while (!Thread.currentThread().isInterrupted()) {
                 final UpdateRequirement updateRequirement = getUpdatesRequiredCycled(recreateWatcher);
 
-                if (updateRequirement.needUpdate) {
-                    refreshCacheCycled();
-                }
+                refreshCacheCycled();
                 final boolean zkTriggered;
                 updateLock.lock();
                 try {
