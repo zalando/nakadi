@@ -3,6 +3,7 @@ package org.zalando.nakadi.cache;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
@@ -30,12 +31,12 @@ public class ZookeeperNodeInvalidatorTest extends BaseAT {
         invalidators.forEach(ZookeeperNodeInvalidator::start);
         try {
             // Wait 100 ms for caches to start
-            Thread.sleep(100);
+            ThreadUtils.sleep(200);
 
             // Notify about updates several times and ensure that all caches are updated.
-            for (int idx = 0; idx < 10; ++idx) {
+            for (int idx = 0; idx < 5; ++idx) {
                 invalidators.get(idx % invalidators.size()).notifyUpdate();
-                Thread.sleep(100);
+                ThreadUtils.sleep(200);
 
                 for (final Cache c : caches) {
                     Mockito.verify(c, Mockito.times(idx + 2)).refresh();
@@ -55,9 +56,12 @@ public class ZookeeperNodeInvalidatorTest extends BaseAT {
                 new ZookeeperNodeInvalidator(cache, CURATOR, "/xxx/yyy1", 100);
         invalidator.start();
         try {
-            Thread.sleep(500);
+            ThreadUtils.sleep(600);
+            // First - check that we are refreshing
             Mockito.verify(cache, Mockito.atLeast(4)).refresh();
-            Mockito.verify(cache, Mockito.atMost(6)).refresh();
+
+            // Check that it's not a cycled constant check
+            Mockito.verify(cache, Mockito.atMost(7)).refresh();
         } finally {
             invalidator.stop();
         }

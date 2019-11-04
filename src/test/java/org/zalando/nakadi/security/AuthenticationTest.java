@@ -76,7 +76,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = Application.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = Application.class, webEnvironment = WebEnvironment.RANDOM_PORT, value = {"management.port=0"})
 @DirtiesContext(classMode = AFTER_CLASS)
 @ActiveProfiles("test")
 public abstract class AuthenticationTest {

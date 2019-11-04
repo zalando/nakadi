@@ -85,15 +85,15 @@ public class SimpleCache
         // order of removal is important, btw.
         synchronized (versionedDataLock) {
             fullChangeList.getDeletedKeys().forEach(versionedData::remove);
-            fullChangeList.getModified().forEach(versionedData::remove);
+            fullChangeList.getModifiedKeys().forEach(versionedData::remove);
         }
         // Once registered data was removed - we can remove it from cache.
-        // It's find if versionedData will contain values, while activeList - not.
+        // It's fine if versionedData will contain values, while activeList - not.
         fullChangeList.getDeletedKeys().forEach(activeData::remove);
-        fullChangeList.getModified().forEach(activeData::remove);
+        fullChangeList.getModifiedKeys().forEach(activeData::remove);
 
         invalidationListeners.forEach(l -> fullChangeList.getDeletedKeys().forEach(l));
-        invalidationListeners.forEach(l -> fullChangeList.getModified().forEach(l));
+        invalidationListeners.forEach(l -> fullChangeList.getModifiedKeys().forEach(l));
     }
 
 }

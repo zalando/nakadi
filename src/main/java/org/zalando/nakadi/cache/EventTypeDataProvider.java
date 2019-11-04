@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
-public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataProvider.EventTypeProxy, String> {
+public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataProvider.VersionedEventType, String> {
 
     private final ObjectMapper objectMapper;
     private final EventTypeDbRepository eventTypeDbRepository;
@@ -27,14 +27,14 @@ public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataPro
     }
 
     @Override
-    public EventTypeProxy load(final String key) {
+    public VersionedEventType load(final String key) {
         return eventTypeDbRepository.findByNameO(key).map(this::convert).orElse(null);
     }
 
     @Override
-    public CacheChange getFullChangeList(final Collection<EventTypeProxy> snapshot) {
+    public CacheChange getFullChangeList(final Collection<VersionedEventType> snapshot) {
         final Map<String, String> currentValues = snapshot.stream()
-                .collect(Collectors.toMap(EventTypeProxy::getKey, EventTypeProxy::getVersion));
+                .collect(Collectors.toMap(VersionedEventType::getKey, VersionedEventType::getVersion));
 
         final List<EventTypeDbRepository.EtChange> changeset = eventTypeDbRepository.getChangeset(currentValues);
         return new CacheChange(
@@ -49,19 +49,19 @@ public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataPro
         );
     }
 
-    private EventTypeProxy convert(final EventType et) {
-        return new EventTypeProxy(
+    private VersionedEventType convert(final EventType et) {
+        return new VersionedEventType(
                 et,
                 JsonUtils.serializeDateTime(objectMapper, et.getUpdatedAt())
         );
     }
 
-    public static class EventTypeProxy implements VersionedEntity<String> {
+    public static class VersionedEventType implements VersionedEntity<String> {
 
         private final EventType eventType;
         private final String updatedAt;
 
-        private EventTypeProxy(final EventType eventType, final String updatedAt) {
+        private VersionedEventType(final EventType eventType, final String updatedAt) {
             this.eventType = eventType;
             this.updatedAt = updatedAt;
         }

@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.ThreadUtils;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -210,7 +211,7 @@ public class ZookeeperNodeInvalidator {
             } catch (RuntimeException ex) {
                 LOG.warn("Cache fails to refresh. Will wait for {} ms and try again until it succeeds.",
                         CALM_DOWN_PERIOD_MS, ex);
-                Thread.sleep(CALM_DOWN_PERIOD_MS);
+                ThreadUtils.sleep(CALM_DOWN_PERIOD_MS);
             }
         }
     }
@@ -226,7 +227,7 @@ public class ZookeeperNodeInvalidator {
                 LOG.error("Some kind of weird exception caught while checking zk node. " +
                         "Will sleep a {} ms retry", CALM_DOWN_PERIOD_MS, ex);
                 try {
-                    Thread.sleep(CALM_DOWN_PERIOD_MS);
+                    ThreadUtils.sleep(CALM_DOWN_PERIOD_MS);
                 } catch (InterruptedException ex2) {
                     throw ex2;
                 }

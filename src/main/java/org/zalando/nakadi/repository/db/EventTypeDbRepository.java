@@ -143,7 +143,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         if (listToGet.isEmpty()) {
             return Collections.emptyList();
         }
-        // Yes, we know that bat symbols are not allowed in both event type name and updated at, but still filtering
+        // Yes, we know that bad symbols are not allowed in both event type name and updated_at, but still filtering
         // for it.
         final String listToGetString = listToGet.entrySet().stream()
                 .filter(e -> !e.getValue().contains("'"))

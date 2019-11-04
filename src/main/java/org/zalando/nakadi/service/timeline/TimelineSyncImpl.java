@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
@@ -259,7 +260,7 @@ public class TimelineSyncImpl implements TimelineSync {
             if (expectedFinish.isPresent() && System.currentTimeMillis() > expectedFinish.get()) {
                 throw new RuntimeException("Timed out while updating version to " + versionToWait.get());
             }
-            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+            ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(1));
             runLocked(() -> {
                 try {
                     final List<String> nodes = zooKeeperHolder.get().getChildren().forPath(toZkPath("/nodes"));

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.cache;
 
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 public interface Cache<T> {
@@ -9,6 +10,7 @@ public interface Cache<T> {
      * @param key Key to get value for
      * @return value associated with a key or null, if nothing was found.
      */
+    @Nullable
     T get(String key);
 
     /**
@@ -20,14 +22,16 @@ public interface Cache<T> {
     void invalidate(String key);
 
     /**
-     * Adds listener for event type invalidation. It is guaranteed, that any event type that was loaded into cache
+     * Adds listener for key invalidation. It is guaranteed, that any event type that was loaded into cache
      * previously and changed afterwards or cleared up through {@code invalidate} call will go through this method.
+     *
      * @param listener Listener to add.
      */
     void addInvalidationListener(Consumer<String> listener);
 
     /**
      * Removes invalidation listener
+     *
      * @param listener Listener to remove
      */
     void removeInvalidationListener(Consumer<String> listener);

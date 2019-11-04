@@ -69,16 +69,16 @@ public class EventTypeCache {
         this.timelineRegistrations.clear();
     }
 
-    private CachedValue convertAndRegister(final EventTypeDataProvider.EventTypeProxy eventTypeProxy) {
+    private CachedValue convertAndRegister(final EventTypeDataProvider.VersionedEventType versionedEventType) {
         final List<Timeline> timelines =
-                timelineRepository.listTimelinesOrdered(eventTypeProxy.getEventType().getName());
+                timelineRepository.listTimelinesOrdered(versionedEventType.getEventType().getName());
 
-        timelineRegistrations.computeIfAbsent(eventTypeProxy.getKey(), n ->
+        timelineRegistrations.computeIfAbsent(versionedEventType.getKey(), n ->
                 timelineSync.registerTimelineChangeListener(n, cache::invalidate));
 
         return new CachedValue(
-                eventTypeProxy.getEventType(),
-                EventValidation.forType(eventTypeProxy.getEventType()),
+                versionedEventType.getEventType(),
+                EventValidation.forType(versionedEventType.getEventType()),
                 timelines
         );
     }

@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
@@ -93,7 +94,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), TimeUnit.SECONDS.toMillis(2), 100);
         final SubscriptionCursor toCommit = client.getBatches().get(0).getCursor();
         client.close(); // connection is closed, and stream as well
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(1));
         final int statusCode = commitCursors(
                 subscription.getId(),
                 Collections.singletonList(toCommit),
@@ -317,7 +318,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
 
         client.close();
-        Thread.sleep(2500);
+        ThreadUtils.sleep(2500);
 
         final TestStreamingClient anotherClient = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
@@ -527,7 +528,7 @@ public class HilaAT extends BaseAT {
     public void whenPatchThenCursorsAreInitializedToDefault() throws Exception {
         final EventType et = createEventType();
         publishEvents(et.getName(), 10, i -> "{\"foo\": \"bar\"}");
-        Thread.sleep(1000L);
+        ThreadUtils.sleep(1000L);
         final Subscription s = createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventType(et.getName())
                 .withStartFrom(END)

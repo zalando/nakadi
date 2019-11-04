@@ -1,5 +1,6 @@
 package org.zalando.nakadi.cache;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**
@@ -15,7 +16,7 @@ public interface CacheDataProvider<T extends VersionedEntity<V>, V extends Compa
      * @param key key to get data for.
      * @return Returns value to store for key.
      */
-    T load(String key);
+    @Nullable T load(String key);
 
     /**
      * Returns changes to the cache that are currently in database. The calls to this method are serialized.
