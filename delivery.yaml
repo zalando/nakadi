@@ -1,18 +1,22 @@
 version: "2017-09-20"
 pipeline:
-- id: build-push
+- id: test
   overlay: ci/java
   type: script
   commands:
-  - desc: Install dependencies
-    cmd: |
-      pip install docker-compose==1.24.1
   - desc: Checkstyle
     cmd: |
       ./gradlew checkstyle --stacktrace
   - desc: Test
     cmd: |
       ./gradlew testWithReport --stacktrace
+- id: acceptance-test-deploy
+  overlay: ci/java
+  type: script
+  commands:
+  - desc: Install dependencies
+    cmd: |
+      pip install docker-compose==1.24.1
   - desc: Acceptance Test
     cmd: |
       ./gradlew fullAcceptanceTest --stacktrace
