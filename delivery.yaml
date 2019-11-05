@@ -24,9 +24,10 @@ pipeline:
     cmd: |
       ./gradlew clean bootRepackage
       if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
-        IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
-      else
+        # Maybe it makes no sense to push PRs to this repo, as it won't be used
         IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-test:${CDP_BUILD_VERSION}"
+      else
+        IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
       fi
       docker build -t ${IMAGE} .
       docker push ${IMAGE}
