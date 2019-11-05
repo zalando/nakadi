@@ -6,7 +6,7 @@ pipeline:
   commands:
   - desc: Install dependencies
     cmd: |
-      pip3 install docker-compose=1.24.1
+      pip install docker-compose==1.24.1
   - desc: Checkstyle
     cmd: |
       ./gradlew checkstyle --stacktrace
