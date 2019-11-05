@@ -1,0 +1,14 @@
+version: "2017-09-20"
+pipeline: 
+- id: build
+  overlay: ci/java
+  type: script
+  commands:
+  - desc: build-push
+    if [[ $CDP_TARGET_BRANCH == master && ! $CDP_PULL_REQUEST_NUMBER ]]; then
+      IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+    else
+      IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-test:${CDP_BUILD_VERSION}"
+    fi
+    docker build -t ${IMAGE} .
+    docker push ${IMAGE}
