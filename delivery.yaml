@@ -4,18 +4,21 @@ pipeline:
   overlay: ci/java
   type: script
   commands:
-  - desc: checkstyle
+  - desc: Install dependencies
+    cmd: |
+      pip3 install docker-compose=1.24.1
+  - desc: Checkstyle
     cmd: |
       ./gradlew checkstyle --stacktrace
-  - desc: test
+  - desc: Test
     cmd: |
       ./gradlew testWithReport --stacktrace
-  - desc: acceptance-test
+  - desc: Acceptance Test
     cmd: |
       ./gradlew fullAcceptanceTest --stacktrace
-  - desc: push
+  - desc: Push to repo
     cmd: |
-      ./gradlew clen bootRepackage
+      ./gradlew clean bootRepackage
       if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
         IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
       else
