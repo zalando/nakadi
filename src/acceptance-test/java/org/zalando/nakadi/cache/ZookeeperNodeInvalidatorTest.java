@@ -1,19 +1,35 @@
 package org.zalando.nakadi.cache;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.ThreadUtils;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ZookeeperNodeInvalidatorTest extends BaseAT {
     private static final ZooKeeperHolder CURATOR = ZookeeperTestUtils.createZkHolder(ZOOKEEPER_URL);
+
+    private static void waitForNCachesRefreshes(
+            final int expectedRefreshes, final boolean strict, final Collection<Cache> caches) {
+        TestUtils.waitFor(() -> {
+            for (final Cache c : caches) {
+                if (strict) {
+                    Mockito.verify(c, Mockito.times(expectedRefreshes)).refresh();
+                } else {
+                    Mockito.verify(c, Mockito.atLeast(expectedRefreshes)).refresh();
+                }
+            }
+        }, TimeUnit.MINUTES.toMillis(10), 50); // Every 50 ms to check.
+    }
 
     @Test(timeout = 2000)
     public void cacheUpdateTriggeredOnNodeChange() throws InterruptedException {
@@ -31,16 +47,13 @@ public class ZookeeperNodeInvalidatorTest extends BaseAT {
         invalidators.forEach(ZookeeperNodeInvalidator::start);
         try {
             // Wait 100 ms for caches to start
-            ThreadUtils.sleep(200);
+            waitForNCachesRefreshes(1, true, caches);
 
             // Notify about updates several times and ensure that all caches are updated.
             for (int idx = 0; idx < 5; ++idx) {
                 invalidators.get(idx % invalidators.size()).notifyUpdate();
-                ThreadUtils.sleep(200);
 
-                for (final Cache c : caches) {
-                    Mockito.verify(c, Mockito.times(idx + 2)).refresh();
-                }
+                waitForNCachesRefreshes(idx + 2, true, caches);
             }
 
         } finally {
@@ -52,19 +65,19 @@ public class ZookeeperNodeInvalidatorTest extends BaseAT {
     public void cachePeriodicUpdateTriggered() throws InterruptedException {
         final Cache cache = Mockito.mock(Cache.class);
 
+        final long forceRefreshMs = 100;
         final ZookeeperNodeInvalidator invalidator =
-                new ZookeeperNodeInvalidator(cache, CURATOR, "/xxx/yyy1", 100);
+                new ZookeeperNodeInvalidator(cache, CURATOR, "/xxx/yyy1", forceRefreshMs);
         invalidator.start();
         try {
-            ThreadUtils.sleep(600);
-            // First - check that we are refreshing
-            Mockito.verify(cache, Mockito.atLeast(4)).refresh();
+            final long startedAt = System.currentTimeMillis();
+            waitForNCachesRefreshes(6, false, Collections.singleton(cache));
+            final long allRefreshesFinished = System.currentTimeMillis();
 
-            // Check that it's not a cycled constant check
-            Mockito.verify(cache, Mockito.atMost(7)).refresh();
+            // Wea are verifying that refreshes are triggered not one after another, but with proper delay
+            Assert.assertTrue((allRefreshesFinished - startedAt) >= (4 * forceRefreshMs));
         } finally {
             invalidator.stop();
         }
     }
-
 }
