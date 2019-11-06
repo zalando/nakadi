@@ -10,7 +10,7 @@ pipeline:
   - desc: Test
     cmd: |
       ./gradlew testWithReport --stacktrace
-- id: acceptance-test-deploy
+- id: acceptance-test
   overlay: ci/java
   type: script
   commands:
@@ -20,14 +20,15 @@ pipeline:
   - desc: Acceptance Test
     cmd: |
       ./gradlew fullAcceptanceTest --stacktrace
-  - desc: Push to repo
+- id: build-push
+  overlay: ci/java
+  type: script
+  when: 
+  - branch: master
+  commands:
+  - desc: Build and push to repo
     cmd: |
       ./gradlew clean bootRepackage
-      if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
-        # Maybe it makes no sense to push PRs to this repo, as it won't be used
-        IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-test:${CDP_BUILD_VERSION}"
-      else
-        IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
-      fi
+      IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
       docker build -t ${IMAGE} .
       docker push ${IMAGE}
