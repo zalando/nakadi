@@ -821,6 +821,44 @@ paths:
           description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - repartitioning-api
+      description: |
+        Repartitioning given evnet type to the number of provided paritions.
+
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: partitions_number
+          in: body
+          schema:
+            $ref: '#/definitions/PartitionsNumber'
+      responses:
+        '204':
+          description: Repartitioning was successful
+        '422':
+          description: |
+            If asked number of parititons is more than maximum for the event type, or paritions number is
+            smaller than current number of partitions.
+          schema:
+            $ref: '#/definitions/Problem'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/partitions/{partition}:
     get:

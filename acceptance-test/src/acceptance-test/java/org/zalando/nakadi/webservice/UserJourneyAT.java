@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
@@ -21,6 +22,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.PartitionsNumberView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -56,7 +58,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
-    private String eventTypeRepartitionUpdate;
 
     public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
                                                   final String owningApp)
@@ -72,8 +73,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
-        eventTypeRepartitionUpdate = getEventTypeJsonFromFile("sample-event-type-repartition.json",
-                eventTypeName, owningApp);
         createEventType();
     }
 
@@ -234,15 +233,15 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     @Test(timeout = 3000)
-    public void testRepartition() {
+    public void testRepartition() throws JsonProcessingException {
         //repartition Event Type
         jsonRequestSpec()
-                .body(eventTypeRepartitionUpdate)
+                .body(MAPPER.writeValueAsString(new PartitionsNumberView(3)))
                 .when()
-                .put("/event-types/" + eventTypeName)
+                .put("/event-types/" + eventTypeName + "/partitions")
                 .then()
                 .body(equalTo(""))
-                .statusCode(OK.value());
+                .statusCode(NO_CONTENT.value());
 
         // check number of partitions is 3
         jsonRequestSpec()

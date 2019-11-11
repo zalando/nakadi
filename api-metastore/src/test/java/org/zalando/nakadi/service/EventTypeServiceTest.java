@@ -88,7 +88,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(RepartitioningService.class), eventTypeCache, schemaService);
+                mock(RepartitioningService.class), eventTypeCache, schemaService, adminService);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

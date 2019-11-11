@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.apache.http.HttpStatus;
@@ -26,6 +25,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.PartitionsNumberView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.TimelineView;
 
@@ -37,7 +37,10 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 
 public class NakadiTestUtils {
@@ -51,16 +54,16 @@ public class NakadiTestUtils {
     }
 
     public static void createEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
-        RestAssured.given()
+        given()
                 .body(MAPPER.writeValueAsString(eventType))
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .post("/event-types").print();
     }
 
     public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
-        RestAssured.given()
+        given()
                 .body(MAPPER.writeValueAsString(eventType))
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .put("/event-types/" + eventType.getName());
     }
 
@@ -104,9 +107,9 @@ public class NakadiTestUtils {
 
     public static void processEvents(final String path, final int count, final IntFunction<String> generator) {
         final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
-        RestAssured.given()
+        given()
                 .body("[" + events + "]")
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .post(path);
     }
 
@@ -116,28 +119,28 @@ public class NakadiTestUtils {
         defaultStatistic.setReadParallelism(partitionsNumber);
         defaultStatistic.setWriteParallelism(partitionsNumber);
         eventType.setDefaultStatistic(defaultStatistic);
-        final int statusCode = RestAssured.given()
-                .body(MAPPER.writeValueAsString(eventType))
-                .contentType(ContentType.JSON)
-                .put(format("/event-types/{0}", eventType.getName()))
+        final int statusCode = given()
+                .body(MAPPER.writeValueAsString(new PartitionsNumberView(partitionsNumber)))
+                .contentType(JSON)
+                .put(format("/event-types/{0}/partitions", eventType.getName()))
                 .getStatusCode();
-        if (statusCode != 200) {
+        if (statusCode != NO_CONTENT.value()) {
             throw new RuntimeException("Failed to repartition event type");
         }
     }
 
     public static void createTimeline(final String eventType) {
-        RestAssured.given()
+        given()
                 .body("{\"storage_id\": \"default\"}")
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .post(format("/event-types/{0}/timelines", eventType))
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);
     }
 
     public static List<Map> listTimelines(final String eventType) throws IOException {
-        final Response response = RestAssured.given()
-                .accept(ContentType.JSON)
+        final Response response = given()
+                .accept(JSON)
                 .get(format("/event-types/{0}/timelines", eventType));
         final String data = response.print();
         final TypeReference<List<Map>> typeReference = new TypeReference<List<Map>>() {
@@ -146,13 +149,13 @@ public class NakadiTestUtils {
     }
 
     public static void deleteTimeline(final String eventType) throws IOException {
-        final Response response = RestAssured.given()
-                .accept(ContentType.JSON)
+        final Response response = given()
+                .accept(JSON)
                 .get(format("/event-types/{0}/timelines", eventType));
         final String data = response.print();
         final TimelineView[] timelines = MAPPER.readerFor(TimelineView[].class).readValue(data);
         Assert.assertEquals(1, timelines.length);
-        RestAssured.given()
+        given()
                 .delete(format("/event-types/{0}/timelines/{1}", eventType, timelines[0].getId().toString()))
                 .then()
                 .statusCode(HttpStatus.SC_OK);
@@ -193,9 +196,9 @@ public class NakadiTestUtils {
                     event.put("foo", entry.getKey());
                     return event;
                 }).collect(Collectors.toList()));
-        RestAssured.given()
+        given()
                 .body(jsonArray.toString())
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
 
     }
@@ -216,21 +219,21 @@ public class NakadiTestUtils {
     }
 
     public static Subscription createSubscription(final SubscriptionBase subscription) throws IOException {
-        return createSubscription(RestAssured.given(), subscription);
+        return createSubscription(given(), subscription);
     }
 
     public static Subscription createSubscription(final RequestSpecification requestSpec,
                                                   final SubscriptionBase subscription) throws IOException {
         final Response response = requestSpec
                 .body(MAPPER.writeValueAsString(subscription))
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .post("/subscriptions");
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
     public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors,
                                     final String streamId) throws JsonProcessingException {
-        return commitCursors(RestAssured.given(), subscriptionId, cursors, streamId);
+        return commitCursors(given(), subscriptionId, cursors, streamId);
     }
 
     public static int commitCursors(final RequestSpecification requestSpec, final String subscriptionId,
@@ -238,7 +241,7 @@ public class NakadiTestUtils {
             throws JsonProcessingException {
         return requestSpec
                 .body(MAPPER.writeValueAsString(new ItemsWrapper<>(cursors)))
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .header("X-Nakadi-StreamId", streamId)
                 .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
@@ -246,22 +249,22 @@ public class NakadiTestUtils {
 
     public static Response getSubscriptionStat(final Subscription subscription)
             throws IOException {
-        return RestAssured.given()
-                .contentType(ContentType.JSON)
+        return given()
+                .contentType(JSON)
                 .get("/subscriptions/{subscription_id}/stats", subscription.getId());
     }
 
     public static ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
-        final Response response = RestAssured.given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
+        final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
         return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
         });
     }
 
     public static void postEvents(final String eventTypeName, final String... events) {
         final String batch = "[" + String.join(",", events) + "]";
-        RestAssured.given()
-                .contentType(ContentType.JSON)
+        given()
+                .contentType(JSON)
                 .body(batch)
                 .when()
                 .post("/event-types/" + eventTypeName + "/events")
@@ -270,8 +273,8 @@ public class NakadiTestUtils {
     }
 
     public static void switchTimelineDefaultStorage(final EventType eventType) {
-        RestAssured.given()
-                .contentType(ContentType.JSON)
+        given()
+                .contentType(JSON)
                 .body(new JSONObject().put("storage_id", "default").toString())
                 .post("event-types/{et_name}/timelines", eventType.getName())
                 .then()
@@ -279,7 +282,7 @@ public class NakadiTestUtils {
     }
 
     public static EventType getEventType(final String name) throws IOException {
-        return MAPPER.readValue(RestAssured.given()
+        return MAPPER.readValue(given()
                 .header("accept", "application/json")
                 .get("/event-types/{name}", name)
                 .getBody().asString(), EventType.class);
