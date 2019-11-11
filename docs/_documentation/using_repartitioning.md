@@ -7,9 +7,18 @@ position: 12
 
 Throughput of event type is defined by default statistic, which basically sets number of partitions for the event
  type (although it does not represent it clearly). Number of partitions is a scaling unit for Nakadi publishing and
-  consumption. In order to change number of partitions one have to repartition event type by changing
-   read_parallelism and write_parallelism. Nakadi takes for repartitioning the maximum of read_parallelism and
-    write_parallelism.
+  consumption. In order to change number of partitions one have to perform the following call, which you can read
+   about in the ["API Reference"](#nakadi-event-bus-api). At the moment the request can be performed only by Nakadi
+    admins.
+```sh
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types/order_received/partitions -d '[
+{
+    "partitions_number": 3
+}
+
+
+HTTP/1.1 204 OK
+```
 
 ### Important caveats
 
