@@ -1395,6 +1395,23 @@ paths:
                 type: number
                 format: int32
                 default: 30
+              batch_timespan:
+                description: |
+                  Useful for batching events based on their received_at timestamp. For example, if `batch_timespan` is 5
+                  seconds then Nakadi would flush a batch as soon as the difference in time between the first and the
+                  last event in the batch exceeds 5 seconds. It waits for an event outside of the window to signal the
+                  closure of a batch.
+
+                  This is different from `batch_flush_timeout` as it takes into consideration the `received_at`
+                  timestamp of events and not the time when the stream was open. This becomes clear considering there is
+                  an accumulated backlog of more than 5 seconds. Using `batch_timespan` would cause a batch to be
+                  flushed immediately, while `batch_flush_timeout` would wait for 5 seconds and flush the backglog plus
+                  the events that might have arrived since the stream was open.
+
+                  If 0 then this criteria is not used to close batches.
+                type: number
+                format: int32
+                default: 0
               stream_timeout:
                 description: |
                   Maximum time in seconds a stream will live before connection is closed by the server.
