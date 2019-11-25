@@ -6,6 +6,7 @@ import io.opentracing.propagation.TextMapExtractAdapter;
 import io.opentracing.propagation.TextMapInjectAdapter;
 import io.opentracing.util.GlobalTracer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -111,9 +112,9 @@ public class TracingFilter extends OncePerRequestFilter {
                     .setTag("http.url", request.getRequestURI() +
                             Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
                     .setTag("http.header.content_encoding",
-                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                            Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING)).orElse("-"))
                     .setTag("http.header.accept_encoding",
-                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                          Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING)).orElse("-"))
                     .setTag("http.header.user_agent",
                             Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
             request.setAttribute("span", baseSpan);
