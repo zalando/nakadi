@@ -64,6 +64,9 @@ public class KafkaLocationManager {
             if (createWatcher) {
                 LOG.info("Creating watcher on brokers change");
                 childrenBuilder.usingWatcher((Watcher) event -> {
+                    if (event.getType() == Watcher.Event.EventType.None) {
+                        return;
+                    }
                     this.scheduledExecutor.schedule(() -> updateBootstrapServersSafe(true), 0, TimeUnit.MILLISECONDS);
                     LOG.info("Watcher event on brokers change received: {}", event.toString());
                 });
