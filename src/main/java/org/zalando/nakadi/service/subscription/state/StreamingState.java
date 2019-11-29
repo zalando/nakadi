@@ -567,23 +567,18 @@ class StreamingState extends State {
                 Arrays.deepToString(newAssignment.toArray()));
 
         if (!currentAssignment.equals(newAssignment)) {
-            try {
-                final Map<EventTypePartition, NakadiCursor> beforeFirst = getBeforeFirstCursors(newAssignment);
-                final List<NakadiCursor> cursors = newAssignment.stream()
-                        .map(pk -> {
-                            final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
+            final Map<EventTypePartition, NakadiCursor> beforeFirst = getBeforeFirstCursors(newAssignment);
+            final List<NakadiCursor> cursors = newAssignment.stream()
+                    .map(pk -> {
+                        final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
 
-                            // Checks that current cursor is still available in storage. Otherwise reset to oldest
-                            // available offset for the partition
-                            offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
-                            return offsets.get(pk).getSentOffset();
-                        })
-                        .collect(Collectors.toList());
-                eventConsumer.reassign(cursors);
-            } catch (InvalidCursorException ex) {
-                getLog().error("Failed to reassign updated cursors for subscription", ex);
-                switchState(new CleanupState(ex));
-            }
+                        // Checks that current cursor is still available in storage. Otherwise reset to oldest
+                        // available offset for the partition
+                        offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
+                        return offsets.get(pk).getSentOffset();
+                    })
+                    .collect(Collectors.toList());
+            eventConsumer.reassign(cursors);
         }
     }
 

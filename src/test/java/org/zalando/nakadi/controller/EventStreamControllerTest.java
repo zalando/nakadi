@@ -290,8 +290,8 @@ public class EventStreamControllerTest {
                 "[{\"partition\":\"0\",\"offset\":\"00000000000000000\"}]");
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED,
-                "offset 000000000000000000 for partition 0 is unavailable. " +
-                        "Patch partition offset for subscription with available offset.");
+                "offset 000000000000000000 for partition 0 is unavailable as retention time " +
+                        "of data elapsed. PATCH partition offset with valid and available offset");
         assertThat(responseToString(responseBody), TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
