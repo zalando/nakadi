@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
@@ -184,7 +185,7 @@ public class TestStreamingClient implements Runnable {
                     oldIdx += 1;
                 }
                 try {
-                    Thread.sleep(100);
+                    ThreadUtils.sleep(100);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }

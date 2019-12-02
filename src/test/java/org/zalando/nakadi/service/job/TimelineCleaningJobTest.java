@@ -80,7 +80,7 @@ public class TimelineCleaningJobTest {
     }
 
     @Test
-    public void whenCleanupTimelinesAndCacheFailedToUpdateThenTimelineStateIsReverted() throws Exception {
+    public void whenCleanupTimelinesAndCacheFailedToUpdateThenTimelineStateIsReverted() {
         final Timeline t1 = createTimeline("et1", "topic1");
 
         final ImmutableList<Timeline> expiredTimelines = ImmutableList.of(t1);
@@ -89,7 +89,7 @@ public class TimelineCleaningJobTest {
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(timelineService.getTopicRepository(eq(t1))).thenReturn(topicRepository);
 
-        doThrow(new Exception()).when(eventTypeCache).updated(any());
+        doThrow(new RuntimeException()).when(eventTypeCache).updated(any());
 
         timelineCleanupJob.cleanupTimelines();
 

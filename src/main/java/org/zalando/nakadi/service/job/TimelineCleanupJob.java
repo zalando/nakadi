@@ -15,6 +15,7 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.ThreadUtils;
 
 import java.util.List;
 
@@ -68,7 +69,7 @@ public class TimelineCleanupJob {
         for (int i = 0; i < expired.size(); ++i) {
             if (i != 0 && deletionDelayMs > 0) {
                 try {
-                    Thread.sleep(deletionDelayMs);
+                    ThreadUtils.sleep(deletionDelayMs);
                 } catch (InterruptedException e) {
                     LOG.warn("Timeline deletion thread was interrupted", e);
                     Thread.currentThread().interrupt();

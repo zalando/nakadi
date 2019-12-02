@@ -10,6 +10,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.State;
+import org.zalando.nakadi.util.ThreadUtils;
 
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -149,7 +150,7 @@ public class StreamingContextTest {
         t.join(1000);
 
         new Thread(() -> ctxSpy.onNodeShutdown()).start();
-        Thread.sleep(2000);
+        ThreadUtils.sleep(2000);
 
         Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
         Mockito.verify(ctxSpy).unregisterSession();

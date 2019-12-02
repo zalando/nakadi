@@ -1,13 +1,11 @@
 package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.http.ContentType;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -22,8 +20,7 @@ import static org.hamcrest.Matchers.hasItems;
 public class SettingsControllerAT extends BaseAT {
 
     private static final String BLACKLIST_URL = "/settings/blacklist";
-    private static final String ADMINS_URL="/settings/admins";
-    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final String ADMINS_URL = "/settings/admins";
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
     @Test

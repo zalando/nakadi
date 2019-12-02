@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import org.junit.Test;
+import org.zalando.nakadi.util.ThreadUtils;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -16,7 +17,7 @@ public class IdleStreamWatcherTest {
         idleStreamWatcher.idleStart();
         assertThat(idleStreamWatcher.isIdleForToolLong(), is(false)); // is idle not long enough
 
-        Thread.sleep(120);
+        ThreadUtils.sleep(120);
         assertThat(idleStreamWatcher.isIdleForToolLong(), is(true)); // is idle for too long
 
         idleStreamWatcher.idleEnd();

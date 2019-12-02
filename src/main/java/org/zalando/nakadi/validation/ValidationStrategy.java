@@ -13,6 +13,11 @@ public abstract class ValidationStrategy {
 
     public abstract EventValidator materialize(EventType eventType, ValidationStrategyConfiguration vsc);
 
+    static {
+        register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(new JsonSchemaEnrichment()));
+        register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
+    }
+
     public static final void register(final String name, final ValidationStrategy strategy) {
         STRATEGIES.put(name, strategy);
     }

@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.util.ThreadUtils;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -83,7 +84,7 @@ public class TopicRepositoryHolderTest {
             }).start();
         }
         allRequested.await();
-        Thread.sleep(100L);
+        ThreadUtils.sleep(100L);
         Stream.of(repos).forEach(Assert::assertNull);
         allowCreation.countDown();
         allCreated.await();
