@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -68,23 +67,18 @@ public class EventPublishingController {
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
-                                    final NativeWebRequest request,
+                                    final HttpServletRequest request,
                                     final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
-        final HttpServletRequest httpServletRequest = request.getNativeRequest(HttpServletRequest.class);
-        final Span publishingSpan = TracingService.extractSpan(httpServletRequest, "publish_events")
-                .setTag("event_type", eventTypeName)
-                .setTag("slo_bucket", getSLOBucket(httpServletRequest.getContentLength()))
-                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
         try {
             final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, eventTypeMetrics, client, publishingSpan);
+                    eventTypeName, eventsAsString, eventTypeMetrics, client, request);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -96,27 +90,24 @@ public class EventPublishingController {
         }
     }
 
-    private String getSLOBucket(final long contentLength) {
-        if (contentLength > 50000 || contentLength == 0) {
-            return ">50K";
-        } else if (contentLength < 5000) {
-            return "<5K";
-        }
-        return "5K-50K";
-    }
-
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client, final Span parentSpan)
+                                             final Client client,
+                                             final HttpServletRequest request)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException, InternalNakadiException,
             EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
         try {
-            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, parentSpan);
+            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
+            final Span publishingSpan = TracingService.extractSpan(request, "publish_events")
+                    .setTag("event_type", eventTypeName)
+                    .setTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
+                    .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, publishingSpan);
 
             final int eventCount = result.getResponses().size();
-            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
