@@ -21,6 +21,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
+import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -33,6 +34,8 @@ import java.util.Date;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.service.subscription.StreamParametersTest.createStreamParameters;
@@ -46,6 +49,7 @@ public class StreamingStateTest {
     private TimelineService timelineService;
     private Subscription subscription;
     private CursorConverter cursorConverter;
+    private SubscriptionOutput out;
 
     @Before
     public void prepareMocks() throws Exception {
@@ -60,6 +64,9 @@ public class StreamingStateTest {
         when(contextMock.getSubscription()).thenReturn(subscription);
         timelineService = mock(TimelineService.class);
         when(contextMock.getTimelineService()).thenReturn(timelineService);
+        out = mock(SubscriptionOutput.class);
+        when(contextMock.getOut()).thenReturn(out);
+        doNothing().when(out).onInitialized(anyString());
 
         final MetricRegistry metricRegistry = mock(MetricRegistry.class);
         when(metricRegistry.register(any(), any())).thenReturn(null);

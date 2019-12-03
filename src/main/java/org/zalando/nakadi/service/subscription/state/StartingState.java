@@ -21,7 +21,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
@@ -41,7 +40,7 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
             return;
         }
-        getZk().runLocked(this::initializeStream);
+        getZk().runLocked(this::registerSessionAndStartStreaming);
     }
 
     /**
@@ -53,7 +52,7 @@ public class StartingState extends State {
      * <p>
      * 4. Switches to streaming state.
      */
-    private void initializeStream() {
+    private void registerSessionAndStartStreaming() {
         final boolean subscriptionJustInitialized = initializeSubscriptionLocked(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
@@ -105,14 +104,7 @@ public class StartingState extends State {
             switchState(new CleanupState(ex));
             return;
         }
-
-        try {
-            getOut().onInitialized(getSessionId());
-            switchState(new StreamingState());
-        } catch (final IOException e) {
-            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
-            switchState(new CleanupState(e));
-        }
+        switchState(new StreamingState());
     }
 
     public static boolean initializeSubscriptionLocked(

@@ -66,6 +66,7 @@ class StreamingState extends State {
     private Closeable cursorResetSubscription;
     private IdleStreamWatcher idleStreamWatcher;
     private boolean commitTimeoutReached = false;
+    private boolean streamInitialized = false;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -89,10 +90,10 @@ class StreamingState extends State {
                 .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
 
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
-
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        recreateTopologySubscription();
+        createTopologySubscriptionAndInitializeStream();
+
         addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
@@ -118,6 +119,17 @@ class StreamingState extends State {
         }
         topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
         reactOnTopologyChange();
+    }
+
+    private void createTopologySubscriptionAndInitializeStream() {
+        recreateTopologySubscription();
+        try {
+            getOut().onInitialized(getSessionId());
+            streamInitialized = true;
+        } catch (final IOException e) {
+            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
+            switchState(new CleanupState(e));
+        }
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -429,6 +441,9 @@ class StreamingState extends State {
                 .toArray(Partition[]::new);
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         trackIdleness(topology);
+        if (!streamInitialized) {
+            refreshTopologyUnlocked(assignedPartitions);
+        }
     }
 
     void recheckTopology() {

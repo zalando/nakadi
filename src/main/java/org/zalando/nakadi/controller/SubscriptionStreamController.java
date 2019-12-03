@@ -40,7 +40,6 @@ import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
-import org.zalando.problem.Status;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -58,6 +57,7 @@ import static org.zalando.problem.Status.CONFLICT;
 import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.PRECONDITION_FAILED;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
@@ -123,6 +123,8 @@ public class SubscriptionStreamController {
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
             this.exceptionProblem.put(ConflictException.class,
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
+            this.exceptionProblem.put(InvalidCursorException.class,
+                    (ex) -> Problem.valueOf(PRECONDITION_FAILED, ex.getMessage()));
         }
 
         @Override
@@ -139,9 +141,15 @@ public class SubscriptionStreamController {
         @Override
         public void onException(final Exception ex) {
             LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
-            if (!headersSent && !isHandledAsClientException(ex)) {
+            if (!headersSent) {
                 headersSent = true;
-                writeProblemAndStatusToResponse(ex, SERVICE_UNAVAILABLE, "Failed to continue streaming.");
+                try {
+                    writeProblemResponse(response, out, exceptionProblem.getOrDefault(ex.getClass(),
+                            (e) -> Problem.valueOf(SERVICE_UNAVAILABLE, "Failed to continue streaming")).apply(ex));
+                    out.flush();
+                } catch (final IOException e) {
+                    LOG.error("Failed to write exception to response", e);
+                }
             } else {
                 LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
             }
@@ -150,25 +158,6 @@ public class SubscriptionStreamController {
         @Override
         public OutputStream getOutputStream() {
             return this.out;
-        }
-
-        private boolean isHandledAsClientException(final Exception exception) {
-            if (exception instanceof InvalidCursorException) {
-                writeProblemAndStatusToResponse(exception, UNPROCESSABLE_ENTITY, exception.getMessage());
-                return true;
-            }
-            return false;
-        }
-
-        private void writeProblemAndStatusToResponse(final Exception exception, final Status status,
-                                                     final String detail) {
-            try {
-                writeProblemResponse(response, out, exceptionProblem.getOrDefault(exception.getClass(),
-                        (e) -> Problem.valueOf(status, detail)).apply(exception));
-                out.flush();
-            } catch (final IOException e) {
-                LOG.error("Failed to write exception to response", e);
-            }
         }
 
     }
