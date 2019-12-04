@@ -4,13 +4,17 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.mockito.Mockito;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -36,6 +40,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.service.subscription.StreamParametersTest.createStreamParameters;
@@ -118,6 +123,47 @@ public class StreamingStateTest {
         Mockito.verify(topologySubscription, Mockito.times(1)).close();
         // verify that no new locks created.
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
+    }
+
+    @Test
+    public void ensureInitializationFailsWhenInvalidCursorsUsed() {
+        final EventTypePartition pk = new EventTypePartition("t", "0");
+        final Partition[] partitions = new Partition[]{new Partition(
+                pk.getEventType(), pk.getPartition(), SESSION_ID, null, Partition.State.ASSIGNED)};
+
+        // mock topology
+        final ZkSubscription topologySubscription = mock(ZkSubscription.class);
+        Mockito.when(topologySubscription.getData())
+                .thenReturn(new ZkSubscriptionClient.Topology(partitions, null, 1));
+        Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
+
+        // prepare mocks for assigned partitions
+        final Storage storage = mock(Storage.class);
+        when(storage.getType()).thenReturn(Storage.Type.KAFKA);
+        final Timeline timeline = new Timeline("t", 0, storage, "t", new Date());
+        final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
+
+        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(anyCursor);
+        when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
+        final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
+        when(consumer.getAssignment()).thenReturn(Collections.emptySet());
+
+        // Throw exception when reassigning partitions to consumer
+        doThrow(new InvalidCursorException(CursorError.UNAVAILABLE, anyCursor)).when(consumer).reassign(any());
+        when(timelineService.createEventConsumer(any())).thenReturn(consumer);
+        when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
+
+        // mock beforeFirstCursor
+        final TopicRepository topicRepository = mock(TopicRepository.class);
+        when(timelineService.getTopicRepository(eq(timeline))).thenReturn(topicRepository);
+        final PartitionStatistics stats = mock(PartitionStatistics.class);
+        final NakadiCursor beforeFirstCursor = NakadiCursor.of(timeline, "0", "0");
+        when(stats.getBeforeFirst()).thenReturn(beforeFirstCursor);
+        when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(stats));
+
+        // enter state and expect InvalidCursorException
+        assertThrows(InvalidCursorException.class, () -> state.onEnter());
+        assertFalse(state.isStreamInitialized());
     }
 
     @Test

@@ -121,6 +121,10 @@ class StreamingState extends State {
         reactOnTopologyChange();
     }
 
+    protected boolean isStreamInitialized() {
+        return streamInitialized;
+    }
+
     private void createTopologySubscriptionAndInitializeStream() {
         recreateTopologySubscription();
         try {
@@ -439,11 +443,12 @@ class StreamingState extends State {
         final Partition[] assignedPartitions = Stream.of(topology.getPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .toArray(Partition[]::new);
-        addTask(() -> refreshTopologyUnlocked(assignedPartitions));
-        trackIdleness(topology);
-        if (!streamInitialized) {
+        if (!isStreamInitialized()) {
             refreshTopologyUnlocked(assignedPartitions);
+        } else {
+            addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         }
+        trackIdleness(topology);
     }
 
     void recheckTopology() {
