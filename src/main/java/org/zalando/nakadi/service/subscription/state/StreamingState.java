@@ -66,7 +66,7 @@ class StreamingState extends State {
     private Closeable cursorResetSubscription;
     private IdleStreamWatcher idleStreamWatcher;
     private boolean commitTimeoutReached = false;
-    private boolean streamInitialized = false;
+    private boolean isRefreshedDuringInitialization = false;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -92,8 +92,8 @@ class StreamingState extends State {
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
-        createTopologySubscriptionAndInitializeStream();
-
+        recreateTopologySubscription();
+        addTask(this::initializeStream);
         addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
@@ -121,15 +121,9 @@ class StreamingState extends State {
         reactOnTopologyChange();
     }
 
-    protected boolean isStreamInitialized() {
-        return streamInitialized;
-    }
-
-    private void createTopologySubscriptionAndInitializeStream() {
-        recreateTopologySubscription();
+    private void initializeStream() {
         try {
             getOut().onInitialized(getSessionId());
-            streamInitialized = true;
         } catch (final IOException e) {
             getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
@@ -443,12 +437,13 @@ class StreamingState extends State {
         final Partition[] assignedPartitions = Stream.of(topology.getPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .toArray(Partition[]::new);
-        if (!isStreamInitialized()) {
+        trackIdleness(topology);
+        if (!isRefreshedDuringInitialization) {
             refreshTopologyUnlocked(assignedPartitions);
+            isRefreshedDuringInitialization = true;
         } else {
             addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         }
-        trackIdleness(topology);
     }
 
     void recheckTopology() {

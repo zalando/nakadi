@@ -5,7 +5,6 @@ import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.CursorError;
@@ -163,7 +162,6 @@ public class StreamingStateTest {
 
         // enter state and expect InvalidCursorException
         assertThrows(InvalidCursorException.class, () -> state.onEnter());
-        assertFalse(state.isStreamInitialized());
     }
 
     @Test
