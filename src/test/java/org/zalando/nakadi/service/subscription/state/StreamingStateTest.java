@@ -161,7 +161,8 @@ public class StreamingStateTest {
         when(topicRepository.loadTopicStatistics(any())).thenReturn(Lists.newArrayList(stats));
 
         // enter state and expect InvalidCursorException
-        assertThrows(InvalidCursorException.class, () -> state.onEnter());
+        state.onEnter();
+        assertThrows(InvalidCursorException.class, () -> state.refreshTopologyUnlocked(partitions));
     }
 
     @Test
