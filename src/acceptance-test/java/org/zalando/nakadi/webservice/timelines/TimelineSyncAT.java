@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.timeline.TimelineSyncImpl;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -32,7 +33,7 @@ public class TimelineSyncAT extends BaseAT {
     private UUIDGenerator uuidGenerator;
     private ZooKeeperHolder zookeeperHolder;
 
-    private TimelineSyncImpl createTimeline() throws InterruptedException {
+    private TimelineSyncImpl createTimelineSync() throws InterruptedException {
         if (null == uuidGenerator) {
             uuidGenerator = new UUIDGenerator();
         }
@@ -58,7 +59,7 @@ public class TimelineSyncAT extends BaseAT {
         delayedRunsExecutor = new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(300L);
+                    ThreadUtils.sleep(300L);
                     synchronized (DELAYED_RUNS) {
                         DELAYED_RUNS.forEach(Runnable::run);
                     }
@@ -80,7 +81,7 @@ public class TimelineSyncAT extends BaseAT {
 
     @Test
     public void testNodeInformationWrittenOnStart() throws Exception {
-        final TimelineSyncImpl sync = createTimeline();
+        final TimelineSyncImpl sync = createTimelineSync();
         final String currentVersion = new String(CURATOR.getData().forPath("/nakadi/timelines/version"));
         Assert.assertEquals(currentVersion,
                 new String(CURATOR.getData().forPath("/nakadi/timelines/nodes/" + sync.getNodeId())));
@@ -88,8 +89,8 @@ public class TimelineSyncAT extends BaseAT {
 
     @Test
     public void testTimelineUpdateWaitsForActivePublish() throws InterruptedException, IOException, TimeoutException {
-        final TimelineSync t1 = createTimeline();
-        final TimelineSync t2 = createTimeline();
+        final TimelineSync t1 = createTimelineSync();
+        final TimelineSync t2 = createTimelineSync();
         final String eventType = UUID.randomUUID().toString();
         final AtomicBoolean updated = new AtomicBoolean(false);
 
@@ -103,7 +104,7 @@ public class TimelineSyncAT extends BaseAT {
                 }
             }, "timeline_update").start();
             // Wait a little bit for thread to start timeline update
-            Thread.sleep(TimeUnit.SECONDS.toMillis(3));
+            ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(3));
             Assert.assertEquals(false, updated.get());
         }
         TestUtils.waitFor(() -> Assert.assertTrue(updated.get()));
@@ -111,8 +112,8 @@ public class TimelineSyncAT extends BaseAT {
 
     @Test
     public void testPublishPauseOnTimelineUpdate() throws InterruptedException, IOException {
-        final TimelineSync t1 = createTimeline();
-        final TimelineSync t2 = createTimeline();
+        final TimelineSync t1 = createTimelineSync();
+        final TimelineSync t2 = createTimelineSync();
         final String eventType = UUID.randomUUID().toString();
         // Lock publishing
         t1.startTimelineUpdate(eventType, TimeUnit.SECONDS.toMillis(30));
@@ -125,7 +126,7 @@ public class TimelineSyncAT extends BaseAT {
             }
         }, "publisher").start();
 
-        Thread.sleep(TimeUnit.SECONDS.toMillis(2)); // Wait for thread to start.
+        ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(2)); // Wait for thread to start.
         Assert.assertEquals(false, lockTaken.get());
 
         // Now release event type
@@ -163,11 +164,11 @@ public class TimelineSyncAT extends BaseAT {
         final String eventType2 = UUID.randomUUID().toString();
 
         final RefreshListener l1 = new RefreshListener();
-        final TimelineSync t1 = createTimeline();
+        final TimelineSync t1 = createTimelineSync();
         t1.registerTimelineChangeListener(eventType1, l1.createConsumer());
 
         final RefreshListener l2 = new RefreshListener();
-        final TimelineSync t2 = createTimeline();
+        final TimelineSync t2 = createTimelineSync();
         t2.registerTimelineChangeListener(eventType2, l2.createConsumer());
 
         t1.startTimelineUpdate(eventType1, TimeUnit.SECONDS.toMillis(3));

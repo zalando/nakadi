@@ -44,6 +44,7 @@ import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
@@ -397,7 +398,7 @@ public class EventStreamControllerTest {
         // block to simulate the streaming until thread is interrupted
         Mockito.doAnswer(invocation -> {
             while (!Thread.interrupted()) {
-                Thread.sleep(100);
+                ThreadUtils.sleep(100);
             }
             return null;
         }).when(eventStream).streamEvents(any(), any());

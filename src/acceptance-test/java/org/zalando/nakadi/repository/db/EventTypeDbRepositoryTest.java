@@ -11,7 +11,6 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
@@ -26,7 +25,7 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
-    private EventTypeRepository repository;
+    private EventTypeDbRepository repository;
 
     @Before
     public void setUp() throws Exception {

@@ -269,7 +269,7 @@ task fullAcceptanceTest(type: GradleBuild) {
 task acceptanceTest(type: Test) {
     testClassesDirs = sourceSets.acceptanceTest.output
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    maxParallelForks = 1
 }
 
 test {
@@ -277,6 +277,7 @@ test {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
+    maxParallelForks = Runtime.runtime.availableProcessors()
 }
 
 acceptanceTest {

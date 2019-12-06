@@ -20,6 +20,7 @@ import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
@@ -164,7 +165,7 @@ public class EventStreamTest {
         });
         thread.start();
 
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(1));
         waitFor(() -> Assert.assertTrue(thread.isAlive()));
 
         // simulation of accessDenied
