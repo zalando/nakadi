@@ -194,10 +194,10 @@ public class StreamingContext implements SubscriptionStreamer {
                 }
             } catch (final NakadiRuntimeException ex) {
                 log.error("Failed to process task " + task + ", will rethrow original error", ex);
-                switchState(new CleanupState(ex.getException()));
+                switchStateImmediately(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
                 log.error("Failed to process task " + task + ", code carefully!", ex);
-                switchState(new CleanupState(ex));
+                switchStateImmediately(new CleanupState(ex));
             }
         }
     }
@@ -219,6 +219,19 @@ public class StreamingContext implements SubscriptionStreamer {
                 currentState.onEnter();
             }
         });
+    }
+
+    public void switchStateImmediately(final State newState) {
+        log.info("Switching state immediately from {} to {}",
+                currentState.getClass().getSimpleName(),
+                newState.getClass().getSimpleName());
+        try {
+            currentState.onExit();
+        } finally {
+            currentState = newState;
+            currentState.setContext(this);
+            currentState.onEnter();
+        }
     }
 
     public void registerSession() throws NakadiRuntimeException {

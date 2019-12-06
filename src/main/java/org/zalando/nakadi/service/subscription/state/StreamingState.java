@@ -66,7 +66,6 @@ class StreamingState extends State {
     private Closeable cursorResetSubscription;
     private IdleStreamWatcher idleStreamWatcher;
     private boolean commitTimeoutReached = false;
-    private boolean isRefreshedDuringInitialization = false;
 
     /**
      * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
@@ -437,13 +436,8 @@ class StreamingState extends State {
         final Partition[] assignedPartitions = Stream.of(topology.getPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .toArray(Partition[]::new);
+        addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         trackIdleness(topology);
-        if (!isRefreshedDuringInitialization) {
-            refreshTopologyUnlocked(assignedPartitions);
-            isRefreshedDuringInitialization = true;
-        } else {
-            addTask(() -> refreshTopologyUnlocked(assignedPartitions));
-        }
     }
 
     void recheckTopology() {
