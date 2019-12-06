@@ -210,21 +210,20 @@ public class StreamingContext implements SubscriptionStreamer {
             // There is a problem with onExit call - it can not throw exceptions, otherwise it won't be possible
             // to finish state correctly. In order to avoid it in future state will be switched even in case of
             // exception.
-            try {
-                currentState.onExit();
-            } finally {
-                currentState = newState;
-
-                currentState.setContext(this);
-                currentState.onEnter();
-            }
+            exitCurrentStateAndEnter(newState);
         });
     }
 
     public void switchStateImmediately(final State newState) {
+
         log.info("Switching state immediately from {} to {}",
                 currentState.getClass().getSimpleName(),
                 newState.getClass().getSimpleName());
+        exitCurrentStateAndEnter(newState);
+
+    }
+
+    private void exitCurrentStateAndEnter(final State newState) {
         try {
             currentState.onExit();
         } finally {
