@@ -58,7 +58,8 @@ public class InvalidCursorException extends NakadiBaseException {
             case PARTITION_NOT_FOUND:
                 return "non existing partition " + getPartition();
             case UNAVAILABLE:
-                return "offset " + getOffset() + " for partition " + getPartition() + " is unavailable";
+                return "offset " + getOffset() + " for partition " + getPartition() + " is unavailable as " +
+                        "retention time of data elapsed. PATCH partition offset with valid and available offset";
             case NULL_OFFSET:
                 return "offset must not be null";
             case NULL_PARTITION:

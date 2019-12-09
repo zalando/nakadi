@@ -89,10 +89,10 @@ class StreamingState extends State {
                 .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
 
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
-
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
         recreateTopologySubscription();
+        addTask(this::initializeStream);
         addTask(this::recheckTopology);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
@@ -118,6 +118,15 @@ class StreamingState extends State {
         }
         topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::reactOnTopologyChange));
         reactOnTopologyChange();
+    }
+
+    private void initializeStream() {
+        try {
+            getOut().onInitialized(getSessionId());
+        } catch (final IOException e) {
+            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
+            switchState(new CleanupState(e));
+        }
     }
 
     private void resetSubscriptionCursorsCallback() {
@@ -573,12 +582,12 @@ class StreamingState extends State {
                         .map(pk -> {
                             final NakadiCursor beforeFirstAvailable = beforeFirst.get(pk);
 
-                            // Checks that current cursor is still available in storage
+                            // Checks that current cursor is still available in storage. Otherwise reset to oldest
+                            // available offset for the partition
                             offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
                             return offsets.get(pk).getSentOffset();
                         })
                         .collect(Collectors.toList());
-
                 eventConsumer.reassign(cursors);
             } catch (InvalidCursorException ex) {
                 throw new NakadiRuntimeException(ex);

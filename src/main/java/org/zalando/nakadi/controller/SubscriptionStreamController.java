@@ -22,6 +22,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
@@ -56,6 +57,7 @@ import static org.zalando.problem.Status.CONFLICT;
 import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
+import static org.zalando.problem.Status.PRECONDITION_FAILED;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
@@ -121,6 +123,8 @@ public class SubscriptionStreamController {
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
             this.exceptionProblem.put(ConflictException.class,
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
+            this.exceptionProblem.put(InvalidCursorException.class,
+                    (ex) -> Problem.valueOf(PRECONDITION_FAILED, ex.getMessage()));
         }
 
         @Override

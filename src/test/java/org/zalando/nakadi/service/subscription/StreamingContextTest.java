@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
+import io.opentracing.Span;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -10,15 +11,20 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.State;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.util.ThreadUtils;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+
 public class StreamingContextTest {
-    private static StreamingContext createTestContext(final Consumer<Exception> onException) {
+    private static StreamingContext createTestContext(final Consumer<Exception> onException) throws IOException {
         final SubscriptionOutput output = new SubscriptionOutput() {
             @Override
             public void onInitialized(final String ignore) {
@@ -36,24 +42,32 @@ public class StreamingContextTest {
                 return null;
             }
         };
+
+        // Mocks
+        final ZkSubscriptionClient zkClient = mock(ZkSubscriptionClient.class);
+        doNothing().when(zkClient).close();
+        final Span span = mock(Span.class);
+        doNothing().when(span).finish();
+
         return new StreamingContext.Builder()
                 .setOut(output)
                 .setParameters(null)
                 .setSession(Session.generate(1, ImmutableList.of()))
                 .setSubscription(new Subscription())
                 .setTimer(null)
-                .setZkClient(null)
+                .setZkClient(zkClient)
                 .setRebalancer(null)
                 .setKafkaPollTimeout(0)
                 .setConnectionReady(new AtomicBoolean(true))
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
                 .setBlacklistService(null)
+                .setCurrentSpan(span)
                 .build();
     }
 
     @Test
-    public void streamingContextShouldStopOnException() throws InterruptedException {
+    public void streamingContextShouldStopOnException() throws InterruptedException, IOException {
         final AtomicReference<Exception> caughtException = new AtomicReference<>(null);
         final RuntimeException killerException = new RuntimeException();
 
@@ -81,7 +95,7 @@ public class StreamingContextTest {
     }
 
     @Test
-    public void stateBaseMethodsMustBeCalledOnSwitching() throws InterruptedException {
+    public void stateBaseMethodsMustBeCalledOnSwitching() throws InterruptedException, IOException {
         final StreamingContext ctx = createTestContext(null);
         final boolean[] onEnterCalls = new boolean[]{false, false};
         final boolean[] onExitCalls = new boolean[]{false, false};
