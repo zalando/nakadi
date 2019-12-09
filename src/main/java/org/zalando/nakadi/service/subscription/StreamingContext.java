@@ -215,12 +215,11 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void switchStateImmediately(final State newState) {
-
-        log.info("Switching state immediately from {} to {}",
+        log.info("Cleaning task queue & Switching state immediately from {} to {}",
                 currentState.getClass().getSimpleName(),
                 newState.getClass().getSimpleName());
-        exitCurrentStateAndEnter(newState);
-
+        taskQueue.clear();
+        switchState(newState);
     }
 
     private void exitCurrentStateAndEnter(final State newState) {

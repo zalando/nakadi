@@ -32,11 +32,7 @@ public class CleanupState extends State {
                 getContext().unregisterSession();
 
             } finally {
-                if (null != exception) {
-                    getContext().switchStateImmediately(StreamingContext.DEAD_STATE);
-                } else{
-                    switchState(StreamingContext.DEAD_STATE);
-                }
+                switchState(StreamingContext.DEAD_STATE);
             }
 
             try {
