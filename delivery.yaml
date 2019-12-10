@@ -1,0 +1,34 @@
+version: "2017-09-20"
+pipeline:
+- id: test
+  overlay: ci/java
+  type: script
+  commands:
+  - desc: Checkstyle
+    cmd: |
+      ./gradlew checkstyle --stacktrace
+  - desc: Test
+    cmd: |
+      ./gradlew testWithReport --stacktrace
+- id: acceptance-test
+  overlay: ci/java
+  type: script
+  commands:
+  - desc: Install dependencies
+    cmd: |
+      pip install docker-compose==1.24.1
+  - desc: Acceptance Test
+    cmd: |
+      ./gradlew fullAcceptanceTest --stacktrace
+- id: build-push
+  overlay: ci/java
+  type: script
+  when: 
+  - branch: master
+  commands:
+  - desc: Build and push to repo
+    cmd: |
+      ./gradlew clean bootRepackage
+      IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+      docker build -t ${IMAGE} .
+      docker push ${IMAGE}
