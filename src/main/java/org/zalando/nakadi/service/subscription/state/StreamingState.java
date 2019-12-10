@@ -92,8 +92,8 @@ class StreamingState extends State {
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
         recreateTopologySubscription();
-        addTask(this::initializeStream);
         addTask(this::recheckTopology);
+        addTask(this::initializeStream);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
