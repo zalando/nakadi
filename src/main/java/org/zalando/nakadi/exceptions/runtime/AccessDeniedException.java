@@ -35,7 +35,8 @@ public class AccessDeniedException extends NakadiBaseException {
     }
 
     public String explain() {
-        return "Access on " + operation + " " + resource.getType() + ":" + resource.getName() + " denied"
-                + (StringUtils.isEmpty(reason) ? "" : "; Reason : " + reason);
+        return "Access on " + (null == operation ? "" : operation + " ")
+                + resource.getType() + ":" + resource.getName() + " denied"
+                + (StringUtils.isEmpty(reason) ? "." : "; Reason : " + reason);
     }
 }
