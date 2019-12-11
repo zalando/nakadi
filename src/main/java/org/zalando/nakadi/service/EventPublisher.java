@@ -86,12 +86,24 @@ public class EventPublisher {
             AccessDeniedException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return publishInternal(events, eventTypeName, true, parentSpan);
+        return processInternal(events, eventTypeName, true, parentSpan, false);
     }
 
-    EventPublishResult publishInternal(final String events,
+    public EventPublishResult delete(final String events, final String eventTypeName, final Span parentSpan)
+            throws NoSuchEventTypeException,
+            InternalNakadiException,
+            EnrichmentException,
+            EventTypeTimeoutException,
+            AccessDeniedException,
+            ServiceTemporarilyUnavailableException,
+            PartitioningException {
+        return processInternal(events, eventTypeName, true, parentSpan, true);
+    }
+
+    EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
-                                       final boolean useAuthz, final Span parentSpan)
+                                       final boolean useAuthz, final Span parentSpan,
+                                       final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException, EnrichmentException, PartitioningException {
 
@@ -104,11 +116,13 @@ public class EventPublisher {
             if (useAuthz) {
                 authValidator.authorizeEventTypeWrite(eventType);
             }
-            validate(batch, eventType, parentSpan);
+            validate(batch, eventType, parentSpan, delete);
             partition(batch, eventType);
             setEventKey(batch, eventType);
-            enrich(batch, eventType);
-            submit(batch, eventType, parentSpan);
+            if (!delete) {
+                enrich(batch, eventType);
+            }
+            submit(batch, eventType, parentSpan, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -203,16 +217,22 @@ public class EventPublisher {
         }
     }
 
-    private void validate(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+    private void validate(final List<BatchItem> batch, final EventType eventType, final Span parentSpan,
+                          final boolean delete)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
         final Span validationSpan = TracingService.getNewSpanWithParent("validation", System.currentTimeMillis(),
                 parentSpan);
         validationSpan.setTag("event_type", eventType.getName());
+        if (delete && eventType.getCleanupPolicy() != CleanupPolicy.COMPACT) {
+            throw new EventValidationException("It is not allowed to delete events from non compacted event type");
+        }
         try {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
-                    validateSchema(item.getEvent(), eventType);
+                    if (!delete) {
+                        validateSchema(item.getEvent(), eventType);
+                    }
                     validateEventSize(item);
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
@@ -230,14 +250,15 @@ public class EventPublisher {
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType, final Span parentSpan)
+    private void submit(
+            final List<BatchItem> batch, final EventType eventType, final Span parentSpan, final boolean delete)
             throws EventPublishingException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
         final Span publishSpan = TracingService.getNewSpanWithParent(parentSpan, "publishing_to_kafka")
                 .setTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic);
         try {
-            timelineService.getTopicRepository(eventType).syncPostBatch(topic, batch, eventType.getName());
+            timelineService.getTopicRepository(eventType).syncPostBatch(topic, batch, eventType.getName(), delete);
         } catch (final EventPublishingException epe) {
             publishSpan.log(epe.getMessage());
             throw epe;

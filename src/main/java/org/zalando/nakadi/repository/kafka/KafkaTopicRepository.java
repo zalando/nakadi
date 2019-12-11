@@ -109,14 +109,15 @@ public class KafkaTopicRepository implements TopicRepository {
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
-            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
+            final HystrixKafkaCircuitBreaker circuitBreaker,
+            final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
                     item.getEventKey(),
-                    item.dumpEventToString());
+                    delete ? null : item.dumpEventToString());
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
@@ -255,7 +256,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch, final String eventType)
+    public void syncPostBatch(
+            final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
@@ -274,7 +276,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
                         item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
                 if (circuitBreaker.attemptExecution()) {
-                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
+                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, delete));
                 } else {
                     shortCircuited++;
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");

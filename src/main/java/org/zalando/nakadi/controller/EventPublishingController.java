@@ -65,20 +65,37 @@ public class EventPublishingController {
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
-    public ResponseEntity postEvent(@PathVariable final String eventTypeName,
-                                    @RequestBody final String eventsAsString,
-                                    final HttpServletRequest request,
-                                    final Client client)
+    public ResponseEntity postEvents(@PathVariable final String eventTypeName,
+                                     @RequestBody final String eventsAsString,
+                                     final HttpServletRequest request,
+                                     final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
-        LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
-        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
+        return postEventsWithMetrics(eventTypeName, eventsAsString, request, client, false);
+
+    }
+
+    @RequestMapping(value = "/event-types/{eventTypeName}/deleted-events", method = POST)
+    public ResponseEntity deleteEvents(@PathVariable final String eventTypeName,
+                                       @RequestBody final String eventsAsString,
+                                       final HttpServletRequest request,
+                                       final Client client) {
+        return postEventsWithMetrics(eventTypeName, eventsAsString, request, client, true);
+
+    }
+
+    private ResponseEntity postEventsWithMetrics(final String eventTypeName,
+                                                 final String eventsAsString,
+                                                 final HttpServletRequest request,
+                                                 final Client client,
+                                                 final boolean delete) {
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
+        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         try {
             final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, eventTypeMetrics, client, request);
+                    eventTypeName, eventsAsString, eventTypeMetrics, client, request, delete);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -94,7 +111,8 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client,
-                                             final HttpServletRequest request)
+                                             final HttpServletRequest request,
+                                             final boolean delete)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException, InternalNakadiException,
             EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
@@ -105,7 +123,12 @@ public class EventPublishingController {
                     .setTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
                     .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
 
-            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, publishingSpan);
+            final EventPublishResult result;
+            if (delete) {
+                result = publisher.delete(eventsAsString, eventTypeName, publishingSpan);
+            } else {
+                result = publisher.publish(eventsAsString, eventTypeName, publishingSpan);
+            }
 
             final int eventCount = result.getResponses().size();
 

@@ -81,7 +81,7 @@ public class EventsProcessor {
                     LOG.trace("No kpi events send to {}", etName);
                     return;
                 }
-                eventPublisher.publishInternal(jsonArray.toString(), etName, false, null);
+                eventPublisher.processInternal(jsonArray.toString(), etName, false, null, false);
                 LOG.trace("Published batch of {} to {}", eventsCount, etName);
             } catch (final Exception e) {
                 LOG.error("Error occurred while publishing events to {}, {}", etName, e.getMessage(), e);
