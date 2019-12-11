@@ -1,21 +1,30 @@
 package org.zalando.nakadi.exceptions.runtime;
 
+import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
 public class AccessDeniedException extends NakadiBaseException {
-    private final Resource resource;
     private final AuthorizationService.Operation operation;
+    private final Resource resource;
+    private final String reason;
 
-    public AccessDeniedException(final AuthorizationService.Operation operation, final Resource resource) {
+
+    public AccessDeniedException(final AuthorizationService.Operation operation,
+                                 final Resource resource, final String reason) {
         this.resource = resource;
         this.operation = operation;
+        this.reason = reason;
+    }
+
+    public AccessDeniedException(final AuthorizationService.Operation operation, final Resource resource) {
+        this(operation, resource, null);
     }
 
     public AccessDeniedException(final Resource resource) {
-        this.resource = resource;
-        this.operation = null;
+        this(null, resource, null);
     }
+
 
     public Resource getResource() {
         return resource;
@@ -26,6 +35,7 @@ public class AccessDeniedException extends NakadiBaseException {
     }
 
     public String explain() {
-        return "Access on " + operation + " " + resource.getType() + ":" + resource.getName() + " denied";
+        return "Access on " + operation + " " + resource.getType() + ":" + resource.getName() + " denied"
+                + (StringUtils.isEmpty(reason) ? "" : "; Reason : " + reason);
     }
 }
