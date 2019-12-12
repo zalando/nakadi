@@ -76,6 +76,18 @@ class StreamingState extends State {
      */
     private long lastCommitMillis;
 
+
+    /**
+     * 1. Collects names and prepares to send metrics for bytes streamed
+     * <p>
+     * 2. On entering, triggers re-balance for this session
+     * <p>
+     * 3. Refreshes topology and sends headers to the user
+     * <p>
+     * 4. Adds tasks for actions if change in topology, sessions list and cursor reset
+     * <p>
+     * 5. Schedules tasks for providing events batch to output based on params, and for checking commit timeouts
+     */
     @Override
     public void onEnter() {
         final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
@@ -87,13 +99,14 @@ class StreamingState extends State {
         lastKpiEventSent = System.currentTimeMillis();
         kpiDataPerEventType = this.getContext().getSubscription().getEventTypes().stream()
                 .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
+        addTask(() -> getContext().subscribeToSessionListChangeAndRebalance());
 
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
 
         recreateTopologySubscription();
-        addTask(this::initializeStream);
         addTask(this::recheckTopology);
+        addTask(this::initializeStream);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
