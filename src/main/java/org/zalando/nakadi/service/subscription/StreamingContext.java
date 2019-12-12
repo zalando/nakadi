@@ -237,7 +237,7 @@ public class StreamingContext implements SubscriptionStreamer {
         zkClient.registerSession(session);
     }
 
-    public void installHookAndTriggerRebalance() throws NakadiRuntimeException {
+    public void subscribeToSessionListChangeAndRebalance() throws NakadiRuntimeException {
         // Install re-balance hook on client list change.
         sessionListSubscription = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
         // Trigger re-balance explicitly as session list might have changed before scheduling hook
