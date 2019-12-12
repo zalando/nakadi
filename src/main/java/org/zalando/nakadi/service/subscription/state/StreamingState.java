@@ -99,7 +99,7 @@ class StreamingState extends State {
         lastKpiEventSent = System.currentTimeMillis();
         kpiDataPerEventType = this.getContext().getSubscription().getEventTypes().stream()
                 .collect(Collectors.toMap(et -> et, et -> new StreamKpiData()));
-        addTask(() -> getContext().installHookAndTriggerRebalance());
+        addTask(() -> getContext().subscribeToSessionListChangeAndRebalance());
 
         idleStreamWatcher = new IdleStreamWatcher(getParameters().commitTimeoutMillis * 2);
         this.eventConsumer = getContext().getTimelineService().createEventConsumer(null);
