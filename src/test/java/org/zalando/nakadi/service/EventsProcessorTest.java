@@ -6,6 +6,9 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+
 public class EventsProcessorTest {
 
     private final EventPublisher eventPublisher = Mockito.mock(EventPublisher.class);
@@ -19,8 +22,7 @@ public class EventsProcessorTest {
         eventsProcessor.enrichAndSubmit("test_et_name", event);
         TestUtils.waitFor(() -> {
             try {
-                Mockito.verify(eventPublisher).publishInternal(Mockito.any(), Mockito.any(),
-                        Mockito.eq(false), Mockito.any());
+                Mockito.verify(eventPublisher).processInternal(any(), any(), eq(false), any(), eq(false));
             } catch (final Exception e) {
                 throw new AssertionError(e);
             }
