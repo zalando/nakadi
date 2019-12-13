@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -101,6 +102,11 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             reassign(tmpOffsets);
             return Collections.emptyList();
         }
+        if (result.isEmpty()) {
+            return result;
+        }
+
+        final List<ConsumedEvent> filteredResult = new ArrayList<>(result.size());
         for (final ConsumedEvent event : result) {
             final EventTypePartition etp = event.getPosition().getEventTypePartition();
             latestOffsets.put(etp, event.getPosition());
@@ -110,8 +116,12 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             if (timelineBorderReached) {
                 timelinesChanged.set(true);
             }
+            // Here we are trying to avoid the null events
+            if (event.getEvent() != null) {
+                filteredResult.add(event);
+            }
         }
-        return result;
+        return filteredResult;
     }
 
     /**
