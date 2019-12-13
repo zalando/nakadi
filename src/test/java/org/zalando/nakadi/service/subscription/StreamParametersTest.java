@@ -21,12 +21,12 @@ public class StreamParametersTest {
 
     @Test(expected = WrongStreamParametersException.class)
     public void whenBatchLimitLowerOrEqualToZeroTheException() throws Exception {
-        createStreamParameters(0, null, 0, null, null, 0, 0, mock(Client.class));
+        createStreamParameters(0, null, 0L, 0, null, null, 0, 0, mock(Client.class));
     }
 
     @Test
     public void checkParamsAreTransformedCorrectly() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, null, 10, 60L, null, 1000, 20,
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0L, 10, 60L, null, 1000, 20,
                 mock(Client.class));
 
         assertThat(streamParameters.batchLimitEvents, equalTo(1));
@@ -38,7 +38,7 @@ public class StreamParametersTest {
 
     @Test
     public void whenStreamTimeoutOmittedThenItIsGenerated() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, null, 0, 0,
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0L, 0, null, null, 0, 0,
                 mock(Client.class));
 
         checkStreamTimeoutIsGeneratedCorrectly(streamParameters);
@@ -46,7 +46,7 @@ public class StreamParametersTest {
 
     @Test
     public void whenStreamTimeoutIsGreaterThanMaxThenItIsGenerated() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, null, 0,
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0L, 0,
                 EventStreamConfig.MAX_STREAM_TIMEOUT + 1L, null, 0, 0, mock(Client.class));
 
         checkStreamTimeoutIsGeneratedCorrectly(streamParameters);
@@ -54,7 +54,7 @@ public class StreamParametersTest {
 
     @Test
     public void checkIsStreamLimitReached() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, 150L, 0, null, null, 0, 0,
+        final StreamParameters streamParameters = createStreamParameters(1, 150L, 0L, 0, null, null, 0, 0,
                 mock(Client.class));
 
         assertThat(streamParameters.isStreamLimitReached(140), is(false));
@@ -64,7 +64,7 @@ public class StreamParametersTest {
 
     @Test
     public void checkIsKeepAliveLimitReached() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, 5, 0, 0, mock(Client.class));
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0L, 0, null, 5, 0, 0, mock(Client.class));
 
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 6, 12)), is(true));
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 4, 12)), is(false));
@@ -72,7 +72,7 @@ public class StreamParametersTest {
 
     @Test
     public void checkIsKeepAliveLimitReachedIndefinitely() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, null, 0, null, 0, 0, 0, mock(Client.class));
+        final StreamParameters streamParameters = createStreamParameters(1, null, 0L, 0, null, 0, 0, 0, mock(Client.class));
 
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 6, 12)), is(false));
         assertThat(streamParameters.isKeepAliveLimitReached(IntStream.of(5, 7, 4, 12)), is(false));
@@ -80,7 +80,7 @@ public class StreamParametersTest {
 
     @Test
     public void checkGetMessagesAllowedToSend() throws Exception {
-        final StreamParameters streamParameters = createStreamParameters(1, 200L, 0, null, null, 0, 0,
+        final StreamParameters streamParameters = createStreamParameters(1, 200L, 0L,0, null, null, 0, 0,
                 mock(Client.class));
 
         assertThat(streamParameters.getMessagesAllowedToSend(50, 190), equalTo(10L));
@@ -96,6 +96,7 @@ public class StreamParametersTest {
 
     public static StreamParameters createStreamParameters(final int batchLimitEvents,
                                                           final Long streamLimitEvents,
+                                                          final Long batchTimespan,
                                                           final int batchTimeoutSeconds,
                                                           final Long streamTimeoutSeconds,
                                                           final Integer batchKeepAliveIterations,
@@ -103,8 +104,8 @@ public class StreamParametersTest {
                                                           final long commitTimeoutSeconds,
                                                           final Client client) throws WrongStreamParametersException {
         final UserStreamParameters userParams = new UserStreamParameters(batchLimitEvents, streamLimitEvents,
-                batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations, maxUncommittedMessages,
-                ImmutableList.of(), commitTimeoutSeconds);
+                batchTimespan, batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations,
+                maxUncommittedMessages, ImmutableList.of(), commitTimeoutSeconds);
         return StreamParameters.of(userParams, commitTimeoutSeconds, client);
     }
 }

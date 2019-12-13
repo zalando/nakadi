@@ -15,6 +15,8 @@ public class UserStreamParameters {
 
     private final Optional<Long> streamLimit;
 
+    private final Optional<Long> batchTimespan;
+
     private final Optional<Integer> batchFlushTimeout;
 
     private final Optional<Long> streamTimeout;
@@ -27,9 +29,11 @@ public class UserStreamParameters {
 
     private final Optional<Long> commitTimeoutSeconds;
 
+
     @JsonCreator
     public UserStreamParameters(@JsonProperty("batch_limit") @Nullable final Integer batchLimit,
                                 @JsonProperty("stream_limit") @Nullable final Long streamLimit,
+                                @JsonProperty("batch_timespan") @Nullable final Long batchTimespan,
                                 @JsonProperty("batch_flush_timeout") @Nullable final Integer batchFlushTimeout,
                                 @JsonProperty("stream_timeout") @Nullable final Long streamTimeout,
                                 @JsonProperty("stream_keep_alive_limit") @Nullable final Integer streamKeepAliveLimit,
@@ -38,6 +42,7 @@ public class UserStreamParameters {
                                 @JsonProperty("commit_timeout") @Nullable final Long commitTimeoutSeconds) {
         this.batchLimit = Optional.ofNullable(batchLimit);
         this.streamLimit = Optional.ofNullable(streamLimit);
+        this.batchTimespan = Optional.ofNullable(batchTimespan);
         this.batchFlushTimeout = Optional.ofNullable(batchFlushTimeout);
         this.streamTimeout = Optional.ofNullable(streamTimeout);
         this.streamKeepAliveLimit = Optional.ofNullable(streamKeepAliveLimit);
@@ -52,6 +57,10 @@ public class UserStreamParameters {
 
     public Optional<Long> getStreamLimit() {
         return streamLimit;
+    }
+
+    public Optional<Long> getBatchTimespan() {
+        return batchTimespan;
     }
 
     public Optional<Integer> getBatchFlushTimeout() {

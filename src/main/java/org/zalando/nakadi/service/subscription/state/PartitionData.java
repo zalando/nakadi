@@ -27,6 +27,7 @@ class PartitionData {
     private NakadiCursor commitOffset;
     private NakadiCursor sentOffset;
     private long lastSendMillis;
+    private long batchWindowStartTimestamp;
     private int keepAliveInARow;
     private long bytesInMemory;
 
@@ -52,14 +53,27 @@ class PartitionData {
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
         this.lastSendMillis = currentTime;
+        this.batchWindowStartTimestamp = 0L;
     }
 
     @Nullable
-    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final int batchSize,
+    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final long batchTimespanMillis, final int batchSize,
                                            final long batchTimeoutMillis, final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
-        if (countReached || timeReached) {
+        final long lastRecordTimestamp = lastRecordTimestamp();
+
+        if (batchWindowStartTimestamp == 0 && !nakadiEvents.isEmpty()) {
+            batchWindowStartTimestamp = nakadiEvents.get(0).getTimestamp();
+        }
+
+        if (batchTimespanMillis > 0 && lastRecordTimestamp > 0
+                && lastRecordTimestamp >= batchWindowStartTimestamp + batchTimespanMillis) {
+            final long batchWindowEndTimestamp = batchWindowStartTimestamp + batchTimespanMillis;
+            batchWindowStartTimestamp = batchWindowEndTimestamp;
+            lastSendMillis = currentTimeMillis;
+            return extractTimespan(batchWindowEndTimestamp);
+        } else if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
             return extract(batchSize);
         } else if (streamTimeoutReached) {
@@ -69,6 +83,23 @@ class PartitionData {
         } else {
             return null;
         }
+    }
+
+    private long lastRecordTimestamp() {
+        if (nakadiEvents.size() > 0) {
+            return nakadiEvents.get(nakadiEvents.size() - 1).getTimestamp();
+        } else {
+            return 0;
+        }
+    }
+
+    private List<ConsumedEvent> extractTimespan(long batchWindowEndTimestamp) {
+        int count = 0;
+        for (;
+             count < nakadiEvents.size() && nakadiEvents.get(count).getTimestamp() < batchWindowEndTimestamp;
+             count++);
+
+        return extract(count + 1);
     }
 
     public List<ConsumedEvent> extractAll(final long currentTimeMillis) {

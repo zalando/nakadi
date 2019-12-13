@@ -241,6 +241,7 @@ class StreamingState extends State {
             List<ConsumedEvent> toSend;
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
+                    getParameters().batchTimespan,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
