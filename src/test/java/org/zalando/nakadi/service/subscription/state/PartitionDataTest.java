@@ -143,10 +143,10 @@ public class PartitionDataTest {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), i));
         }
 
-        assertEquals(6, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size());
         assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size());
         assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size());
-        assertEquals(2, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size()); // stream timeout
+        assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size());
+        assertEquals(3, pd.takeEventsToStream(currentTimeMillis(), 5, 100, timeout, true).size()); // stream timeout
     }
 
     @Test

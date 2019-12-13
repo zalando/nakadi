@@ -57,8 +57,9 @@ class PartitionData {
     }
 
     @Nullable
-    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final long batchTimespanMillis, final int batchSize,
-                                           final long batchTimeoutMillis, final boolean streamTimeoutReached) {
+    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final long batchTimespanMillis,
+                                           final int batchSize, final long batchTimeoutMillis,
+                                           final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
         final long lastRecordTimestamp = lastRecordTimestamp();
@@ -75,9 +76,11 @@ class PartitionData {
             return extractTimespan(batchWindowEndTimestamp);
         } else if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
+            batchWindowStartTimestamp = lastSendMillis;
             return extract(batchSize);
         } else if (streamTimeoutReached) {
             lastSendMillis = currentTimeMillis;
+            batchWindowStartTimestamp = lastSendMillis;
             final List<ConsumedEvent> extractedEvents = extract(batchSize);
             return extractedEvents.isEmpty() ? null : extractedEvents;
         } else {
@@ -93,13 +96,13 @@ class PartitionData {
         }
     }
 
-    private List<ConsumedEvent> extractTimespan(long batchWindowEndTimestamp) {
-        int count = 0;
-        for (;
-             count < nakadiEvents.size() && nakadiEvents.get(count).getTimestamp() < batchWindowEndTimestamp;
-             count++);
+    private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
+        int count = 1;
+        while (count < nakadiEvents.size() && nakadiEvents.get(count).getTimestamp() < batchWindowEndTimestamp) {
+            count++;
+        }
 
-        return extract(count + 1);
+        return extract(count);
     }
 
     public List<ConsumedEvent> extractAll(final long currentTimeMillis) {
