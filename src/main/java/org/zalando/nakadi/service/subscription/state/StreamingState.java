@@ -241,7 +241,6 @@ class StreamingState extends State {
             List<ConsumedEvent> toSend;
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
-                    getParameters().batchTimespan,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
@@ -634,7 +633,8 @@ class StreamingState extends State {
                 cursor,
                 LoggerFactory.getLogger(LogPathBuilder.build(
                         getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
-                System.currentTimeMillis());
+                System.currentTimeMillis(), this.getContext().getParameters().batchTimeoutMillis
+                );
 
         offsets.put(partition.getKey(), pd);
     }

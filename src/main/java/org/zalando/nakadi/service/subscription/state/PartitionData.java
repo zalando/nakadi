@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 class PartitionData {
     private final Comparator<NakadiCursor> comparator;
@@ -30,12 +31,25 @@ class PartitionData {
     private long batchWindowStartTimestamp;
     private int keepAliveInARow;
     private long bytesInMemory;
+    final long batchTimespanMillis;
 
     @VisibleForTesting
     PartitionData(final Comparator<NakadiCursor> comparator,
-                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
+                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
+                  final NakadiCursor commitOffset,
+                  final long currentTime,
+                  final long batchTimespanMillis) {
+        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime,
+                batchTimespanMillis);
+        bytesInMemory = 0L;
+    }
+
+    @VisibleForTesting
+    PartitionData(final Comparator<NakadiCursor> comparator,
+                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
+                  final NakadiCursor commitOffset,
                   final long currentTime) {
-        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
+        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime, 0L);
         bytesInMemory = 0L;
     }
 
@@ -44,7 +58,9 @@ class PartitionData {
             final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
             final NakadiCursor commitOffset,
             final Logger log,
-            final long currentTime) {
+            final long currentTime,
+            final long batchTimespanMillis) {
+        this.batchTimespanMillis = batchTimespanMillis;
         this.comparator = comparator;
         this.allCursorsOrdered = new TreeSet<>(comparator);
         this.subscription = subscription;
@@ -57,19 +73,13 @@ class PartitionData {
     }
 
     @Nullable
-    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final long batchTimespanMillis,
+    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis,
                                            final int batchSize, final long batchTimeoutMillis,
                                            final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
-        final long lastRecordTimestamp = lastRecordTimestamp();
 
-        if (batchWindowStartTimestamp == 0 && !nakadiEvents.isEmpty()) {
-            batchWindowStartTimestamp = nakadiEvents.get(0).getTimestamp();
-        }
-
-        if (batchTimespanMillis > 0 && lastRecordTimestamp > 0
-                && lastRecordTimestamp >= batchWindowStartTimestamp + batchTimespanMillis) {
+        if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {
             final long batchWindowEndTimestamp = batchWindowStartTimestamp + batchTimespanMillis;
             batchWindowStartTimestamp = batchWindowEndTimestamp;
             lastSendMillis = currentTimeMillis;
@@ -77,15 +87,23 @@ class PartitionData {
         } else if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
             batchWindowStartTimestamp = lastSendMillis;
-            return extract(batchSize);
+            return extractCount(batchSize);
         } else if (streamTimeoutReached) {
             lastSendMillis = currentTimeMillis;
             batchWindowStartTimestamp = lastSendMillis;
-            final List<ConsumedEvent> extractedEvents = extract(batchSize);
+            final List<ConsumedEvent> extractedEvents = extractCount(batchSize);
             return extractedEvents.isEmpty() ? null : extractedEvents;
         } else {
             return null;
         }
+    }
+
+    private long batchWindowEndTimestamp() {
+        if (batchWindowStartTimestamp == 0 && !nakadiEvents.isEmpty()) {
+            batchWindowStartTimestamp = nakadiEvents.get(0).getTimestamp();
+        }
+
+        return batchWindowStartTimestamp + batchTimespanMillis;
     }
 
     private long lastRecordTimestamp() {
@@ -97,22 +115,8 @@ class PartitionData {
     }
 
     private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
-        int count = 1;
-        while (count < nakadiEvents.size() && nakadiEvents.get(count).getTimestamp() < batchWindowEndTimestamp) {
-            count++;
-        }
-
-        return extract(count);
+        return extract((i) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp);
     }
-
-    public List<ConsumedEvent> extractAll(final long currentTimeMillis) {
-        final List<ConsumedEvent> result = extract(nakadiEvents.size());
-        if (!result.isEmpty()) {
-            lastSendMillis = currentTimeMillis;
-        }
-        return result;
-    }
-
 
     NakadiCursor getSentOffset() {
         return sentOffset;
@@ -130,9 +134,13 @@ class PartitionData {
         return bytesInMemory;
     }
 
-    private List<ConsumedEvent> extract(final int count) {
+    private List<ConsumedEvent> extractCount(final int count) {
+        return extract((i) -> i < count);
+    }
+
+    private List<ConsumedEvent> extract(final Predicate<Integer> condition) {
         final List<ConsumedEvent> result = new ArrayList<>();
-        for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
+        for (int i = 0; !nakadiEvents.isEmpty() && condition.test(i); ++i) {
             final ConsumedEvent event = nakadiEvents.remove(0);
             bytesInMemory -= event.getEvent().length;
             result.add(event);
@@ -147,7 +155,7 @@ class PartitionData {
     }
 
     public List<ConsumedEvent> extractMaxEvents(final long currentTimeMillis, final int count) {
-        final List<ConsumedEvent> result = extract(count);
+        final List<ConsumedEvent> result = extractCount(count);
         if(!result.isEmpty()) {
             lastSendMillis = currentTimeMillis;
         }
