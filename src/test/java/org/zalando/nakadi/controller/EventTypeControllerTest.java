@@ -71,6 +71,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
+import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 import static org.zalando.nakadi.utils.TestUtils.createInvalidEventTypeExceptionProblem;
@@ -148,7 +149,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(0,1))
+                .defaultStatistic(new EventTypeStatistics(0, 1))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -624,9 +625,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
         final EventType eventType = buildDefaultEventType();
         when(eventTypeRepository.findByNameO(eventType.getName())).thenReturn(Optional.of(eventType));
+        when(featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
+
+        final Subscription mockSubscription = mock(Subscription.class);
+        when(mockSubscription.getConsumerGroup()).thenReturn("def");
+        when(mockSubscription.getOwningApplication()).thenReturn("asdf");
         when(subscriptionRepository
                 .listSubscriptions(eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
-                .thenReturn(ImmutableList.of(mock(Subscription.class)));
+                .thenReturn(ImmutableList.of(mockSubscription));
 
         final Problem expectedProblem = Problem.valueOf(CONFLICT,
                 "Can't remove event type " + eventType.getName() + ", as it has subscriptions");

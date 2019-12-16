@@ -72,7 +72,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
-import static org.zalando.nakadi.service.FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS;
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.FORCE_EVENT_TYPE_AUTHZ;
 
 @Component
@@ -257,22 +256,16 @@ public class EventTypeService {
             authorizationValidator.authorizeEventTypeView(eventType);
             authorizationValidator.authorizeEventTypeAdmin(eventType);
 
-            if (featureToggleService.isFeatureEnabled(EVENT_TYPE_DELETION_ONLY_ADMINS)) {
-                if (eventType.getAuthorization() == null) {
-                    throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource(),
-                            "You cannot delete event-type without authorization.");
-                }
-                if (hasNonDeletableSubscriptions(eventType.getName())) {
-                    throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource(),
-                            "This event-type have subscriptions that cannot be deleted automatically.");
-                }
+            if (eventType.getAuthorization() == null && featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ)) {
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource(),
+                        "You cannot delete event-type without authorization.");
             }
 
-            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
-                    || featureToggleService.isFeatureEnabled(EVENT_TYPE_DELETION_ONLY_ADMINS)) {
+            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS) ||
+                    !hasNonDeletableSubscriptions(eventType.getName())) {
                 topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
             } else {
-                topicsToDelete = deleteEventTypeIfNoSubscriptions(eventTypeName);
+                throw new ConflictException("Can't remove event type " + eventTypeName + ", as it has subscriptions");
             }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -319,14 +312,6 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private Multimap<TopicRepository, String> deleteEventTypeIfNoSubscriptions(final String eventType) {
-        if (hasSubscriptions(eventType)) {
-            throw new ConflictException("Can't remove event type " + eventType
-                    + ", as it has subscriptions");
-        }
-        return transactionTemplate.execute(action -> deleteEventType(eventType));
-    }
-
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
@@ -347,11 +332,6 @@ public class EventTypeService {
         }
     }
 
-    private boolean hasSubscriptions(final String eventTypeName) {
-        final List<Subscription> subs = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
-        return !subs.isEmpty();
-    }
 
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
         int offset = 0;

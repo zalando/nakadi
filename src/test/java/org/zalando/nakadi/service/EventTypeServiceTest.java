@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -51,7 +52,6 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.buildResourceAuthorization;
 import static org.zalando.nakadi.utils.TestUtils.checkKPIEventSubmitted;
 import static org.zalando.nakadi.utils.TestUtils.createSubscription;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class EventTypeServiceTest {
 
@@ -121,7 +121,13 @@ public class EventTypeServiceTest {
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
+        doReturn(Lists.emptyList())
+                .when(subscriptionDbRepository)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
+                .thenReturn(false);
 
         eventTypeService.delete(eventType.getName());
     }
@@ -160,9 +166,6 @@ public class EventTypeServiceTest {
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
-        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
-                .thenReturn(true);
-
         eventTypeService.delete(eventType.getName());
         // no exception should be thrown
     }
@@ -181,7 +184,7 @@ public class EventTypeServiceTest {
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
-        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.FORCE_EVENT_TYPE_AUTHZ))
                 .thenReturn(true);
 
         try {
@@ -192,12 +195,13 @@ public class EventTypeServiceTest {
         fail("Should throw AccessDeniedException");
     }
 
-    @Test
+    @Test(expected = ConflictException.class)
     public void testFeatureToggleForbidsDeleteEventTypeWithNonDeletableSubscription() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setAuthorization(buildResourceAuthorization());
 
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
         doReturn(ImmutableList.of(createSubscription("someone", "something")))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -207,15 +211,10 @@ public class EventTypeServiceTest {
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
-        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.EVENT_TYPE_DELETION_ONLY_ADMINS))
-                .thenReturn(true);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
+                .thenReturn(false);
 
-        try {
-            eventTypeService.delete(eventType.getName());
-        } catch (AccessDeniedException e) {
-            return;
-        }
-        fail("Should throw AccessDeniedException");
+        eventTypeService.delete(eventType.getName());
     }
 
     @Test
