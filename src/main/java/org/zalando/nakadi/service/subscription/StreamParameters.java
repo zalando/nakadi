@@ -21,7 +21,7 @@ public class StreamParameters {
      */
     private final Optional<Long> streamLimitEvents;
     /**
-     * Number of seconds to be batched based on Kafka record timestamp.
+     * Number of milliseconds to be batched based on Kafka record timestamp.
      */
     public final long batchTimespan;
     /**
