@@ -37,7 +37,6 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -70,7 +69,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.service.FeatureToggleService.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
@@ -178,37 +176,18 @@ public class EventTypeService {
             authorizationValidator.validateAuthorization(eventType.asBaseResource());
         }
 
-        final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
-        final AtomicReference<Timeline> createdTimeline = new AtomicReference<>(null);
+        eventTypeRepository.saveEventType(eventType);
+
         try {
-            transactionTemplate.execute(action -> {
-                createdEventType.set(eventTypeRepository.saveEventType(eventType));
-                createdTimeline.set(timelineService.createDefaultTimeline(eventType,
-                        partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic())));
-                return null;
-            });
-            eventTypeRepository.notifyUpdated(eventType.getName());
-        } catch (final RuntimeException ex) {
-            LOG.error("Failed to create event type, will clean up created data", ex);
-            if (null != createdTimeline.get()) {
-                try {
-                    timelineService.rollbackTopic(createdTimeline.get());
-                } catch (final RuntimeException ex2) {
-                    LOG.warn("Failed to rollback timeline", ex2);
-                }
+            timelineService.createDefaultTimeline(eventType,
+                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()));
+        } catch (final Exception e) {
+            try {
+                eventTypeRepository.removeEventType(eventType.getName());
+            } catch (final NoSuchEventTypeException e1) {
+                LOG.error("Error creating event type {}", eventType, e1);
             }
-            if (null != createdEventType.get()) {
-                try {
-                    eventTypeRepository.removeEventType(createdEventType.get().getName());
-                } catch (RuntimeException ex2) {
-                    LOG.warn("Failed to rollback event type creation (which is highly expected)", ex2);
-                }
-            }
-            if (ex instanceof NakadiBaseException) {
-                throw ex;
-            } else {
-                throw new InternalNakadiException("Failed to create event type: " + ex.getMessage(), ex);
-            }
+            throw e;
         }
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                 .put("event_type", eventType.getName())
@@ -290,7 +269,6 @@ public class EventTypeService {
             } else {
                 topicsToDelete = deleteEventTypeIfNoSubscriptions(eventTypeName);
             }
-            eventTypeRepository.notifyUpdated(eventTypeName);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -487,12 +465,18 @@ public class EventTypeService {
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
                                      final Long oldRetentionTime)
             throws InternalNakadiException {
-        transactionTemplate.execute(action -> {
-            updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
-            eventTypeRepository.update(eventType);
-            return null;
+        final InternalNakadiException exception = transactionTemplate.execute(action -> {
+            try {
+                updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
+                eventTypeRepository.update(eventType);
+                return null;
+            } catch (final InternalNakadiException e) {
+                return e;
+            }
         });
-        eventTypeRepository.notifyUpdated(eventType.getName());
+        if (exception != null) {
+            throw exception;
+        }
     }
 
     private void updateTimelinesCleanup(final String eventType, final Long newRetentionTime,
