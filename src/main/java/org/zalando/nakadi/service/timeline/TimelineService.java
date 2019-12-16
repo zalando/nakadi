@@ -173,12 +173,6 @@ public class TimelineService {
             }
             timelineDbRepository.updateTimelime(timeline);
         }
-
-        try {
-            eventTypeCache.updated(eventType.getName());
-        } catch (Exception e) {
-            throw new NakadiBaseException(e.getMessage(), e);
-        }
     }
 
     public Timeline createDefaultTimeline(final EventTypeBase eventType, final int partitionsCount)
@@ -210,7 +204,6 @@ public class TimelineService {
             final Timeline timeline = Timeline.createTimeline(eventType.getName(), 1, storage, topic, new Date());
             timeline.setSwitchedAt(new Date());
             timelineDbRepository.createTimeline(timeline);
-            eventTypeCache.updated(eventType.getName());
             return timeline;
         } catch (final InconsistentStateException | RepositoryProblemException | DuplicatedTimelineException e) {
             rollbackTopic(repository, topic);

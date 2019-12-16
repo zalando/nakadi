@@ -20,8 +20,6 @@ import static org.hamcrest.Matchers.isOneOf;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,7 +45,7 @@ public class TimelineCleaningJobTest {
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
 
-        timelineCleanupJob = new TimelineCleanupJob(eventTypeCache, timelineDbRepository, timelineService,
+        timelineCleanupJob = new TimelineCleanupJob(timelineDbRepository, timelineService,
                 featureToggleService, jobWrapperFactory, 0, 0L);
     }
 
@@ -71,30 +69,11 @@ public class TimelineCleaningJobTest {
 
         for (final Timeline timeline : expiredTimelines) {
             verify(topicRepository).deleteTopic(timeline.getTopic());
-            verify(eventTypeCache).updated(timeline.getEventType());
 
             final Timeline updatedTimeline = updatedTimelinesIterator.next();
             assertThat(timeline.getEventType(), equalTo(updatedTimeline.getEventType()));
             assertThat(updatedTimeline.isDeleted(), is(true));
         }
-    }
-
-    @Test
-    public void whenCleanupTimelinesAndCacheFailedToUpdateThenTimelineStateIsReverted() {
-        final Timeline t1 = createTimeline("et1", "topic1");
-
-        final ImmutableList<Timeline> expiredTimelines = ImmutableList.of(t1);
-        when(timelineDbRepository.getExpiredTimelines()).thenReturn(expiredTimelines);
-
-        final TopicRepository topicRepository = mock(TopicRepository.class);
-        when(timelineService.getTopicRepository(eq(t1))).thenReturn(topicRepository);
-
-        doThrow(new RuntimeException()).when(eventTypeCache).updated(any());
-
-        timelineCleanupJob.cleanupTimelines();
-
-        verify(timelineDbRepository, times(2)).updateTimelime(any());
-        assertThat(t1.isDeleted(), is(false));
     }
 
     private Timeline createTimeline(final String et, final String topic) {
