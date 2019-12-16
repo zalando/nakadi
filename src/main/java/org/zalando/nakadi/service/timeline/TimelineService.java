@@ -221,6 +221,11 @@ public class TimelineService {
         }
     }
 
+    public void rollbackTopic(final Timeline timeline) {
+        final TopicRepository repo = topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+        repo.deleteTopic(timeline.getTopic());
+    }
+
     private void rollbackTopic(final TopicRepository repository, final String topic) {
         try {
             repository.deleteTopic(topic);

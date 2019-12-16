@@ -73,20 +73,13 @@ public class RepartitioningService {
     public void repartition(final EventType eventType, final int partitions)
             throws InternalNakadiException, NakadiRuntimeException {
         LOG.info("start repartitioning for {} to {} partitions", eventType.getName(), partitions);
-        final NakadiBaseException exception = transactionTemplate.execute(action -> {
-            try {
-                eventTypeRepository.update(eventType);
-                timelineService.updateTimeLineForRepartition(eventType, partitions);
-                return null;
-            } catch (NakadiBaseException e) {
-                return e;
-            }
+        transactionTemplate.execute(action -> {
+            eventTypeRepository.update(eventType);
+            timelineService.updateTimeLineForRepartition(eventType, partitions);
+            return null;
         });
 
-        if (exception != null) {
-            throw new InternalNakadiException("Cannot repartition Event type " + eventType.getName(), exception);
-        }
-
+        eventTypeRepository.notifyUpdated(eventType.getName());
         updateSubscriptionsForRepartitioning(eventType, partitions);
     }
 
