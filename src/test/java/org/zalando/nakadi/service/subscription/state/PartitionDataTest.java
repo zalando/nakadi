@@ -139,14 +139,24 @@ public class PartitionDataTest {
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
         final long timeout = TimeUnit.SECONDS.toMillis(100);
 
-        for (int i = 2; i < 20; ++i) {
-            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), i));
+        final int[] timestamps = new int[]{ 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 17, 19, 20, 30 };
+
+        for (int i = 0; i < timestamps.length; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), timestamps[i]));
         }
 
-        assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
-        assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
-        assertEquals(5, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
-        assertEquals(3, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size()); // stream timeout
+        final int[] sizes = new int[] {
+               5, // [2, 7) = 2, 3, 4, 5, 6
+               4, // [7, 12) = 7, 9, 10, 11
+               2, // [12, 17) = 12, 14
+               3, // [17, 22) = 17, 19, 20
+               0, // [22, 27) = [],
+               1 // [27, 32) = 30
+        };
+
+        for (int i = 0; i < sizes.length; i++) {
+            assertEquals(sizes[i], pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
+        }
     }
 
     @Test

@@ -80,10 +80,8 @@ class PartitionData {
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
 
         if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {
-            final long batchWindowEndTimestamp = batchWindowStartTimestamp + batchTimespanMillis;
-            batchWindowStartTimestamp = batchWindowEndTimestamp;
             lastSendMillis = currentTimeMillis;
-            return extractTimespan(batchWindowEndTimestamp);
+            return extractTimespan(batchWindowEndTimestamp());
         } else if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
             batchWindowStartTimestamp = lastSendMillis;
@@ -115,6 +113,7 @@ class PartitionData {
     }
 
     private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
+        batchWindowStartTimestamp = batchWindowEndTimestamp;
         return extract((i) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp);
     }
 
