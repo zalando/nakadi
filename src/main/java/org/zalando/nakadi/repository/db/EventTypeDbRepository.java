@@ -189,6 +189,10 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
         }
+    }
 
+    @Override
+    public void notifyUpdated(final String name) {
+        // Do nothing. Database is always in sync
     }
 }

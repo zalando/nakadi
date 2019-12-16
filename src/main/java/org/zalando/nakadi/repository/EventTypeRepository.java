@@ -2,9 +2,9 @@ package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +20,8 @@ public interface EventTypeRepository {
     List<EventType> list();
 
     void removeEventType(String name) throws InternalNakadiException, NoSuchEventTypeException;
+
+    void notifyUpdated(String name);
 
     default Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
         try {
