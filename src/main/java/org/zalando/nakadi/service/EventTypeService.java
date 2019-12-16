@@ -37,6 +37,7 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
@@ -203,7 +204,11 @@ public class EventTypeService {
                     LOG.warn("Failed to rollback event type creation (which is highly expected)", ex2);
                 }
             }
-            throw ex;
+            if (ex instanceof NakadiBaseException) {
+                throw ex;
+            } else {
+                throw new InternalNakadiException("Failed to create event type: " + ex.getMessage(), ex);
+            }
         }
         nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
                 .put("event_type", eventType.getName())
