@@ -34,7 +34,20 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     @Override
     public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
-        return this.repository.saveEventType(eventTypeBase);
+        final EventType eventType = this.repository.saveEventType(eventTypeBase);
+
+        try {
+            this.cache.created(eventTypeBase.getName());
+            return eventType;
+        } catch (Exception e) {
+            LOG.error("Failed to create new cache entry for event type '" + eventTypeBase.getName() + "'", e);
+            try {
+                this.repository.removeEventType(eventTypeBase.getName());
+            } catch (NoSuchEventTypeException e1) {
+                LOG.error("Failed to revert event type db persistence", e1);
+            }
+            throw new InternalNakadiException("Failed to save event type", e);
+        }
     }
 
     @Override
@@ -44,8 +57,16 @@ public class CachingEventTypeRepository implements EventTypeRepository {
 
     @Override
     public void update(final EventType eventType) throws InternalNakadiException, NoSuchEventTypeException {
-        this.repository.findByName(eventType.getName());
+        final EventType original = this.repository.findByName(eventType.getName());
         this.repository.update(eventType);
+
+        try {
+            this.cache.updated(eventType.getName());
+        } catch (Exception e) {
+            LOG.error("Failed to update cache for event type '" + eventType.getName() + "'", e);
+            this.repository.update(original);
+            throw new InternalNakadiException("Failed to update event type", e);
+        }
     }
 
     @Override
@@ -55,12 +76,21 @@ public class CachingEventTypeRepository implements EventTypeRepository {
 
     @Override
     public void removeEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
-        this.repository.findByName(name);
-        this.repository.removeEventType(name);
-    }
+        final EventType original = this.repository.findByName(name);
 
-    @Override
-    public void notifyUpdated(final String name) {
-        this.cache.updated(name);
+        this.repository.removeEventType(name);
+
+        try {
+            this.cache.removed(name);
+        } catch (Exception e) {
+            LOG.error("Failed to remove entry from cache '" + name + "'");
+            try {
+                this.repository.saveEventType(original);
+            } catch (DuplicatedEventTypeNameException e1) {
+                LOG.error("Failed to rollback db removal", e);
+            }
+            throw new InternalNakadiException("Failed to remove event type", e);
+        }
+
     }
 }

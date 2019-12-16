@@ -17,7 +17,7 @@ public class CachingEventTypeRepositoryTest {
     private final EventTypeRepository cachedRepo;
     private final EventType et = mock(EventType.class);
 
-    public CachingEventTypeRepositoryTest() {
+    public CachingEventTypeRepositoryTest() throws Exception {
         this.cachedRepo = new CachingEventTypeRepository(dbRepo, cache);
 
         Mockito
@@ -27,14 +27,15 @@ public class CachingEventTypeRepositoryTest {
     }
 
     @Test
-    public void whenDbPersistenceSucceedThenNotifyCache() {
+    public void whenDbPersistenceSucceedThenNotifyCache() throws Exception {
         cachedRepo.saveEventType(et);
 
         verify(dbRepo, times(1)).saveEventType(et);
+        verify(cache, times(1)).created(et.getName());
     }
 
     @Test
-    public void whenCacheFailsThenRollbackEventPersistence() {
+    public void whenCacheFailsThenRollbackEventPersistence() throws Exception {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
@@ -48,14 +49,15 @@ public class CachingEventTypeRepositoryTest {
     }
 
     @Test
-    public void whenDbUpdateSucceedThenNotifyCache() {
+    public void whenDbUpdateSucceedThenNotifyCache() throws Exception {
         cachedRepo.update(et);
 
         verify(dbRepo, times(1)).update(et);
+        verify(cache, times(1)).updated("event-name");
     }
 
     @Test
-    public void whenUpdateCacheFailThenRollbackDbPersistence() {
+    public void whenUpdateCacheFailThenRollbackDbPersistence() throws Exception {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
@@ -76,14 +78,15 @@ public class CachingEventTypeRepositoryTest {
     }
 
     @Test
-    public void removeFromDbSucceedNotifyCache() {
+    public void removeFromDbSucceedNotifyCache() throws Exception {
         cachedRepo.removeEventType("event-name");
 
         verify(dbRepo, times(1)).removeEventType("event-name");
+        verify(cache, times(1)).removed("event-name");
     }
 
     @Test
-    public void whenRemoveCacheEntryFailsThenRollbackDbRemoval() {
+    public void whenRemoveCacheEntryFailsThenRollbackDbRemoval() throws Exception {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)

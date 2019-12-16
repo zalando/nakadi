@@ -684,7 +684,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType et = buildDefaultEventType();
         doThrow(TopicCreationException.class).when(timelineService)
                 .createDefaultTimeline(any(), anyInt());
-        when(eventTypeRepository.saveEventType(any())).thenReturn(et);
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
 
         postEventType(et).andExpect(status().isServiceUnavailable())
