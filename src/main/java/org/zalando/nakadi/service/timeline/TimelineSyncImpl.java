@@ -85,9 +85,9 @@ public class TimelineSyncImpl implements TimelineSync {
 
     private void initializeZkStructure() throws InterruptedException, RuntimeException {
         LOG.info("Starting initialization");
-        checkAndCreatZkNode("version", "0");
-        checkAndCreatZkNode("locked_et", "[]");
-        checkAndCreatZkNode("nodes", "[]");
+        checkAndCreateZkNode("version", "0");
+        checkAndCreateZkNode("locked_et", "[]");
+        checkAndCreateZkNode("nodes", "[]");
 
         runLocked(() -> {
             try {
@@ -102,7 +102,7 @@ public class TimelineSyncImpl implements TimelineSync {
         reactOnEventTypesChange();
     }
 
-    private void checkAndCreatZkNode(final String nodeName, final String data) throws RuntimeException {
+    private void checkAndCreateZkNode(final String nodeName, final String data) throws RuntimeException {
         final String nodePath = toZkPath("/" + nodeName);
         boolean exist = false;
         try {
