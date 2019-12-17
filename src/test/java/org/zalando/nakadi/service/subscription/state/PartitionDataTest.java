@@ -135,6 +135,55 @@ public class PartitionDataTest {
     }
 
     @Test
+    public void eventsShouldBeStreamedOnTimespanReached() {
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+
+        final int[] timestamps = new int[]{ 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 17, 19, 20, 30 };
+
+        for (int i = 0; i < timestamps.length; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), timestamps[i]));
+        }
+
+        final int[] sizes = new int[] {
+               5, // [2, 7) = 2, 3, 4, 5, 6
+               4, // [7, 12) = 7, 9, 10, 11
+               2, // [12, 17) = 12, 14
+               3, // [17, 22) = 17, 19, 20
+               0, // [22, 27) = [],
+               1 // [27, 32) = 30
+        };
+
+        for (int i = 0; i < sizes.length; i++) {
+            assertEquals(sizes[i], pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
+        }
+    }
+
+    @Test
+    public void testBatchTimespanIsTriggeredByLastEventsTimestamp() {
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
+        final long timeout = TimeUnit.SECONDS.toMillis(100);
+
+        // under some circumstances, Kafka might contain events with out of order timestamps. But since the
+        // batch_timespan parameter is based on seconds, small inconsistencies in timestamp should not be a problem.
+        final int[] timestamps = new int[]{ 2, 3, 4, 5, 2, 4, 4, 2, 9, 1 };
+
+        for (int i = 0; i < timestamps.length; ++i) {
+            pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), timestamps[i]));
+        }
+
+        // Nothing is streamed, even though there is one event whose timestamp is 9 (higher than the minimum of 7
+        // required to stream 5 milliseconds of data, given the first event has timestamp 2)
+        assertEquals(null, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, false));
+
+        // Even though 7 triggers the flushing, it only streams until it finds 9
+        pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(timestamps.length), 8));
+        assertEquals(8, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, false)
+                .size()); // [2, 7)
+
+    }
+
+    @Test
     public void eventsShouldBeStreamedOnStreamTimeout() {
         final long timeout = TimeUnit.SECONDS.toMillis(100);
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());

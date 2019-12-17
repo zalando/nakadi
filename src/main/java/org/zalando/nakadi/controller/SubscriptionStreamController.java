@@ -182,14 +182,16 @@ public class SubscriptionStreamController {
                     maxUncommittedEvents,
             @Nullable @RequestParam(value = "batch_limit", required = false) final Integer batchLimit,
             @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
+            @Nullable @RequestParam(value = "batch_timespan", required = false) final Long batchTimespan,
             @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
-        final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimeout,
-                streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(), commitTimeout);
+        final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
+                batchTimeout, streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(),
+                commitTimeout);
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);

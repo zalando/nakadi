@@ -89,6 +89,7 @@ public class StreamingStateTest {
         final StreamParameters spMock = createStreamParameters(
                 1000,
                 100L,
+                0L,
                 100,
                 100L,
                 100,

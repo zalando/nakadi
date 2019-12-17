@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 class PartitionData {
     private final Comparator<NakadiCursor> comparator;
@@ -27,14 +28,28 @@ class PartitionData {
     private NakadiCursor commitOffset;
     private NakadiCursor sentOffset;
     private long lastSendMillis;
+    private long batchWindowStartTimestamp;
     private int keepAliveInARow;
     private long bytesInMemory;
+    final long batchTimespanMillis;
 
     @VisibleForTesting
     PartitionData(final Comparator<NakadiCursor> comparator,
-                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription, final NakadiCursor commitOffset,
+                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
+                  final NakadiCursor commitOffset,
+                  final long currentTime,
+                  final long batchTimespanMillis) {
+        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime,
+                batchTimespanMillis);
+        bytesInMemory = 0L;
+    }
+
+    @VisibleForTesting
+    PartitionData(final Comparator<NakadiCursor> comparator,
+                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
+                  final NakadiCursor commitOffset,
                   final long currentTime) {
-        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
+        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime, 0L);
         bytesInMemory = 0L;
     }
 
@@ -43,7 +58,9 @@ class PartitionData {
             final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
             final NakadiCursor commitOffset,
             final Logger log,
-            final long currentTime) {
+            final long currentTime,
+            final long batchTimespanMillis) {
+        this.batchTimespanMillis = batchTimespanMillis;
         this.comparator = comparator;
         this.allCursorsOrdered = new TreeSet<>(comparator);
         this.subscription = subscription;
@@ -52,33 +69,53 @@ class PartitionData {
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
         this.lastSendMillis = currentTime;
+        this.batchWindowStartTimestamp = 0L;
     }
 
     @Nullable
-    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final int batchSize,
-                                           final long batchTimeoutMillis, final boolean streamTimeoutReached) {
+    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis,
+                                           final int batchSize, final long batchTimeoutMillis,
+                                           final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
-        if (countReached || timeReached) {
+
+        if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {
             lastSendMillis = currentTimeMillis;
-            return extract(batchSize);
+            return extractTimespan(batchWindowEndTimestamp());
+        } else if (countReached || timeReached) {
+            lastSendMillis = currentTimeMillis;
+            batchWindowStartTimestamp = lastSendMillis;
+            return extractCount(batchSize);
         } else if (streamTimeoutReached) {
             lastSendMillis = currentTimeMillis;
-            final List<ConsumedEvent> extractedEvents = extract(batchSize);
+            batchWindowStartTimestamp = lastSendMillis;
+            final List<ConsumedEvent> extractedEvents = extractCount(batchSize);
             return extractedEvents.isEmpty() ? null : extractedEvents;
         } else {
             return null;
         }
     }
 
-    public List<ConsumedEvent> extractAll(final long currentTimeMillis) {
-        final List<ConsumedEvent> result = extract(nakadiEvents.size());
-        if (!result.isEmpty()) {
-            lastSendMillis = currentTimeMillis;
+    private long batchWindowEndTimestamp() {
+        if (batchWindowStartTimestamp == 0 && !nakadiEvents.isEmpty()) {
+            batchWindowStartTimestamp = nakadiEvents.get(0).getTimestamp();
         }
-        return result;
+
+        return batchWindowStartTimestamp + batchTimespanMillis;
     }
 
+    private long lastRecordTimestamp() {
+        if (nakadiEvents.size() > 0) {
+            return nakadiEvents.get(nakadiEvents.size() - 1).getTimestamp();
+        } else {
+            return 0;
+        }
+    }
+
+    private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
+        batchWindowStartTimestamp = batchWindowEndTimestamp;
+        return extract((i) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp);
+    }
 
     NakadiCursor getSentOffset() {
         return sentOffset;
@@ -96,9 +133,13 @@ class PartitionData {
         return bytesInMemory;
     }
 
-    private List<ConsumedEvent> extract(final int count) {
+    private List<ConsumedEvent> extractCount(final int count) {
+        return extract((i) -> i < count);
+    }
+
+    private List<ConsumedEvent> extract(final Predicate<Integer> condition) {
         final List<ConsumedEvent> result = new ArrayList<>();
-        for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
+        for (int i = 0; !nakadiEvents.isEmpty() && condition.test(i); ++i) {
             final ConsumedEvent event = nakadiEvents.remove(0);
             bytesInMemory -= event.getEvent().length;
             result.add(event);
@@ -113,7 +154,7 @@ class PartitionData {
     }
 
     public List<ConsumedEvent> extractMaxEvents(final long currentTimeMillis, final int count) {
-        final List<ConsumedEvent> result = extract(count);
+        final List<ConsumedEvent> result = extractCount(count);
         if(!result.isEmpty()) {
             lastSendMillis = currentTimeMillis;
         }

@@ -21,6 +21,10 @@ public class StreamParameters {
      */
     private final Optional<Long> streamLimitEvents;
     /**
+     * Number of milliseconds to be batched based on Kafka record timestamp.
+     */
+    public final long batchTimespan;
+    /**
      * Timeout for collecting {@code batchLimitEvents} events. If not collected - send either not full batch
      * or keep alive message.
      */
@@ -55,6 +59,7 @@ public class StreamParameters {
             throw new WrongStreamParametersException("batch_limit can't be lower than 1");
         }
         this.streamLimitEvents = userParameters.getStreamLimit().filter(v -> v != 0);
+        this.batchTimespan = TimeUnit.SECONDS.toMillis(userParameters.getBatchTimespan().orElse(0L));
         this.batchTimeoutMillis = TimeUnit.SECONDS.toMillis(userParameters.getBatchFlushTimeout().orElse(30));
         this.streamTimeoutMillis = TimeUnit.SECONDS.toMillis(
                 userParameters.getStreamTimeout()
