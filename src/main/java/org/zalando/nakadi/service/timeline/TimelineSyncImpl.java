@@ -57,6 +57,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     private static final String ROOT_PATH = "/nakadi/timelines";
     private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
+    private static final long LOCK_ZK_TIMEOUT = 10_000;
 
     private final ZooKeeperHolder zooKeeperHolder;
     private final String nodeId;
@@ -67,7 +68,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     @Autowired
     public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator)
-            throws InterruptedException {
+            throws InterruptedException, RuntimeException {
         this.nodeId = uuidGenerator.randomUUID().toString();
         this.zooKeeperHolder = zooKeeperHolder;
         this.initializeZkStructure();
@@ -82,24 +83,14 @@ public class TimelineSyncImpl implements TimelineSync {
         return ROOT_PATH + path;
     }
 
-    private void initializeZkStructure() throws InterruptedException {
+    private void initializeZkStructure() throws InterruptedException, RuntimeException {
         LOG.info("Starting initialization");
+        checkAndCreateZkNode("version", "0");
+        checkAndCreateZkNode("locked_et", "[]");
+        checkAndCreateZkNode("nodes", "[]");
+
         runLocked(() -> {
             try {
-                try {
-                    // 1. Create version node, if needed, keep in mind that lock built root path
-                    zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/version"), "0".getBytes(Charsets.UTF_8));
-
-                    // 2. Create locked event types structure
-                    zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/locked_et"), "[]".getBytes(Charsets.UTF_8));
-                    // 3. Create nodes root path
-                    zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/nodes"), "[]".getBytes(Charsets.UTF_8));
-                } catch (final KeeperException.NodeExistsException ignore) {
-                }
-
                 LOG.info("Registering node in zk");
                 updateSelfVersionTo(0);
             } catch (final Exception e) {
@@ -109,6 +100,28 @@ public class TimelineSyncImpl implements TimelineSync {
         });
         // 4. React on what was received and write node version to zk.
         reactOnEventTypesChange();
+    }
+
+    private void checkAndCreateZkNode(final String nodeName, final String data) throws RuntimeException {
+        final String nodePath = toZkPath("/" + nodeName);
+        boolean exist = false;
+        try {
+            exist = zooKeeperHolder.get().checkExists().forPath(nodePath) != null;
+        } catch (final Exception e) {
+            LOG.error("failed to check zookeeper node {}", nodePath, e.getMessage());
+        }
+
+        try {
+            if (!exist) {
+                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
+                        .forPath(nodePath, data.getBytes(Charsets.UTF_8));
+            }
+        } catch (final KeeperException.NodeExistsException ignore) {
+            // skip it, node was already created
+        } catch (final Exception e) {
+            LOG.error("failed to create zookeeper node {}", nodePath, e);
+            throw new RuntimeException(e);
+        }
     }
 
     private <T> T readData(final String relativeName,
@@ -208,7 +221,10 @@ public class TimelineSyncImpl implements TimelineSync {
             Exception releaseException = null;
             final InterProcessLock lock =
                     new InterProcessSemaphoreMutex(zooKeeperHolder.get(), ROOT_PATH + "/lock");
-            lock.acquire();
+            final boolean acquired = lock.acquire(LOCK_ZK_TIMEOUT, TimeUnit.MILLISECONDS);
+            if (!acquired) {
+                throw new RuntimeException(String.format("Lock can not be acquired in %d ms", LOCK_ZK_TIMEOUT));
+            }
             try {
                 action.run();
             } finally {
