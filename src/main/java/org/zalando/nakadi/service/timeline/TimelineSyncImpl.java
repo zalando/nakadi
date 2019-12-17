@@ -68,7 +68,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     @Autowired
     public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator)
-            throws InterruptedException {
+            throws InterruptedException, RuntimeException {
         this.nodeId = uuidGenerator.randomUUID().toString();
         this.zooKeeperHolder = zooKeeperHolder;
         this.initializeZkStructure();
@@ -83,27 +83,11 @@ public class TimelineSyncImpl implements TimelineSync {
         return ROOT_PATH + path;
     }
 
-    private void initializeZkStructure() throws InterruptedException {
+    private void initializeZkStructure() throws InterruptedException, RuntimeException {
         LOG.info("Starting initialization");
-        if (!checkZkStructureInited()) {
-            try {
-                // 1. Create version node, if needed, keep in mind that lock built root path
-                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
-                        .forPath(toZkPath("/version"), "0".getBytes(Charsets.UTF_8));
-
-                // 2. Create locked event types structure
-                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
-                        .forPath(toZkPath("/locked_et"), "[]".getBytes(Charsets.UTF_8));
-                // 3. Create nodes root path
-                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
-                        .forPath(toZkPath("/nodes"), "[]".getBytes(Charsets.UTF_8));
-            } catch (final KeeperException.NodeExistsException ignore) {
-                // skip it, node was already created
-            } catch (final Exception e) {
-                LOG.error("Failed to check zk structures", e);
-                throw new RuntimeException(e);
-            }
-        }
+        checkAndCreatZkNode("version", "0");
+        checkAndCreatZkNode("locked_et", "[]");
+        checkAndCreatZkNode("nodes", "[]");
 
         runLocked(() -> {
             try {
@@ -118,15 +102,26 @@ public class TimelineSyncImpl implements TimelineSync {
         reactOnEventTypesChange();
     }
 
-    private boolean checkZkStructureInited() {
+    private void checkAndCreatZkNode(final String nodeName, final String data) throws RuntimeException {
+        final String nodePath = toZkPath("/" + nodeName);
+        boolean exist = false;
         try {
-            return zooKeeperHolder.get().checkExists().forPath(toZkPath("/version")) != null &&
-                    zooKeeperHolder.get().checkExists().forPath(toZkPath("/locked_et")) != null &&
-                    zooKeeperHolder.get().checkExists().forPath(toZkPath("/nodes")) != null;
+            exist = zooKeeperHolder.get().checkExists().forPath(nodePath) != null;
         } catch (final Exception e) {
-            // was not able to check or node is not there
+            LOG.error("failed to check zookeeper node {}", nodePath, e.getMessage());
         }
-        return false;
+
+        try {
+            if (!exist) {
+                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
+                        .forPath(nodePath, data.getBytes(Charsets.UTF_8));
+            }
+        } catch (final KeeperException.NodeExistsException ignore) {
+            // skip it, node was already created
+        } catch (final Exception e) {
+            LOG.error("failed to create zookeeper node {}", nodePath, e);
+            throw new RuntimeException(e);
+        }
     }
 
     private <T> T readData(final String relativeName,
