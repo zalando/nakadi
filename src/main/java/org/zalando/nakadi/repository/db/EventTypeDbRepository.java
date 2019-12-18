@@ -11,7 +11,6 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -39,7 +38,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
-    @Transactional
     public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
         try {
@@ -70,7 +68,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
-    @Transactional
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
             final String sql = "SELECT et_event_type_object -> 'schema' ->> 'version' " +
@@ -178,7 +175,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
-    @Transactional
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.event_type_schema WHERE ets_event_type_name = ?", name);
