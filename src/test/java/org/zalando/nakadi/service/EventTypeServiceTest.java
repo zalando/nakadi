@@ -242,6 +242,7 @@ public class EventTypeServiceTest {
     @Test
     public void shouldRemoveEventTypeWhenTimelineCreationFails() {
         final EventType eventType = buildDefaultEventType();
+        when(eventTypeRepository.saveEventType(any())).thenReturn(eventType);
         when(timelineService.createDefaultTimeline(any(), anyInt()))
                 .thenThrow(new TopicCreationException("Failed to create topic"));
         try {
