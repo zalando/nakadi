@@ -124,7 +124,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenStreamTimeoutReachedThenEventsFlushed() throws Exception {
+    public void whenStreamTimeoutReachedThenEventsFlushed() {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(),
                         "batch_flush_timeout=600&batch_limit=1000&stream_timeout=2&max_uncommitted_events=1000")

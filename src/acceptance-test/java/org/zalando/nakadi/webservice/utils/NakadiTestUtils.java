@@ -90,18 +90,27 @@ public class NakadiTestUtils {
     }
 
     public static void publishEvent(final String eventType, final String event) {
-        given()
-                .body(format("[{0}]", event))
-                .contentType(JSON)
-                .post(format("/event-types/{0}/events", eventType));
+        publishEvents(eventType, 1, (i) -> event);
     }
 
     public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
+        processEvents(format("/event-types/{0}/events", eventType), count, generator);
+    }
+
+    public static void deleteEvent(final String eventType, final String event) {
+        deleteEvents(eventType, 1, (i) -> event);
+    }
+
+    public static void deleteEvents(final String eventType, final int count, final IntFunction<String> generator) {
+        processEvents(format("/event-types/{0}/deleted-events", eventType), count, generator);
+    }
+
+    public static void processEvents(final String path, final int count, final IntFunction<String> generator) {
         final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
         given()
                 .body("[" + events + "]")
                 .contentType(JSON)
-                .post(format("/event-types/{0}/events", eventType));
+                .post(path);
     }
 
     public static void repartitionEventType(final EventType eventType, final int partitionsNumber)
