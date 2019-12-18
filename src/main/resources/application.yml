@@ -9,7 +9,7 @@ jetty:
     idleTimeout: 60000
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/local_nakadi_db?preferQueryMode=simple
+    url: jdbc:postgresql://localhost:5432/local_nakadi_db
     username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
@@ -23,7 +23,7 @@ spring:
       test-while-idle: true
       time-between-eviction-runs-millis: 5000
       min-evictable-idle-time-millis: 60000
-      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2;preferQueryMode=simple
+      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
