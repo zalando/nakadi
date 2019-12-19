@@ -118,7 +118,9 @@ class PartitionData {
         final List<ConsumedEvent> events = extract((taken) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp || taken == 0);
 
         // needed to fast forward the window start in case there are no events for an extended period of time
-        batchWindowStartTimestamp = Math.max(batchWindowEndTimestamp, events.get(events.size()-1).getTimestamp());
+        if (!events.isEmpty()) {
+            batchWindowStartTimestamp = Math.max(batchWindowEndTimestamp, events.get(events.size()-1).getTimestamp());
+        }
 
         return events;
     }
