@@ -115,7 +115,9 @@ class PartitionData {
     private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
         // extract at least one. This condition is necessary in case the event that triggers the extract is outside
         // the window but it's the only event to be streamed.
-        final List<ConsumedEvent> events = extract((taken) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp || taken == 0);
+        final List<ConsumedEvent> events = extract((taken) -> {
+            return nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp || taken == 0;
+        });
 
         // needed to fast forward the window start in case there are no events for an extended period of time
         if (!events.isEmpty()) {
