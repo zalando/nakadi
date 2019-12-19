@@ -114,7 +114,10 @@ class PartitionData {
 
     private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
         batchWindowStartTimestamp = batchWindowEndTimestamp;
-        return extract((i) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp);
+
+        // extract at least one. This condition is necessary in case the event that triggers the extract is outside
+        // the window but it's the only event to be streamed.
+        return extract((taken) -> nakadiEvents.get(0).getTimestamp() < batchWindowEndTimestamp || taken == 0);
     }
 
     NakadiCursor getSentOffset() {
@@ -143,6 +146,9 @@ class PartitionData {
             final ConsumedEvent event = nakadiEvents.remove(0);
             bytesInMemory -= event.getEvent().length;
             result.add(event);
+
+            // needed to fast forward the window start in case there are no events for an extended period of time
+            batchWindowStartTimestamp = Math.max(batchWindowStartTimestamp, event.getTimestamp());
         }
         if (!result.isEmpty()) {
             this.sentOffset = result.get(result.size() - 1).getPosition();

@@ -4,8 +4,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 import java.util.Comparator;
@@ -135,6 +135,21 @@ public class PartitionDataTest {
     }
 
     @Test
+    public void streamsBatchesWithSingleEventForBatchTimespan() {
+        final long currentTime = System.currentTimeMillis();
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime, 5);
+
+        pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(0), currentTime + 1));
+
+        assertEquals(null, pd.takeEventsToStream(currentTime, 100, 100, false)); // initialize window to [1, 6)
+
+        pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(1), currentTime + 12));
+
+        assertEquals(1, pd.takeEventsToStream(currentTime, 100, 100, false).size()); // [1, 6)
+        assertEquals(1, pd.takeEventsToStream(currentTime, 100, 100, false).size()); // [6, 11)
+    }
+
+    @Test
     public void eventsShouldBeStreamedOnTimespanReached() {
         final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
         final long timeout = TimeUnit.SECONDS.toMillis(100);
@@ -150,13 +165,15 @@ public class PartitionDataTest {
                4, // [7, 12) = 7, 9, 10, 11
                2, // [12, 17) = 12, 14
                3, // [17, 22) = 17, 19, 20
-               0, // [22, 27) = [],
-               1 // [27, 32) = 30
+               1 // [22, 27) = 30,
         };
 
         for (int i = 0; i < sizes.length; i++) {
             assertEquals(sizes[i], pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
         }
+
+        pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(timestamps.length), 35));
+        assertEquals(1, pd.takeEventsToStream(currentTimeMillis(), 100, timeout, true).size());
     }
 
     @Test
