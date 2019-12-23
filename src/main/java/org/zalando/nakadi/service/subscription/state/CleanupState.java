@@ -29,7 +29,6 @@ public class CleanupState extends State {
             }
         } finally {
             try {
-                getContext().getTerminationService().deregister(getSessionId());
                 getContext().unregisterSession();
             } finally {
                 switchState(StreamingContext.DEAD_STATE);

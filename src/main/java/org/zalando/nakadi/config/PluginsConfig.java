@@ -56,7 +56,7 @@ public class PluginsConfig {
     }
 
     @Bean
-    public TerminationService authorizationService(@Value("${nakadi.plugins.termination.factory}") final String factoryName,
+    public TerminationService terminationService(@Value("${nakadi.plugins.termination.factory}") final String factoryName,
                                                    final SystemProperties systemProperties,
                                                    final DefaultResourceLoader loader) {
         try {

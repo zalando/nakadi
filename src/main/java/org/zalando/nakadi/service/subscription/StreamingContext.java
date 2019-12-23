@@ -166,14 +166,10 @@ public class StreamingContext implements SubscriptionStreamer {
         return kpiCollectionFrequencyMs;
     }
 
-    public TerminationService getTerminationService() {
-        return terminationService;
-    }
-
     @Override
     public void stream() throws InterruptedException {
         try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
-            terminationService.register(getSessionId(), this::onInstanceTermination);
+            terminationService.register(this::onInstanceTermination);
             streamInternal(new StartingState());
         } catch (final PluginException pe) {
             log.error("Failed to register instance termination callback for subscription {}", getSubscription(), pe);
@@ -514,11 +510,9 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-
         public StreamingContext build() {
             return new StreamingContext(this);
         }
-
 
     }
 
