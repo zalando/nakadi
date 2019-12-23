@@ -54,4 +54,19 @@ public class PluginsConfig {
             throw new BeanCreationException("Can't create AuthorizationService " + factoryName, e);
         }
     }
+
+    @Bean
+    public TerminationService authorizationService(@Value("${nakadi.plugins.termination.factory}") final String factoryName,
+                                                   final SystemProperties systemProperties,
+                                                   final DefaultResourceLoader loader) {
+        try {
+            LOGGER.info("Initialize per-resource termination service factory: " + factoryName);
+            final Class<TerminationServiceFactory> factoryClass =
+                    (Class<TerminationServiceFactory>) loader.getClassLoader().loadClass(factoryName);
+            final TerminationServiceFactory factory = factoryClass.newInstance();
+            return factory.init(systemProperties);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            throw new BeanCreationException("Can't create TerminationService " + factoryName, e);
+        }
+    }
 }
