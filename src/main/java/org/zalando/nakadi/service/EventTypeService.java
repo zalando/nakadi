@@ -493,15 +493,13 @@ public class EventTypeService {
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventType);
 
             for (final Timeline timeline : timelines) {
-                Date cleanedUpAt;
                 if (retentionDiffMs < 0) {
-                    cleanedUpAt = null;
+                    timeline.setCleanedUpAt(null);
                 } else if (timeline.getCleanedUpAt() != null) {
-                    cleanedUpAt = new Date(timeline.getCleanedUpAt().getTime() + retentionDiffMs);
+                    timeline.setCleanedUpAt(new Date(timeline.getCleanedUpAt().getTime() + retentionDiffMs));
                 } else {
-                    cleanedUpAt = new Date(System.currentTimeMillis() + retentionDiffMs);
+                    timeline.setCleanedUpAt(new Date(System.currentTimeMillis() + retentionDiffMs));
                 }
-                timeline.setCleanedUpAt(cleanedUpAt);
                 timelineService.updateTimeline(timeline);
             }
         }
