@@ -29,7 +29,7 @@ position: 14
 
 #### How long will events be persisted for?
 
-The default retention time in the project is set by the `retentionMs` value in `application.yml`, which is currently 2 days. 
+The default retention time in the project is set by the `retentionMs` value in `application.yml`, which is currently 2 days. If set to -1, no time limit is applied.  
 
 The service installation you're working with may have a different operational setting, and you should get in touch with the team operating that internal Nakadi service. 
 

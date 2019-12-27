@@ -343,7 +343,11 @@ public class TimelineService {
             if (retentionTime == null) {
                 throw new InconsistentStateException("Event type should has information about its retention time");
             }
-            final Date cleanupDate = new Date(System.currentTimeMillis() + retentionTime);
+
+            Date cleanupDate = null;
+            if (retentionTime >= 0) {
+                cleanupDate = new Date(System.currentTimeMillis() + retentionTime);
+            }
             timeline.setCleanedUpAt(cleanupDate);
         } catch (final InternalNakadiException | NoSuchEventTypeException e) {
             throw new InconsistentStateException("Unexpected error occurred when scheduling timeline cleanup", e);
