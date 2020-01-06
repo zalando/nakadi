@@ -85,7 +85,7 @@ public class HilaDeleteEventsAT extends BaseAT {
         publishEvent(false, "2");
         publishEvent(false, "3");
         publishEvent(false, "4");
-        publishEvent(true, "5");
+        publishEvent(true, "3");
         publishEvent(true, "4");
         publishEvent(true, "5");
         publishEvent(true, "6");
