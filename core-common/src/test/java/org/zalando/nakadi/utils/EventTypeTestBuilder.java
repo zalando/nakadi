@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.Discriminator;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -43,6 +44,7 @@ public class EventTypeTestBuilder {
     private DateTime updatedAt;
     private Audience audience;
     private ResourceAuthorization authorization;
+    private Discriminator discriminator;
 
 
     public EventTypeTestBuilder() {
@@ -64,6 +66,7 @@ public class EventTypeTestBuilder {
         this.updatedAt = this.createdAt;
         this.authorization = null;
         this.audience = null;
+        this.discriminator = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -157,12 +160,18 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder discriminator(final Discriminator discriminator) {
+        this.discriminator = discriminator;
+        return this;
+    }
+
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
+        eventTypeBase.setDiscriminator(discriminator);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }

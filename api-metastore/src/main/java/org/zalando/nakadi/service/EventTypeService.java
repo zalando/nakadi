@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.Discriminator;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -412,6 +413,7 @@ public class EventTypeService {
             validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
+            validateDiscriminator(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             repartitioningService.checkAndRepartition(original, eventType);
@@ -538,6 +540,21 @@ public class EventTypeService {
             InvalidEventTypeException {
         if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
+    private void validateDiscriminator(final EventType original, final EventTypeBase eventTypeBase) throws
+            InvalidEventTypeException {
+        final Discriminator originalDiscriminator = original.getDiscriminator();
+        final Discriminator updatedDiscriminator = eventTypeBase.getDiscriminator();
+        if (updatedDiscriminator != null && originalDiscriminator != null) {
+            if (!updatedDiscriminator.equals(originalDiscriminator)) {
+                throw new InvalidEventTypeException(
+                        String.format("event discriminator must not be changed, original: %s, updated: %s",
+                                originalDiscriminator.toString(), updatedDiscriminator.toString()));
+            }
+        } else if (updatedDiscriminator == null && originalDiscriminator != null) {
+            throw new InvalidEventTypeException("event type discriminator can't be set back to null");
         }
     }
 

@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.Discriminator;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -512,6 +513,49 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
         postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPostWithAValidDiscriminatorThenCreated() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.setDiscriminator(new Discriminator("random.path", "string"));
+        doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
+        when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
+
+        postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPutWithAValidDiscriminatorThen200() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder().build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .discriminator(new Discriminator("random.path", "string"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPutWithAChangedDiscriminatorThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .discriminator(new Discriminator("first.path", "string"))
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .discriminator(new Discriminator("random.path", "string"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test

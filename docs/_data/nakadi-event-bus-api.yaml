@@ -2718,6 +2718,9 @@ definitions:
             expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
 
+      discriminator:
+        $ref: '#/definitions/Discriminator'
+
       ordering_instance_ids:
         type: array
         description: |
@@ -2857,6 +2860,25 @@ definitions:
         default: 345600000 # 4 days
         description: |
           Number of milliseconds that Nakadi stores events published to this event type.
+
+
+  Discriminator:
+    type: object
+    description: |
+      Event field parameters to indicate per-event authorization. The discriminator can be used to
+      specify a field in an event that contains the identifiers of entities that can read the event
+      when consuming from it. Once created, the discrimator definition for an event-type can't be
+      updated or removed.
+    properties:
+      path:
+        type: string
+        description: |
+          Path of the field in the event that contains the identifiers of the entities that can access the event.
+      type:
+        type: string
+        description: |
+          Type of the field specified by the path the contains the identifiers of entities.
+
 
   EventTypeAuthorization:
     type: object
