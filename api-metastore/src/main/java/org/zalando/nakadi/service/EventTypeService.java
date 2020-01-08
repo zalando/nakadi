@@ -407,13 +407,13 @@ public class EventTypeService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
+                validateDiscriminator(original, eventTypeBase);
             }
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
             validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
-            validateDiscriminator(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             repartitioningService.checkAndRepartition(original, eventType);
