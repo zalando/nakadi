@@ -2865,10 +2865,11 @@ definitions:
   Discriminator:
     type: object
     description: |
-      Event field parameters to indicate per-event authorization. The discriminator can be used to
-      specify a field in an event that contains the identifiers of entities that can read the event
-      when consuming from it. Once created, the discrimator definition for an event-type can't be
-      updated or removed.
+      Event field parameters to differentiate consumption of events published on per-consumer level.
+      The discriminator can be used to specify a field to be used from the events published to this event type.
+      This field can then be used to implement logic using a plugin to whether an event would be provided
+      in a consumer's stream (`EventsStreamBatch` or `SubscriptionEventStreamBatch`).
+      Once created, the discrimator definition for an event-type can't be updated or removed.
     properties:
       path:
         type: string

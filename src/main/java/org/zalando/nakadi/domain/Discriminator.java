@@ -50,7 +50,7 @@ public class Discriminator {
 
    @Override
    public String toString() {
-      return "{ " + "type: " + this.type + ", path: " + this.path + "}";
+      return "{ " + "type: " + this.type + ", path: " + this.path + " }";
    }
 
    @Override
