@@ -12,3 +12,5 @@ include 'api-consumption'
 include 'api-cursors'
 include 'api-metastore'
 include 'api-misc'
+
+include 'acceptance-test'
