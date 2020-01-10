@@ -3,14 +3,13 @@ package org.zalando.nakadi.service;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
-import org.zalando.nakadi.service.NakadiCursorComparator;
 
 import java.util.Arrays;
 import java.util.Collections;

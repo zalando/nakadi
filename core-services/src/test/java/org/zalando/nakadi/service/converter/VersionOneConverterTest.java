@@ -3,15 +3,13 @@ package org.zalando.nakadi.service.converter;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.service.converter.VersionOneConverter;
-import org.zalando.nakadi.service.converter.VersionedConverter;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.Collections;

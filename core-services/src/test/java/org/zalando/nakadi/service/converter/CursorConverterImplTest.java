@@ -2,14 +2,13 @@ package org.zalando.nakadi.service.converter;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
-import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 

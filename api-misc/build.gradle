@@ -43,35 +43,8 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-sourceSets {
-    acceptanceTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/acceptance-test/java')
-        }
-        resources.srcDir file('src/acceptance-test/resources')
-    }
-    dbMigration {
-        java {
-            compileClasspath += main.output
-            runtimeClasspath += main.output
-            srcDir file('src/db-migration/java')
-        }
-    }
-}
-
-jar {
-    baseName = 'nakadi'
-}
-
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
-    acceptanceTestCompile.extendsFrom testCompile
-    acceptanceTestRuntime.extendsFrom testRuntime
-    dbMigrationCompile.extendsFrom compile
-    dbMigrationRuntime.extendsFrom runtime
-    pgsql
 }
 
 findbugs {
@@ -149,6 +122,7 @@ dependencies {
     testCompile "org.springframework:spring-test"
     testCompile 'org.springframework.boot:spring-boot-test'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile project(path: ':core-common', configuration: 'testOutput')
 }
 // end::dependencies[]
 
@@ -159,25 +133,12 @@ tasks.withType(FindBugs) {
     }
 }
 
-task acceptanceTest(type: Test) {
-    testClassesDirs = sourceSets.acceptanceTest.output
-    classpath = sourceSets.acceptanceTest.runtimeClasspath
-    maxParallelForks = 1
-}
-
 test {
     testLogging {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
     maxParallelForks = Runtime.runtime.availableProcessors()
-}
-
-acceptanceTest {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
 }
 
 jacoco {
@@ -197,5 +158,5 @@ checkstyle {
 }
 
 task checkstyle {
-    dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
+    dependsOn checkstyleMain, checkstyleTest
 }

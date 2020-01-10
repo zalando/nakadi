@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
@@ -11,6 +12,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Optional;
@@ -34,7 +36,7 @@ public class StorageServiceTest {
         storageService = new StorageService(TestUtils.OBJECT_MAPPER, storageDbRepository,
                 new DefaultStorage(mock(Storage.class)), mock(ZooKeeperHolder.class), featureToggleService,
                 auditLogPublisher);
-        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+        when(featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
     }
 

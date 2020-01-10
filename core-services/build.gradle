@@ -170,8 +170,22 @@ dependencies {
     testCompile "org.springframework:spring-test"
     testCompile 'org.springframework.boot:spring-boot-test'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile project(path: ':core-common', configuration: 'testOutput')
 }
 // end::dependencies[]
+
+configurations {
+    testOutput.extendsFrom(testCompile)
+}
+
+task jarTest(type: Jar, dependsOn: testClasses) {
+    from sourceSets.test.output
+    classifier = 'test'
+}
+
+artifacts {
+    testOutput jarTest
+}
 
 tasks.withType(FindBugs) {
     reports {

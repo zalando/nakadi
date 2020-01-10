@@ -3,12 +3,14 @@ package org.zalando.nakadi.service;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Permission;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,7 +75,7 @@ public class AdminServiceTest {
             defaultAdminPermissions.add(new Permission("org/zalando/nakadi", operation, defaultAdmin));
         }
         doNothing().when(authorizationService).isAuthorizationForResourceValid(any());
-        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_DB_WRITE_OPERATIONS))
+        when(featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS))
                 .thenReturn(false);
     }
 
