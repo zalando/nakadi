@@ -1,0 +1,14 @@
+rootProject.name = 'nakadi'
+
+include 'app'
+
+include 'core-common'
+include 'core-publishing'
+include 'core-services'
+include 'core-metastore'
+
+include 'api-publishing'
+include 'api-consumption'
+include 'api-cursors'
+include 'api-metastore'
+include 'api-misc'

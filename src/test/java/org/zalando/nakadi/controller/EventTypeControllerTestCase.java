@@ -36,7 +36,7 @@ import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;

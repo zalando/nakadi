@@ -4,7 +4,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
-import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 
 public class EventTypeOptionsValidatorTest {
 
