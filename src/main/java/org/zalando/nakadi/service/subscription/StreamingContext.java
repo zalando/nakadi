@@ -246,13 +246,13 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void unregisterSession() {
         log.info("Unregistering session {}", session);
-        if (null != sessionListSubscription) {
-            try {
+        try {
+            if (sessionListSubscription != null) {
                 sessionListSubscription.close();
-            } finally {
-                this.sessionListSubscription = null;
-                zkClient.unregisterSession(session);
             }
+        } finally {
+            this.sessionListSubscription = null;
+            zkClient.unregisterSession(session);
         }
     }
 
