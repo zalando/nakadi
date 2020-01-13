@@ -175,7 +175,7 @@ public class StreamingContextTest {
     @Test
     public void testSessionAlwaysCleanedIfRegistered() throws Exception {
 
-        ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
+        final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
 
         final StreamingContext context = new StreamingContext.Builder()
                 .setSession(Session.generate(1, ImmutableList.of()))
