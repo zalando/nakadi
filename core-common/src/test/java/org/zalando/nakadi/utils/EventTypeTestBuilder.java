@@ -7,8 +7,8 @@ import org.json.JSONObject;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.Discriminator;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
+import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -44,7 +44,7 @@ public class EventTypeTestBuilder {
     private DateTime updatedAt;
     private Audience audience;
     private ResourceAuthorization authorization;
-    private Discriminator discriminator;
+    private EventAuthField eventAuthField;
 
 
     public EventTypeTestBuilder() {
@@ -66,7 +66,7 @@ public class EventTypeTestBuilder {
         this.updatedAt = this.createdAt;
         this.authorization = null;
         this.audience = null;
-        this.discriminator = null;
+        this.eventAuthField = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -160,8 +160,8 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder discriminator(final Discriminator discriminator) {
-        this.discriminator = discriminator;
+    public EventTypeTestBuilder eventAuthField(final EventAuthField eventAuthField) {
+        this.eventAuthField = eventAuthField;
         return this;
     }
 
@@ -171,7 +171,7 @@ public class EventTypeTestBuilder {
                 defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
-        eventTypeBase.setDiscriminator(discriminator);
+        eventTypeBase.setEventAuthField(eventAuthField);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }

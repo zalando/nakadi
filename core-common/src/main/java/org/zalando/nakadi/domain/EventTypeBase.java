@@ -76,7 +76,7 @@ public class EventTypeBase implements EventTypeAuthz {
 
     @Nullable
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Discriminator discriminator;
+    private EventAuthField eventAuthField;
 
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
@@ -130,7 +130,7 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
-        this.setDiscriminator(eventType.getDiscriminator());
+        this.setEventAuthField(eventType.getEventAuthField());
     }
 
     public String getName() {
@@ -246,12 +246,12 @@ public class EventTypeBase implements EventTypeAuthz {
     }
 
     @Nullable
-    public Discriminator getDiscriminator() {
-        return discriminator;
+    public EventAuthField getEventAuthField() {
+        return eventAuthField;
     }
 
-    public void setDiscriminator(@Nullable final Discriminator discriminator) {
-        this.discriminator = discriminator;
+    public void setEventAuthField(@Nullable final EventAuthField eventAuthField) {
+        this.eventAuthField = eventAuthField;
     }
 
     @Nullable

@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.Discriminator;
+import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -516,10 +516,10 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPostWithAValidDiscriminatorThenCreated() throws Exception {
+    public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setDiscriminator(new Discriminator("random.path", "string"));
+        eventType.setEventAuthField(new EventAuthField("random.path", "string"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -527,12 +527,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPutWithAValidDiscriminatorThen200() throws Exception {
+    public void whenPutWithAValidEventAuthFieldThen200() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder().build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .discriminator(new Discriminator("random.path", "string"))
+                .eventAuthField(new EventAuthField("random.path", "string"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -542,14 +542,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPutWithAChangedDiscriminatorThen422() throws Exception {
+    public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .discriminator(new Discriminator("first.path", "string"))
+                .eventAuthField(new EventAuthField("first.path", "string"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .discriminator(new Discriminator("random.path", "string"))
+                .eventAuthField(new EventAuthField("random.path", "string"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());

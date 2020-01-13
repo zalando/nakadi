@@ -2,7 +2,7 @@ package org.zalando.nakadi.domain;
 
 import javax.validation.constraints.NotNull;
 
-public class Discriminator {
+public class EventAuthField {
    @NotNull
    private String type;
 
@@ -25,10 +25,10 @@ public class Discriminator {
       this.path = path;
    }
 
-   public Discriminator() {
+   public EventAuthField() {
    }
 
-   public Discriminator(final String path, final String type) {
+   public EventAuthField(final String path, final String type) {
       this.type = type;
       this.path = path;
    }
@@ -44,7 +44,7 @@ public class Discriminator {
       if (!super.equals(o)) {
          return false;
       }
-      final Discriminator that = (Discriminator) o;
+      final EventAuthField that = (EventAuthField) o;
       return (this.type.equals(that.type) && this.path.equals(that.path));
    }
 
