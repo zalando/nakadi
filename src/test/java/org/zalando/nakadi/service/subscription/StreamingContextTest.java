@@ -186,7 +186,7 @@ public class StreamingContextTest {
                 .build();
 
         context.registerSession();
-        // CleanupState calls context.unregisterSession() in finally
+        // CleanupState calls context.unregisterSession() in finally block
         context.unregisterSession();
 
         Mockito.verify(zkMock, Mockito.times(1)).registerSession(any());
