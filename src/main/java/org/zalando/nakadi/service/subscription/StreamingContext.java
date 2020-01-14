@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -68,6 +69,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final NakadiKpiPublisher kpiPublisher;
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
+    private final TerminationService terminationService;
 
     private final long kpiCollectionFrequencyMs;
 
@@ -106,6 +108,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.currentSpan = builder.currentSpan;
+        this.terminationService = builder.terminationService;
     }
 
     public Span getCurrentSpan() {
@@ -167,13 +170,21 @@ public class StreamingContext implements SubscriptionStreamer {
     @Override
     public void stream() throws InterruptedException {
         try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
+            terminationService.register(this::onInstanceTermination);
             streamInternal(new StartingState());
+        } catch (final PluginException pe) {
+            log.error("Failed to register instance termination callback for subscription {}", getSubscription(), pe);
         } catch (final IOException ex) {
             log.error(
                     "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
                     getSubscription(),
                     ex);
         }
+    }
+
+    void onInstanceTermination() {
+        log.info("Instance is about to be terminated. Trying to terminate subscription gracefully");
+        switchState(new CleanupState(null));
     }
 
     void onNodeShutdown() {
@@ -377,6 +388,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
         private Span currentSpan;
+        private TerminationService terminationService;
 
         public Builder setCurrentSpan(final Span span) {
             this.currentSpan = span;
@@ -498,10 +510,14 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
+        public Builder setTerminationService(final TerminationService terminationService) {
+            this.terminationService = terminationService;
+            return this;
+        }
+
         public StreamingContext build() {
             return new StreamingContext(this);
         }
-
 
     }
 

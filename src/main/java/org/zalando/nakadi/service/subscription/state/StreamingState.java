@@ -656,7 +656,7 @@ class StreamingState extends State {
                 LoggerFactory.getLogger(LogPathBuilder.build(
                         getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
                 System.currentTimeMillis(), this.getContext().getParameters().batchTimespan
-                );
+        );
 
         offsets.put(partition.getKey(), pd);
     }
