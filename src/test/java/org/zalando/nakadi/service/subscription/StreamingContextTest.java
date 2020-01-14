@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class StreamingContextTest {
     private static StreamingContext createTestContext(final Consumer<Exception> onException) throws IOException {
@@ -176,6 +177,7 @@ public class StreamingContextTest {
     public void testSessionAlwaysCleanedIfRegistered() throws Exception {
 
         final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
+        when(zkMock.isActiveSession(any())).thenReturn(true);
 
         final StreamingContext context = new StreamingContext.Builder()
                 .setSession(Session.generate(1, ImmutableList.of()))

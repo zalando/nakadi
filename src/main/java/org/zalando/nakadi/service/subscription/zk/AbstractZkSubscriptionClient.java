@@ -196,7 +196,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void unregisterSession(final Session session) {
         try {
-            getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+            if (isActiveSession(session.getId())) {
+                getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+            }
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
