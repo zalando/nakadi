@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
+
 import org.apache.http.HttpStatus;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -200,7 +201,6 @@ public class EventTypeAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createEventType();
         IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
-        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
 
         List<Map> timelines = NakadiTestUtils.listTimelines(eventType.getName());
         final String cleanupTimeBeforeUpdate = (String) timelines.get(0).get("cleaned_up_at");
@@ -226,6 +226,36 @@ public class EventTypeAT extends BaseAT {
         Assert.assertThat(cleanupTimeDiff, is(newRetentionTime - defaultRetentionTime));
 
         assertRetentionTime(newRetentionTime, eventType.getName());
+    }
+
+    @Test
+    public void whenUpdateRetentionTimeWithNegativeValueThenUpdateInKafkaAndDB() throws Exception {
+        final EventType eventType = NakadiTestUtils.createEventType();
+        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+
+        List<Map> timelines = NakadiTestUtils.listTimelines(eventType.getName());
+        final String cleanupTimeBeforeUpdate = (String) timelines.get(0).get("cleaned_up_at");
+        Assert.assertNotNull("clean up time before update should not be null", cleanupTimeBeforeUpdate);
+        final Long defaultRetentionTime = 172800000L;
+        assertRetentionTime(defaultRetentionTime, eventType.getName());
+
+        final Long infiniteRetentionTime = -1L;
+        eventType.getOptions().setRetentionTime(infiniteRetentionTime);
+        final String updateBody = MAPPER.writer().writeValueAsString(eventType);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        timelines = NakadiTestUtils.listTimelines(eventType.getName());
+        final String cleanupTimeAfterUpdate = (String) timelines.get(0).get("cleaned_up_at");
+        Assert.assertNull("clean up time after update should be null", cleanupTimeAfterUpdate);
+
+        assertRetentionTime(infiniteRetentionTime, eventType.getName());
     }
 
     @Test(timeout = 10000)

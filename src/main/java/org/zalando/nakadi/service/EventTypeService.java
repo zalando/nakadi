@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -485,14 +486,21 @@ public class EventTypeService {
             throws InternalNakadiException, NoSuchEventTypeException {
 
         if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-            final long retentionDiffMs = newRetentionTime - oldRetentionTime;
+            long retentionDiffMs = newRetentionTime - oldRetentionTime;
+            if (newRetentionTime < 0 || oldRetentionTime < 0) {
+                retentionDiffMs = newRetentionTime;
+            }
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventType);
 
             for (final Timeline timeline : timelines) {
-                if (timeline.getCleanedUpAt() != null) {
+                if (retentionDiffMs < 0) {
+                    timeline.setCleanedUpAt(null);
+                } else if (timeline.getCleanedUpAt() != null) {
                     timeline.setCleanedUpAt(new Date(timeline.getCleanedUpAt().getTime() + retentionDiffMs));
-                    timelineService.updateTimeline(timeline);
+                } else {
+                    timeline.setCleanedUpAt(new Date(System.currentTimeMillis() + retentionDiffMs));
                 }
+                timelineService.updateTimeline(timeline);
             }
         }
     }
