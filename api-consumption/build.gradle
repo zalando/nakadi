@@ -32,7 +32,6 @@ apply plugin: 'org.owasp.dependencycheck'
 group 'org.zalando'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-mainClassName = 'org.zalando.nakadi.Application'
 
 repositories {
     mavenCentral()

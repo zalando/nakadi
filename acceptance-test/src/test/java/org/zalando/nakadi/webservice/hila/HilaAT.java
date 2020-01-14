@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
-import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -298,7 +297,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(1)));
 
         given()
-                .get(format("/subscriptions/{0}/events", subscription.getId()))
+                .get("/subscriptions/{id}/events", subscription.getId())
                 .then()
                 .statusCode(HttpStatus.SC_CONFLICT);
     }

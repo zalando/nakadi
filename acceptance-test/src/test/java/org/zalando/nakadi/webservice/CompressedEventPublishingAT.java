@@ -17,7 +17,6 @@ import java.util.zip.GZIPOutputStream;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
-import static java.lang.String.format;
 import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
 import static org.zalando.problem.Status.NOT_ACCEPTABLE;
 
@@ -36,7 +35,7 @@ public class CompressedEventPublishingAT extends BaseAT {
                 .body(bodyCompressed)
                 .contentType(JSON)
                 .header(CONTENT_ENCODING, "gzip")
-                .post(format("/event-types/{0}/events", eventType.getName()))
+                .post("/event-types/{et}/events", eventType.getName())
                 .then()
                 .statusCode(HttpStatus.SC_OK);
     }

@@ -148,7 +148,7 @@ nakadi:
 
 twintip:
   mapping: /api
-  yaml: "file:/Users/adyachkov/zalando/nakadi/app/api/nakadi-event-bus-api.yaml"
+  yaml: "file:api/nakadi-event-bus-api.yaml"
 ---
 
 spring:

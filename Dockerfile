@@ -4,7 +4,7 @@ MAINTAINER Team Aruha, team-aruha@zalando.de
 
 WORKDIR /
 ADD app/build/libs/nakadi.jar nakadi.jar
-ADD app/api api/nakadi-event-bus-api.yaml
+COPY app/api/nakadi-event-bus-api.yaml api/nakadi-event-bus-api.yaml
 
 EXPOSE 8080
 

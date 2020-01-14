@@ -32,15 +32,10 @@ apply plugin: 'org.owasp.dependencycheck'
 group 'org.zalando'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-mainClassName = 'org.zalando.nakadi.Application'
 
 repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
-}
-
-jar {
-    baseName = 'nakadi'
 }
 
 configurations {
@@ -65,16 +60,16 @@ dependencies {
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
 
-    implementation project(':core-common')
-    implementation project(':core-metastore')
-    implementation project(':core-services')
+    compile project(':core-common')
+    compile project(':core-metastore')
+    compile project(':core-services')
 
-    implementation project(':api-publishing')
-    implementation project(':api-consumption')
-    implementation project(':api-metastore')
-    implementation project(':api-cursors')
-    implementation project(':api-misc')
-    implementation project(':app')
+    compile project(':api-publishing')
+    compile project(':api-consumption')
+    compile project(':api-metastore')
+    compile project(':api-cursors')
+    compile project(':api-misc')
+    compile project(':app')
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {

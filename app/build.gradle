@@ -1,3 +1,5 @@
+import java.util.concurrent.TimeUnit
+
 buildscript {
     ext {
         springBootVersion = '1.5.20.RELEASE'
@@ -34,9 +36,9 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 mainClassName = 'org.zalando.nakadi.Application'
-//springBoot {
-//    layout = "ZIP"
-//}
+springBoot {
+    layout = "ZIP"
+}
 
 repositories {
     mavenCentral()
@@ -69,15 +71,15 @@ dependencies {
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
 
-    implementation project(':core-common')
-    implementation project(':core-metastore')
-    implementation project(':core-services')
+    compile project(':core-common')
+    compile project(':core-metastore')
+    compile project(':core-services')
 
-    implementation project(':api-publishing')
-    implementation project(':api-consumption')
-    implementation project(':api-metastore')
-    implementation project(':api-cursors')
-    implementation project(':api-misc')
+    compile project(':api-publishing')
+    compile project(':api-consumption')
+    compile project(':api-metastore')
+    compile project(':api-cursors')
+    compile project(':api-misc')
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
@@ -172,19 +174,16 @@ dependencies {
 }
 // end::dependencies[]
 
+findbugs {
+    reportLevel = "high"
+    sourceSets = []
+}
+
 tasks.withType(FindBugs) {
     reports {
         xml.enabled = false
         html.enabled = true
     }
-}
-
-test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-    maxParallelForks = Runtime.runtime.availableProcessors()
 }
 
 jacoco {
@@ -196,6 +195,11 @@ jacocoTestReport {
         xml.enabled = true
         html.enabled = true
     }
+}
+
+task testWithReport() {
+    dependsOn test
+    finalizedBy jacocoTestReport
 }
 
 checkstyle {
