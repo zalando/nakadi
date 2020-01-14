@@ -76,6 +76,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private State currentState = new DummyState();
     private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
+    private boolean sessionRegistered;
 
     private final Logger log;
 
@@ -235,6 +236,7 @@ public class StreamingContext implements SubscriptionStreamer {
     public void registerSession() throws NakadiRuntimeException {
         log.info("Registering session {}", session);
         zkClient.registerSession(session);
+        sessionRegistered = true;
     }
 
     public void subscribeToSessionListChangeAndRebalance() throws NakadiRuntimeException {
@@ -252,7 +254,10 @@ public class StreamingContext implements SubscriptionStreamer {
             }
         } finally {
             this.sessionListSubscription = null;
-            zkClient.unregisterSession(session);
+            if (sessionRegistered) {
+                sessionRegistered = false;
+                zkClient.unregisterSession(session);
+            }
         }
     }
 
