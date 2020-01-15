@@ -2874,15 +2874,20 @@ definitions:
       path:
         type: string
         description: |
-          Path to a string field in the event that contains the a classifier, which can be used by an
+          Path to a string field (using dot notation) in the event that contains a classifier, which can be used by an
           authorization plugin (together with definitions in the authorization section) to define who can read the
-          event. The field may not be present in the schema definition for the event type. In case the field is not
-          present, it will be available for reading for all authorized consumers.
+          event.
+
+          The authorization section for an event type controls per event-type authorization, and this
+          field inside an event controls per-event authorization. In case the field is not present in the event
+          or is set to `null`, the event is not filtered and all authorized consumers can read it.
+        example: 'security.exclusive_team'
       type:
         type: string
         description: |
-          Indicator of the type of the data (classifier) the field contains (eg: `retailer_id` or `application_name`).
-
+          Indicator of the type of the data (classifier) the field contains. The semantics and affects of this field
+          should be handled by the authorization plugin.
+        example: 'team_name'
 
   EventTypeAuthorization:
     type: object
