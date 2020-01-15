@@ -8,7 +8,8 @@ position: 13
 Nakadi provides an option to specify `event_auth_field` in an event type definition, which can be used to differentiate
  consumption of events in an event type on a per-consumer level. The `event_auth_field` takes the path to a string field
  and type of a field inside an event that can be then used by an authorization plugin to classify if a consumer
- should receive an event published to the event type.
+ should receive an event published to the event type. It is optional for the field to be part of the event type's
+ schema.
 
  An `event_auth_field` field, hence, can be used to specify a classifier (which along with the authorization section)
  define who can read an event published to an event type.
