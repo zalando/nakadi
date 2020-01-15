@@ -136,7 +136,7 @@ git clone https://github.com/zalando/nakadi.git
 
 The gradle setup is fairly standard, the main tasks are:
 
-- `./gradlew build`: run a build and test
+- `./gradlew app:build`: run a build and test
 - `./gradlew clean`: clean down the build
 
 Some other useful tasks are:

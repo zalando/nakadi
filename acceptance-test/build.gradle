@@ -141,7 +141,7 @@ test {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    maxParallelForks = 1
 }
 
 jacoco {
