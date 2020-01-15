@@ -44,4 +44,4 @@ An event may be published to the above event type, and the logic for authorizati
   }
 ```
 
- Also, once a discriminator is specified for an event type, it cannot be removed or updated.
+ Also, once a `event_auth_field` is specified for an event type, it cannot be removed or updated.
