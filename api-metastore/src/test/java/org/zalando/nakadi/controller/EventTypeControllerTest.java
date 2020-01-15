@@ -519,7 +519,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        eventType.setEventAuthField(new EventAuthField("random.path", "string"));
+        eventType.setEventAuthField(new EventAuthField("random.path", "teams"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -532,7 +532,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthField("random.path", "string"))
+                .eventAuthField(new EventAuthField("random.path", "teams"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -544,12 +544,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .eventAuthField(new EventAuthField("first.path", "string"))
+                .eventAuthField(new EventAuthField("first.path", "teams"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthField("random.path", "string"))
+                .eventAuthField(new EventAuthField("random.path", "retailer_id"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
