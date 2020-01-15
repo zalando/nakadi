@@ -202,11 +202,6 @@ task testWithReport() {
     finalizedBy jacocoTestReport
 }
 
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
-}
-
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")
     toolVersion = "7.6"
