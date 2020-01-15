@@ -1,2 +1,1 @@
-before_install:
-  - echo "travis is gonna be removed soon"
+script: echo "travis is gonna be removed soon"
