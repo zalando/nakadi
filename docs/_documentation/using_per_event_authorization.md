@@ -6,9 +6,9 @@ position: 13
 ## Event-Based Authorization using EventAuthField
 
 Nakadi provides an option to specify `event_auth_field` in an event type definition, which can be used to differentiate
- consumption of events in an event type on a per-consumer level. The `event_auth_field` takes the path and type of a
- field inside an event that can be then used by an authorization plugin to classify if a consumer should receive an
- event published to the event type.
+ consumption of events in an event type on a per-consumer level. The `event_auth_field` takes the path to a string field
+ and type of a field inside an event that can be then used by an authorization plugin to classify if a consumer
+ should receive an event published to the event type.
 
  An `event_auth_field` field, hence, can be used to specify a classifier (which along with the authorization section)
  define who can read an event published to an event type.
@@ -20,7 +20,7 @@ Nakadi provides an option to specify `event_auth_field` in an event type definit
   "owning_application": "acme-order-service",
   ...
   "event_auth_field": {
-    "type": "array",
+    "type": "teams",
     "path": "security.exclusive_readers"
   }
   "category": "business",
@@ -35,7 +35,7 @@ An event may be published to the above event type, and the logic for authorizati
   {
     "order_number": "24873243241",
     "security": {
-      "exclusive_readers": ["team-A"]
+      "exclusive_readers": "Team-A"
     }
     "metadata": {
       "eid": "d765de34-09c0-4bbb-8b1e-7160a33a0791",

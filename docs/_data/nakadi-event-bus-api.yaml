@@ -2873,12 +2873,13 @@ definitions:
       path:
         type: string
         description: |
-          Path of the field in the event that contains the a classifier, which can be used by an authorization
-          plugin (together with definitions in the authorization section) to define who can read the event.
+          Path to a string field in the event that contains the a classifier, which can be used by an
+          authorization plugin (together with definitions in the authorization section) to define who can read the
+          event.
       type:
         type: string
         description: |
-          Type of the field specified by the path the contains the identifiers of entities.
+          Indicator of the type of the data (classifier) the field contains (eg: `retailer_id` or `application_name`).
 
 
   EventTypeAuthorization:
