@@ -1,12 +1,10 @@
 package org.zalando.nakadi.domain;
 
 import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.TestUtils;
 
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
-import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
 public class EventTypeTest {
 

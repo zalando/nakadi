@@ -2,7 +2,6 @@ package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
-import org.zalando.nakadi.partitioning.StringHash;
 
 import java.util.Map;
 

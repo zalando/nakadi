@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain;
 
 import org.junit.Test;
-import org.zalando.nakadi.domain.Version;
 
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;

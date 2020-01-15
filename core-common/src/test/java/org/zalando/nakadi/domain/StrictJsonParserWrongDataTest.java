@@ -4,7 +4,6 @@ import org.json.JSONException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.zalando.nakadi.domain.StrictJsonParser;
 
 import java.util.Arrays;
 

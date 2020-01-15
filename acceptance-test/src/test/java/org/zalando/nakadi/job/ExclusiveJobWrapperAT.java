@@ -79,7 +79,8 @@ public class ExclusiveJobWrapperAT extends BaseAT {
         jobWrapper.runJobLocked(dummyJob);
         assertThat(jobExecuted.get(), CoreMatchers.is(true));
 
-        assertThat("lock node should be removed", CURATOR.checkExists().forPath(lockPath), CoreMatchers.is(CoreMatchers.nullValue()));
+        assertThat("lock node should be removed", CURATOR.checkExists().forPath(lockPath),
+                CoreMatchers.is(CoreMatchers.nullValue()));
 
         final byte[] data = CURATOR.getData().forPath(latestPath);
         final DateTime lastCleaned = objectMapper.readValue(new String(data, Charsets.UTF_8), DateTime.class);

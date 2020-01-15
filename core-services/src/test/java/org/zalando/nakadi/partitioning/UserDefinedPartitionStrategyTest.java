@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-import org.zalando.nakadi.partitioning.UserDefinedPartitionStrategy;
 
 import java.util.List;
 

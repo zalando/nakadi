@@ -4,9 +4,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.zalando.nakadi.domain.storage.AddressPort;
-import org.zalando.nakadi.domain.storage.ZookeeperConnection;
-import org.zalando.nakadi.domain.storage.ZookeeperConnectionType;
 
 import java.util.Arrays;
 import java.util.Collection;

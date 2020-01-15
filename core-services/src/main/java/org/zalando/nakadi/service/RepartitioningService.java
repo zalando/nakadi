@@ -107,7 +107,8 @@ public class RepartitioningService {
             final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
                     LogPathBuilder.build(subscription.getId(), "repartition"));
             // it could be that subscription was created, but never initialized
-            SubscriptionInitializer.initializeSubscriptionLocked(zkClient, subscription, timelineService, cursorConverter);
+            SubscriptionInitializer.initializeSubscriptionLocked(
+                    zkClient, subscription, timelineService, cursorConverter);
             // get begin offset with timeline, partition does not matter, it will be the same for all partitions
             final Cursor cursor = cursorConverter.convert(
                     NakadiCursor.of(timelineService.getActiveTimeline(eventType.getName()), null, "-1"));

@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.service.subscription.model.Partition;
 
 import java.util.Arrays;
 import java.util.Collection;

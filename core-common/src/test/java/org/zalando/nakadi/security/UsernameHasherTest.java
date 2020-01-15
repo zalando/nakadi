@@ -1,7 +1,6 @@
 package org.zalando.nakadi.security;
 
 import org.junit.Test;
-import org.zalando.nakadi.security.UsernameHasher;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

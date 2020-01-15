@@ -3,8 +3,6 @@ package org.zalando.nakadi.service.publishing;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.service.publishing.EventPublisher;
-import org.zalando.nakadi.service.publishing.EventsProcessor;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 

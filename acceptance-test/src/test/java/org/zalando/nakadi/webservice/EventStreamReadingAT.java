@@ -44,14 +44,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.jayway.restassured.RestAssured.given;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 
 public class EventStreamReadingAT extends BaseAT {
 
@@ -182,7 +176,8 @@ public class EventStreamReadingAT extends BaseAT {
         final List<Map<String, Object>> batches = deserializeBatches(body);
 
         // validate amount of batches and structure of each batch
-        Assert.assertThat(batches, Matchers.hasSize(PARTITIONS_NUM + 1)); // for partition with events we should get 2 batches
+        // for partition with events we should get 2 batches
+        Assert.assertThat(batches, Matchers.hasSize(PARTITIONS_NUM + 1));
         batches.forEach(batch -> validateBatchStructure(batch, DUMMY_EVENT));
 
         // find the batches where we expect to see the messages we pushed

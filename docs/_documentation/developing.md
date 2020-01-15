@@ -27,16 +27,16 @@ Pull requests and master are built using Travis CI and you can see the build his
 There are a few build commands for testing -
 
 - `./gradlew build`: will run a build along with the unit tests
-- `./gradlew acceptanceTest`: will run the acceptance tests
-- `./gradlew fullAcceptanceTest`: will run the ATs in the context of Docker
+- `./gradlew startNakadiForTest`: start Nakadi configured for acceptance tests
+- `./gradlew acceptance-test:test`: will run the acceptance tests (only after Nakadi is stated)
 
 ## Running Containers
 
 There are a few build commands for running Docker -
 
-- `./gradlew startDockerContainer`: start the docker containers and download images if needed.
-- `./gradlew stopAndRemoveDockerContainer`: shutdown the docker processes
-- `./gradlew startStoragesInDocker`: start the storage container that runs Kafka and PostgreSQL. This is handy for running Nakadi directly or in your IDE.
+- `./gradlew startNakadi`: start the docker containers and download images if needed.
+- `./gradlew stopNakadi`: shutdown the docker processes
+- `./gradlew startStorages`: start the storage container that runs Kafka and PostgreSQL. This is handy for running Nakadi directly or in your IDE.
 
 ## IDE Setup
 

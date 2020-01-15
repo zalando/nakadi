@@ -226,7 +226,10 @@ public class TestUtils {
     }
 
     public static Subscription createSubscription(final String owningApp, final String consumerGroup) {
-        return RandomSubscriptionBuilder.builder().withConsumerGroup(consumerGroup).withOwningApplication(owningApp).build();
+        return RandomSubscriptionBuilder.builder()
+                .withConsumerGroup(consumerGroup)
+                .withOwningApplication(owningApp)
+                .build();
     }
 
     public static Timeline buildTimeline(final String etName) {

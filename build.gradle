@@ -1,57 +1,6 @@
 import java.util.concurrent.TimeUnit
 
-buildscript {
-    ext {
-        springBootVersion = '1.5.20.RELEASE'
-    }
-
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-
-    dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
-        classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
-    }
-}
-
 apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'eclipse'
-apply plugin: 'application'
-apply plugin: 'jacoco'
-apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
-apply plugin: 'project-report'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'io.spring.dependency-management'
-apply plugin: 'org.owasp.dependencycheck'
-
-//group 'org.zalando'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
-repositories {
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
-}
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
-}
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
-
 
 task testInitNakadi(type: Exec) {
     environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
@@ -77,6 +26,10 @@ task initNakadi(type: Exec) {
 
 task startNakadi(type: GradleBuild) {
     tasks = ['clean', 'app:bootRepackage', 'initNakadi']
+}
+
+task startNakadiForTests(type: GradleBuild) {
+    tasks = ['clean', 'app:bootRepackage', 'testInitNakadi']
 }
 
 task stopNakadi(type: Exec) {
@@ -108,30 +61,10 @@ task stopStorages(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }
 
-task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'app:bootRepackage', 'testInitNakadi', 'test', 'acceptance-test:test']
-    finalizedBy stopNakadi
-}
-
-task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['clean', 'app:bootRepackage', 'testInitNakadi', 'acceptance-test:test']
-    finalizedBy stopNakadi
-}
-
 test {
     testLogging {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
     maxParallelForks = Runtime.runtime.availableProcessors()
-}
-
-bootRun {
-    addResources = false
-    main = 'org.zalando.nakadi.Application'
-    environment 'NAKADI_OAUTH2_MODE', 'OFF'
-    environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
-}
-
-run {
 }

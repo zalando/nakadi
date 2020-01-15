@@ -5,7 +5,6 @@ import com.jayway.restassured.specification.RequestSpecification;
 
 import java.util.Optional;
 
-import static com.jayway.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
 
 public abstract class RealEnvironmentAT {

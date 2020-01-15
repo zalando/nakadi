@@ -7,9 +7,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
-import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.TopicRepositoryCreator;
-import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.util.ThreadUtils;
 
 import java.util.List;

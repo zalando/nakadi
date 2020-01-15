@@ -6,7 +6,6 @@ import org.apache.kafka.clients.producer.Producer;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.repository.kafka.KafkaFactory;
 
 import java.util.List;
 import java.util.stream.Collectors;

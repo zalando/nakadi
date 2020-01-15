@@ -3,10 +3,6 @@ package org.zalando.nakadi.cache;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.cache.CacheChange;
-import org.zalando.nakadi.cache.CacheDataProvider;
-import org.zalando.nakadi.cache.SimpleCache;
-import org.zalando.nakadi.cache.VersionedEntity;
 
 import java.util.ArrayList;
 import java.util.Arrays;

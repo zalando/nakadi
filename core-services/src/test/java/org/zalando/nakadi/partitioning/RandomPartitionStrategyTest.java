@@ -3,7 +3,6 @@ package org.zalando.nakadi.partitioning;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.partitioning.RandomPartitionStrategy;
 
 import java.util.List;
 import java.util.Random;

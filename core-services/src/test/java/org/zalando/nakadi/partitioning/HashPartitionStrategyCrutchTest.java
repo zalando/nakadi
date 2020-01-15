@@ -3,7 +3,6 @@ package org.zalando.nakadi.partitioning;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.springframework.core.env.Environment;
-import org.zalando.nakadi.partitioning.HashPartitionStrategyCrutch;
 
 import java.util.List;
 

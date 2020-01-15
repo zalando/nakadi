@@ -27,7 +27,6 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -78,7 +77,8 @@ public class EventPublisherTest {
     private final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
-            NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "", "nakadi_archiver", "nakadi_to_s3");
+            NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
+            "nakadi_archiver", "nakadi_to_s3");
     private final EventPublisher publisher;
 
     public EventPublisherTest() {

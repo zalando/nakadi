@@ -6,8 +6,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.zalando.nakadi.domain.BatchFactory;
-import org.zalando.nakadi.domain.BatchItem;
 
 import java.util.Collections;
 import java.util.UUID;
