@@ -1,6 +1,7 @@
 import java.util.concurrent.TimeUnit
 
 apply plugin: 'java'
+apply plugin: 'jacoco'
 
 task testInitNakadi(type: Exec) {
     environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
@@ -67,4 +68,20 @@ test {
     }
     testLogging.exceptionFormat = 'full'
     maxParallelForks = Runtime.runtime.availableProcessors()
+}
+
+jacoco {
+    toolVersion = "0.8.2"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+task testWithReport() {
+    dependsOn test
+    finalizedBy jacocoTestReport
 }

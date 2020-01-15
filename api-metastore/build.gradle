@@ -59,3 +59,27 @@ dependencies {
     testCompile project(path: ':core-common', configuration: 'testOutput')
     testCompile project(path: ':core-services', configuration: 'testOutput')
 }
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+    testLogging.exceptionFormat = 'full'
+    maxParallelForks = Runtime.runtime.availableProcessors()
+}
+
+jacoco {
+    toolVersion = "0.8.2"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+task testWithReport() {
+    dependsOn test
+    finalizedBy jacocoTestReport
+}

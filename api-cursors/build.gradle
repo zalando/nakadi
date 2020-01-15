@@ -38,17 +38,6 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-sourceSets {
-    acceptanceTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/acceptance-test/java')
-        }
-        resources.srcDir file('src/acceptance-test/resources')
-    }
-}
-
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
 }
@@ -161,6 +150,11 @@ jacocoTestReport {
         xml.enabled = true
         html.enabled = true
     }
+}
+
+task testWithReport() {
+    dependsOn test
+    finalizedBy jacocoTestReport
 }
 
 checkstyle {
