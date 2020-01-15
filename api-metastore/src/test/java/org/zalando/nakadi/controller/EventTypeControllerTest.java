@@ -517,7 +517,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
     @Test
     public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
-        final EventType eventType = buildDefaultEventType();
+        final EventType eventType = TestUtils.buildDefaultEventType();
 
         eventType.setEventAuthField(new EventAuthField("random.path", "string"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
