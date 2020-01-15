@@ -20,8 +20,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class StreamingContextTest {
     private static StreamingContext createTestContext(final Consumer<Exception> onException) throws IOException {
@@ -169,5 +171,27 @@ public class StreamingContextTest {
         Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
         Mockito.verify(ctxSpy).unregisterSession();
         Mockito.verify(ctxSpy).switchState(Mockito.isA(DummyState.class));
+    }
+
+    @Test
+    public void testSessionAlwaysCleanedIfRegistered() throws Exception {
+
+        final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
+        when(zkMock.isActiveSession(any())).thenReturn(true);
+
+        final StreamingContext context = new StreamingContext.Builder()
+                .setSession(Session.generate(1, ImmutableList.of()))
+                .setSubscription(new Subscription())
+                .setZkClient(zkMock)
+                .setKafkaPollTimeout(0)
+                .setConnectionReady(new AtomicBoolean(true))
+                .build();
+
+        context.registerSession();
+        // CleanupState calls context.unregisterSession() in finally block
+        context.unregisterSession();
+
+        Mockito.verify(zkMock, Mockito.times(1)).registerSession(any());
+        Mockito.verify(zkMock, Mockito.times(1)).unregisterSession(any());
     }
 }
