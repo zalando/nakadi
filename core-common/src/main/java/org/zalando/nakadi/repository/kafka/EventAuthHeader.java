@@ -10,7 +10,7 @@ public class EventAuthHeader extends RecordHeader {
     static final String HEADER_KEY = "X-Event-Auth";
 
     public EventAuthHeader(final String value) {
-        super(HEADER_KEY, value.getBytes(Charsets.UTF_8));
+        super(HEADER_KEY, value == null ? null : value.getBytes(Charsets.UTF_8));
     }
 
     public String getEventAuthValue() {
