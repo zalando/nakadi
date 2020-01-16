@@ -8,7 +8,7 @@ import static org.hamcrest.Matchers.equalTo;
 public class UsernameHasherTest {
 
     @Test
-    public void teastHash() {
+    public void testHash() {
         final UsernameHasher usernameHasher = new UsernameHasher("123");
         assertThat(
                 usernameHasher.hash("abc"),
