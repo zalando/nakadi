@@ -11,8 +11,7 @@ Nakadi provides per-event filtering, allowing event type publishers to specify w
 
  The `event_auth_field` takes the path to a string field, and type of the field inside an event, which can be then used
  by an authorization plugin to classify if a consumer should receive an event published.
- It is optional for the field to be part of the event type's schema. If the field is absent or set to `null` in
- a published event, it is available for all consumers to read.
+ If the field is absent or set to `null` in a published event, it is available for all consumers to read.
 
  An `event_auth_field` field can be used to specify a classifier (which along with the authorization section)
  defines who can read a published event.
