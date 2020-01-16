@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 
 import com.google.common.base.Charsets;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
@@ -11,6 +12,10 @@ public class EventAuthHeader extends RecordHeader {
 
     public EventAuthHeader(final String value) {
         super(HEADER_KEY, value == null ? null : value.getBytes(Charsets.UTF_8));
+    }
+
+    public static EventAuthHeader extractFrom(ConsumerRecord<byte[], byte[]> record) {
+        return valueOf(record.headers().lastHeader(EventAuthHeader.HEADER_KEY));
     }
 
     public String getEventAuthValue() {

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.Assert;
 import org.junit.Test;
@@ -21,4 +22,17 @@ public class EventAuthHeaderTest {
         Assert.assertEquals(HEADER_VALUE, eventAuthHeader2.getEventAuthValue());
     }
 
+    @Test
+    public void testEventAuthHeaderDeserialization() {
+        final EventAuthHeader eventAuthHeader = new EventAuthHeader(HEADER_VALUE);
+        Assert.assertEquals(HEADER_VALUE, eventAuthHeader.getEventAuthValue());
+
+        // example
+        final ConsumerRecord<byte[], byte[]> record =
+                new ConsumerRecord<>("topic", 1, 1L, "key".getBytes(), "value".getBytes());
+        record.headers().add(eventAuthHeader);
+
+        final EventAuthHeader eventAuthHeader2 = EventAuthHeader.extractFrom(record);
+        Assert.assertEquals(HEADER_VALUE, eventAuthHeader2.getEventAuthValue());
+    }
 }
