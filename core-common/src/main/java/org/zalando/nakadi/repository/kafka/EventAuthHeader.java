@@ -6,6 +6,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+/**
+ * Class represents serializer / deserializer of event authentication header.
+ */
 public class EventAuthHeader extends RecordHeader {
 
     static final String HEADER_KEY = "X-Event-Auth";
@@ -15,7 +18,11 @@ public class EventAuthHeader extends RecordHeader {
     }
 
     public static EventAuthHeader extractFrom(ConsumerRecord<byte[], byte[]> record) {
-        return valueOf(record.headers().lastHeader(EventAuthHeader.HEADER_KEY));
+        final Header header = record.headers().lastHeader(EventAuthHeader.HEADER_KEY);
+        if (header == null) {
+            return new EventAuthHeader(null);
+        }
+        return (EventAuthHeader) header;
     }
 
     public String getEventAuthValue() {
