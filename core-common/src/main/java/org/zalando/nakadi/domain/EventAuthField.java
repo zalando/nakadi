@@ -1,12 +1,16 @@
 package org.zalando.nakadi.domain;
 
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.util.Objects;
 
 public class EventAuthField {
     @NotNull
+    @Size(min = 1, message = "the length of the type must be >= 1")
     private String type;
 
     @NotNull
+    @Size(min = 1, message = "the length of the path must be >= 1")
     private String path;
 
     public String getType() {
@@ -45,7 +49,7 @@ public class EventAuthField {
             return false;
         }
         final EventAuthField that = (EventAuthField) o;
-        return (this.type.equals(that.type) && this.path.equals(that.path));
+        return Objects.equals(this.type, that.type) && Objects.equals(this.path, that.path);
     }
 
     @Override
@@ -55,6 +59,6 @@ public class EventAuthField {
 
     @Override
     public int hashCode() {
-        return path.hashCode();
+        return Objects.hash(this.path);
     }
 }

@@ -74,6 +74,7 @@ public class EventTypeBase implements EventTypeAuthz {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Audience audience;
 
+    @Valid
     @Nullable
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private EventAuthField eventAuthField;
