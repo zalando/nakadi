@@ -2718,6 +2718,9 @@ definitions:
             expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
 
+      event_auth_field:
+        $ref: '#/definitions/EventAuthField'
+
       ordering_instance_ids:
         type: array
         description: |
@@ -2857,6 +2860,34 @@ definitions:
         default: 345600000 # 4 days
         description: |
           Number of milliseconds that Nakadi stores events published to this event type.
+
+
+  EventAuthField:
+    type: object
+    description: |
+      Parameters to define per-event authorization. This field can be used with an authorization plugin
+      to differentiate which authorized consumers for an event type can receive an event published to
+      the event type. In case the field is null or not present in the event, it will be allowed to be read
+      by all authorized consumers.
+      Once defined, the definition for EventAuthField for an event-type cannot be updated or removed.
+    properties:
+      path:
+        type: string
+        description: |
+          Path to a string field (using dot notation) in the event that contains a classifier, which can be used by an
+          authorization plugin (together with definitions in the authorization section) to define who can read the
+          event.
+
+          The authorization section for an event type controls per event-type authorization, and this
+          field inside an event controls per-event authorization. In case the field is not present in the event
+          or is set to `null`, the event is not filtered and all authorized consumers can read it.
+        example: 'security.exclusive_team'
+      type:
+        type: string
+        description: |
+          Indicator of the type of the data (classifier) the field contains. The semantics and affects of this field
+          should be handled by the authorization plugin.
+        example: 'team_name'
 
   EventTypeAuthorization:
     type: object

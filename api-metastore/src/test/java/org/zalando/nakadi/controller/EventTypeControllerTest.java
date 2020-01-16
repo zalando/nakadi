@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -512,6 +513,49 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
         postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+
+        eventType.setEventAuthField(new EventAuthField("random.path", "teams"));
+        doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
+        when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
+
+        postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPutWithAValidEventAuthFieldThen200() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder().build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .eventAuthField(new EventAuthField("random.path", "teams"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .eventAuthField(new EventAuthField("first.path", "teams"))
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .eventAuthField(new EventAuthField("random.path", "retailer_id"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test

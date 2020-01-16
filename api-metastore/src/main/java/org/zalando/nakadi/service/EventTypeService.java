@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -406,6 +407,7 @@ public class EventTypeService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
+                validateEventAuthFieldUnchanged(original, eventTypeBase);
             }
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
@@ -538,6 +540,21 @@ public class EventTypeService {
             InvalidEventTypeException {
         if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
+    private void validateEventAuthFieldUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
+            InvalidEventTypeException {
+        final EventAuthField originalEventAuthField = original.getEventAuthField();
+        final EventAuthField updatedEventAuthField = eventTypeBase.getEventAuthField();
+        if (updatedEventAuthField != null && originalEventAuthField != null) {
+            if (!updatedEventAuthField.equals(originalEventAuthField)) {
+                throw new InvalidEventTypeException(
+                        String.format("event_auth_field must not be changed, original: %s, updated: %s",
+                                originalEventAuthField.toString(), updatedEventAuthField.toString()));
+            }
+        } else if (updatedEventAuthField == null && originalEventAuthField != null) {
+            throw new InvalidEventTypeException("event_auth_field can't be set back to null");
         }
     }
 
