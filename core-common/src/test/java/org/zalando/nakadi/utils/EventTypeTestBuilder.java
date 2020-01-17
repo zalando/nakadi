@@ -160,7 +160,7 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder eventAuthField(final EventAuthFieldView eventAuthFieldView) {
+    public EventTypeTestBuilder eventAuthFieldView(final EventAuthFieldView eventAuthFieldView) {
         this.eventAuthFieldView = eventAuthFieldView;
         return this;
     }

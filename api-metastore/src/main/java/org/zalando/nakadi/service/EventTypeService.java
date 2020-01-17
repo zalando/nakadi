@@ -545,8 +545,8 @@ public class EventTypeService {
 
     private void validateEventAuthFieldUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
             InvalidEventTypeException {
-        final EventAuthFieldView originalEventAuthFieldView = original.getEventAuthField();
-        final EventAuthFieldView updatedEventAuthFieldView = eventTypeBase.getEventAuthField();
+        final EventAuthFieldView originalEventAuthFieldView = original.getEventAuthFieldView();
+        final EventAuthFieldView updatedEventAuthFieldView = eventTypeBase.getEventAuthFieldView();
         if (updatedEventAuthFieldView != null && originalEventAuthFieldView != null) {
             if (!updatedEventAuthFieldView.equals(originalEventAuthFieldView)) {
                 throw new InvalidEventTypeException(

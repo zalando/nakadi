@@ -132,7 +132,7 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
-        this.setEventAuthFieldView(eventType.getEventAuthField());
+        this.setEventAuthFieldView(eventType.getEventAuthFieldView());
     }
 
     public String getName() {
@@ -248,7 +248,7 @@ public class EventTypeBase implements EventTypeAuthz {
     }
 
     @Nullable
-    public EventAuthFieldView getEventAuthField() {
+    public EventAuthFieldView getEventAuthFieldView() {
         return eventAuthFieldView;
     }
 

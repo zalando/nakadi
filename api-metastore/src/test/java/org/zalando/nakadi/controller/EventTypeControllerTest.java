@@ -532,7 +532,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthFieldView("random.path", "teams"))
+                .eventAuthFieldView(new EventAuthFieldView("random.path", "teams"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -544,12 +544,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .eventAuthField(new EventAuthFieldView("first.path", "teams"))
+                .eventAuthFieldView(new EventAuthFieldView("first.path", "teams"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthFieldView("random.path", "retailer_id"))
+                .eventAuthFieldView(new EventAuthFieldView("random.path", "retailer_id"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
