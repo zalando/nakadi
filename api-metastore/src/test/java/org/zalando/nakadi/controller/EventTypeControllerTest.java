@@ -40,6 +40,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.EventAuthFieldView;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -512,6 +513,49 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
         postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+
+        eventType.setEventAuthFieldView(new EventAuthFieldView("random.path", "teams"));
+        doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
+        when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
+
+        postEventType(eventType).andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenPutWithAValidEventAuthFieldThen200() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder().build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .eventAuthField(new EventAuthFieldView("random.path", "teams"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
+        final EventType originalEventType = EventTypeTestBuilder.builder()
+                .eventAuthField(new EventAuthFieldView("first.path", "teams"))
+                .build();
+
+        final EventType updatedEventType = EventTypeTestBuilder.builder()
+                .name(originalEventType.getName())
+                .eventAuthField(new EventAuthFieldView("random.path", "retailer_id"))
+                .build();
+
+        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(updatedEventType, originalEventType.getName())
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test

@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.view.EventAuthFieldView;
 
 import java.util.List;
 
@@ -43,6 +44,7 @@ public class EventTypeTestBuilder {
     private DateTime updatedAt;
     private Audience audience;
     private ResourceAuthorization authorization;
+    private EventAuthFieldView eventAuthFieldView;
 
 
     public EventTypeTestBuilder() {
@@ -57,13 +59,14 @@ public class EventTypeTestBuilder {
                 "1.0.0", randomDate());
         this.options = new EventTypeOptions();
         this.options.setRetentionTime(172800000L);
-        this.defaultStatistic = new EventTypeStatistics(1,1);
+        this.defaultStatistic = new EventTypeStatistics(1, 1);
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;
         this.cleanupPolicy = CleanupPolicy.DELETE;
         this.createdAt = new DateTime(DateTimeZone.UTC);
         this.updatedAt = this.createdAt;
         this.authorization = null;
         this.audience = null;
+        this.eventAuthFieldView = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -157,12 +160,18 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder eventAuthField(final EventAuthFieldView eventAuthFieldView) {
+        this.eventAuthFieldView = eventAuthFieldView;
+        return this;
+    }
+
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
+        eventTypeBase.setEventAuthFieldView(eventAuthFieldView);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }

@@ -64,6 +64,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.nakadi.view.EventAuthFieldView;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -406,6 +407,7 @@ public class EventTypeService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
+                validateEventAuthFieldUnchanged(original, eventTypeBase);
             }
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
@@ -538,6 +540,21 @@ public class EventTypeService {
             InvalidEventTypeException {
         if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
+    private void validateEventAuthFieldUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
+            InvalidEventTypeException {
+        final EventAuthFieldView originalEventAuthFieldView = original.getEventAuthField();
+        final EventAuthFieldView updatedEventAuthFieldView = eventTypeBase.getEventAuthField();
+        if (updatedEventAuthFieldView != null && originalEventAuthFieldView != null) {
+            if (!updatedEventAuthFieldView.equals(originalEventAuthFieldView)) {
+                throw new InvalidEventTypeException(
+                        String.format("event_auth_field must not be changed, original: %s, updated: %s",
+                                originalEventAuthFieldView.toString(), updatedEventAuthFieldView.toString()));
+            }
+        } else if (updatedEventAuthFieldView == null && originalEventAuthFieldView != null) {
+            throw new InvalidEventTypeException("event_auth_field can't be set back to null");
         }
     }
 

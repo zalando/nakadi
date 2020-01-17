@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.EventTypeAuthz;
 import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.view.EventAuthFieldView;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
@@ -74,6 +75,11 @@ public class EventTypeBase implements EventTypeAuthz {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Audience audience;
 
+    @Valid
+    @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private EventAuthFieldView eventAuthFieldView;
+
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
@@ -126,6 +132,7 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
+        this.setEventAuthFieldView(eventType.getEventAuthField());
     }
 
     public String getName() {
@@ -238,6 +245,15 @@ public class EventTypeBase implements EventTypeAuthz {
 
     public void setValidationStrategies(final List<ValidationStrategyConfiguration> validationStrategies) {
         this.validationStrategies = validationStrategies;
+    }
+
+    @Nullable
+    public EventAuthFieldView getEventAuthField() {
+        return eventAuthFieldView;
+    }
+
+    public void setEventAuthFieldView(@Nullable final EventAuthFieldView eventAuthFieldView) {
+        this.eventAuthFieldView = eventAuthFieldView;
     }
 
     @Nullable
