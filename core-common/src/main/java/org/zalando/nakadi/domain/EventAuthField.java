@@ -30,6 +30,10 @@ public class EventAuthField {
     public static EventAuthField deserialize(final ConsumerRecord<byte[], byte[]> record) {
         final Header typeHeader = record.headers().lastHeader(EventAuthField.HEADER_KEY_TYPE);
         final Header valueHeader = record.headers().lastHeader(EventAuthField.HEADER_KEY_CLASSIFIER);
+        if (typeHeader == null || valueHeader == null) {
+            return null;
+        }
+
         return new EventAuthField(
                 new String(typeHeader.value(), Charsets.UTF_8),
                 new String(valueHeader.value(), Charsets.UTF_8));

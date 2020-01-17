@@ -31,7 +31,8 @@ public class EventAuthHeaderTest {
     public void testEventAuthHeaderDeserialization() {
         final ConsumerRecord<byte[], byte[]> record =
                 new ConsumerRecord<>("topic", 1, 1L, "key".getBytes(), "value".getBytes());
-        record.headers().add(TYPE, CLASSIFIER.getBytes(Charsets.UTF_8));
+        record.headers().add(EventAuthField.HEADER_KEY_TYPE, TYPE.getBytes(Charsets.UTF_8));
+        record.headers().add(EventAuthField.HEADER_KEY_CLASSIFIER, CLASSIFIER.getBytes(Charsets.UTF_8));
         final EventAuthField eventAuthField = EventAuthField.deserialize(record);
 
         Assert.assertEquals(TYPE, eventAuthField.getType());
