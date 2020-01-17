@@ -17,7 +17,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -65,6 +64,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.nakadi.view.EventAuthFieldView;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -545,15 +545,15 @@ public class EventTypeService {
 
     private void validateEventAuthFieldUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
             InvalidEventTypeException {
-        final EventAuthField originalEventAuthField = original.getEventAuthField();
-        final EventAuthField updatedEventAuthField = eventTypeBase.getEventAuthField();
-        if (updatedEventAuthField != null && originalEventAuthField != null) {
-            if (!updatedEventAuthField.equals(originalEventAuthField)) {
+        final EventAuthFieldView originalEventAuthFieldView = original.getEventAuthFieldView();
+        final EventAuthFieldView updatedEventAuthFieldView = eventTypeBase.getEventAuthFieldView();
+        if (updatedEventAuthFieldView != null && originalEventAuthFieldView != null) {
+            if (!updatedEventAuthFieldView.equals(originalEventAuthFieldView)) {
                 throw new InvalidEventTypeException(
                         String.format("event_auth_field must not be changed, original: %s, updated: %s",
-                                originalEventAuthField.toString(), updatedEventAuthField.toString()));
+                                originalEventAuthFieldView.toString(), updatedEventAuthFieldView.toString()));
             }
-        } else if (updatedEventAuthField == null && originalEventAuthField != null) {
+        } else if (updatedEventAuthFieldView == null && originalEventAuthFieldView != null) {
             throw new InvalidEventTypeException("event_auth_field can't be set back to null");
         }
     }

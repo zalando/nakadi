@@ -16,7 +16,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.EventAuthField;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -41,6 +40,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.EventAuthFieldView;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -519,7 +519,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        eventType.setEventAuthField(new EventAuthField("random.path", "teams"));
+        eventType.setEventAuthFieldView(new EventAuthFieldView("random.path", "teams"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -532,7 +532,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthField("random.path", "teams"))
+                .eventAuthFieldView(new EventAuthFieldView("random.path", "teams"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -544,12 +544,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .eventAuthField(new EventAuthField("first.path", "teams"))
+                .eventAuthFieldView(new EventAuthFieldView("first.path", "teams"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthField(new EventAuthField("random.path", "retailer_id"))
+                .eventAuthFieldView(new EventAuthFieldView("random.path", "retailer_id"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
