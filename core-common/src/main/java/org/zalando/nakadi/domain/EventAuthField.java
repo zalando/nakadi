@@ -28,8 +28,8 @@ public class EventAuthField {
     }
 
     public static EventAuthField deserialize(final ConsumerRecord<byte[], byte[]> record) {
-        final Header typeHeader = record.headers().lastHeader(EventAuthField.AUTH_PARAM_NAME);
-        if (null == typeHeader) {
+        final Header nameHeader = record.headers().lastHeader(EventAuthField.AUTH_PARAM_NAME);
+        if (null == nameHeader) {
             return null;
         }
         final Header valueHeader = record.headers().lastHeader(EventAuthField.AUTH_PARAM_VALUE);
@@ -38,7 +38,7 @@ public class EventAuthField {
         }
 
         return new EventAuthField(
-                new String(typeHeader.value(), Charsets.UTF_8),
+                new String(nameHeader.value(), Charsets.UTF_8),
                 new String(valueHeader.value(), Charsets.UTF_8));
     }
 

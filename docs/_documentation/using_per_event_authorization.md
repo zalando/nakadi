@@ -12,7 +12,7 @@ Nakadi provides per-event filtering, allowing event type publishers to specify w
  The `event_owner_selector` defines following values: 
   - `type` - the way how nakadi will extract owner from published events
   - `name` - the name of authorization_parameter that will be extracted and stored with event. 
-  This name is used ad `AuthorizationAttribute` data_type for security checks with authz plugin.
+  This name is used as `AuthorizationAttribute` data_type for security checks with authz plugin.
   - `value` - parameter that defines the way of extracting `AuthorizationAttribute` value 
   according to `type`.
 
@@ -54,12 +54,12 @@ An event may be published to the above event type, and the logic for authorizati
 
  There are following event owner selector types supported: 
   - `path` - dot separated path within published event (after enrichment), in this case `value` 
-  should hold dot separated path to a field that will be used as `AuthorizationParameter` value 
+  should hold dot separated path to a field that will be used as `AuthorizationParameter` value. 
   - `static` - all events, that are published to nakadi will have the same `AuthorizationParameter` 
   value, equal to `event_owner_selector` `value`   field.
   
- During consumption, the consumer is checked through authz plugin whether or not it is allowed to 
- read Event resource with `AuthorizationParameter` data_type equal to `event_owner_selector` name
+ During consumption, the consumer is checked through authorization plugin whether or not it is 
+ allowed to read Event resource with `AuthorizationParameter` data_type equal to `event_owner_selector` name
  and extracted `value`. 
   
  The access is checked for all the events being sent. If the access for some events is not allowed, 
