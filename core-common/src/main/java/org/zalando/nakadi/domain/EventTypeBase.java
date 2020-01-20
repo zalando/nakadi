@@ -6,7 +6,7 @@ import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.EventTypeAuthz;
 import org.zalando.nakadi.plugin.api.authz.Resource;
-import org.zalando.nakadi.view.EventAuthFieldView;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
@@ -78,7 +78,7 @@ public class EventTypeBase implements EventTypeAuthz {
     @Valid
     @Nullable
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private EventAuthFieldView eventAuthFieldView;
+    private EventOwnerSelector eventOwnerSelector;
 
     public EventTypeBase() {
         this.validationStrategies = Collections.emptyList();
@@ -132,7 +132,7 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingKeyFields(eventType.getOrderingKeyFields());
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
-        this.setEventAuthFieldView(eventType.getEventAuthFieldView());
+        this.setEventOwnerSelector(eventType.getEventOwnerSelector());
     }
 
     public String getName() {
@@ -248,12 +248,12 @@ public class EventTypeBase implements EventTypeAuthz {
     }
 
     @Nullable
-    public EventAuthFieldView getEventAuthFieldView() {
-        return eventAuthFieldView;
+    public EventOwnerSelector getEventOwnerSelector() {
+        return eventOwnerSelector;
     }
 
-    public void setEventAuthFieldView(@Nullable final EventAuthFieldView eventAuthFieldView) {
-        this.eventAuthFieldView = eventAuthFieldView;
+    public void setEventOwnerSelector(@Nullable final EventOwnerSelector eventOwnerSelector) {
+        this.eventOwnerSelector = eventOwnerSelector;
     }
 
     @Nullable
