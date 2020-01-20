@@ -40,7 +40,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.view.EventAuthFieldView;
+import org.zalando.nakadi.view.EventOwnerSelector;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -516,10 +516,9 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPostWithAValidEventAuthFieldThenCreated() throws Exception {
+    public void whenPostWithAValidEventOwnerSelectorThenCreated() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
-
-        eventType.setEventAuthFieldView(new EventAuthFieldView("random.path", "teams"));
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -527,12 +526,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPutWithAValidEventAuthFieldThen200() throws Exception {
+    public void whenPutWithAValidEventOwnerSelectorThen200() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder().build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthFieldView(new EventAuthFieldView("random.path", "teams"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -542,14 +541,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPutWithAChangedEventAuthFieldThen422() throws Exception {
+    public void whenPutWithAChangedEventOwnerSelectorThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .eventAuthFieldView(new EventAuthFieldView("first.path", "teams"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "team", "aruha"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventAuthFieldView(new EventAuthFieldView("random.path", "retailer_id"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "team", "stream"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());

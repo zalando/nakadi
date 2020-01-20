@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
@@ -18,7 +19,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
-import org.zalando.nakadi.view.EventAuthFieldView;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.util.List;
 
@@ -44,7 +45,7 @@ public class EventTypeTestBuilder {
     private DateTime updatedAt;
     private Audience audience;
     private ResourceAuthorization authorization;
-    private EventAuthFieldView eventAuthFieldView;
+    private EventOwnerSelector eventOwnerSelector;
 
 
     public EventTypeTestBuilder() {
@@ -66,7 +67,7 @@ public class EventTypeTestBuilder {
         this.updatedAt = this.createdAt;
         this.authorization = null;
         this.audience = null;
-        this.eventAuthFieldView = null;
+        this.eventOwnerSelector = null;
     }
 
     public static EventTypeTestBuilder builder() {
@@ -160,8 +161,8 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder eventAuthFieldView(final EventAuthFieldView eventAuthFieldView) {
-        this.eventAuthFieldView = eventAuthFieldView;
+    public EventTypeTestBuilder eventOwnerSelector(final EventOwnerSelector eventOwnerSelector) {
+        this.eventOwnerSelector = eventOwnerSelector;
         return this;
     }
 
@@ -171,7 +172,7 @@ public class EventTypeTestBuilder {
                 defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
-        eventTypeBase.setEventAuthFieldView(eventAuthFieldView);
+        eventTypeBase.setEventOwnerSelector(eventOwnerSelector);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 }

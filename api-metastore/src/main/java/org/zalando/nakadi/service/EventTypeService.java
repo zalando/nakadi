@@ -64,7 +64,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.nakadi.view.EventAuthFieldView;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -407,7 +407,7 @@ public class EventTypeService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
                 authorizationValidator.authorizeEventTypeAdmin(original);
-                validateEventAuthFieldUnchanged(original, eventTypeBase);
+                validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
@@ -543,18 +543,18 @@ public class EventTypeService {
         }
     }
 
-    private void validateEventAuthFieldUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
+    private void validateEventOwnerSelectorUnchanged(final EventType original, final EventTypeBase eventTypeBase) throws
             InvalidEventTypeException {
-        final EventAuthFieldView originalEventAuthFieldView = original.getEventAuthFieldView();
-        final EventAuthFieldView updatedEventAuthFieldView = eventTypeBase.getEventAuthFieldView();
-        if (updatedEventAuthFieldView != null && originalEventAuthFieldView != null) {
-            if (!updatedEventAuthFieldView.equals(originalEventAuthFieldView)) {
+        final EventOwnerSelector originalEventOwnerSelector = original.getEventOwnerSelector();
+        final EventOwnerSelector updatedEventOwnerSelector = eventTypeBase.getEventOwnerSelector();
+        if (updatedEventOwnerSelector != null && originalEventOwnerSelector != null) {
+            if (!updatedEventOwnerSelector.equals(originalEventOwnerSelector)) {
                 throw new InvalidEventTypeException(
-                        String.format("event_auth_field must not be changed, original: %s, updated: %s",
-                                originalEventAuthFieldView.toString(), updatedEventAuthFieldView.toString()));
+                        String.format("event_owner_selector must not be changed, original: %s, updated: %s",
+                                originalEventOwnerSelector.toString(), updatedEventOwnerSelector.toString()));
             }
-        } else if (updatedEventAuthFieldView == null && originalEventAuthFieldView != null) {
-            throw new InvalidEventTypeException("event_auth_field can't be set back to null");
+        } else if (updatedEventOwnerSelector == null && originalEventOwnerSelector != null) {
+            throw new InvalidEventTypeException("event_owner_selector can't be set back to null");
         }
     }
 

@@ -2718,8 +2718,8 @@ definitions:
             expected to notify consumer in advance about the change.
           example: "data.incremental_counter"
 
-      event_auth_field:
-        $ref: '#/definitions/EventAuthField'
+      event_owner_selector:
+        $ref: '#/definitions/EventOwnerSelector'
 
       ordering_instance_ids:
         type: array
@@ -2862,32 +2862,48 @@ definitions:
           Number of milliseconds that Nakadi stores events published to this event type.
 
 
-  EventAuthField:
+  EventOwnerSelector:
     type: object
     description: |
-      Parameters to define per-event authorization. This field can be used with an authorization plugin
+      Parameters to define per-event ownership. This selector can be used with an authorization plugin
       to differentiate which authorized consumers for an event type can receive an event published to
-      the event type. In case the field is null or not present in the event, it will be allowed to be read
-      by all authorized consumers.
-      Once defined, the definition for EventAuthField for an event-type cannot be updated or removed.
-    properties:
-      path:
-        type: string
-        description: |
-          Path to a string field (using dot notation) in the event that contains a classifier, which can be used by an
-          authorization plugin (together with definitions in the authorization section) to define who can read the
-          event.
+      the event type. The authorization section for an event type controls per event-type authorization, and this
+      selector controls per-event authorization.
 
-          The authorization section for an event type controls per event-type authorization, and this
-          field inside an event controls per-event authorization. In case the field is not present in the event
-          or is set to `null`, the event is not filtered and all authorized consumers can read it.
-        example: 'security.exclusive_team'
+      The value of the selector can be static, or be selected from within the event published (this is defined by the
+      type of the selector), and name is informational field as to define what the selector contains. The semantics
+      and affects of all fields of the selector should be handled by the authorization plugin.
+
+      In case the selector is null or not present in the event, it will be allowed to be read
+      by all authorized consumers.
+
+      Once defined, the definition for EventOwnerSelector for an event-type cannot be updated or removed.
+    properties:
       type:
         type: string
+        x-extensible-enum:
+          - path
+          - static
         description: |
-          Indicator of the type of the data (classifier) the field contains. The semantics and affects of this field
-          should be handled by the authorization plugin.
+          The type indicates how the value to decide authorization should be accessed.
+          "path" value means, that event owner value will be selected from every event by using dot path that is
+          specified in the "value" field of selector.
+          "static" means that event owner value will be just copied from "value" field of EventOwnerSelector of event
+          type definition
+        example: 'type'
+      name:
+        type: string
+        description: |
+          Information/Description defining the data (classifier) used for per-event authorization.
         example: 'team_name'
+      value:
+        type: string
+        description: |
+          Based on the type of selector, the value is a string, specifying either the data to be used for per-event
+          authorization or path to a field inside the events published to fetch the data to be used for per-event
+          authorization.
+        example: 'data.security.team'
+
 
   EventTypeAuthorization:
     type: object
