@@ -5,36 +5,39 @@ import javax.validation.constraints.Size;
 import java.util.Objects;
 
 public class EventOwnerSelector {
+    public enum Type {
+        PATH,
+        STATIC,
+    }
+
     @NotNull
-    @Size(min = 1, message = "the length of the type must be >= 1")
-    private String type;
+    private Type type;
 
     @NotNull
     @Size(min = 1, message = "the length of the name must be >= 1")
     private String name;
 
     @NotNull
-    @Size(min = 1, message = "the length of the value must be >= 1")
     private String value;
 
-    public String getType() {
+    public Type getType() {
         return type;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
     }
 
     public String getName() {
         return name;
     }
 
-    public String getValue() {
-        return value;
-    }
-
-    public void setType(final String type) {
-        this.type = type;
-    }
-
     public void setName(final String name) {
         this.name = name;
+    }
+
+    public String getValue() {
+        return value;
     }
 
     public void setValue(final String value) {
@@ -44,7 +47,7 @@ public class EventOwnerSelector {
     public EventOwnerSelector() {
     }
 
-    public EventOwnerSelector(final String type, final String name, final String value) {
+    public EventOwnerSelector(final Type type, final String name, final String value) {
         this.type = type;
         this.name = name;
         this.value = value;
@@ -73,6 +76,6 @@ public class EventOwnerSelector {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.value);
+        return Objects.hash(this.type, this.value);
     }
 }

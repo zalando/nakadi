@@ -518,7 +518,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithAValidEventOwnerSelectorThenCreated() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setEventOwnerSelector(new EventOwnerSelector("dot_notation", "retailer_id", "a.retailer"));
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -531,7 +531,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventOwnerSelector(new EventOwnerSelector("dot_notation", "retailer_id", "a.retailer"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -543,12 +543,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPutWithAChangedEventOwnerSelectorThen422() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder()
-                .eventOwnerSelector(new EventOwnerSelector("static", "team", "aruha"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "team", "aruha"))
                 .build();
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventOwnerSelector(new EventOwnerSelector("static", "team", "stream"))
+                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "team", "stream"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());

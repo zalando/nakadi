@@ -2865,7 +2865,7 @@ definitions:
   EventOwnerSelector:
     type: object
     description: |
-      Parameters to define per-event authorization. This selector can be used with an authorization plugin
+      Parameters to define per-event ownership. This selector can be used with an authorization plugin
       to differentiate which authorized consumers for an event type can receive an event published to
       the event type. The authorization section for an event type controls per event-type authorization, and this
       selector controls per-event authorization.
@@ -2882,14 +2882,15 @@ definitions:
       type:
         type: string
         x-extensible-enum:
-          - dot_notation
+          - path
+          - static
         description: |
           The type indicates how the value to decide authorization should be accessed.
-
-          For example, the selector value can be static or dynamic. If static, the value field contains a string
-           used to decide per-event authorization. If dynamic, then the value field indicates where the classifier value
-           should be picked from (path of a field sepcified in dot notation from inside the event, for example).
-        example: 'dot_notation'
+          "path" value means, that event owner value will be selected from every event by using dot path that is
+          specified in the "value" field of selector.
+          "static" means that event owner value will be just copied from "value" field of EventOwnerSelector of event
+          type definition
+        example: 'type'
       name:
         type: string
         description: |

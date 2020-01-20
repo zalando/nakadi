@@ -11,26 +11,29 @@ import org.apache.kafka.common.header.Header;
  */
 public class EventAuthField {
 
-    static final String HEADER_KEY_TYPE = "X-Event-Field-Type";
-    static final String HEADER_KEY_CLASSIFIER = "X-Event-Field-Classifier";
+    static final String AUTH_PARAM_NAME = "X-AuthParam-Name";
+    static final String AUTH_PARAM_VALUE = "X-AuthParam-Value";
 
-    private final String type;
-    private final String classifier;
+    private final String name;
+    private final String value;
 
-    public EventAuthField(final String type, final String classifier) {
-        this.type = type;
-        this.classifier = classifier;
+    public EventAuthField(final String name, final String value) {
+        this.name = name;
+        this.value = value;
     }
 
     public void serialize(final ProducerRecord<String, String> record) {
-        record.headers().add(HEADER_KEY_TYPE, type.getBytes(Charsets.UTF_8));
-        record.headers().add(HEADER_KEY_CLASSIFIER, classifier.getBytes(Charsets.UTF_8));
+        record.headers().add(AUTH_PARAM_NAME, name.getBytes(Charsets.UTF_8));
+        record.headers().add(AUTH_PARAM_VALUE, value.getBytes(Charsets.UTF_8));
     }
 
     public static EventAuthField deserialize(final ConsumerRecord<byte[], byte[]> record) {
-        final Header typeHeader = record.headers().lastHeader(EventAuthField.HEADER_KEY_TYPE);
-        final Header valueHeader = record.headers().lastHeader(EventAuthField.HEADER_KEY_CLASSIFIER);
-        if (typeHeader == null || valueHeader == null) {
+        final Header typeHeader = record.headers().lastHeader(EventAuthField.AUTH_PARAM_NAME);
+        if (null == typeHeader) {
+            return null;
+        }
+        final Header valueHeader = record.headers().lastHeader(EventAuthField.AUTH_PARAM_VALUE);
+        if (valueHeader == null) {
             return null;
         }
 
@@ -39,11 +42,11 @@ public class EventAuthField {
                 new String(valueHeader.value(), Charsets.UTF_8));
     }
 
-    public String getType() {
-        return type;
+    public String getName() {
+        return name;
     }
 
-    public String getClassifier() {
-        return classifier;
+    public String getValue() {
+        return value;
     }
 }
