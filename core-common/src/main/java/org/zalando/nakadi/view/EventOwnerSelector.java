@@ -61,9 +61,6 @@ public class EventOwnerSelector {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
         final EventOwnerSelector that = (EventOwnerSelector) o;
         return Objects.equals(this.type, that.type) && Objects.equals(this.name, that.name)
                 && Objects.equals(this.value, that.value);
