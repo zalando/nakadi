@@ -1,9 +1,6 @@
 package org.zalando.nakadi.domain;
 
-import org.json.JSONObject;
-
 import javax.annotation.Nullable;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -53,33 +50,32 @@ public class BatchItem {
     private static final EmptyInjectionConfiguration CONFIG_NO_COMMA = new EmptyInjectionConfiguration(1, false);
 
     private final BatchItemResponse response;
-    private final String rawEvent;
-    private final JSONObject event;
     private final EmptyInjectionConfiguration emptyInjectionConfiguration;
     private final InjectionConfiguration[] injections;
     private String[] injectionValues;
     private final List<Integer> skipCharacters;
     private String partition;
     private String brokerId;
-    private String eventKey;
-    private int eventSize;
+    private Event event;
+    private String key;
+    private Optional<EventOwnerHeader> header = Optional.empty();
 
     public BatchItem(
             final String rawEvent,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
             final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
-        this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
-        this.event = StrictJsonParser.parseObject(rawEvent);
-        this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
         this.response = new BatchItemResponse();
-
-        Optional.ofNullable(this.event.optJSONObject("metadata"))
+        this.event = new Event(rawEvent);
+        Optional.ofNullable(this.event.getEventJson().optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
-                .ifPresent(this.response::setEid);
+                .ifPresent(eid -> {
+                    this.response.setEid(eid);
+                    this.event.setId(eid);
+                });
     }
 
     public void inject(final Injection type, final String value) {
@@ -89,7 +85,7 @@ public class BatchItem {
         injectionValues[type.ordinal()] = value;
     }
 
-    public JSONObject getEvent() {
+    public Event getEvent() {
         return this.event;
     }
 
@@ -103,17 +99,25 @@ public class BatchItem {
     }
 
     @Nullable
-    public String getEventKey() {
-        return eventKey;
+    public String getBrokerId() {
+        return brokerId;
     }
 
-    public void setEventKey(@Nullable final String eventKey) {
-        this.eventKey = eventKey;
+    public Optional<EventOwnerHeader> getHeader() {
+        return header;
     }
 
     @Nullable
-    public String getBrokerId() {
-        return brokerId;
+    public String getKey() {
+        return key;
+    }
+
+    public void setHeader(final EventOwnerHeader header) {
+        this.header = Optional.of(header);
+    }
+
+    public void setKey(final String key) {
+        this.key = key;
     }
 
     public void setBrokerId(final String brokerId) {
@@ -137,17 +141,13 @@ public class BatchItem {
         response.setDetail(detail);
     }
 
-    public int getEventSize() {
-        return eventSize;
-    }
-
     public String dumpEventToString() {
         if (null == injectionValues) {
             if (skipCharacters.isEmpty()) {
-                return rawEvent;
+                return event.getEventString();
             } else {
                 final StringBuilder sb = new StringBuilder();
-                appendWithSkip(sb, 0, rawEvent.length(), 0);
+                appendWithSkip(sb, 0, event.getEventString().length(), 0);
                 return sb.toString();
             }
         }
@@ -196,8 +196,8 @@ public class BatchItem {
                 }
             }
         }
-        if (lastMainEventUsedPosition < rawEvent.length()) {
-            appendWithSkip(sb, lastMainEventUsedPosition, rawEvent.length(), currentSkipPosition);
+        if (lastMainEventUsedPosition < event.getEventString().length()) {
+            appendWithSkip(sb, lastMainEventUsedPosition, event.getEventString().length(), currentSkipPosition);
         }
         return sb.toString();
     }
@@ -214,12 +214,12 @@ public class BatchItem {
                 break;
             }
             if (currentSkipIdx > currentPos) {
-                sb.append(rawEvent, currentPos, currentSkipIdx);
+                sb.append(event.getEventString(), currentPos, currentSkipIdx);
             }
             currentPos = currentSkipIdx + 1;
         }
         if (to > currentPos) {
-            sb.append(rawEvent, currentPos, to);
+            sb.append(event.getEventString(), currentPos, to);
         }
         return idx;
     }

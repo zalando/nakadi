@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.base.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.Event;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -107,6 +108,24 @@ public class AuthorizationValidator {
             return;
         }
         final Resource<EventType> resource = eventType.asResource();
+        try {
+            final boolean authorized = authorizationService.isAuthorized(
+                    AuthorizationService.Operation.WRITE,
+                    resource);
+            if (!authorized) {
+                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
+            }
+        } catch (final PluginException ex) {
+            throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
+        }
+    }
+
+    public void authorizeEventWrite(final Event event)
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
+        if (event.getAuthorization() == null) {
+            return;
+        }
+        final Resource<Event> resource = event.asResource();
         try {
             final boolean authorized = authorizationService.isAuthorized(
                     AuthorizationService.Operation.WRITE,

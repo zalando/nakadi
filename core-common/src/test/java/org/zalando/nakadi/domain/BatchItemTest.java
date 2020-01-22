@@ -27,7 +27,7 @@ public class BatchItemTest {
                 BatchItem.EmptyInjectionConfiguration.build(1, false),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        assertEquals(20, item.getEventSize());
+        assertEquals(20, item.getEvent().getEventSize());
     }
 
     @Test
@@ -92,7 +92,9 @@ public class BatchItemTest {
         event.put("foo", "Test data data data");
         final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
 
-        final JSONObject metadata = bi.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
+        final JSONObject metadata = bi.getEvent()
+                .getEventJson()
+                .getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
         bi.inject(BatchItem.Injection.METADATA, metadata.toString());
 
@@ -115,7 +117,9 @@ public class BatchItemTest {
         event.put("foo", other);
         final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
 
-        final JSONObject metadata = bi.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
+        final JSONObject metadata = bi.getEvent()
+                .getEventJson()
+                .getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
         bi.inject(BatchItem.Injection.METADATA, metadata.toString());
 

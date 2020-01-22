@@ -116,8 +116,9 @@ public class KafkaTopicRepository implements TopicRepository {
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getEventKey(),
+                    item.getKey(),
                     delete ? null : item.dumpEventToString());
+            item.getHeader().ifPresent(header -> header.serialize(kafkaRecord));
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {

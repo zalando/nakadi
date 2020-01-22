@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -27,6 +28,7 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -75,6 +77,7 @@ public class EventPublisherTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
+    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
@@ -87,9 +90,10 @@ public class EventPublisherTest {
         Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
         Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
+        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(false);
 
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
-                authzValidator);
+                authzValidator, featureToggleService);
     }
 
     @Test
@@ -340,7 +344,7 @@ public class EventPublisherTest {
         final EventType eventType = buildDefaultEventType();
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(createBatchItem(buildDefaultBatch(1).getJSONObject(0)));
-        final JSONObject event = batch.get(0).getEvent();
+        final JSONObject event = batch.get(0).getEvent().getEventJson();
 
         mockSuccessfulValidation(eventType);
         mockFaultPartition();
@@ -428,7 +432,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
+        assertThat(publishedBatch.get(0).getKey(), equalTo("my_key"));
     }
 
     @Test
@@ -448,7 +452,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        assertThat(publishedBatch.get(0).getKey(), equalTo(null));
     }
 
     @Test
@@ -463,7 +467,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        assertThat(publishedBatch.get(0).getKey(), equalTo(null));
     }
 
     @SuppressWarnings("unchecked")
