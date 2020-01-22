@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.view.EventOwnerSelector;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.problem.Problem;
 
@@ -118,6 +119,61 @@ public class EventTypeAT extends BaseAT {
                 .then()
                 .body(equalTo(""))
                 .statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void whenEventAuthSelectorCreatedThenOK() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "y"));
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).post(ENDPOINT)
+                .then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+        final EventType retrievedEventType = MAPPER.readValue(given()
+                        .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
+                        .getBody().asString(),
+                EventType.class);
+        Assert.assertEquals(eventType.getEventOwnerSelector(), retrievedEventType.getEventOwnerSelector());
+    }
+
+    @Test
+    public void whenEventAuthSelectorUpdatedThenOK() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setEventOwnerSelector(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).post(ENDPOINT)
+                .then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+        final EventType retrievedEventType = MAPPER.readValue(given()
+                        .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
+                        .getBody().asString(),
+                EventType.class);
+        Assert.assertNull(retrievedEventType.getEventOwnerSelector());
+
+        retrievedEventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "y"));
+        final String updateBody = MAPPER.writer().writeValueAsString(retrievedEventType);
+
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .when()
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        final EventType updatedEventType = MAPPER.readValue(given()
+                        .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
+                        .getBody().asString(),
+                EventType.class);
+
+        Assert.assertEquals(retrievedEventType.getEventOwnerSelector(), updatedEventType.getEventOwnerSelector());
     }
 
     @Test
