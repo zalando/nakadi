@@ -58,8 +58,4 @@ public class Event {
         return this.event.toString();
     }
 
-    @Override
-    public int hashCode() {
-        return this.event.hashCode();
-    }
 }
