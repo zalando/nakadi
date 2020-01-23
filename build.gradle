@@ -1,5 +1,13 @@
 import java.util.concurrent.TimeUnit
 
+allprojects {
+    buildscript {
+        ext {
+            springBootVersion = '1.5.20.RELEASE'
+        }
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'jacoco'
 
