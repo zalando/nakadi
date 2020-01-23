@@ -18,14 +18,35 @@ subprojects {
     }
     apply plugin: 'java'
     apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+
     checkstyle {
         configFile = new File(rootDir, "checkstyle.xml")
         toolVersion = "7.6"
     }
-}
 
-apply plugin: 'java'
-apply plugin: 'jacoco'
+    jacoco {
+        toolVersion = "0.8.2"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled = true
+            html.enabled = true
+        }
+    }
+    test {
+        testLogging {
+            events "passed", "skipped", "failed"
+        }
+        testLogging.exceptionFormat = 'full'
+        maxParallelForks = Runtime.runtime.availableProcessors()
+    }
+    task testWithReport() {
+        dependsOn test
+        finalizedBy jacocoTestReport
+    }
+}
 
 task testInitNakadi(type: Exec) {
     environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
@@ -91,33 +112,13 @@ task stopStorages(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }
 
-test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-    maxParallelForks = Runtime.runtime.availableProcessors()
-}
-
-jacoco {
-    toolVersion = "0.8.2"
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
-}
-
 task checkstyle {
     subprojects.each {dependsOn(":${it.name}:checkstyleMain")}
     subprojects.each {dependsOn(":${it.name}:checkstyleTest")}
     dependsOn(":acceptance-test:checkstyleMain")
     dependsOn(":acceptance-test:checkstyleTest")
+}
+
+task test {
+    subprojects.each {dependsOn(":${it.name}:testWithReport")}
 }

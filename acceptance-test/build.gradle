@@ -8,7 +8,6 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'jacoco'
 apply plugin: 'findbugs'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
@@ -139,17 +138,6 @@ acceptanceTest {
     }
     testLogging.exceptionFormat = 'full'
     maxParallelForks = 1
-}
-
-jacoco {
-    toolVersion = "0.8.2"
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
 }
 
 bootRepackage {

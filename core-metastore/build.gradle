@@ -8,7 +8,6 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'jacoco'
 apply plugin: 'findbugs'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
@@ -126,30 +125,6 @@ tasks.withType(FindBugs) {
         xml.enabled = false
         html.enabled = true
     }
-}
-
-test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-    maxParallelForks = Runtime.runtime.availableProcessors()
-}
-
-jacoco {
-    toolVersion = "0.8.2"
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
 }
 
 bootRepackage {
