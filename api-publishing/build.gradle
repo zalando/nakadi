@@ -8,7 +8,6 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'findbugs'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
@@ -36,13 +35,6 @@ dependencies {
     testCompile project(path: ':core-common', configuration: 'testOutput')
 }
 // end::dependencies[]
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
 
 bootRepackage {
     enabled = false

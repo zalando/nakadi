@@ -38,7 +38,8 @@ public class SchemaController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             final NativeWebRequest request)
             throws InvalidLimitException, NoSuchEventTypeException, InternalNakadiException {
-        final EventType eventType = eventTypeService.get(name);
+        // Ensures that event type exists
+        eventTypeService.get(name);
 
         final PaginationWrapper schemas = schemaService.getSchemas(name, offset, limit);
         return ResponseEntity.status(HttpStatus.OK).body(schemas);

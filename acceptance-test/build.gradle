@@ -8,7 +8,6 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'findbugs'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
@@ -31,11 +30,6 @@ configurations {
     all*.exclude module: 'spring-boot-starter-logging'
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
-}
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
 }
 
 dependencies {
@@ -117,14 +111,6 @@ dependencies {
     testRuntime 'org.pegdown:pegdown:1.6.0'
     testCompile project(path: ':core-common', configuration: 'testOutput')
     testCompile project(path: ':core-services', configuration: 'testOutput')
-}
-// end::dependencies[]
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
 }
 
 task acceptanceTest(type: Test) {

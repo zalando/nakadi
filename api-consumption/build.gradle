@@ -8,7 +8,6 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'findbugs'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
@@ -20,11 +19,6 @@ targetCompatibility = 1.8
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
-}
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
 }
 
 dependencies {
@@ -121,13 +115,6 @@ dependencies {
     testCompile project(path: ':core-common', configuration: 'testOutput')
 }
 // end::dependencies[]
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
 
 bootRepackage {
     enabled = false

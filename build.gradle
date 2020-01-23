@@ -12,10 +12,12 @@ subprojects {
             }
         }
     }
+
     repositories {
         mavenCentral()
         maven { url 'https://jitpack.io' }
     }
+
     apply plugin: 'java'
     apply plugin: 'checkstyle'
     apply plugin: 'jacoco'
@@ -42,6 +44,7 @@ subprojects {
         testLogging.exceptionFormat = 'full'
         maxParallelForks = Runtime.runtime.availableProcessors()
     }
+
     task testWithReport() {
         dependsOn test
         finalizedBy jacocoTestReport
@@ -113,12 +116,12 @@ task stopStorages(type: Exec) {
 }
 
 task checkstyle {
-    subprojects.each {dependsOn(":${it.name}:checkstyleMain")}
-    subprojects.each {dependsOn(":${it.name}:checkstyleTest")}
+    subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
+    subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
     dependsOn(":acceptance-test:checkstyleMain")
     dependsOn(":acceptance-test:checkstyleTest")
 }
 
 task test {
-    subprojects.each {dependsOn(":${it.name}:testWithReport")}
+    subprojects.each { dependsOn(":${it.name}:testWithReport") }
 }
