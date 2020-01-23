@@ -38,6 +38,7 @@ sourceSets {
         java {
             srcDir file('src/acceptance-test/java')
         }
+        resources.srcDir file('src/acceptance-test/resources')
     }
 }
 
