@@ -34,6 +34,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -107,6 +108,34 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
+    }
+
+    @Test
+    public void whenPublishIsSuccessfulWithEOSelectorThenIsSubmitted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
+
+
+        mockSuccessfulValidation(eventType);
+        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
+
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+    }
+
+    @Test(expected = AccessDeniedException.class)
+    public void whenPublishWithEOSelectorNotAuthorizedThenIsFails() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
+
+        mockSuccessfulValidation(eventType);
+        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
+        Mockito.doThrow(AccessDeniedException.class).when(authzValidator).authorizeEventWrite(any());
+        publisher.publish(batch.toString(), eventType.getName(), null);
     }
 
     @Test(expected = AccessDeniedException.class)

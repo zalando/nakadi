@@ -135,8 +135,8 @@ public class EventPublisher {
             setEventKey(batch, eventType);
             if (useOwnerHeader) {
                 setHeaders(batch, eventType);
-                authorizeEventWrite(batch);
             }
+            authorizeEventWrite(batch);
             if (!delete) {
                 enrich(batch, eventType);
             }
@@ -265,9 +265,7 @@ public class EventPublisher {
                 }
                 break;
             default:
-                // Fixme (ferbncode) maybe throw a Nakadi Exception
-                throw new IllegalStateException();
-
+                throw new IllegalStateException("Unsupported Type for event_owner_selector: " + selector.getType());
         }
     }
 

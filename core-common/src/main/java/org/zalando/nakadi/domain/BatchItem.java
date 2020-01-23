@@ -113,7 +113,7 @@ public class BatchItem {
     }
 
     public void setHeader(final EventOwnerHeader header) {
-        this.header = Optional.of(header);
+        this.header = Optional.ofNullable(header);
     }
 
     public void setKey(final String key) {

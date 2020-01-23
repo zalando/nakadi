@@ -37,8 +37,7 @@ public class EventAuthorization implements ValidatableAuthorization {
             case WRITE:
                 return Optional.of(getWriters());
             default:
-                // todo (ferbncode): Fix me
-                throw new IllegalStateException();
+                throw new IllegalArgumentException("Operation: " + operation + " is not supported");
         }
     }
 
