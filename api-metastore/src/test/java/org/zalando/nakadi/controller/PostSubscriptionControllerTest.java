@@ -95,7 +95,8 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
+                .andExpect(content().string(
+                        SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
     }
@@ -112,7 +113,8 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(subscription))))
+                .andExpect(
+                        content().string(SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(subscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
@@ -122,7 +124,8 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withConsumerGroup("")
                 .buildSubscriptionBase();
-        final Problem expectedProblem = TestUtils.invalidProblem("consumer_group", "must contain at least one character");
+        final Problem expectedProblem = TestUtils.invalidProblem(
+                "consumer_group", "must contain at least one character");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -131,7 +134,8 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withOwningApplication("")
                 .buildSubscriptionBase();
-        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "must contain at least one character");
+        final Problem expectedProblem = TestUtils.invalidProblem(
+                "owning_application", "must contain at least one character");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -200,7 +204,8 @@ public class PostSubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
+                .andExpect(content().string(
+                        SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
     }

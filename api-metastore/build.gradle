@@ -14,12 +14,10 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'jacoco'
 apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'

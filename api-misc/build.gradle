@@ -13,12 +13,10 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'jacoco'
 apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
@@ -145,15 +143,6 @@ jacocoTestReport {
 task testWithReport() {
     dependsOn test
     finalizedBy jacocoTestReport
-}
-
-checkstyle {
-    configFile = new File(rootDir, "checkstyle.xml")
-    toolVersion = "7.6"
-}
-
-task checkstyle {
-    dependsOn checkstyleMain, checkstyleTest
 }
 
 bootRepackage {

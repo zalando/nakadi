@@ -1,10 +1,26 @@
 import java.util.concurrent.TimeUnit
 
-allprojects {
+subprojects {
     buildscript {
         ext {
             springBootVersion = '1.5.20.RELEASE'
         }
+        repositories {
+            mavenCentral()
+            maven {
+                url "https://plugins.gradle.org/m2/"
+            }
+        }
+    }
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    checkstyle {
+        configFile = new File(rootDir, "checkstyle.xml")
+        toolVersion = "7.6"
     }
 }
 
@@ -97,4 +113,11 @@ jacocoTestReport {
 task testWithReport() {
     dependsOn test
     finalizedBy jacocoTestReport
+}
+
+task checkstyle {
+    subprojects.each {dependsOn(":${it.name}:checkstyleMain")}
+    subprojects.each {dependsOn(":${it.name}:checkstyleTest")}
+    dependsOn(":acceptance-test:checkstyleMain")
+    dependsOn(":acceptance-test:checkstyleTest")
 }
