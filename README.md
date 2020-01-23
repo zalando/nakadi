@@ -136,7 +136,7 @@ git clone https://github.com/zalando/nakadi.git
 
 The gradle setup is fairly standard, the main tasks are:
 
-- `./gradlew app:build`: run a build and test
+- `./gradlew build`: run a build and test
 - `./gradlew clean`: clean down the build
 
 Some other useful tasks are:
@@ -145,8 +145,7 @@ Some other useful tasks are:
 - `./gradlew stopNakadi`: shutdown docker-compose services
 - `./gradlew startStorages`: start docker-compose services: postgres, zookeeper and kafka (useful for development purposes)
 - `./gradlew stopStorages`: shutdown docker-compose services
-- `./gradlew startNakadiForTest`: start Nakadi configured for acceptance tests
-- `./gradlew acceptance-test:test`: run the ATs (nakadi has to be started first )
+- `./gradlew fullAcceptanceTest`: start Nakadi configured for acceptance tests and run acceptance tests
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
 

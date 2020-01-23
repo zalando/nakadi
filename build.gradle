@@ -41,6 +41,11 @@ task startNakadiForTests(type: GradleBuild) {
     tasks = ['clean', 'app:bootRepackage', 'testInitNakadi']
 }
 
+
+task fullAcceptanceTest(type: GradleBuild) {
+    tasks = ['startNakadiForTests', ':acceptance-test:acceptanceTest', 'stopNakadi']
+}
+
 task stopNakadi(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }

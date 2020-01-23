@@ -151,7 +151,6 @@ acceptanceTest {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
-    testLogging.showStandardStreams = true
     maxParallelForks = 1
 }
 
