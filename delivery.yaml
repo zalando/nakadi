@@ -9,7 +9,7 @@ pipeline:
           ./gradlew checkstyle --stacktrace
       - desc: Test
         cmd: |
-          ./gradlew test --fail-fast --stacktrace
+          ./gradlew test --stacktrace
   - id: acceptance-test
     overlay: ci/java
     type: script
@@ -19,7 +19,7 @@ pipeline:
           pip install docker-compose==1.24.1
       - desc: Acceptance Test
         cmd: |
-          ./gradlew fullAcceptanceTest --fail-fast --stacktrace
+          ./gradlew fullAcceptanceTest --stacktrace
   - id: build-push
     overlay: ci/java
     type: script
