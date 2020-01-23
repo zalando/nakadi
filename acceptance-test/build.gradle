@@ -33,8 +33,18 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
+sourceSets {
+    acceptanceTest {
+        java {
+            srcDir file('src/acceptance-test/java')
+        }
+    }
+}
+
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
+    acceptanceTestCompile.extendsFrom testCompile
+    acceptanceTestRuntime.extendsFrom testRuntime
 }
 
 findbugs {
@@ -131,11 +141,17 @@ tasks.withType(FindBugs) {
     }
 }
 
-test {
+task acceptanceTest(type: Test) {
+    classpath = sourceSets.acceptanceTest.runtimeClasspath
+    testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
+}
+
+acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
     testLogging.exceptionFormat = 'full'
+    testLogging.showStandardStreams = true
     maxParallelForks = 1
 }
 
