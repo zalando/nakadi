@@ -16,7 +16,6 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
-apply plugin: 'application'
 apply plugin: 'jacoco'
 apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
@@ -174,4 +173,8 @@ checkstyle {
 
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest
+}
+
+bootRepackage {
+    enabled = false
 }
