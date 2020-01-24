@@ -12,17 +12,15 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.BatchItemAuthorization;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.EventAuthorization;
 import org.zalando.nakadi.domain.EventCategory;
-import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -34,6 +32,7 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.headers.EventHeaderFactory;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -44,7 +43,6 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -69,6 +67,7 @@ public class EventPublisher {
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
     private final FeatureToggleService featureToggleService;
+    private final EventHeaderFactory eventHeaderFactory;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -87,6 +86,7 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
         this.featureToggleService = featureToggleService;
+        this.eventHeaderFactory = new EventHeaderFactory();
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
@@ -97,8 +97,7 @@ public class EventPublisher {
             AccessDeniedException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        final boolean useOwnerHeader = featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ);
-        return processInternal(events, eventTypeName, true, useOwnerHeader, parentSpan, false);
+        return processInternal(events, eventTypeName, true, parentSpan, false);
     }
 
     public EventPublishResult delete(final String events, final String eventTypeName, final Span parentSpan)
@@ -109,13 +108,12 @@ public class EventPublisher {
             AccessDeniedException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        final boolean useOwnerHeader = featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ);
-        return processInternal(events, eventTypeName, true, useOwnerHeader, parentSpan, true);
+        return processInternal(events, eventTypeName, true, parentSpan, true);
     }
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
-                                       final boolean useAuthz, final boolean useOwnerHeader,
+                                       final boolean useAuthz,
                                        final Span parentSpan,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -133,9 +131,8 @@ public class EventPublisher {
             validate(batch, eventType, parentSpan, delete);
             partition(batch, eventType);
             setEventKey(batch, eventType);
-            if (useOwnerHeader) {
-                setHeaders(batch, eventType);
-            }
+            setHeaders(batch, eventType);
+            setAuthorization(batch);
             authorizeEventWrite(batch);
             if (!delete) {
                 enrich(batch, eventType);
@@ -201,7 +198,7 @@ public class EventPublisher {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
                 final String partitionId = partitionResolver.
-                        resolvePartition(eventType, item.getEvent().getEventJson());
+                        resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
@@ -213,10 +210,10 @@ public class EventPublisher {
     private void setEventKey(final List<BatchItem> batch, final EventType eventType) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             for (final BatchItem item : batch) {
-                final String compactionKey = item.getEvent().getEventJson()
+                final String compactionKey = item.getEvent()
                         .getJSONObject("metadata")
                         .getString("partition_compaction_key");
-                item.setKey(compactionKey);
+                item.setEventKey(compactionKey);
             }
         } else if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
             final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
@@ -228,50 +225,39 @@ public class EventPublisher {
                     partitionKeyField = DATA_PATH_PREFIX + partitionKeyField;
                 }
                 for (final BatchItem item : batch) {
-                    final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent().getEventJson());
+                    final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent());
                     final String eventKey = jsonPath.get(partitionKeyField).toString();
-                    item.setKey(eventKey);
+                    item.setEventKey(eventKey);
                 }
             }
         }
     }
 
     private void setHeaders(final List<BatchItem> batch, final EventType eventType) {
-        if (null != eventType.getEventOwnerSelector()) {
-            final EventOwnerSelector selector = eventType.getEventOwnerSelector();
-            setHeaderWithEventAuthorization(batch, selector);
+        if (featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)) {
+            for (final BatchItem item : batch) {
+                eventHeaderFactory.prepare(item, eventType);
+            }
         }
     }
 
-    private void setHeaderWithEventAuthorization(final List<BatchItem> batch,
-                                                 final EventOwnerSelector selector) {
-        switch (selector.getType()) {
-            case PATH:
-                for (final BatchItem item: batch) {
-                    final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent().getEventJson());
-                    final String value = jsonPath.get(selector.getValue()).toString();
-                    item.setHeader(new EventOwnerHeader(selector.getName(), value));
-                    item.getEvent().setAuthorization(EventAuthorization.fromAttribute(
-                            new ResourceAuthorizationAttribute(selector.getName(), value)
-                    ));
-                }
-                break;
-            case STATIC:
-                for (final BatchItem item: batch) {
-                    item.setHeader(new EventOwnerHeader(selector.getName(), selector.getValue()));
-                    item.getEvent().setAuthorization(EventAuthorization.fromAttribute(
-                            new ResourceAuthorizationAttribute(selector.getName(), selector.getValue())
-                    ));
-                }
-                break;
-            default:
-                throw new IllegalStateException("Unsupported Type for event_owner_selector: " + selector.getType());
+    private void setAuthorization(final List<BatchItem> batch) {
+        for (final BatchItem item : batch) {
+            if (item.getHeader().isPresent()) {
+                item.setAuthorization(BatchItemAuthorization.fromHeader(item.getHeader().get()));
+            }
         }
     }
 
     private void authorizeEventWrite(final List<BatchItem> batch) {
         for (final BatchItem item: batch) {
-            authValidator.authorizeEventWrite(item.getEvent());
+            item.setStep(EventPublishingStep.AUTHORIZATION);
+            try {
+                authValidator.authorizeEventWrite(item);
+            } catch (AccessDeniedException e) {
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                throw e;
+            }
         }
     }
 
@@ -289,14 +275,14 @@ public class EventPublisher {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
                     if (!delete) {
-                        validateSchema(item.getEvent().getEventJson(), eventType);
+                        validateSchema(item.getEvent(), eventType);
                     }
                     validateEventSize(item);
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                     if (eventType.getCategory() != EventCategory.UNDEFINED) {
                         validationSpan.log(ImmutableMap.of(
-                                "event.id", item.getEvent().getEventJson().getJSONObject("metadata").getString("eid"),
+                                "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
                                 "error", e.getMessage()));
                     }
 
@@ -336,8 +322,8 @@ public class EventPublisher {
     }
 
     private void validateEventSize(final BatchItem item) throws EventValidationException {
-        if (item.getEvent().getEventSize() > nakadiSettings.getEventMaxBytes()) {
-            throw new EventValidationException("Event too large: " + item.getEvent().getEventSize()
+        if (item.getEventSize() > nakadiSettings.getEventMaxBytes()) {
+            throw new EventValidationException("Event too large: " + item.getEvent()
                     + " bytes, max size is " + nakadiSettings.getEventMaxBytes() + " bytes");
         }
     }

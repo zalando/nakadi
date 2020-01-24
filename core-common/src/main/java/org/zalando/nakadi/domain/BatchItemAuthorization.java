@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class EventAuthorization implements ValidatableAuthorization {
+public class BatchItemAuthorization implements ValidatableAuthorization {
 
     private final List<AuthorizationAttribute> readers;
     private final List<AuthorizationAttribute> writers;
 
-    public EventAuthorization(final List<AuthorizationAttribute> readers,
-                              final List<AuthorizationAttribute> writers) {
+    public BatchItemAuthorization(final List<AuthorizationAttribute> readers,
+                                  final List<AuthorizationAttribute> writers) {
         this.readers = readers;
         this.writers = writers;
     }
@@ -49,11 +49,12 @@ public class EventAuthorization implements ValidatableAuthorization {
         );
     }
 
-    public static EventAuthorization fromAttribute(final AuthorizationAttribute attribute) {
-        return new EventAuthorization(
+    public static BatchItemAuthorization fromHeader(final EventOwnerHeader header) {
+        final AuthorizationAttribute attribute = new ResourceAuthorizationAttribute(
+                header.getName(), header.getValue());
+        return new BatchItemAuthorization(
                 Collections.singletonList(attribute),
                 Collections.singletonList(attribute)
         );
     }
-
 }

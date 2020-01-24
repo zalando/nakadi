@@ -373,7 +373,7 @@ public class EventPublisherTest {
         final EventType eventType = buildDefaultEventType();
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(createBatchItem(buildDefaultBatch(1).getJSONObject(0)));
-        final JSONObject event = batch.get(0).getEvent().getEventJson();
+        final JSONObject event = batch.get(0).getEvent();
 
         mockSuccessfulValidation(eventType);
         mockFaultPartition();
@@ -461,7 +461,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getKey(), equalTo("my_key"));
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
     }
 
     @Test
@@ -481,7 +481,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getKey(), equalTo(null));
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
     }
 
     @Test
@@ -496,7 +496,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName(), null);
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getKey(), equalTo(null));
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
     }
 
     @SuppressWarnings("unchecked")
@@ -525,7 +525,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.AUTHORIZATION));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(enrichment, times(1)).enrich(any(), eq(eventType));

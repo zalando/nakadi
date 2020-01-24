@@ -15,7 +15,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         try {
             final JSONObject metadata = batchItem
                     .getEvent()
-                    .getEventJson()
                     .getJSONObject(BatchItem.Injection.METADATA.name);
 
             setReceivedAt(metadata);

@@ -1,6 +1,10 @@
 package org.zalando.nakadi.domain;
 
+import org.json.JSONObject;
+import org.zalando.nakadi.plugin.api.authz.Resource;
+
 import javax.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -50,31 +54,35 @@ public class BatchItem {
     private static final EmptyInjectionConfiguration CONFIG_NO_COMMA = new EmptyInjectionConfiguration(1, false);
 
     private final BatchItemResponse response;
+    private final String rawEvent;
+    private final JSONObject event;
     private final EmptyInjectionConfiguration emptyInjectionConfiguration;
     private final InjectionConfiguration[] injections;
     private String[] injectionValues;
     private final List<Integer> skipCharacters;
     private String partition;
     private String brokerId;
-    private Event event;
-    private String key;
+    private String eventKey;
+    private int eventSize;
     private Optional<EventOwnerHeader> header = Optional.empty();
+    private BatchItemAuthorization authorization;
 
     public BatchItem(
             final String rawEvent,
             final EmptyInjectionConfiguration emptyInjectionConfiguration,
             final InjectionConfiguration[] injections,
             final List<Integer> skipCharacters) {
+        this.rawEvent = rawEvent;
         this.skipCharacters = skipCharacters;
+        this.event = StrictJsonParser.parseObject(rawEvent);
+        this.eventSize = rawEvent.getBytes(StandardCharsets.UTF_8).length;
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
         this.response = new BatchItemResponse();
-        this.event = new Event(rawEvent);
-        Optional.ofNullable(this.event.getEventJson().optJSONObject("metadata"))
+        Optional.ofNullable(this.event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(eid -> {
                     this.response.setEid(eid);
-                    this.event.setId(eid);
                 });
     }
 
@@ -85,12 +93,16 @@ public class BatchItem {
         injectionValues[type.ordinal()] = value;
     }
 
-    public Event getEvent() {
+    public JSONObject getEvent() {
         return this.event;
     }
 
-    public void setPartition(final String partition) {
-        this.partition = partition;
+    public BatchItemResponse getResponse() {
+        return response;
+    }
+
+    public int getEventSize() {
+        return eventSize;
     }
 
     @Nullable
@@ -98,42 +110,52 @@ public class BatchItem {
         return partition;
     }
 
+    public void setPartition(final String partition) {
+        this.partition = partition;
+    }
+
     @Nullable
     public String getBrokerId() {
         return brokerId;
-    }
-
-    public Optional<EventOwnerHeader> getHeader() {
-        return header;
-    }
-
-    @Nullable
-    public String getKey() {
-        return key;
-    }
-
-    public void setHeader(final EventOwnerHeader header) {
-        this.header = Optional.ofNullable(header);
-    }
-
-    public void setKey(final String key) {
-        this.key = key;
     }
 
     public void setBrokerId(final String brokerId) {
         this.brokerId = brokerId;
     }
 
-    public BatchItemResponse getResponse() {
-        return response;
+    public Optional<EventOwnerHeader> getHeader() {
+        return header;
     }
 
-    public void setStep(final EventPublishingStep step) {
-        response.setStep(step);
+    public void setHeader(final EventOwnerHeader header) {
+        this.header = Optional.ofNullable(header);
+    }
+
+
+    @Nullable
+    public String getEventKey() {
+        return eventKey;
+    }
+
+    public void setEventKey(final String key) {
+        this.eventKey = key;
+    }
+
+    @Nullable
+    public BatchItemAuthorization getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(final BatchItemAuthorization authorization) {
+        this.authorization = authorization;
     }
 
     public EventPublishingStep getStep() {
         return response.getStep();
+    }
+
+    public void setStep(final EventPublishingStep step) {
+        response.setStep(step);
     }
 
     public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
@@ -144,10 +166,10 @@ public class BatchItem {
     public String dumpEventToString() {
         if (null == injectionValues) {
             if (skipCharacters.isEmpty()) {
-                return event.getEventString();
+                return rawEvent;
             } else {
                 final StringBuilder sb = new StringBuilder();
-                appendWithSkip(sb, 0, event.getEventString().length(), 0);
+                appendWithSkip(sb, 0, rawEvent.length(), 0);
                 return sb.toString();
             }
         }
@@ -196,8 +218,8 @@ public class BatchItem {
                 }
             }
         }
-        if (lastMainEventUsedPosition < event.getEventString().length()) {
-            appendWithSkip(sb, lastMainEventUsedPosition, event.getEventString().length(), currentSkipPosition);
+        if (lastMainEventUsedPosition < rawEvent.length()) {
+            appendWithSkip(sb, lastMainEventUsedPosition, rawEvent.length(), currentSkipPosition);
         }
         return sb.toString();
     }
@@ -214,14 +236,18 @@ public class BatchItem {
                 break;
             }
             if (currentSkipIdx > currentPos) {
-                sb.append(event.getEventString(), currentPos, currentSkipIdx);
+                sb.append(rawEvent, currentPos, currentSkipIdx);
             }
             currentPos = currentSkipIdx + 1;
         }
         if (to > currentPos) {
-            sb.append(event.getEventString(), currentPos, to);
+            sb.append(rawEvent, currentPos, to);
         }
         return idx;
+    }
+
+    public Resource<BatchItem> asResource() {
+        return new ResourceImpl<>(this.response.getEid(), ResourceImpl.EVENT_RESOURCE, getAuthorization(), this);
     }
 
 }

@@ -27,7 +27,7 @@ public class BatchItemTest {
                 BatchItem.EmptyInjectionConfiguration.build(1, false),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        assertEquals(20, item.getEvent().getEventSize());
+        assertEquals(20, item.getEventSize());
     }
 
     @Test
@@ -93,7 +93,6 @@ public class BatchItemTest {
         final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
 
         final JSONObject metadata = bi.getEvent()
-                .getEventJson()
                 .getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
         bi.inject(BatchItem.Injection.METADATA, metadata.toString());
@@ -118,7 +117,6 @@ public class BatchItemTest {
         final BatchItem bi = BatchFactory.from(new JSONArray().put(event).toString()).get(0);
 
         final JSONObject metadata = bi.getEvent()
-                .getEventJson()
                 .getJSONObject(BatchItem.Injection.METADATA.name);
         metadata.put("test_test_test", "test2");
         bi.inject(BatchItem.Injection.METADATA, metadata.toString());

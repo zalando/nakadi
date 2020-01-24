@@ -15,7 +15,7 @@ public class BatchFactoryTest {
         final String events = "[{\"name\":\"MyEvent\"}]";
         final List<BatchItem> batch = BatchFactory.from(events);
         assertEquals(1, batch.size());
-        assertEquals(18, batch.get(0).getEvent().getEventSize());
+        assertEquals(18, batch.get(0).getEventSize());
         assertEquals("{\"name\":\"MyEvent\"}", batch.get(0).getEvent().toString());
     }
 
@@ -38,8 +38,8 @@ public class BatchFactoryTest {
         final String events = "[{\"name\":\"MyEvent\"},{\"name\":\"MyOtherEvent\"}]";
         final List<BatchItem> batch = BatchFactory.from(events);
         assertEquals(2, batch.size());
-        assertEquals(18, batch.get(0).getEvent().getEventSize());
-        assertEquals(23, batch.get(1).getEvent().getEventSize());
+        assertEquals(18, batch.get(0).getEventSize());
+        assertEquals(23, batch.get(1).getEventSize());
         assertEquals("{\"name\":\"MyEvent\"}", batch.get(0).getEvent().toString());
         assertEquals("{\"name\":\"MyOtherEvent\"}", batch.get(1).getEvent().toString());
     }
