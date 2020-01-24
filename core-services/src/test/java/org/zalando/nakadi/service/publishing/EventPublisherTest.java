@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -113,7 +114,7 @@ public class EventPublisherTest {
     @Test
     public void whenPublishIsSuccessfulWithEOSelectorThenIsSubmitted() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final JSONArray batch = buildDefaultBatch(1);
+        final JSONArray batch = buildDefaultBatch(3);
         eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
 
 
@@ -124,18 +125,7 @@ public class EventPublisherTest {
 
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-    }
-
-    @Test(expected = AccessDeniedException.class)
-    public void whenPublishWithEOSelectorNotAuthorizedThenIsFails() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final JSONArray batch = buildDefaultBatch(1);
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
-
-        mockSuccessfulValidation(eventType);
-        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
-        Mockito.doThrow(AccessDeniedException.class).when(authzValidator).authorizeEventWrite(any());
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        verify(authzValidator, times(3)).authorizeEventWrite(any());
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -532,6 +522,32 @@ public class EventPublisherTest {
     }
 
     @Test
+    public void whenEventAuthorizationFailsThenSubsequentItemsAreAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(2);
+
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
+
+        mockSuccessfulValidation(eventType);
+        mockAuthorizationFailure();
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+
+        final BatchItemResponse first = result.getResponses().get(0);
+        assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(first.getStep(), equalTo(EventPublishingStep.AUTHORIZATION));
+        assertThat(first.getDetail(), equalTo("Access on event: denied"));
+
+        final BatchItemResponse second = result.getResponses().get(1);
+        assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
+        assertThat(second.getDetail(), is(isEmptyString()));
+
+        verify(authzValidator, times(1)).authorizeEventWrite(any());
+    }
+
+    @Test
     public void testWrite() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
@@ -561,6 +577,14 @@ public class EventPublisherTest {
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
                 .enrich(any(), any());
+    }
+
+    private void mockAuthorizationFailure() throws AccessDeniedException {
+        Mockito
+                .doThrow(new AccessDeniedException(
+                        new ResourceImpl("", ResourceImpl.EVENT_RESOURCE, null, null)))
+                .when(authzValidator)
+                .authorizeEventWrite(any());
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {

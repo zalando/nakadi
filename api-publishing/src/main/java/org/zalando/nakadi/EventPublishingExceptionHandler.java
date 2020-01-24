@@ -10,14 +10,12 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.problem.Problem;
+import org.zalando.problem.Status;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
 import javax.annotation.Priority;
-
-import static org.zalando.problem.Status.BAD_REQUEST;
-import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @Priority(10)
 @ControllerAdvice(assignableTypes = EventPublishingController.class)
@@ -27,17 +25,17 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleEventTypeTimeoutException(final EventTypeTimeoutException exception,
                                                                    final NativeWebRequest request) {
         AdviceTrait.LOG.error(exception.getMessage());
-        return create(Problem.valueOf(SERVICE_UNAVAILABLE, exception.getMessage()), request);
+        return create(Problem.valueOf(Status.SERVICE_UNAVAILABLE, exception.getMessage()), request);
     }
 
     @ExceptionHandler(JSONException.class)
     public ResponseEntity<Problem> handleJSONException(final JSONException exception,
                                                        final NativeWebRequest request) {
         if (exception.getCause() == null) {
-            return create(Problem.valueOf(BAD_REQUEST,
+            return create(Problem.valueOf(Status.BAD_REQUEST,
                     "Error occurred when parsing event(s). " + exception.getMessage()), request);
         }
-        return create(Problem.valueOf(BAD_REQUEST), request);
+        return create(Problem.valueOf(Status.BAD_REQUEST), request);
     }
 
     @ExceptionHandler({EnrichmentException.class,
@@ -46,7 +44,14 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());
-        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+        return create(Problem.valueOf(Status.UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(PublishEventOwnershipException.class)
+    public ResponseEntity<Problem> handlePublishEventOwnershipResponses(final NakadiBaseException exception,
+                                                                        final NativeWebRequest request) {
+        AdviceTrait.LOG.debug(exception.getMessage());
+        return create(Problem.valueOf(Status.FORBIDDEN, exception.getMessage()), request);
     }
 }
 

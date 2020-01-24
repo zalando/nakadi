@@ -31,8 +31,9 @@ import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.headers.EventHeaderFactory;
+import org.zalando.nakadi.headers.EventHeaderHandlerFactory;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -67,7 +68,7 @@ public class EventPublisher {
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
     private final FeatureToggleService featureToggleService;
-    private final EventHeaderFactory eventHeaderFactory;
+    private final EventHeaderHandlerFactory eventHeader;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -86,7 +87,7 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
         this.featureToggleService = featureToggleService;
-        this.eventHeaderFactory = new EventHeaderFactory();
+        this.eventHeader = new EventHeaderHandlerFactory();
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
@@ -95,6 +96,7 @@ public class EventPublisher {
             EnrichmentException,
             EventTypeTimeoutException,
             AccessDeniedException,
+            PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
         return processInternal(events, eventTypeName, true, parentSpan, false);
@@ -106,6 +108,7 @@ public class EventPublisher {
             EnrichmentException,
             EventTypeTimeoutException,
             AccessDeniedException,
+            PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
         return processInternal(events, eventTypeName, true, parentSpan, true);
@@ -152,6 +155,9 @@ public class EventPublisher {
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
+        } catch (final PublishEventOwnershipException e) {
+            LOG.debug("Event ownership error: {}", e.getMessage());
+            return aborted(EventPublishingStep.AUTHORIZATION, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -235,7 +241,7 @@ public class EventPublisher {
     private void setHeaders(final List<BatchItem> batch, final EventType eventType) {
         if (featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)) {
             for (final BatchItem item : batch) {
-                eventHeaderFactory.prepare(item, eventType);
+                eventHeader.prepare(item, eventType);
             }
         }
     }
@@ -254,8 +260,8 @@ public class EventPublisher {
             try {
                 authValidator.authorizeEventWrite(item);
             } catch (AccessDeniedException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-                throw e;
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
+                throw new PublishEventOwnershipException(e.explain(), e);
             }
         }
     }
