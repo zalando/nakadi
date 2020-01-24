@@ -81,9 +81,7 @@ public class BatchItem {
         this.response = new BatchItemResponse();
         Optional.ofNullable(this.event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
-                .ifPresent(eid -> {
-                    this.response.setEid(eid);
-                });
+                .ifPresent(this.response::setEid);
     }
 
     public void inject(final Injection type, final String value) {
@@ -137,7 +135,7 @@ public class BatchItem {
         return eventKey;
     }
 
-    public void setEventKey(final String key) {
+    public void setEventKey(@Nullable final String key) {
         this.eventKey = key;
     }
 

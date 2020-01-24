@@ -120,12 +120,12 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeEventWrite(final BatchItem event)
+    public void authorizeEventWrite(final BatchItem batchItem)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
-        if (event.getAuthorization() == null) {
+        if (batchItem.getAuthorization() == null) {
             return;
         }
-        final Resource<BatchItem> resource = event.asResource();
+        final Resource<BatchItem> resource = batchItem.asResource();
         try {
             final boolean authorized = authorizationService.isAuthorized(
                     AuthorizationService.Operation.WRITE,

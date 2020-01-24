@@ -197,8 +197,7 @@ public class EventPublisher {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId = partitionResolver.
-                        resolvePartition(eventType, item.getEvent());
+                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
@@ -323,7 +322,7 @@ public class EventPublisher {
 
     private void validateEventSize(final BatchItem item) throws EventValidationException {
         if (item.getEventSize() > nakadiSettings.getEventMaxBytes()) {
-            throw new EventValidationException("Event too large: " + item.getEvent()
+            throw new EventValidationException("Event too large: " + item.getEventSize()
                     + " bytes, max size is " + nakadiSettings.getEventMaxBytes() + " bytes");
         }
     }
