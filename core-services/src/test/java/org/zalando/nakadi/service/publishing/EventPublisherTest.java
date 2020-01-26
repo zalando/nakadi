@@ -117,15 +117,14 @@ public class EventPublisherTest {
         final JSONArray batch = buildDefaultBatch(3);
         eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
 
-
         mockSuccessfulValidation(eventType);
         Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
 
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
-
-
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(authzValidator, times(3)).authorizeEventWrite(any());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getHeader().get().getName(), equalTo("retailer"));
     }
 
     @Test(expected = AccessDeniedException.class)

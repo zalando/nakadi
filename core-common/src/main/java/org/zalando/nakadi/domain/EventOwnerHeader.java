@@ -11,8 +11,8 @@ import org.apache.kafka.common.header.Header;
  */
 public class EventOwnerHeader {
 
-    static final String AUTH_PARAM_NAME = "X-AuthParam-Name";
-    static final String AUTH_PARAM_VALUE = "X-AuthParam-Value";
+    public static final String AUTH_PARAM_NAME = "X-AuthParam-Name";
+    public static final String AUTH_PARAM_VALUE = "X-AuthParam-Value";
 
     private final String name;
     private final String value;

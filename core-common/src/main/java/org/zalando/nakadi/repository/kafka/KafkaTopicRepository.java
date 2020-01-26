@@ -105,7 +105,7 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
-    private CompletableFuture<Exception> publishItem(
+    private CompletableFuture<Exception> publishItem (
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
