@@ -239,10 +239,8 @@ public class EventPublisher {
     }
 
     private void setHeaders(final List<BatchItem> batch, final EventType eventType) {
-        if (featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)) {
-            for (final BatchItem item : batch) {
-                eventHeader.prepare(item, eventType);
-            }
+        for (final BatchItem item : batch) {
+            eventHeader.prepare(item, eventType);
         }
     }
 
@@ -255,13 +253,15 @@ public class EventPublisher {
     }
 
     private void authorizeEventWrite(final List<BatchItem> batch) {
-        for (final BatchItem item: batch) {
-            item.setStep(EventPublishingStep.AUTHORIZATION);
-            try {
-                authValidator.authorizeEventWrite(item);
-            } catch (AccessDeniedException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
-                throw new PublishEventOwnershipException(e.explain(), e);
+        if (featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)) {
+            for (final BatchItem item: batch) {
+                item.setStep(EventPublishingStep.AUTHORIZATION);
+                try {
+                    authValidator.authorizeEventWrite(item);
+                } catch (AccessDeniedException e) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
+                    throw new PublishEventOwnershipException(e.explain(), e);
+                }
             }
         }
     }

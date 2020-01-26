@@ -514,7 +514,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.AUTHORIZATION));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(enrichment, times(1)).enrich(any(), eq(eventType));
@@ -579,6 +579,7 @@ public class EventPublisherTest {
     }
 
     private void mockAuthorizationFailure() throws AccessDeniedException {
+        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
         Mockito
                 .doThrow(new AccessDeniedException(
                         new ResourceImpl("", ResourceImpl.EVENT_RESOURCE, null, null)))

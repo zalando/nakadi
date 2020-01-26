@@ -137,6 +137,33 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
+    public void eventOwnerHeaderSetInRecord() {
+        final String myTopic = "event-owner-selector-events";
+        final BatchItem item = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        item.setPartition("1");
+        item.setHeader(new EventOwnerHeader("retailer", "nakadi"));
+        final List<BatchItem> batch = ImmutableList.of(item);
+
+        when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
+                new PartitionInfo(myTopic, 1, new Node(1, "host", 9091), null, null)));
+
+        try {
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
+            fail();
+        } catch (final EventPublishingException e) {
+            final ProducerRecord<String, String> recordSent = captureProducerRecordSent();
+            final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
+                    .iterator().next();
+            Assert.assertEquals(new String(nameHeader.value()), "retailer");
+            final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
+                    .iterator().next();
+            Assert.assertEquals(new String(valueHeader.value()), "nakadi");
+        }
+    }
+
+    @Test
     public void canDetermineIfTopicExists() {
         assertThat(kafkaTopicRepository.topicExists(MY_TOPIC), is(true));
         assertThat(kafkaTopicRepository.topicExists(ANOTHER_TOPIC), is(true));
@@ -412,33 +439,6 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(new Long(321L), result.get(new TopicPartition("t1", "1")));
         Assert.assertEquals(new Long(111L), result.get(new TopicPartition("t2", "0")));
         Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
-    }
-
-    @Test
-    public void whenPublishWithEventOwnerThenHeaderSet() {
-
-        final BatchItem item = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        item.setPartition("1");
-        item.setHeader(new EventOwnerHeader("retailer", "nakadi"));
-        final List<BatchItem> batch = ImmutableList.of(item);
-
-        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
-
-        try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
-            fail();
-        } catch (final EventPublishingException e) {
-            final ProducerRecord<String, String> recordSent = captureProducerRecordSent();
-            final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
-                    .iterator().next();
-            Assert.assertEquals(new String(nameHeader.value()), "retailer");
-            final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
-                    .iterator().next();
-            Assert.assertEquals(new String(valueHeader.value()), "nakadi");
-       }
     }
 
     private static Cursor cursor(final String partition, final String offset) {
