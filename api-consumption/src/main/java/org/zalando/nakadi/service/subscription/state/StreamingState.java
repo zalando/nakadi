@@ -76,6 +76,7 @@ class StreamingState extends State {
      */
     private long lastCommitMillis;
 
+    private static final long AUTOCOMMIT_INTERVAL_SECONDS = 5;
 
     /**
      * 1. Collects names and prepares to send metrics for bytes streamed
@@ -109,6 +110,7 @@ class StreamingState extends State {
         addTask(this::initializeStream);
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
+        scheduleTask(this::autocommitPeriodically, AUTOCOMMIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
         scheduleTask(() -> {
                     streamToOutput(true);
@@ -123,6 +125,11 @@ class StreamingState extends State {
 
         cursorResetSubscription = getZk().subscribeForStreamClose(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
+    }
+
+    private void autocommitPeriodically() {
+        getAutocommit().autocommit();
+        scheduleTask(this::autocommitPeriodically, AUTOCOMMIT_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     private void recreateTopologySubscription() {
