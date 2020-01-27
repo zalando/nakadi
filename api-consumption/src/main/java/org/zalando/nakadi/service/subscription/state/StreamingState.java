@@ -235,6 +235,7 @@ class StreamingState extends State {
     private void rememberEvent(final ConsumedEvent event) {
         final PartitionData pd = offsets.get(event.getPosition().getEventTypePartition());
         if (null != pd) {
+            // TODO: Decide if the event is to be skipped
             pd.addEvent(event);
         }
     }
