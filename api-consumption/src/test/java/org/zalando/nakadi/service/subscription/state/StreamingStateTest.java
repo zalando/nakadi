@@ -25,6 +25,7 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamParametersTest;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
+import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -97,6 +98,9 @@ public class StreamingStateTest {
                 client
         );
         when(contextMock.getParameters()).thenReturn(spMock);
+
+        final AutocommitSupport autocommitSupport = mock(AutocommitSupport.class);
+        when(contextMock.getAutocommitSupport()).thenReturn(autocommitSupport);
 
         state.setContext(contextMock);
     }
