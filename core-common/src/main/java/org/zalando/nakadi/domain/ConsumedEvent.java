@@ -1,5 +1,6 @@
 package org.zalando.nakadi.domain;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
 
@@ -9,11 +10,14 @@ public class ConsumedEvent {
     private final byte[] event;
     private final NakadiCursor position;
     private final long timestamp;
+    private final EventAuthField eventAuthField;
 
-    public ConsumedEvent(final byte[] event, final NakadiCursor position, final long timestamp) {
+    public ConsumedEvent(final byte[] event, final NakadiCursor position, final long timestamp,
+                         @Nullable final EventAuthField eventAuthField) {
         this.event = event;
         this.position = position;
         this.timestamp = timestamp;
+        this.eventAuthField = eventAuthField;
     }
 
     public byte[] getEvent() {
@@ -26,6 +30,11 @@ public class ConsumedEvent {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    @Nullable
+    public EventAuthField getEventAuthField() {
+        return eventAuthField;
     }
 
     @Override
