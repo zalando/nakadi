@@ -137,10 +137,10 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void eventOwnerHeaderSetInRecord() {
+    public void testRecordHeaderSetWhilePublishing() {
         final String myTopic = "event-owner-selector-events";
-        final BatchItem item = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+        final BatchItem item = new BatchItem("{}", null,
+                null,
                 Collections.emptyList());
         item.setPartition("1");
         item.setHeader(new EventOwnerHeader("retailer", "nakadi"));
