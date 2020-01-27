@@ -17,8 +17,8 @@ import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -226,8 +226,10 @@ class StreamingState extends State {
     }
 
     private void rememberEvent(final ConsumedEvent event) {
-        Optional.ofNullable(offsets.get(event.getPosition().getEventTypePartition()))
-                .ifPresent(pd -> pd.addEvent(event));
+        final PartitionData pd = offsets.get(event.getPosition().getEventTypePartition());
+        if (null != pd) {
+            pd.addEvent(event);
+        }
     }
 
     private long getMessagesAllowedToSend() {
@@ -656,9 +658,10 @@ class StreamingState extends State {
                 LoggerFactory.getLogger(LogPathBuilder.build(
                         getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
                 System.currentTimeMillis(), this.getContext().getParameters().batchTimespan
-                );
+        );
 
         offsets.put(partition.getKey(), pd);
+        getAutocommit().addPartition(cursor);
     }
 
     private void reassignCommitted() {
@@ -706,6 +709,7 @@ class StreamingState extends State {
         getLog().info("Removing partition {} from streaming", key);
         releasingPartitions.remove(key);
         final PartitionData data = offsets.remove(key);
+        getAutocommit().removePartition(key);
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {

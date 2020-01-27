@@ -14,10 +14,12 @@ import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -66,6 +68,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeChangeListener eventTypeChangeListener;
     private final Comparator<NakadiCursor> cursorComparator;
     private final NakadiKpiPublisher kpiPublisher;
+    private final AutocommitSupport autocommitSupport;
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
 
@@ -102,6 +105,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.eventTypeChangeListener = builder.eventTypeChangeListener;
         this.cursorComparator = builder.cursorComparator;
         this.kpiPublisher = builder.kpiPublisher;
+        this.autocommitSupport = new AutocommitSupport(builder.cursorOperationsService, zkClient);
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
@@ -174,6 +178,10 @@ public class StreamingContext implements SubscriptionStreamer {
                     getSubscription(),
                     ex);
         }
+    }
+
+    public AutocommitSupport getAutocommitSupport() {
+        return autocommitSupport;
     }
 
     void onNodeShutdown() {
@@ -373,6 +381,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private EventTypeChangeListener eventTypeChangeListener;
         private Comparator<NakadiCursor> cursorComparator;
         private NakadiKpiPublisher kpiPublisher;
+        private CursorOperationsService cursorOperationsService;
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
@@ -485,6 +494,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKpiPublisher(final NakadiKpiPublisher kpiPublisher) {
             this.kpiPublisher = kpiPublisher;
+            return this;
+        }
+
+        public Builder setCursorOperationsService(final CursorOperationsService cursorOperationsService) {
+            this.cursorOperationsService = cursorOperationsService;
             return this;
         }
 
