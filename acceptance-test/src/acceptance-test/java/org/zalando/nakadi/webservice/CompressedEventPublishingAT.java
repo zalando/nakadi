@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -69,7 +70,7 @@ public class CompressedEventPublishingAT extends BaseAT {
     private byte[] compressWithGzip(final String string) throws IOException {
         final ByteArrayOutputStream baOutputStream = new ByteArrayOutputStream(string.length());
         final GZIPOutputStream gzipOutputStream = new GZIPOutputStream(baOutputStream);
-        gzipOutputStream.write(string.getBytes());
+        gzipOutputStream.write(string.getBytes(Charsets.UTF_8));
         gzipOutputStream.close();
         final byte[] compressed = baOutputStream.toByteArray();
         baOutputStream.close();

@@ -9,7 +9,7 @@ pipeline:
           ./gradlew checkstyle --stacktrace
       - desc: Test
         cmd: |
-          ./gradlew testWithReport --stacktrace
+          ./gradlew test --stacktrace
   - id: acceptance-test
     overlay: ci/java
     type: script
@@ -17,12 +17,9 @@ pipeline:
       - desc: Install dependencies
         cmd: |
           pip install docker-compose==1.24.1
-      - desc: Start Nakadi configured for tests
-        cmd: |
-          ./gradlew startNakadiForTest --stacktrace
       - desc: Acceptance Test
         cmd: |
-          ./gradlew acceptance-test:test --stacktrace
+          ./gradlew fullAcceptanceTest --stacktrace
   - id: build-push
     overlay: ci/java
     type: script

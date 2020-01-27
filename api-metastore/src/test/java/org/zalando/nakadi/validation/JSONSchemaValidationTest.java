@@ -35,7 +35,9 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#: required key [metadata] not found"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo("#: required key [metadata] not found"));
     }
 
     @Test
@@ -84,8 +86,10 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#: 3 schema violations found\n#: required key [metadata] " +
-                "not found\n#: required key [data_op] not found\n#: required key [data_type] not found"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo("#: 3 schema violations found\n#: required key [metadata] " +
+                        "not found\n#: required key [data_op] not found\n#: required key [data_type] not found"));
     }
 
     @Test
@@ -98,7 +102,9 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#: extraneous key [foo] is not permitted"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo("#: extraneous key [foo] is not permitted"));
     }
 
     @Test
@@ -111,8 +117,10 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#/metadata/event_type: different-from-event-name " +
-                "is not a valid enum value"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo(
+                        "#/metadata/event_type: different-from-event-name is not a valid enum value"));
     }
 
     @Test
@@ -125,7 +133,9 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#/metadata: required key [occurred_at] not found"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo("#/metadata: required key [occurred_at] not found"));
     }
 
     @Test
@@ -138,8 +148,10 @@ public class JSONSchemaValidationTest {
 
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        Assert.assertThat(error.get().getMessage(), CoreMatchers.equalTo("#/metadata/eid: string [x] does not match pattern " +
-                "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
+        Assert.assertThat(
+                error.get().getMessage(),
+                CoreMatchers.equalTo("#/metadata/eid: string [x] does not match pattern " +
+                        "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
     }
 
     @Test

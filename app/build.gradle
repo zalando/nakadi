@@ -1,17 +1,4 @@
-import java.util.concurrent.TimeUnit
-
 buildscript {
-    ext {
-        springBootVersion = '1.5.20.RELEASE'
-    }
-
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
@@ -19,13 +6,9 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
-apply plugin: 'jacoco'
-apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
@@ -40,22 +23,12 @@ springBoot {
     layout = "ZIP"
 }
 
-repositories {
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
-}
-
 jar {
     baseName = 'nakadi'
 }
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
-}
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
 }
 
 dependencies {
@@ -173,40 +146,3 @@ dependencies {
     testCompile project(path: ':core-services', configuration: 'testOutput')
 }
 // end::dependencies[]
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
-}
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
-
-jacoco {
-    toolVersion = "0.8.2"
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
-}
-
-checkstyle {
-    configFile = new File(rootDir, "checkstyle.xml")
-    toolVersion = "7.6"
-}
-
-task checkstyle {
-    dependsOn checkstyleMain, checkstyleTest
-}

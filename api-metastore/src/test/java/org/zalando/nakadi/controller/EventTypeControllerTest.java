@@ -195,7 +195,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPostEventTypeWithTooLongNameThen422() throws Exception {
         final EventType invalidEventType = TestUtils.buildDefaultEventType();
         invalidEventType.setName(TestUtils.randomValidStringOfLength(256));
-        final Problem expectedProblem = TestUtils.invalidProblem("name", "the length of the name must be >= 1 and <= 255");
+        final Problem expectedProblem = TestUtils.invalidProblem(
+                "name", "the length of the name must be >= 1 and <= 255");
         postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
@@ -518,7 +519,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenPostWithAValidEventOwnerSelectorThenCreated() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"));
+        eventType.setEventOwnerSelector(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"));
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(any())).thenReturn(randomUUID.toString());
 
@@ -531,7 +533,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType updatedEventType = EventTypeTestBuilder.builder()
                 .name(originalEventType.getName())
-                .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"))
+                .eventOwnerSelector(
+                        new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"))
                 .build();
 
         doReturn(originalEventType).when(eventTypeRepository).findByName(any());
@@ -576,7 +579,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem("\"metadata\" property is reserved");
+        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
+                "\"metadata\" property is reserved");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -588,8 +592,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 "{\"not\": {\"type\": \"object\"} }");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem("Invalid schema: Invalid schema found " +
-                "in [#]: extraneous key [not] is not permitted");
+        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
+                "Invalid schema: Invalid schema found in [#]: extraneous key [not] is not permitted");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -645,7 +649,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         postEventType(eventType);
         disableETDeletionFeature();
 
-        deleteEventType(eventType.getName(), "org/zalando/nakadi").andExpect(status().isOk()).andExpect(content().string(""));
+        deleteEventType(eventType.getName(), "org/zalando/nakadi")
+                .andExpect(status().isOk()).andExpect(content().string(""));
     }
 
     @Test
@@ -761,7 +766,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final String eventTypeName = eventType.getName();
         eventType.setName("event-name-different");
 
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem("path does not match resource name");
+        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
+                "path does not match resource name");
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
 
@@ -821,8 +827,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.getSchema().setSchema("invalid-json");
 
-        final Problem expectedProblem =
-                TestUtils.createInvalidEventTypeExceptionProblem("schema must be a valid json: Unexpected symbol 'i' at pos 1");
+        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
+                "schema must be a valid json: Unexpected symbol 'i' at pos 1");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
@@ -831,11 +837,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void invalidEventTypeSchemaJsonSchemaThen422() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"),
+        final String jsonSchemaString = Resources.toString(
+                Resources.getResource("sample-invalid-json-schema.json"),
                 Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem("schema must be a valid json-schema");
+        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
+                "schema must be a valid json-schema");
 
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }

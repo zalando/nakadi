@@ -1,7 +1,55 @@
 import java.util.concurrent.TimeUnit
 
-apply plugin: 'java'
-apply plugin: 'jacoco'
+subprojects {
+    buildscript {
+        ext {
+            springBootVersion = '1.5.20.RELEASE'
+        }
+        repositories {
+            mavenCentral()
+            maven {
+                url "https://plugins.gradle.org/m2/"
+            }
+        }
+    }
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+
+    checkstyle {
+        configFile = new File(rootDir, "checkstyle.xml")
+        toolVersion = "7.6"
+    }
+
+    jacoco {
+        toolVersion = "0.8.2"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled = true
+            html.enabled = true
+        }
+    }
+    test {
+        testLogging {
+            events "passed", "skipped", "failed"
+        }
+        testLogging.exceptionFormat = 'full'
+        maxParallelForks = Runtime.runtime.availableProcessors()
+    }
+
+    task testWithReport() {
+        dependsOn test
+        finalizedBy jacocoTestReport
+    }
+}
 
 task testInitNakadi(type: Exec) {
     environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
@@ -33,6 +81,11 @@ task startNakadiForTests(type: GradleBuild) {
     tasks = ['clean', 'app:bootRepackage', 'testInitNakadi']
 }
 
+
+task fullAcceptanceTest(type: GradleBuild) {
+    tasks = ['startNakadiForTests', ':acceptance-test:acceptanceTest', 'stopNakadi']
+}
+
 task stopNakadi(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }
@@ -62,26 +115,13 @@ task stopStorages(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }
 
-test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-    maxParallelForks = Runtime.runtime.availableProcessors()
+task checkstyle {
+    subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
+    subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
+    dependsOn(":acceptance-test:checkstyleMain")
+    dependsOn(":acceptance-test:checkstyleTest")
 }
 
-jacoco {
-    toolVersion = "0.8.2"
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
+task test {
+    subprojects.each { dependsOn(":${it.name}:testWithReport") }
 }

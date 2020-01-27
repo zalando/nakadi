@@ -110,21 +110,22 @@ public class TestStreamingClient implements Runnable {
             }
             started.countDown();
             sessionId = connection.getHeaderField("X-Nakadi-StreamId");
-            final InputStream inputStream = connection.getInputStream();
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            try (InputStream inputStream = connection.getInputStream()) {
+                final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
 
-            while (running) {
-                try {
-                    final String line = reader.readLine();
-                    if (line == null) {
-                        return;
+                while (running) {
+                    try {
+                        final String line = reader.readLine();
+                        if (line == null) {
+                            return;
+                        }
+                        final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
+                        synchronized (batches) {
+                            batches.add(streamBatch);
+                        }
+                    } catch (final SocketTimeoutException ste) {
+                        LOG.info("No data in 10 ms, retrying read data");
                     }
-                    final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
-                    synchronized (batches) {
-                        batches.add(streamBatch);
-                    }
-                } catch (final SocketTimeoutException ste) {
-                    LOG.info("No data in 10 ms, retrying read data");
                 }
             }
         } catch (IOException e) {

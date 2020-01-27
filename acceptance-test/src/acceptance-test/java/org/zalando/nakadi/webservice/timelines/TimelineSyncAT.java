@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.timelines;
 
+import com.google.common.base.Charsets;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -82,9 +83,11 @@ public class TimelineSyncAT extends BaseAT {
     @Test
     public void testNodeInformationWrittenOnStart() throws Exception {
         final TimelineSyncImpl sync = createTimelineSync();
-        final String currentVersion = new String(CURATOR.getData().forPath("/nakadi/timelines/version"));
+        final String currentVersion = new String(
+                CURATOR.getData().forPath("/nakadi/timelines/version"),
+                Charsets.UTF_8);
         Assert.assertEquals(currentVersion,
-                new String(CURATOR.getData().forPath("/nakadi/timelines/nodes/" + sync.getNodeId())));
+                new String(CURATOR.getData().forPath("/nakadi/timelines/nodes/" + sync.getNodeId()), Charsets.UTF_8));
     }
 
     @Test
@@ -185,8 +188,8 @@ public class TimelineSyncAT extends BaseAT {
 
         t1.finishTimelineUpdate(eventType2);
         Assert.assertEquals(1, l1.getData().size());
-        Assert.assertEquals(new Integer(1), l1.getData().get(eventType1));
+        Assert.assertEquals(Integer.valueOf(1), l1.getData().get(eventType1));
         Assert.assertEquals(1, l2.getData().size());
-        Assert.assertEquals(new Integer(1), l2.getData().get(eventType2));
+        Assert.assertEquals(Integer.valueOf(1), l2.getData().get(eventType2));
     }
 }

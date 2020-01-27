@@ -241,7 +241,8 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
-        final Subscription subscription = RandomSubscriptionBuilder.builder().withEventType(TIMELINE.getEventType()).build();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withEventType(TIMELINE.getEventType()).build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
         final Collection<Partition> partitions = Collections.singleton(
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));

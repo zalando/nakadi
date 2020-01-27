@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.collect.Sets;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
@@ -485,12 +486,13 @@ public class EventStreamReadingAT extends BaseAT {
                         .collect(Collectors.joining(",")) + "]");
         Assert.assertEquals(HttpServletResponse.SC_OK, connection.getResponseCode());
 
-        final InputStream inputStream = connection.getInputStream();
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        try (InputStream inputStream = connection.getInputStream()){
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
 
-        final String line = reader.readLine();
-        Assert.assertNotNull(line);
-        // If we read at least one line, than it means, that we were able to read data before test timeout reached.
+            final String line = reader.readLine();
+            // If we read at least one line, than it means, that we were able to read data before test timeout reached.
+            Assert.assertNotNull(line);
+        }
     }
 
 
