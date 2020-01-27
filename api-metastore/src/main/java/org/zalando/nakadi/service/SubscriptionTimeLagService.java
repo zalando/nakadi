@@ -147,6 +147,7 @@ public class SubscriptionTimeLagService {
 
                 final ConsumedEvent nextEvent = executeWithRetry(
                         () -> {
+                            // We ignore per event authorization here, because we are not exposing any data.
                             final List<ConsumedEvent> events = consumer.readEvents();
                             return events.isEmpty() ? null : events.iterator().next();
                         },
