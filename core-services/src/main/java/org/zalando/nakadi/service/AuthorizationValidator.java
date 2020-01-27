@@ -122,16 +122,11 @@ public class AuthorizationValidator {
 
     public void authorizeEventWrite(final BatchItem batchItem)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
-        if (batchItem.getAuthorization() == null) {
-            return;
-        }
-        final Resource<BatchItem> resource = batchItem.asResource();
         try {
             final boolean authorized = authorizationService.isAuthorized(
-                    AuthorizationService.Operation.WRITE,
-                    resource);
+                    AuthorizationService.Operation.WRITE, batchItem);
             if (!authorized) {
-                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, batchItem);
             }
         } catch (final PluginException ex) {
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);

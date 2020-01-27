@@ -5,6 +5,6 @@ public enum EventPublishingStep {
     VALIDATING,
     ENRICHING,
     PARTITIONING,
-    AUTHORIZATION,
+    AUTHORIZING,
     PUBLISHING,
 }

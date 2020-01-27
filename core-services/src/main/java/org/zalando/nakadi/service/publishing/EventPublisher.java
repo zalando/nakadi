@@ -12,7 +12,6 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.BatchItemAuthorization;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventCategory;
@@ -20,7 +19,6 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -33,11 +31,9 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.headers.EventHeaderHandlerFactory;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -67,8 +63,7 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
-    private final FeatureToggleService featureToggleService;
-    private final EventHeaderHandlerFactory eventHeader;
+    private final EventOwnerExtractor eventOwnerExtractor;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -78,7 +73,7 @@ public class EventPublisher {
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
                           final AuthorizationValidator authValidator,
-                          final FeatureToggleService featureToggleService) {
+                          final EventOwnerExtractor eventOwnerExtractor) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -86,8 +81,7 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
-        this.featureToggleService = featureToggleService;
-        this.eventHeader = new EventHeaderHandlerFactory();
+        this.eventOwnerExtractor = eventOwnerExtractor;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
@@ -134,12 +128,11 @@ public class EventPublisher {
             validate(batch, eventType, parentSpan, delete);
             partition(batch, eventType);
             setEventKey(batch, eventType);
-            setHeaders(batch, eventType);
-            setAuthorization(batch);
-            authorizeEventWrite(batch);
             if (!delete) {
                 enrich(batch, eventType);
             }
+            eventOwnerExtractor.extract(batch, eventType);
+            authorizeEventWrite(batch);
             submit(batch, eventType, parentSpan, delete);
 
             return ok(batch);
@@ -157,7 +150,7 @@ public class EventPublisher {
             return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final PublishEventOwnershipException e) {
             LOG.debug("Event ownership error: {}", e.getMessage());
-            return aborted(EventPublishingStep.AUTHORIZATION, batch);
+            return aborted(EventPublishingStep.AUTHORIZING, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -238,30 +231,14 @@ public class EventPublisher {
         }
     }
 
-    private void setHeaders(final List<BatchItem> batch, final EventType eventType) {
-        for (final BatchItem item : batch) {
-            eventHeader.prepare(item, eventType);
-        }
-    }
-
-    private void setAuthorization(final List<BatchItem> batch) {
-        for (final BatchItem item : batch) {
-            if (item.getHeader().isPresent()) {
-                item.setAuthorization(BatchItemAuthorization.fromHeader(item.getHeader().get()));
-            }
-        }
-    }
-
     private void authorizeEventWrite(final List<BatchItem> batch) {
-        if (featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)) {
-            for (final BatchItem item: batch) {
-                item.setStep(EventPublishingStep.AUTHORIZATION);
-                try {
-                    authValidator.authorizeEventWrite(item);
-                } catch (AccessDeniedException e) {
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
-                    throw new PublishEventOwnershipException(e.explain(), e);
-                }
+        for (final BatchItem item : batch) {
+            item.setStep(EventPublishingStep.AUTHORIZING);
+            try {
+                authValidator.authorizeEventWrite(item);
+            } catch (AccessDeniedException e) {
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
+                throw new PublishEventOwnershipException(e.explain(), e);
             }
         }
     }

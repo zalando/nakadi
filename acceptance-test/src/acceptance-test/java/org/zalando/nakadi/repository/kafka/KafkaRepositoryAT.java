@@ -233,7 +233,7 @@ public class KafkaRepositoryAT extends BaseAT {
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
             item.setPartition("0");
-            item.setHeader(new EventOwnerHeader("unit", "Nakadi"));
+            item.setOwner(new EventOwnerHeader("unit", "Nakadi"));
             items.add(item);
         }
         kafkaTopicRepository.syncPostBatch(topicId, items, null, false);

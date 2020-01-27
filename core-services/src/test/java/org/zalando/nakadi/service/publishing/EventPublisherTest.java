@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -16,8 +17,6 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -27,15 +26,14 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -79,23 +77,25 @@ public class EventPublisherTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
             "nakadi_archiver", "nakadi_to_s3");
-    private final EventPublisher publisher;
+    private EventOwnerExtractor eventOwnerExtractor;
+    private EventPublisher publisher;
 
-    public EventPublisherTest() {
+    @Before
+    public void before() {
+
         final TimelineService ts = Mockito.mock(TimelineService.class);
         Mockito.when(ts.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
         Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
-        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(false);
 
+        eventOwnerExtractor = mock(EventOwnerExtractor.class);
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
-                authzValidator, featureToggleService);
+                authzValidator, eventOwnerExtractor);
     }
 
     @Test
@@ -115,16 +115,14 @@ public class EventPublisherTest {
     public void whenPublishIsSuccessfulWithEOSelectorThenIsSubmitted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(3);
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
 
         mockSuccessfulValidation(eventType);
-        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
-        assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        Mockito.doNothing().when(eventOwnerExtractor).extract(any(), eq(eventType));
 
-        final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getHeader().get().getName(), equalTo("retailer"));
+        publisher.publish(batch.toString(), eventType.getName(), null);
+
+        Mockito.verify(eventOwnerExtractor, Mockito.times(1)).extract(any(), eq(eventType));
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -525,22 +523,23 @@ public class EventPublisherTest {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
 
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi"));
-
         mockSuccessfulValidation(eventType);
-        mockAuthorizationFailure();
+        Mockito
+                .doThrow(new AccessDeniedException(Mockito.mock(Resource.class)))
+                .when(authzValidator)
+                .authorizeEventWrite(any());
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
         final BatchItemResponse first = result.getResponses().get(0);
         assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
-        assertThat(first.getStep(), equalTo(EventPublishingStep.AUTHORIZATION));
-        assertThat(first.getDetail(), equalTo("Access on event: denied"));
+        assertThat(first.getStep(), equalTo(EventPublishingStep.AUTHORIZING));
+        assertThat(first.getDetail(), equalTo("Access on null:null denied"));
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.ENRICHING));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(authzValidator, times(1)).authorizeEventWrite(any());
@@ -576,15 +575,6 @@ public class EventPublisherTest {
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
                 .enrich(any(), any());
-    }
-
-    private void mockAuthorizationFailure() throws AccessDeniedException {
-        Mockito.when(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ)).thenReturn(true);
-        Mockito
-                .doThrow(new AccessDeniedException(
-                        new ResourceImpl("", ResourceImpl.EVENT_RESOURCE, null, null)))
-                .when(authzValidator)
-                .authorizeEventWrite(any());
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {

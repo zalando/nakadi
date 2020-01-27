@@ -143,7 +143,7 @@ public class KafkaTopicRepositoryTest {
                 null,
                 Collections.emptyList());
         item.setPartition("1");
-        item.setHeader(new EventOwnerHeader("retailer", "nakadi"));
+        item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
         final List<BatchItem> batch = ImmutableList.of(item);
 
         when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
