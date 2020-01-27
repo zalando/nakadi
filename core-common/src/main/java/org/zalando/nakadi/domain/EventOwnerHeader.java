@@ -6,6 +6,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 
+import java.util.Objects;
+
 /**
  * Class represents serializer / deserializer of event authentication header.
  */
@@ -48,5 +50,24 @@ public class EventOwnerHeader {
 
     public String getValue() {
         return value;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final EventOwnerHeader that = (EventOwnerHeader) o;
+        return Objects.equals(this.name, that.name) && Objects.equals(this.value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name.hashCode();
+        result = 31 * result + value.hashCode();
+        return result;
     }
 }

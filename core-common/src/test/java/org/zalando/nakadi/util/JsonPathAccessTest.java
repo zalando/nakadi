@@ -2,7 +2,7 @@ package org.zalando.nakadi.util;
 
 import org.json.JSONObject;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
@@ -38,8 +38,8 @@ public class JsonPathAccessTest {
 
     }
 
-    @Test(expected = InvalidPartitionKeyFieldsException.class)
-    public void throwsExceptionIfPropertyDoesNotExist() throws InvalidPartitionKeyFieldsException {
+    @Test(expected = JsonPathAccessException.class)
+    public void throwsExceptionIfPropertyDoesNotExist() throws JsonPathAccessException {
 
         jsonPath.get("does_not_exist");
 

@@ -27,6 +27,8 @@ import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
@@ -224,8 +226,12 @@ public class EventPublisher {
                 }
                 for (final BatchItem item : batch) {
                     final JsonPathAccess jsonPath = new JsonPathAccess(item.getEvent());
-                    final String eventKey = jsonPath.get(partitionKeyField).toString();
-                    item.setEventKey(eventKey);
+                    try {
+                        final String eventKey = jsonPath.get(partitionKeyField).toString();
+                        item.setEventKey(eventKey);
+                    } catch (final JsonPathAccessException e) {
+                        throw new InvalidPartitionKeyFieldsException(e.getMessage());
+                    }
                 }
             }
         }

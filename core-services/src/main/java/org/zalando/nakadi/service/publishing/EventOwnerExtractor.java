@@ -8,6 +8,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.view.EventOwnerSelector;
@@ -54,9 +55,13 @@ public class EventOwnerExtractor {
 
     private static Function<JSONObject, EventOwnerHeader> createPathExtractor(final EventOwnerSelector selector) {
         return (batchItem) -> {
-            final JsonPathAccess jsonPath = new JsonPathAccess(batchItem);
-            final String value = jsonPath.get(selector.getValue()).toString();
-            return null == value ? null : new EventOwnerHeader(selector.getName(), value);
+            try {
+                final JsonPathAccess jsonPath = new JsonPathAccess(batchItem);
+                final String value = jsonPath.get(selector.getValue()).toString();
+                return null == value ? null : new EventOwnerHeader(selector.getName(), value);
+            } catch (final JsonPathAccessException e) {
+                return null;
+            }
         };
     }
 
