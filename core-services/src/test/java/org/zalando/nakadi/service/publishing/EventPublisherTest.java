@@ -34,6 +34,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class EventPublisherTest {
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
             "nakadi_archiver", "nakadi_to_s3");
-    private EventOwnerExtractor eventOwnerExtractor;
+    private EventOwnerExtractorFactory eventOwnerExtractorFactory;
     private EventPublisher publisher;
 
     @Before
@@ -93,9 +94,9 @@ public class EventPublisherTest {
         final Timeline timeline = Mockito.mock(Timeline.class);
         Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
-        eventOwnerExtractor = mock(EventOwnerExtractor.class);
+        eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
-                authzValidator, eventOwnerExtractor);
+                authzValidator, eventOwnerExtractorFactory);
     }
 
     @Test
@@ -112,17 +113,31 @@ public class EventPublisherTest {
     }
 
     @Test
-    public void whenPublishIsSuccessfulWithEOSelectorThenIsSubmitted() throws Exception {
+    public void whenPublishThenExtractorForOwnerCreated() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(3);
-
         mockSuccessfulValidation(eventType);
 
-        Mockito.doNothing().when(eventOwnerExtractor).extract(any(), eq(eventType));
-
+        Mockito.when(eventOwnerExtractorFactory.createExtractor(eq(eventType))).thenReturn(null);
         publisher.publish(batch.toString(), eventType.getName(), null);
 
-        Mockito.verify(eventOwnerExtractor, Mockito.times(1)).extract(any(), eq(eventType));
+        // invoked once for a batch
+        Mockito.verify(eventOwnerExtractorFactory, Mockito.times(1)).createExtractor(eq(eventType));
+        Mockito.verify(authzValidator, Mockito.times(0)).authorizeEventWrite(any());
+    }
+
+    @Test
+    public void whenPublishWithExtractorThenAuthorizationCheckedPerEvent() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(3);
+        mockSuccessfulValidation(eventType);
+
+        Mockito.when(eventOwnerExtractorFactory.createExtractor(eq(eventType))).thenReturn(
+                EventOwnerExtractorFactory.createStaticExtractor(
+                        new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi")));
+
+        publisher.publish(batch.toString(), eventType.getName(), null);
+        Mockito.verify(authzValidator, Mockito.times(3)).authorizeEventWrite(any());
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -528,13 +543,20 @@ public class EventPublisherTest {
                 .doThrow(new AccessDeniedException(Mockito.mock(Resource.class)))
                 .when(authzValidator)
                 .authorizeEventWrite(any());
+
+        Mockito
+                .doReturn(EventOwnerExtractorFactory.createStaticExtractor(new EventOwnerSelector(
+                        EventOwnerSelector.Type.STATIC, "nakadi", "retailer"
+                ))).when(eventOwnerExtractorFactory)
+                .createExtractor(eq(eventType));
+
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
         final BatchItemResponse first = result.getResponses().get(0);
         assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
-        assertThat(first.getStep(), equalTo(EventPublishingStep.AUTHORIZING));
+        assertThat(first.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(first.getDetail(), equalTo("Access on null:null denied"));
 
         final BatchItemResponse second = result.getResponses().get(1);

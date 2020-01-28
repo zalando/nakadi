@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventCategory;
+import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.validation.JsonSchemaEnrichment.DATA_PATH_PREFIX;
@@ -65,7 +67,7 @@ public class EventPublisher {
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
-    private final EventOwnerExtractor eventOwnerExtractor;
+    private final EventOwnerExtractorFactory eventOwnerExtractorFactory;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -75,7 +77,7 @@ public class EventPublisher {
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
                           final AuthorizationValidator authValidator,
-                          final EventOwnerExtractor eventOwnerExtractor) {
+                          final EventOwnerExtractorFactory eventOwnerExtractorFactory) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -83,7 +85,7 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
-        this.eventOwnerExtractor = eventOwnerExtractor;
+        this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
@@ -133,8 +135,7 @@ public class EventPublisher {
             if (!delete) {
                 enrich(batch, eventType);
             }
-            eventOwnerExtractor.extract(batch, eventType);
-            authorizeEventWrite(batch);
+            validateEventOwnership(eventType, batch);
             submit(batch, eventType, parentSpan, delete);
 
             return ok(batch);
@@ -152,7 +153,7 @@ public class EventPublisher {
             return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final PublishEventOwnershipException e) {
             LOG.debug("Event ownership error: {}", e.getMessage());
-            return aborted(EventPublishingStep.AUTHORIZING, batch);
+            return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -237,10 +238,16 @@ public class EventPublisher {
         }
     }
 
-    private void authorizeEventWrite(final List<BatchItem> batch) {
-        for (final BatchItem item : batch) {
-            item.setStep(EventPublishingStep.AUTHORIZING);
+    private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
+        final Function<JSONObject, EventOwnerHeader> extractor = eventOwnerExtractorFactory.createExtractor(eventType);
+        if (null == extractor) {
+            return;
+        }
+        for (final BatchItem item : batchItems) {
+            item.setStep(EventPublishingStep.VALIDATING);
             try {
+                final EventOwnerHeader owner = extractor.apply(item.getEvent());
+                item.setOwner(owner);
                 authValidator.authorizeEventWrite(item);
             } catch (AccessDeniedException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());

@@ -169,6 +169,7 @@ nakadi:
     DISABLE_DB_WRITE_OPERATIONS: false
     AUDIT_LOG_COLLECTION: true
     REPARTITIONING: true
+    EVENT_OWNER_SELECTOR_AUTHZ: false
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
@@ -193,3 +194,4 @@ nakadi.features.defaultFeatures:
   FORCE_EVENT_TYPE_AUTHZ: false
   FORCE_SUBSCRIPTION_AUTHZ: false
   REPARTITIONING: true
+  EVENT_OWNER_SELECTOR_AUTHZ: false

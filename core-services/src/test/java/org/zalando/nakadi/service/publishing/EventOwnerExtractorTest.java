@@ -17,8 +17,10 @@ public class EventOwnerExtractorTest {
 
     @Test
     public void testCorrectValueProjectedWhenNestedEventWithPathValue() {
-        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractor.createExtractor(
-                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "example.security.final"));
+        final EventOwnerSelector selector = new EventOwnerSelector(
+                EventOwnerSelector.Type.PATH, "retailer_id", "example.security.final");
+        final Function<JSONObject, EventOwnerHeader> extractor =
+                EventOwnerExtractorFactory.createPathExtractor(selector);
 
         final EventOwnerHeader result = extractor.apply(MOCK_EVENT);
         Assert.assertEquals(new EventOwnerHeader("retailer_id", "test_value"), result);
@@ -26,7 +28,7 @@ public class EventOwnerExtractorTest {
 
     @Test
     public void testNullValueWithPathValue() {
-        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractor.createExtractor(
+        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractorFactory.createPathExtractor(
                 new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "example.nothing.here"));
 
         final EventOwnerHeader result = extractor.apply(MOCK_EVENT);
@@ -35,7 +37,7 @@ public class EventOwnerExtractorTest {
 
     @Test
     public void testCorrectValueSetWhenStaticPath() {
-        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractor.createExtractor(
+        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractorFactory.createStaticExtractor(
                 new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer_id", "examplexx"));
 
         final EventOwnerHeader result = extractor.apply(MOCK_EVENT);
