@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.util.JsonPathAccess;
 
@@ -44,8 +45,12 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     // a string first and then use hashCode()
                     .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
                     .map(Try.wrap(okf -> {
-                        final String fieldValue = traversableJsonEvent.get(okf).toString();
-                        return stringHash.hashCode(fieldValue);
+                        try {
+                            final String fieldValue = traversableJsonEvent.get(okf).toString();
+                            return stringHash.hashCode(fieldValue);
+                        } catch (final JsonPathAccessException e) {
+                            throw new InvalidPartitionKeyFieldsException(e.getMessage());
+                        }
                     }))
                     .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)

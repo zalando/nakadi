@@ -13,7 +13,9 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     @Override
     public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
         try {
-            final JSONObject metadata = batchItem.getEvent().getJSONObject(BatchItem.Injection.METADATA.name);
+            final JSONObject metadata = batchItem
+                    .getEvent()
+                    .getJSONObject(BatchItem.Injection.METADATA.name);
 
             setReceivedAt(metadata);
             setEventTypeName(metadata, eventType);

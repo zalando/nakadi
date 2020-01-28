@@ -12,6 +12,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
@@ -222,6 +223,25 @@ public class KafkaRepositoryAT extends BaseAT {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         }
     }
+
+    @Test(timeout = 10000)
+    public void whenSendBatchWithItemHeadersThenCheckBatchStatus() {
+        final List<BatchItem> items = new ArrayList<>();
+        final String topicId = TestUtils.randomValidEventTypeName();
+        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
+
+        for (int i = 0; i < 10; i++) {
+            final BatchItem item = BatchFactory.from("[{}]").get(0);
+            item.setPartition("0");
+            item.setOwner(new EventOwnerHeader("unit", "Nakadi"));
+            items.add(item);
+        }
+        kafkaTopicRepository.syncPostBatch(topicId, items, null, false);
+
+        for (int i = 0; i < 10; i++) {
+            assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        }
+}
 
     private Map<String, List<PartitionInfo>> getAllTopics() {
         final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();

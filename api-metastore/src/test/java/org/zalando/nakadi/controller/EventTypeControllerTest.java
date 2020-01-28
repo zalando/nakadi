@@ -528,6 +528,17 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
+    public void whenPostWithInvalidEventOwnerSelectorThen422() throws Exception {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, null, "a.retailer"));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+        eventType.setEventOwnerSelector(new EventOwnerSelector(null, "retailer", "a.retailer"));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", null));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     public void whenPutWithAValidEventOwnerSelectorThen200() throws Exception {
         final EventType originalEventType = EventTypeTestBuilder.builder().build();
 

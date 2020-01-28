@@ -10,12 +10,17 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.header.Header;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
+import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -52,8 +57,10 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
 
@@ -67,6 +74,9 @@ public class KafkaTopicRepositoryTest {
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
+
+    @Captor
+    private ArgumentCaptor<ProducerRecord<String, String>> producerRecordArgumentCaptor;
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -116,6 +126,7 @@ public class KafkaTopicRepositoryTest {
         );
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
+        MockitoAnnotations.initMocks(this);
     }
 
 
@@ -123,6 +134,33 @@ public class KafkaTopicRepositoryTest {
     public void canListAllTopics() {
         final List<String> allTopics = allTopics().stream().collect(toList());
         assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
+    }
+
+    @Test
+    public void testRecordHeaderSetWhilePublishing() {
+        final String myTopic = "event-owner-selector-events";
+        final BatchItem item = new BatchItem("{}", null,
+                null,
+                Collections.emptyList());
+        item.setPartition("1");
+        item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
+        final List<BatchItem> batch = ImmutableList.of(item);
+
+        when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
+                new PartitionInfo(myTopic, 1, new Node(1, "host", 9091), null, null)));
+
+        try {
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
+            fail();
+        } catch (final EventPublishingException e) {
+            final ProducerRecord<String, String> recordSent = captureProducerRecordSent();
+            final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
+                    .iterator().next();
+            Assert.assertEquals(new String(nameHeader.value()), "retailer");
+            final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
+                    .iterator().next();
+            Assert.assertEquals(new String(valueHeader.value()), "nakadi");
+        }
     }
 
     @Test
@@ -483,4 +521,9 @@ public class KafkaTopicRepositoryTest {
         return new PartitionInfo(topic, partition, null, null, null);
     }
 
+    @SuppressWarnings("unchecked")
+    private ProducerRecord<String, String> captureProducerRecordSent() {
+        verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
+        return producerRecordArgumentCaptor.getValue();
+    }
 }

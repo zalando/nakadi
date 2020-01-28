@@ -1,15 +1,20 @@
 package org.zalando.nakadi.domain;
 
 import org.json.JSONObject;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
-public class BatchItem {
+public class BatchItem implements Resource<BatchItem> {
 
     public enum Injection {
         METADATA("metadata");
@@ -63,6 +68,7 @@ public class BatchItem {
     private String brokerId;
     private String eventKey;
     private int eventSize;
+    private EventOwnerHeader owner;
 
     public BatchItem(
             final String rawEvent,
@@ -76,7 +82,6 @@ public class BatchItem {
         this.emptyInjectionConfiguration = emptyInjectionConfiguration;
         this.injections = injections;
         this.response = new BatchItemResponse();
-
         Optional.ofNullable(this.event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(this.response::setEid);
@@ -93,8 +98,12 @@ public class BatchItem {
         return this.event;
     }
 
-    public void setPartition(final String partition) {
-        this.partition = partition;
+    public BatchItemResponse getResponse() {
+        return response;
+    }
+
+    public int getEventSize() {
+        return eventSize;
     }
 
     @Nullable
@@ -102,13 +111,8 @@ public class BatchItem {
         return partition;
     }
 
-    @Nullable
-    public String getEventKey() {
-        return eventKey;
-    }
-
-    public void setEventKey(@Nullable final String eventKey) {
-        this.eventKey = eventKey;
+    public void setPartition(final String partition) {
+        this.partition = partition;
     }
 
     @Nullable
@@ -120,25 +124,64 @@ public class BatchItem {
         this.brokerId = brokerId;
     }
 
-    public BatchItemResponse getResponse() {
-        return response;
+    @Nullable
+    public EventOwnerHeader getOwner() {
+        return owner;
     }
 
-    public void setStep(final EventPublishingStep step) {
-        response.setStep(step);
+    public void setOwner(final EventOwnerHeader owner) {
+        this.owner = owner;
+    }
+
+    @Nullable
+    public String getEventKey() {
+        return eventKey;
+    }
+
+    public void setEventKey(@Nullable final String key) {
+        this.eventKey = key;
+    }
+
+    @Override
+    public String getName() {
+        return response.getEid();
+    }
+
+    @Override
+    public String getType() {
+        return ResourceImpl.EVENT_RESOURCE;
+    }
+
+    @Override
+    public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
+            final AuthorizationService.Operation operation) {
+        if (operation == AuthorizationService.Operation.WRITE) {
+            return Optional.ofNullable(owner).map(AuthorizationAttributeProxy::new).map(Collections::singletonList);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public BatchItem get() {
+        return this;
+    }
+
+    @Override
+    public Map<String, List<AuthorizationAttribute>> getAuthorization() {
+        return null;
     }
 
     public EventPublishingStep getStep() {
         return response.getStep();
     }
 
+    public void setStep(final EventPublishingStep step) {
+        response.setStep(step);
+    }
+
     public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
         response.setPublishingStatus(publishingStatus);
         response.setDetail(detail);
-    }
-
-    public int getEventSize() {
-        return eventSize;
     }
 
     public String dumpEventToString() {

@@ -34,7 +34,9 @@ public class MetadataEnrichmentStrategyTest {
             DateTimeUtils.setCurrentMillisSystem();
         }
 
-        assertThat(batch.getEvent().getJSONObject("metadata").getString("received_at"),
+        assertThat(batch.getEvent()
+                        .getJSONObject("metadata")
+                        .getString("received_at"),
                 equalTo("1970-01-01T00:00:00.000Z"));
     }
 

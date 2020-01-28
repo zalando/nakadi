@@ -50,7 +50,7 @@ An event may be published to the above event type, and the logic for authorizati
   }
 ```
 
- Also, once a `event_auth_field` is specified for an event type, it cannot be removed or updated.
+ Also, once a `event_owner_selector` is specified for an event type, it cannot be removed or updated.
 
  There are following event owner selector types supported: 
   - `path` - dot separated path within published event (after enrichment), in this case `value` 

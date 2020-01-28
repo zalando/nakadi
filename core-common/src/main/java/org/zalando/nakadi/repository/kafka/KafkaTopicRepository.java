@@ -105,7 +105,7 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
-    private CompletableFuture<Exception> publishItem(
+    private CompletableFuture<Exception> publishItem (
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
@@ -118,6 +118,10 @@ public class KafkaTopicRepository implements TopicRepository {
                     KafkaCursor.toKafkaPartition(item.getPartition()),
                     item.getEventKey(),
                     delete ? null : item.dumpEventToString());
+            if (null != item.getOwner()) {
+                item.getOwner().serialize(kafkaRecord);
+            }
+
             circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {

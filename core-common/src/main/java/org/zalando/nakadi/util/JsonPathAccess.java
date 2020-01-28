@@ -2,7 +2,7 @@ package org.zalando.nakadi.util;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 
 /*
  One could use JsonPath Lib instead: https://github.com/jayway/JsonPath
@@ -18,7 +18,7 @@ public class JsonPathAccess {
         this.jsonObject = jsonObject;
     }
 
-    public Object get(final String path) throws InvalidPartitionKeyFieldsException {
+    public Object get(final String path) throws JsonPathAccessException {
 
         final JsonPathTokenizer pathTokenizer = new JsonPathTokenizer(path);
 
@@ -27,12 +27,12 @@ public class JsonPathAccess {
 
         while ((field = pathTokenizer.nextToken()) != null) {
             if (!(curr instanceof JSONObject)) {
-                throw new InvalidPartitionKeyFieldsException("field " + field + " doesn't exist.");
+                throw new JsonPathAccessException("field " + field + " doesn't exist.");
             }
             try {
                 curr = ((JSONObject) curr).get(field);
             } catch (JSONException e) {
-                throw new InvalidPartitionKeyFieldsException("field " + field + " doesn't exist.");
+                throw new JsonPathAccessException("field " + field + " doesn't exist.");
             }
         }
         return curr;
