@@ -129,13 +129,13 @@ public class EventPublisher {
             if (useAuthz) {
                 authValidator.authorizeEventTypeWrite(eventType);
             }
+            validateEventOwnership(eventType, batch);
             validate(batch, eventType, parentSpan, delete);
             partition(batch, eventType);
             setEventKey(batch, eventType);
             if (!delete) {
                 enrich(batch, eventType);
             }
-            validateEventOwnership(eventType, batch);
             submit(batch, eventType, parentSpan, delete);
 
             return ok(batch);

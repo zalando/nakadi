@@ -212,7 +212,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, "error");
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -221,12 +221,21 @@ public class EventPublisherTest {
         assertThat(first.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(first.getDetail(), equalTo("error"));
 
-        final BatchItemResponse second = result.getResponses().get(1);
+        BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(1)).getValidator(any());
+
+        // test with event header being set
+        mockSuccessfulOwnerExtraction(eventType);
+        result = publisher.publish(batch.toString(), eventType.getName(), null);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        second = result.getResponses().get(1);
+        assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
     }
 
     @Test
@@ -539,16 +548,11 @@ public class EventPublisherTest {
         final JSONArray batch = buildDefaultBatch(2);
 
         mockSuccessfulValidation(eventType);
+        mockSuccessfulOwnerExtraction(eventType);
         Mockito
                 .doThrow(new AccessDeniedException(Mockito.mock(Resource.class)))
                 .when(authzValidator)
                 .authorizeEventWrite(any());
-
-        Mockito
-                .doReturn(EventOwnerExtractorFactory.createStaticExtractor(new EventOwnerSelector(
-                        EventOwnerSelector.Type.STATIC, "nakadi", "retailer"
-                ))).when(eventOwnerExtractorFactory)
-                .createExtractor(eq(eventType));
 
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
 
@@ -561,7 +565,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(authzValidator, times(1)).authorizeEventWrite(any());
@@ -654,6 +658,14 @@ public class EventPublisherTest {
                 .doReturn(truthyValidator)
                 .when(cache)
                 .getValidator(eventType.getName());
+    }
+
+    private void mockSuccessfulOwnerExtraction(final EventType eventType) {
+        Mockito
+                .doReturn(EventOwnerExtractorFactory.createStaticExtractor(new EventOwnerSelector(
+                        EventOwnerSelector.Type.STATIC, "nakadi", "retailer"
+                ))).when(eventOwnerExtractorFactory)
+                .createExtractor(eq(eventType));
     }
 
     private JSONArray buildDefaultBatch(final int numberOfEvents) {
