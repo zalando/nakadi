@@ -235,7 +235,7 @@ public class EventTypeService {
             EventTypeOptionsValidationException {
         try {
             eventTypeRepository.findByName(eventType.getName());
-            LOG.info("Event-type {} already exist", eventType.getName());
+            LOG.info("Event-type {} already exists", eventType.getName());
         } catch (final NoSuchEventTypeException noSuchEventTypeException) {
             LOG.info("Creating event-type {} as it is missing", eventType.getName());
             create(eventType, checkAuth);
