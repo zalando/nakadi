@@ -19,7 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class  SystemEventTypeInitializer {
+public class SystemEventTypeInitializer {
     private final ObjectMapper objectMapper;
     private final EventTypeService eventTypeService;
     private static final Logger LOG = LoggerFactory.getLogger(SystemEventTypeInitializer.class);
@@ -49,7 +49,7 @@ public class  SystemEventTypeInitializer {
 
         eventTypes.forEach(et -> {
             try {
-                eventTypeService.create(et, false);
+                eventTypeService.createIfMissing(et, false);
             } catch (final DuplicatedEventTypeNameException e) {
                 LOG.debug("Event type {} from {} already exists", et.getName(), resourceName);
             } catch (final NakadiBaseException e) {

@@ -224,6 +224,24 @@ public class EventTypeService {
                 eventType.getName());
     }
 
+    public void createIfMissing(final EventTypeBase eventType, final boolean checkAuth)
+            throws AuthorizationSectionException,
+            TopicCreationException,
+            InternalNakadiException,
+            NoSuchPartitionStrategyException,
+            DuplicatedEventTypeNameException,
+            InvalidEventTypeException,
+            DbWriteOperationsBlockedException,
+            EventTypeOptionsValidationException {
+        try {
+            eventTypeRepository.findByName(eventType.getName());
+            LOG.info("Event-type {} already exist", eventType.getName());
+        } catch (final NoSuchEventTypeException noSuchEventTypeException) {
+            LOG.info("Creating event-type {} as it is missing", eventType.getName());
+            create(eventType, checkAuth);
+        }
+    }
+
     private void validateCompaction(final EventTypeBase eventType) throws
             InvalidEventTypeException {
         if (eventType.getCategory() == EventCategory.UNDEFINED &&
