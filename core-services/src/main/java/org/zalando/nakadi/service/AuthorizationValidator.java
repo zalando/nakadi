@@ -122,6 +122,9 @@ public class AuthorizationValidator {
 
     public void authorizeEventWrite(final BatchItem batchItem)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException {
+        if (batchItem.getOwner() == null) {
+            return;
+        }
         try {
             final boolean authorized = authorizationService.isAuthorized(
                     AuthorizationService.Operation.WRITE, batchItem);

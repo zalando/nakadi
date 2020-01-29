@@ -118,7 +118,8 @@ public class EventPublisher {
                                        final Span parentSpan,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
-            AccessDeniedException, ServiceTemporarilyUnavailableException, EnrichmentException, PartitioningException {
+            AccessDeniedException, ServiceTemporarilyUnavailableException, PublishEventOwnershipException,
+            EnrichmentException, PartitioningException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);

@@ -2,6 +2,9 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.ResourceImpl;
@@ -23,9 +26,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class AuthorizationValidatorTest {
 
@@ -39,11 +39,11 @@ public class AuthorizationValidatorTest {
     private final AuthorizationAttribute attr4 = new ResourceAuthorizationAttribute("type4", "value4");
 
     public AuthorizationValidatorTest() {
-        authorizationService = mock(AuthorizationService.class);
-        adminService = mock(AdminService.class);
+        authorizationService = Mockito.mock(AuthorizationService.class);
+        adminService = Mockito.mock(AdminService.class);
 
         validator = new AuthorizationValidator(authorizationService,
-                mock(EventTypeRepository.class), adminService);
+                Mockito.mock(EventTypeRepository.class), adminService);
     }
 
     @Test
@@ -53,7 +53,7 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4));
 
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
-        doThrow(new AuthorizationInvalidException("some attributes are not ok"))
+        Mockito.doThrow(new AuthorizationInvalidException("some attributes are not ok"))
                 .when(authorizationService).isAuthorizationForResourceValid(any());
         try {
             validator.validateAuthorization(resource);
@@ -90,7 +90,7 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-        doThrow(new OperationOnResourceNotPermittedException("blah"))
+        Mockito.doThrow(new OperationOnResourceNotPermittedException("blah"))
                 .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
@@ -103,7 +103,7 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-        doThrow(new AuthorizationInvalidException("blah"))
+        Mockito.doThrow(new AuthorizationInvalidException("blah"))
                 .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
@@ -116,7 +116,7 @@ public class AuthorizationValidatorTest {
                 ImmutableList.of(attr1),
                 ImmutableList.of(attr2),
                 ImmutableList.of(attr3));
-        doThrow(new PluginException("blah"))
+        Mockito.doThrow(new PluginException("blah"))
                 .when(authorizationService).isAuthorizationForResourceValid(any());
         final Resource resource = new ResourceImpl("myResource1", "event-type", auth, null);
         validator.validateAuthorization(resource);
@@ -129,30 +129,48 @@ public class AuthorizationValidatorTest {
 
     @Test(expected = AccessDeniedException.class)
     public void whenNotAuthorizedThenForbiddenAccessException() {
-        when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
     public void whenETAdminNotAuthorizedButAdminThenOk() {
-        when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
-        when(adminService.isAdmin(any())).thenReturn(true);
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenReturn(false);
+        Mockito.when(adminService.isAdmin(any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test
     public void whenAuthorizedThenOk() {
-        when(authorizationService.isAuthorized(any(), any())).thenReturn(true);
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenReturn(true);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
     }
 
     @Test(expected = ServiceTemporarilyUnavailableException.class)
     public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporarilyUnavailableException() {
-        when(authorizationService.isAuthorized(any(), any())).thenThrow(new PluginException("blah"));
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenThrow(new PluginException("blah"));
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new ResourceAuthorization(null, null, null)).build());
+    }
+
+    @Test
+    public void whenBatchItemWithNoOwnerThenNotChecked() {
+        final BatchItem item = new BatchItem("{}", null, null, null);
+        item.setOwner(null);
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenReturn(true);
+        validator.authorizeEventWrite(item);
+        Mockito.verify(authorizationService, Mockito.times(0)).isAuthorized(any(), any());
+    }
+
+    @Test
+    public void whenBatchItemWithOwnerThenAuthorizationChecked() {
+        final BatchItem item = new BatchItem("{}", null, null, null);
+        item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
+        Mockito.when(authorizationService.isAuthorized(any(), any())).thenReturn(true);
+        validator.authorizeEventWrite(item);
+        Mockito.verify(authorizationService, Mockito.times(1)).isAuthorized(any(), any());
     }
 }
