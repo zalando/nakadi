@@ -59,4 +59,11 @@ public interface TimelineSync {
      * @return Registration for listener. one should call cancel once registration is not needed anymore.
      */
     ListenerRegistration registerTimelineChangeListener(String eventType, Consumer<String> listener);
+
+    /**
+     * Register listener for timelines modification. Reacts on every timeline modification of any event type.
+     * @param listener Listener to register.
+     * @return registration of listener.
+     */
+    ListenerRegistration registerTimelineChangeListener(Consumer<String> listener);
 }

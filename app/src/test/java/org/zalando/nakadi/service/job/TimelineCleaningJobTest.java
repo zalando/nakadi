@@ -72,7 +72,7 @@ public class TimelineCleaningJobTest {
 
         for (final Timeline timeline : expiredTimelines) {
             verify(topicRepository).deleteTopic(timeline.getTopic());
-            verify(eventTypeCache).updated(timeline.getEventType());
+            verify(eventTypeCache).invalidate(timeline.getEventType());
 
             final Timeline updatedTimeline = updatedTimelinesIterator.next();
             assertThat(timeline.getEventType(), equalTo(updatedTimeline.getEventType()));
@@ -90,7 +90,7 @@ public class TimelineCleaningJobTest {
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(timelineService.getTopicRepository(eq(t1))).thenReturn(topicRepository);
 
-        doThrow(new RuntimeException()).when(eventTypeCache).updated(any());
+        doThrow(new RuntimeException()).when(eventTypeCache).invalidate(any());
 
         timelineCleanupJob.cleanupTimelines();
 

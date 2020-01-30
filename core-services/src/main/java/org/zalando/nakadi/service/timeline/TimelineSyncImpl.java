@@ -63,6 +63,7 @@ public class TimelineSyncImpl implements TimelineSync {
     private final String nodeId;
     private final LocalLocking localLocking = new LocalLocking();
     private final Map<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
+    private final List<Consumer<String>> headlessConsumerListeners = new ArrayList<>();
     private final BlockingQueue<DelayedChange> queuedChanges = new LinkedBlockingQueue<>();
     private final AtomicBoolean newVersionPresent = new AtomicBoolean(true);
 
@@ -147,17 +148,19 @@ public class TimelineSyncImpl implements TimelineSync {
             for (final String unlocked : unlockedEventTypes) {
                 LOG.info("Notifying about unlock of {}", unlocked);
                 final List<Consumer<String>> toNotify;
-                synchronized (consumerListeners) {
-                    toNotify = consumerListeners.containsKey(unlocked) ?
-                            new ArrayList<>(consumerListeners.get(unlocked)) : null;
+                synchronized (headlessConsumerListeners) {
+                    toNotify = new ArrayList<>(headlessConsumerListeners);
                 }
-                if (null != toNotify) {
-                    for (final Consumer<String> listener : toNotify) {
-                        try {
-                            listener.accept(unlocked);
-                        } catch (final RuntimeException ex) {
-                            LOG.error("Failed to notify about event type {} unlock", unlocked, ex);
-                        }
+                synchronized (consumerListeners) {
+                    if (consumerListeners.containsKey(unlocked)) {
+                        toNotify.addAll(consumerListeners.get(unlocked));
+                    }
+                }
+                for (final Consumer<String> listener : toNotify) {
+                    try {
+                        listener.accept(unlocked);
+                    } catch (final RuntimeException ex) {
+                        LOG.error("Failed to notify about event type {} unlock", unlocked, ex);
                     }
                 }
             }
@@ -368,4 +371,15 @@ public class TimelineSyncImpl implements TimelineSync {
         };
     }
 
+    @Override
+    public ListenerRegistration registerTimelineChangeListener(final Consumer<String> listener) {
+        synchronized (headlessConsumerListeners) {
+            headlessConsumerListeners.add(listener);
+        }
+        return () -> {
+            synchronized (headlessConsumerListeners) {
+                headlessConsumerListeners.remove(listener);
+            }
+        };
+    }
 }

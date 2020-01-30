@@ -39,7 +39,7 @@ public class CachingEventTypeRepositoryTest {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
-                .created("event-name");
+                .invalidate("event-name");
 
         try {
             cachedRepo.saveEventType(et);
@@ -60,7 +60,7 @@ public class CachingEventTypeRepositoryTest {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
-                .updated("event-name");
+                .invalidate("event-name");
 
         final EventType original = mock(EventType.class);
 
@@ -88,7 +88,7 @@ public class CachingEventTypeRepositoryTest {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
-                .removed("event-name");
+                .invalidate("event-name");
 
         final EventType original = mock(EventType.class);
 
