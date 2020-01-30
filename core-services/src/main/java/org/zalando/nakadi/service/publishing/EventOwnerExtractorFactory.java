@@ -44,8 +44,8 @@ public class EventOwnerExtractorFactory {
         return (batchItem) -> {
             try {
                 final JsonPathAccess jsonPath = new JsonPathAccess(batchItem);
-                final String value = jsonPath.get(selector.getValue()).toString();
-                return null == value ? null : new EventOwnerHeader(selector.getName(), value);
+                final Object value = jsonPath.get(selector.getValue());
+                return JSONObject.NULL == value ? null : new EventOwnerHeader(selector.getName(), value.toString());
             } catch (final JsonPathAccessException e) {
                 return null;
             }

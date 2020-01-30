@@ -11,8 +11,9 @@ import java.util.function.Function;
 
 public class EventOwnerExtractorTest {
     private static final JSONObject MOCK_EVENT = StrictJsonParser.parse("{" +
+            "\"other\": null, \n" +
             "\"example\": {\n" +
-            "    \"security\": {\"final\": \"test_value\"}}" +
+                "\"security\": {\"final\": \"test_value\"}}" +
             "}", false);
 
     @Test
@@ -27,9 +28,18 @@ public class EventOwnerExtractorTest {
     }
 
     @Test
-    public void testNullValueWithPathValue() {
+    public void testAbsenceOfPathValue() {
         final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractorFactory.createPathExtractor(
                 new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "example.nothing.here"));
+
+        final EventOwnerHeader result = extractor.apply(MOCK_EVENT);
+        Assert.assertNull(result);
+    }
+
+    @Test
+    public void testNullWithPathValue() {
+        final Function<JSONObject, EventOwnerHeader> extractor = EventOwnerExtractorFactory.createPathExtractor(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "other"));
 
         final EventOwnerHeader result = extractor.apply(MOCK_EVENT);
         Assert.assertNull(result);
