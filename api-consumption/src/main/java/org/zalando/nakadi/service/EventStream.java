@@ -15,6 +15,7 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,7 +35,6 @@ public class EventStream {
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
     private final EventStreamConfig config;
-    private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
     private final EventStreamWriter eventStreamWriter;
@@ -42,11 +42,12 @@ public class EventStream {
     private final String kpiDataStreamedEventType;
     private final long kpiFrequencyMs;
     private final NakadiKpiPublisher kpiPublisher;
+    private final EventStreamChecks eventStreamChecks;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
-                       final BlacklistService blacklistService,
+                       final EventStreamChecks eventStreamChecks,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
                        final EventStreamWriter eventStreamWriter,
                        final NakadiKpiPublisher kpiPublisher, final String kpiDataStreamedEventType,
@@ -54,11 +55,11 @@ public class EventStream {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
-        this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
         this.eventStreamWriter = eventStreamWriter;
         this.kpiPublisher = kpiPublisher;
+        this.eventStreamChecks = eventStreamChecks;
         this.kpiData = new StreamKpiData();
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
         this.kpiFrequencyMs = kpiFrequencyMs;
@@ -81,16 +82,24 @@ public class EventStream {
             long lastKpiEventSent = System.currentTimeMillis();
             long bytesInMemory = 0;
 
-            while (connectionReady.get() &&
-                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingClient()
-                            .getClientId())) {
+            while (connectionReady.get()) {
+
+                if (eventStreamChecks.isConsumptionBlocked(
+                        Collections.singleton(config.getEtName()),
+                        config.getConsumingClient().getClientId())) {
+                    break;
+                }
 
                 checkAuthorization.run();
 
                 if (consumedEvents.isEmpty()) {
-                    // TODO: There are a lot of optimizations here, one can significantly improve code by processing
-                    // all events at the same time, instead of processing one by one.
-                    consumedEvents.addAll(eventConsumer.readEvents());
+                    final List<ConsumedEvent> eventsFromKafka = eventConsumer.readEvents();
+                    for (final ConsumedEvent evt: eventsFromKafka) {
+                        if (eventStreamChecks.isConsumptionBlocked(evt)) {
+                            continue;
+                        }
+                        consumedEvents.add(evt);
+                    }
                 }
                 final Optional<ConsumedEvent> eventOrEmpty = consumedEvents.isEmpty() ?
                         Optional.empty() : Optional.of(consumedEvents.remove(0));

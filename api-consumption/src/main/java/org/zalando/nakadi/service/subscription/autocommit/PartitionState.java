@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.autocommit;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.service.CursorOperationsService;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,8 +25,7 @@ public class PartitionState {
         this.committed = committed;
     }
 
-    // Returns true, if immediate autocommit needed.
-    void addSkippedEvent(final NakadiCursor cursor) {
+    public void addSkippedEvent(final NakadiCursor cursor) {
         if (skippedIntervals.isEmpty()) {
             skippedIntervals.add(new CursorInterval(cursor));
         } else {
@@ -43,7 +43,6 @@ public class PartitionState {
 
     public void onCommit(final NakadiCursor cursor) {
         this.committed = cursor;
-
         // remove all the intervals that are fully before committed cursor
         while (!skippedIntervals.isEmpty() &&
                 cursorOperationsService.calculateDistance(skippedIntervals.get(0).getEnd(), committed) >= 0) {
@@ -51,6 +50,7 @@ public class PartitionState {
         }
     }
 
+    @Nullable
     public NakadiCursor getAutoCommitSuggestion() {
         if (skippedIntervals.isEmpty()) {
             return null;
