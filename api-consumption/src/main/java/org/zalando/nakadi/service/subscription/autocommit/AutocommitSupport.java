@@ -44,7 +44,10 @@ public class AutocommitSupport {
     }
 
     public void addSkippedEvent(final NakadiCursor cursor) {
-        partitionsState.get(cursor.getEventTypePartition()).addSkippedEvent(cursor);
+        final PartitionState partitionState = partitionsState.get(cursor.getEventTypePartition());
+        if (null != partitionState) {
+            partitionState.addSkippedEvent(cursor);
+        }
     }
 
     public void onCommit(final NakadiCursor cursor) {

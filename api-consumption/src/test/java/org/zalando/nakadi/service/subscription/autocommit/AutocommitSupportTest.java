@@ -73,6 +73,7 @@ public class AutocommitSupportTest {
     @Test
     public void testAutocommitIssuedFor2Partition() {
         autocommitSupport.addSkippedEvent(etp1Cursors[1]);
+        autocommitSupport.addSkippedEvent(etp2Cursors[1]);
         autocommitSupport.addSkippedEvent(etp2Cursors[2]);
         autocommitSupport.autocommit();
         verify(zkClientMock, times(1)).commitOffsets(commitOffsetsCaptor.capture());
@@ -87,6 +88,7 @@ public class AutocommitSupportTest {
             Assert.assertEquals(new SubscriptionCursorWithoutToken("t", "p2", "2"), actuallyCommitted.get(2));
         }
         autocommitSupport.onCommit(etp1Cursors[1]);
+        autocommitSupport.onCommit(etp2Cursors[2]);
         autocommitSupport.autocommit();
         // Verify that second call was not issued
         verify(zkClientMock, times(1)).commitOffsets(commitOffsetsCaptor.capture());
