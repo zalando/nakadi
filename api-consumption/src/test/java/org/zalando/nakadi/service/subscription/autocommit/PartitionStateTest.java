@@ -3,12 +3,14 @@ package org.zalando.nakadi.service.subscription.autocommit;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.service.CursorOperationsService;
 
 import java.util.stream.LongStream;
 
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.refEq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -137,6 +139,25 @@ public class PartitionStateTest {
         Assert.assertEquals(cursors[18], state.getAutoCommitSuggestion());
     }
 
+    static NakadiCursor[] mockCursors(
+            final CursorOperationsService service, final EventTypePartition etp, final long[] positions) {
+        NakadiCursor[] result = new NakadiCursor[positions.length];
+        for (int i = 0; i < positions.length; ++i) {
+            result[i] = mock(NakadiCursor.class);
+            when(result[i].getEventType()).thenReturn(etp.getEventType());
+            when(result[i].getPartition()).thenReturn(etp.getPartition());
+            when(result[i].getEventTypePartition()).thenReturn(etp);
+            when(result[i].getOffset()).thenReturn(String.valueOf(positions[i]));
+        }
+        for (int i = 0; i < result.length; i++) {
+            for (int j = 0; j < result.length; j++) {
+                when(service.calculateDistance(eq(result[i]), eq(result[j])))
+                        .thenReturn(positions[j] - positions[i]);
+            }
+        }
+        return result;
+    }
+
     /**
      * Mocks cursor list with positions according to positions.
      *
@@ -144,17 +165,7 @@ public class PartitionStateTest {
      * @return cursors with positions specified in parameters
      */
     private NakadiCursor[] mockCursors(long... positions) {
-        NakadiCursor[] result = new NakadiCursor[positions.length];
-        for (int i = 0; i < positions.length; ++i) {
-            result[i] = mock(NakadiCursor.class);
-        }
-        for (int i = 0; i < result.length; i++) {
-            for (int j = 0; j < result.length; j++) {
-                when(cursorOperationsService.calculateDistance(eq(result[i]), eq(result[j])))
-                        .thenReturn(positions[j] - positions[i]);
-            }
-        }
-        return result;
+        return mockCursors(cursorOperationsService, new EventTypePartition("t", "0"), positions);
     }
 
 }
