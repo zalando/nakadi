@@ -66,10 +66,6 @@ public abstract class State {
         return context.isConnectionReady();
     }
 
-    protected boolean isSubscriptionConsumptionBlocked() {
-        return context.isSubscriptionConsumptionBlocked();
-    }
-
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
         context.scheduleTask(linkTaskToState(task), timeout, unit);
     }

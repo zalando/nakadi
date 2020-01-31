@@ -18,14 +18,14 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
     private final byte[] event;
     private final NakadiCursor position;
     private final long timestamp;
-    private final EventAuthField eventAuthField;
+    private final EventOwnerHeader owner;
 
     public ConsumedEvent(final byte[] event, final NakadiCursor position, final long timestamp,
-                         @Nullable final EventAuthField eventAuthField) {
+                         @Nullable final EventOwnerHeader owner) {
         this.event = event;
         this.position = position;
         this.timestamp = timestamp;
-        this.eventAuthField = eventAuthField;
+        this.owner = owner;
     }
 
     public byte[] getEvent() {
@@ -70,9 +70,10 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
     }
 
     @Override
-    public Optional<List<AuthorizationAttribute>> getAttributesForOperation(AuthorizationService.Operation operation) {
+    public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
+            final AuthorizationService.Operation operation) {
         if (operation == AuthorizationService.Operation.READ) {
-            return Optional.ofNullable(this.eventAuthField)
+            return Optional.ofNullable(this.owner)
                     .map(ConsumedEvent::authToAttribute)
                     .map(Collections::singletonList);
         }
@@ -89,19 +90,7 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
         return Collections.emptyMap();
     }
 
-
-    // TODO: Use the one from publishing stack, remove this useless method.
-    public static AuthorizationAttribute authToAttribute(final EventAuthField auth) {
-        return new AuthorizationAttribute() {
-            @Override
-            public String getDataType() {
-                return auth.getName();
-            }
-
-            @Override
-            public String getValue() {
-                return auth.getValue();
-            }
-        };
+    public static AuthorizationAttribute authToAttribute(final EventOwnerHeader auth) {
+        return new AuthorizationAttributeProxy(auth);
     }
 }
