@@ -8,9 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.cache.SubscriptionCache;
-import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
@@ -28,17 +25,14 @@ public class BlacklistService {
     private static final Logger LOG = LoggerFactory.getLogger(BlacklistService.class);
     private static final String PATH_BLACKLIST = "/nakadi/blacklist";
 
-    private final SubscriptionCache subscriptionCache;
     private final ZooKeeperHolder zooKeeperHolder;
     private final NakadiAuditLogPublisher auditLogPublisher;
     private TreeCache blacklistCache;
 
     @Autowired
-    public BlacklistService(final SubscriptionCache subscriptionCache,
-                            final ZooKeeperHolder zooKeeperHolder,
+    public BlacklistService(final ZooKeeperHolder zooKeeperHolder,
                             final NakadiAuditLogPublisher auditLogPublisher) {
         this.zooKeeperHolder = zooKeeperHolder;
-        this.subscriptionCache = subscriptionCache;
         this.auditLogPublisher = auditLogPublisher;
     }
 
@@ -75,23 +69,7 @@ public class BlacklistService {
         return isBlocked(Type.PRODUCER_ET, etName) || isBlocked(Type.PRODUCER_APP, appId);
     }
 
-    public boolean isConsumptionBlocked(final String etName, final String appId) {
-        return isBlocked(Type.CONSUMER_ET, etName) || isBlocked(Type.CONSUMER_APP, appId);
-    }
-
-    public boolean isSubscriptionConsumptionBlocked(final String subscriptionId, final String appId) {
-        try {
-            return isSubscriptionConsumptionBlocked(
-                    subscriptionCache.getSubscription(subscriptionId).getEventTypes(), appId);
-        } catch (final NoSuchSubscriptionException e) {
-            // It's fine, subscription doesn't exists.
-        } catch (final ServiceTemporarilyUnavailableException e) {
-            LOG.error(e.getMessage(), e);
-        }
-        return false;
-    }
-
-    public boolean isSubscriptionConsumptionBlocked(final Collection<String> etNames, final String appId) {
+    public boolean isConsumptionBlocked(final Collection<String> etNames, final String appId) {
         return etNames.stream()
                 .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
                 isBlocked(Type.CONSUMER_APP, appId);

@@ -20,10 +20,10 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
@@ -43,24 +43,24 @@ public class CursorsController {
     private final CursorsService cursorsService;
     private final CursorConverter cursorConverter;
     private final CursorTokenService cursorTokenService;
-    private final BlacklistService blacklistService;
+    private final EventStreamChecks eventStreamChecks;
 
     @Autowired
     public CursorsController(final CursorsService cursorsService,
                              final CursorConverter cursorConverter,
                              final CursorTokenService cursorTokenService,
-                             final BlacklistService blacklistService) {
+                             final EventStreamChecks eventStreamChecks) {
         this.cursorsService = cursorsService;
         this.cursorConverter = cursorConverter;
         this.cursorTokenService = cursorTokenService;
-        this.blacklistService = blacklistService;
+        this.eventStreamChecks = eventStreamChecks;
     }
 
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionCursor> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                                        final Client client) {
         try {
-            if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+            if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                 throw new BlockedException("Application or subscription is blocked");
             }
             final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId)
@@ -89,7 +89,7 @@ public class CursorsController {
             throw new CursorsAreEmptyException();
         }
         final Span commitSpan = TracingService.extractSpan(request, "commit_events");
-        if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
             TracingService.logErrorInSpan(commitSpan, "Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
@@ -113,7 +113,7 @@ public class CursorsController {
             final HttpServletRequest request,
             final Client client)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
-        if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
             throw new BlockedException("Application or subscription is blocked");
         }
 

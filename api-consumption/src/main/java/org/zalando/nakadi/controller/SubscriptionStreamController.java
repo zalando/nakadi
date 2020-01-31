@@ -29,14 +29,14 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictExcept
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.EventStreamChecks;
+import org.zalando.nakadi.service.SubscriptionValidationService;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import org.zalando.nakadi.service.SubscriptionValidationService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
@@ -70,7 +70,7 @@ public class SubscriptionStreamController {
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
-    private final BlacklistService blacklistService;
+    private final EventStreamChecks eventStreamChecks;
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final SubscriptionValidationService subscriptionValidationService;
@@ -80,7 +80,7 @@ public class SubscriptionStreamController {
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
-                                        final BlacklistService blacklistService,
+                                        final EventStreamChecks eventStreamChecks,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
                                         final SubscriptionDbRepository subscriptionDbRepository,
                                         final SubscriptionValidationService subscriptionValidationService) {
@@ -88,7 +88,7 @@ public class SubscriptionStreamController {
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
-        this.blacklistService = blacklistService;
+        this.eventStreamChecks = eventStreamChecks;
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.subscriptionValidationService = subscriptionValidationService;
@@ -218,7 +218,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
@@ -227,7 +227,7 @@ public class SubscriptionStreamController {
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, blacklistService, parentSubscriptionSpan, client.getClientId());
+                        connectionReady, parentSubscriptionSpan, client.getClientId());
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

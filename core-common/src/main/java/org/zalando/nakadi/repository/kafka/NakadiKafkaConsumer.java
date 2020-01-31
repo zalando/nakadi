@@ -5,7 +5,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.EventAuthField;
+import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
 
@@ -65,7 +65,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                     record.value(),
                     cursor.toNakadiCursor(timeline),
                     record.timestamp(),
-                    EventAuthField.deserialize(record)));
+                    EventOwnerHeader.deserialize(record)));
         }
         return result;
     }
