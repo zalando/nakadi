@@ -2826,7 +2826,7 @@ definitions:
 
       For those interested in why these fields exist, in the beginning of the project the developers run a very
       rudimentary benchmark to understand how much data could be ingested by a single Kafka topic-partition. This
-      benchmark data was later used by this feature to defined the suposedely ideal number of partitions for the user's
+      benchmark data was later used by this feature to define the suposedely ideal number of partitions for the user's
       needs. Over time the maintainers of the project found this benchmark to be unreliable, usually resulting in fewer
       partitions than needed.
 
