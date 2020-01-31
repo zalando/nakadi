@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
@@ -199,7 +200,8 @@ class StreamingState extends State {
         switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
 
-    private void pollDataFromKafka() {
+    @VisibleForTesting
+    void pollDataFromKafka() {
         if (eventConsumer == null) {
             throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }

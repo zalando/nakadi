@@ -4,7 +4,9 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -39,49 +41,56 @@ import java.util.Date;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class StreamingStateTest {
 
     private StreamingState state;
-    private ZkSubscriptionClient zkMock;
 
     private static final String SESSION_ID = "ssid";
+    @Mock
+    private ZkSubscriptionClient zkMock;
+    @Mock
     private TimelineService timelineService;
+    @Mock
     private Subscription subscription;
+    @Mock
     private CursorConverter cursorConverter;
+    @Mock
     private SubscriptionOutput out;
+    @Mock
+    private EventConsumer.ReassignableEventConsumer eventConsumer;
+    @Mock
+    private StreamingContext contextMock;
+    @Mock
+    private AutocommitSupport autocommitSupport;
 
     @Before
     public void prepareMocks() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         state = new StreamingState();
 
-        final StreamingContext contextMock = mock(StreamingContext.class);
-        when(contextMock.getCursorComparator()).thenReturn(Comparator.comparing(NakadiCursor::getOffset));
+        when(timelineService.createEventConsumer(Mockito.any())).thenReturn(eventConsumer);
 
+        when(contextMock.getCursorComparator()).thenReturn(Comparator.comparing(NakadiCursor::getOffset));
         when(contextMock.getSessionId()).thenReturn(SESSION_ID);
         when(contextMock.isInState(Mockito.same(state))).thenReturn(true);
-        subscription = mock(Subscription.class);
+
         when(contextMock.getSubscription()).thenReturn(subscription);
-        timelineService = mock(TimelineService.class);
         when(contextMock.getTimelineService()).thenReturn(timelineService);
-        out = mock(SubscriptionOutput.class);
         when(contextMock.getOut()).thenReturn(out);
-        doNothing().when(out).onInitialized(anyString());
+        doNothing().when(out).onInitialized(eq(SESSION_ID));
 
-        final MetricRegistry metricRegistry = mock(MetricRegistry.class);
-        when(metricRegistry.register(any(), any())).thenReturn(null);
-        when(contextMock.getMetricRegistry()).thenReturn(metricRegistry);
-
-        zkMock = mock(ZkSubscriptionClient.class);
+        when(contextMock.getMetricRegistry()).thenReturn(mock(MetricRegistry.class));
         when(contextMock.getZkClient()).thenReturn(zkMock);
-
-        cursorConverter = mock(CursorConverter.class);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
+        when(contextMock.isConnectionReady()).thenReturn(true);
 
         final Client client = mock(Client.class);
         when(client.getClientId()).thenReturn("consumingAppId");
@@ -99,7 +108,6 @@ public class StreamingStateTest {
         );
         when(contextMock.getParameters()).thenReturn(spMock);
 
-        final AutocommitSupport autocommitSupport = mock(AutocommitSupport.class);
         when(contextMock.getAutocommitSupport()).thenReturn(autocommitSupport);
 
         state.setContext(contextMock);
@@ -114,19 +122,19 @@ public class StreamingStateTest {
 
         state.onEnter();
 
-        Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
-        Mockito.verify(topologySubscription, Mockito.times(1)).getData();
+        verify(zkMock, times(1)).subscribeForTopologyChanges(Mockito.any());
+        verify(topologySubscription, times(1)).getData();
 
         state.reactOnTopologyChange();
 
-        Mockito.verify(topologySubscription, Mockito.times(2)).getData();
-        Mockito.verify(topologySubscription, Mockito.times(0)).close();
+        verify(topologySubscription, times(2)).getData();
+        verify(topologySubscription, times(0)).close();
 
         state.onExit();
 
-        Mockito.verify(topologySubscription, Mockito.times(1)).close();
+        verify(topologySubscription, times(1)).close();
         // verify that no new locks created.
-        Mockito.verify(zkMock, Mockito.times(1)).subscribeForTopologyChanges(Mockito.any());
+        verify(zkMock, times(1)).subscribeForTopologyChanges(Mockito.any());
     }
 
     @Test
@@ -203,20 +211,19 @@ public class StreamingStateTest {
                 new Partition(
                         pk.getEventType(), pk.getPartition(), SESSION_ID, null, Partition.State.ASSIGNED)});
 
-        Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
-        Mockito.verify(offsetSubscription, Mockito.times(0)).getData();
+        verify(zkMock, times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
+        verify(offsetSubscription, times(0)).close();
+        verify(offsetSubscription, times(0)).getData();
 
         state.offsetChanged(pk);
-        Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(0)).close();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
+        verify(zkMock, times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
+        verify(offsetSubscription, times(0)).close();
+        verify(offsetSubscription, times(1)).getData();
 
         // Verify that offset change listener is removed
         state.refreshTopologyUnlocked(new Partition[0]);
-        Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
-        Mockito.verify(offsetSubscription, Mockito.times(1)).close();
-        Mockito.verify(offsetSubscription, Mockito.times(1)).getData();
+        verify(zkMock, times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
+        verify(offsetSubscription, times(1)).close();
+        verify(offsetSubscription, times(1)).getData();
     }
-
 }

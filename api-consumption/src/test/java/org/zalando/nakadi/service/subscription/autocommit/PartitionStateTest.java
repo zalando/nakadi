@@ -10,7 +10,6 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import java.util.stream.LongStream;
 
 import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.refEq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -141,7 +140,7 @@ public class PartitionStateTest {
 
     static NakadiCursor[] mockCursors(
             final CursorOperationsService service, final EventTypePartition etp, final long[] positions) {
-        NakadiCursor[] result = new NakadiCursor[positions.length];
+        final NakadiCursor[] result = new NakadiCursor[positions.length];
         for (int i = 0; i < positions.length; ++i) {
             result[i] = mock(NakadiCursor.class);
             when(result[i].getEventType()).thenReturn(etp.getEventType());
@@ -164,7 +163,7 @@ public class PartitionStateTest {
      * @param positions list of nakadi cursors
      * @return cursors with positions specified in parameters
      */
-    private NakadiCursor[] mockCursors(long... positions) {
+    private NakadiCursor[] mockCursors(final long... positions) {
         return mockCursors(cursorOperationsService, new EventTypePartition("t", "0"), positions);
     }
 
