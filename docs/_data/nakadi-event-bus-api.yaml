@@ -2815,34 +2815,43 @@ definitions:
   EventTypeStatistics:
     type: object
     description: |
-      Operational statistics for an EventType. This data may be provided by users on Event Type
-      creation. Nakadi uses this object in order to provide an optimal number of partitions from a throughput perspective.
+      This field defines the number of partitions in the underlying Kafka topic of an event type.
+      The amount of partitions is given by the expression `max(read_parallelism, write_parallelism)`. The maximum
+      number of partitions is specific to each deployment of Nakadi and should be referred to in a separated document.
+
+      For historical reasons the way that the number of partitions is defined is not as straighforward
+      as it could. The fields `messages_per_minute` and `message_size` could potentially influence the resulting amount
+      of partitions, so it's recommended to set both of them to 1 (one). Providing values different than 1 could result
+      in a higher number of partitions being created.
+
+      For those interested in why these fields exist, in the beginning of the project the developers run a very
+      rudimentary benchmark to understand how much data could be ingested by a single Kafka topic-partition. This
+      benchmark data was later used by this feature to defined the suposedely ideal number of partitions for the user's
+      needs. Over time the maintainers of the project found this benchmark to be unreliable, usually resulting in fewer
+      partitions than needed.
 
     properties:
       messages_per_minute:
         type: integer
         description: |
-          Write rate for events of this EventType. This rate encompasses all producers of this
-          EventType for a Nakadi cluster.
-
-          Measured in event count per minute.
+          This property is no longer supported. Please provide value of 1 for backward compatibility.
 
       message_size:
         type: integer
         description: |
-          Average message size for each Event of this EventType. Includes in the count the whole serialized
-          form of the event, including metadata.
-          Measured in bytes.
+          This property is no longer supported. Please provide value of 1 for backward compatibility.
 
       read_parallelism:
         type: integer
         description: |
-          Amount of parallel readers (consumers) to this EventType.
+          Amount of parallel readers (consumers) to this EventType. This property is used to define the number of
+          partitions of the underlying Kafka topic by the expression `max(read_parallelism, write_parallelism)`.
 
       write_parallelism:
         type: integer
         description: |
-          Amount of parallel writers (producers) to this EventType.
+          Amount of parallel writers (producers) to this EventType. This property is used to define the number of
+          partitions of the underlying Kafka topic by the expression `max(read_parallelism, write_parallelism)`.
     required:
       - messages_per_minute
       - message_size
