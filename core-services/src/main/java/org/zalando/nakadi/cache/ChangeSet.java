@@ -33,7 +33,7 @@ public class ChangeSet {
 
     private Date getActualChangeDate(final Change change) {
         final List<Change> currentEtChanges = currentChanges.get(change.getEventTypeName());
-        if (currentEtChanges.isEmpty()) {
+        if (currentEtChanges == null) {
             return change.getOccurredAt();
         }
         return currentEtChanges.stream()

@@ -14,7 +14,6 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
@@ -35,6 +34,7 @@ import java.util.stream.Collectors;
 @Service
 public class EventTypeCache {
     public static final long PERIODIC_UPDATES_MILLIS = TimeUnit.MINUTES.toMillis(2);
+    public static final long ZK_CHANGES_TTL_MILLIS = TimeUnit.MINUTES.toMillis(10);
 
     private final ChangeSet currentChangeSet = new ChangeSet();
     private final ChangesRegistry changesRegistry;
@@ -49,11 +49,11 @@ public class EventTypeCache {
 
     @Autowired
     public EventTypeCache(
-            final ZooKeeperHolder zooKeeperHolder,
+            final ChangesRegistry changesRegistry,
             final EventTypeDbRepository eventTypeDbRepository,
             final TimelineDbRepository timelineRepository,
             final TimelineSync timelineSync) {
-        this.changesRegistry = new ChangesRegistry(zooKeeperHolder);
+        this.changesRegistry = changesRegistry;
         this.eventTypeDbRepository = eventTypeDbRepository;
         this.timelineRepository = timelineRepository;
         this.valueCache = CacheBuilder.newBuilder()
@@ -85,7 +85,7 @@ public class EventTypeCache {
         final Collection<String> updatedEventTypes = this.currentChangeSet.getUpdatedEventTypes(changes);
         updatedEventTypes.forEach(this::invalidateFromRemote);
         this.changesRegistry.deleteChanges(
-                currentChangeSet.getChangesToRemove(changes, TimeUnit.MINUTES.toMillis(10)).stream()
+                currentChangeSet.getChangesToRemove(changes, ZK_CHANGES_TTL_MILLIS).stream()
                         .map(Change::getId)
                         .collect(Collectors.toList()));
         this.lastCheck.set(System.currentTimeMillis());

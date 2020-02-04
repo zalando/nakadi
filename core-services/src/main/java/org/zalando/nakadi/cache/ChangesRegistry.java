@@ -3,18 +3,23 @@ package org.zalando.nakadi.cache;
 import com.google.common.base.Charsets;
 import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.KeeperException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+@Service
 public class ChangesRegistry {
     private final ZooKeeperHolder zk;
     private static final String ET_CACHE_PATH = "/etcache_changes";
 
+    @Autowired
     public ChangesRegistry(final ZooKeeperHolder zk) {
         this.zk = zk;
         try {
@@ -26,7 +31,15 @@ public class ChangesRegistry {
         }
     }
 
-    public List<Change> getCurrentChanges(final Runnable changesListener) throws Exception {
+    /**
+     * Return list of changes in zookeeper. in case if {@code changeListener} is provided, sets it to react
+     * on changelist changes
+     *
+     * @param changesListener Listener to set.
+     * @return Current list of changes in zookeeper
+     * @throws Exception In case if there is error in communicating with zookeeper.
+     */
+    public List<Change> getCurrentChanges(@Nullable final Runnable changesListener) throws Exception {
         final List<String> children;
         if (null == changesListener) {
             children = zk.get().getChildren()
@@ -44,10 +57,6 @@ public class ChangesRegistry {
         return changes;
     }
 
-    private String getPath(final String child) {
-        return ET_CACHE_PATH + "/" + child;
-    }
-
     public void registerChange(final String eventType) throws Exception {
         final String key = UUID.randomUUID().toString(); // Let's assume, that this value is unique.
         zk.get().create().forPath(getPath(key), eventType.getBytes(Charsets.UTF_8));
@@ -61,5 +70,9 @@ public class ChangesRegistry {
                 // That's fine
             }
         }
+    }
+
+    private String getPath(final String child) {
+        return ET_CACHE_PATH + "/" + child;
     }
 }
