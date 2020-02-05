@@ -29,7 +29,8 @@ public class ChangeSetTest {
                 final Change[] initialChanges,
                 final Change[] changeSet,
                 final String[] updatedEts,
-                final String[] deleteChangeIds, long ttl) {
+                final String[] deleteChangeIds,
+                final long ttl) {
             this.name = name;
             this.initialChanges = initialChanges;
             this.changeSet = changeSet;
@@ -52,31 +53,31 @@ public class ChangeSetTest {
         final Date date1 = new Date(System.currentTimeMillis() - 4000);
         final Date date2 = new Date();
 
-        final Change change1_et1 = new Change("change1", "et1", date1);
-        final Change change2_et1 = new Change("change2", "et1", date2);
-        final Change change3_et2 = new Change("change3", "et2", date1);
-        final Change change4_et2 = new Change("change4", "et2", date2);
+        final Change change1et1 = new Change("change1", "et1", date1);
+        final Change change2et1 = new Change("change2", "et1", date2);
+        final Change change3et2 = new Change("change3", "et2", date1);
+        final Change change4et2 = new Change("change4", "et2", date2);
 
         return Arrays.asList(
                 new TestCase("emptyLists", new Change[]{}, new Change[]{}, new String[]{}, new String[]{}, 5000),
                 new TestCase("notificationAddedBySomeone",
-                        new Change[]{}, new Change[]{change1_et1}, new String[]{"et1"}, new String[]{}, 5000),
+                        new Change[]{}, new Change[]{change1et1}, new String[]{"et1"}, new String[]{}, 5000),
                 new TestCase("notificationRemovedBySomeone",
-                        new Change[]{change1_et1}, new Change[]{}, new String[]{}, new String[]{}, 5000),
+                        new Change[]{change1et1}, new Change[]{}, new String[]{}, new String[]{}, 5000),
                 new TestCase("secondNotificationAddedBySomeone",
-                        new Change[]{change1_et1}, new Change[]{change1_et1, change2_et1},
+                        new Change[]{change1et1}, new Change[]{change1et1, change2et1},
                         new String[]{"et1"}, new String[]{"change1"}, 5000),
                 new TestCase("2EventTypesUpdated",
-                        new Change[]{}, new Change[]{change1_et1, change3_et2},
+                        new Change[]{}, new Change[]{change1et1, change3et2},
                         new String[]{"et1", "et2"}, new String[]{}, 5000),
                 new TestCase("OldChangesAreRemovedBecauseTheyAreOld",
-                        new Change[]{}, new Change[]{change1_et1},
+                        new Change[]{}, new Change[]{change1et1},
                         new String[]{"et1"}, new String[]{"change1"}, 2000),
                 new TestCase("OnlyLatestChangeIsKeptInZk",
-                        new Change[]{}, new Change[]{change1_et1, change2_et1, change3_et2, change4_et2},
+                        new Change[]{}, new Change[]{change1et1, change2et1, change3et2, change4et2},
                         new String[]{"et1", "et2"}, new String[]{"change1", "change3"}, 5000),
                 new TestCase("NoChangesInCaseIfDataTheSame",
-                        new Change[]{change1_et1, change3_et2}, new Change[]{change3_et2, change1_et1},
+                        new Change[]{change1et1, change3et2}, new Change[]{change3et2, change1et1},
                         new String[]{}, new String[]{}, 5000)
         );
     }

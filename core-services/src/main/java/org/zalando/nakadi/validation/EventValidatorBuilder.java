@@ -1,11 +1,14 @@
 package org.zalando.nakadi.validation;
 
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 
-public class EventValidation {
-    public static EventTypeValidator forType(final EventType eventType) {
+@Component
+public class EventValidatorBuilder {
+
+    public EventTypeValidator build(final EventType eventType) {
         final EventTypeValidator etv = new EventTypeValidator(eventType);
 
         final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();

@@ -22,11 +22,8 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @DB
 @Component
@@ -134,26 +131,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
                     ", deleted=" + deleted +
                     '}';
         }
-    }
-
-    public List<EtChange> getChangeset(final Map<String, String> listToGet) {
-        if (listToGet.isEmpty()) {
-            return Collections.emptyList();
-        }
-        // Yes, we know that bad symbols are not allowed in both event type name and updated_at, but still filtering
-        // for it.
-        final String listToGetString = listToGet.entrySet().stream()
-                .filter(e -> !e.getValue().contains("'"))
-                .filter(e -> !e.getKey().contains("'"))
-                .map(e -> "('" + e.getKey() + "','" + e.getValue() + "')")
-                .collect(Collectors.joining(","));
-
-        final String query = "SELECT t.id, et.et_name IS NULL" +
-                " FROM (values " + listToGetString + ") as t(id, updated_at)" +
-                " LEFT JOIN zn_data.event_type et ON et.et_name = t.id" +
-                " WHERE et.et_name IS NULL OR et.et_event_type_object ->> 'updated_at' != t.updated_at";
-
-        return jdbcTemplate.query(query, (rs, rowNum) -> new EtChange(rs.getString(1), rs.getBoolean(2)));
     }
 
     private class EventTypeMapper implements RowMapper<EventType> {

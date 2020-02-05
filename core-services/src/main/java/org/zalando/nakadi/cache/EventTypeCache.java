@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
@@ -16,7 +17,7 @@ import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
-import org.zalando.nakadi.validation.EventValidation;
+import org.zalando.nakadi.validation.EventValidatorBuilder;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -33,9 +34,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class EventTypeCache {
-    public static final long PERIODIC_UPDATES_MILLIS = TimeUnit.MINUTES.toMillis(2);
-    public static final long ZK_CHANGES_TTL_MILLIS = TimeUnit.MINUTES.toMillis(10);
-
     private final ChangeSet currentChangeSet = new ChangeSet();
     private final ChangesRegistry changesRegistry;
     private final LoadingCache<String, CachedValue> valueCache;
@@ -44,15 +42,24 @@ public class EventTypeCache {
     private final ScheduledExecutorService scheduledExecutorService;
     private final AtomicLong lastCheck = new AtomicLong();
     private final AtomicLong watcherCounter = new AtomicLong();
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
     private final List<Consumer<String>> invalidationListeners = new ArrayList<>();
+    private final TimelineSync timelineSync;
+    private final long periodicUpdatesInterval;
+    private final long zkChangesTTL;
+    private final EventValidatorBuilder eventValidatorBuilder;
+    private TimelineSync.ListenerRegistration timelineSyncListener = null;
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
 
     @Autowired
     public EventTypeCache(
             final ChangesRegistry changesRegistry,
             final EventTypeDbRepository eventTypeDbRepository,
             final TimelineDbRepository timelineRepository,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            final EventValidatorBuilder eventValidatorBuilder,
+            @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
+            @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
         this.changesRegistry = changesRegistry;
         this.eventTypeDbRepository = eventTypeDbRepository;
         this.timelineRepository = timelineRepository;
@@ -60,20 +67,34 @@ public class EventTypeCache {
                 .expireAfterWrite(Duration.ofHours(2))
                 .build(CacheLoader.from(this::loadValue));
         this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        timelineSync.registerTimelineChangeListener(this::invalidateFromRemote);
+        this.timelineSync = timelineSync;
+        this.eventValidatorBuilder = eventValidatorBuilder;
+        this.periodicUpdatesInterval = TimeUnit.SECONDS.toMillis(periodicUpdatesIntervalSeconds);
+        this.zkChangesTTL = TimeUnit.SECONDS.toMillis(zkChangesTTLSeconds);
     }
 
     @PostConstruct
     public void startUpdates() {
+        this.timelineSyncListener = timelineSync.registerTimelineChangeListener(this::invalidateFromRemote);
         watcherCounter.set(0L);
         // Schedule periodic updates, so that first update will recreate zookeeper notification
-        lastCheck.set(System.currentTimeMillis() - PERIODIC_UPDATES_MILLIS);
+        lastCheck.set(System.currentTimeMillis());
+        // Register listener
+        scheduledExecutorService.submit(this::reprocessUntilExceptionDisappears);
+        // Periodic checks
         scheduledExecutorService.submit(this::periodicCheck);
+        LOG.info("Started updates");
     }
 
     @PreDestroy
     public void stopUpdates() {
-        scheduledExecutorService.shutdown();
+        LOG.info("Stopping updates");
+        try {
+            timelineSyncListener.cancel();
+        } finally {
+            timelineSyncListener = null;
+            scheduledExecutorService.shutdown();
+        }
     }
 
     private void getUpdatesAndRegisterListener() throws Exception {
@@ -84,10 +105,14 @@ public class EventTypeCache {
 
         final Collection<String> updatedEventTypes = this.currentChangeSet.getUpdatedEventTypes(changes);
         updatedEventTypes.forEach(this::invalidateFromRemote);
-        this.changesRegistry.deleteChanges(
-                currentChangeSet.getChangesToRemove(changes, ZK_CHANGES_TTL_MILLIS).stream()
-                        .map(Change::getId)
-                        .collect(Collectors.toList()));
+
+        final List<String> changeIdsToRemove = currentChangeSet.getChangesToRemove(changes, zkChangesTTL).stream()
+                .map(Change::getId)
+                .collect(Collectors.toList());
+        if (!changeIdsToRemove.isEmpty()) {
+            LOG.info("Detected changes to remove, will try to remove {}", String.join(", ", changeIdsToRemove));
+            this.changesRegistry.deleteChanges(changeIdsToRemove);
+        }
         this.lastCheck.set(System.currentTimeMillis());
     }
 
@@ -103,6 +128,7 @@ public class EventTypeCache {
         try {
             getUpdatesAndRegisterListener();
         } catch (Exception ex) {
+            LOG.warn("Failed to register listener and process updates", ex);
             this.scheduledExecutorService.schedule(this::reprocessUntilExceptionDisappears, 5, TimeUnit.SECONDS);
         }
     }
@@ -116,15 +142,16 @@ public class EventTypeCache {
         final long deltaMillis = (System.currentTimeMillis() - this.lastCheck.get());
         // every 2 minutes
         // Ensure that we are not overreacting...
-        if (deltaMillis < PERIODIC_UPDATES_MILLIS) {
+        if (deltaMillis < periodicUpdatesInterval) {
             this.scheduledExecutorService.schedule(
-                    this::periodicCheck, PERIODIC_UPDATES_MILLIS - deltaMillis, TimeUnit.MILLISECONDS);
+                    this::periodicCheck, periodicUpdatesInterval - deltaMillis, TimeUnit.MILLISECONDS);
             return;
         }
         final boolean haveChanges;
         try {
-            haveChanges = !currentChangeSet.getUpdatedEventTypes(changesRegistry.getCurrentChanges(null))
-                    .isEmpty();
+            final List<Change> currentChanges = changesRegistry.getCurrentChanges(null);
+            haveChanges = !currentChangeSet.getUpdatedEventTypes(currentChanges).isEmpty()
+                    || !currentChangeSet.getChangesToRemove(currentChanges, zkChangesTTL).isEmpty();
         } catch (final Exception e) {
             LOG.warn("Failed to run periodic check, will retry soon", e);
             scheduledExecutorService.schedule(this::periodicCheck, 1, TimeUnit.SECONDS);
@@ -133,14 +160,19 @@ public class EventTypeCache {
         if (haveChanges) {
             reprocessUntilExceptionDisappears();
         }
-        scheduledExecutorService.schedule(this::periodicCheck, PERIODIC_UPDATES_MILLIS, TimeUnit.MILLISECONDS);
+        scheduledExecutorService.schedule(this::periodicCheck, periodicUpdatesInterval, TimeUnit.MILLISECONDS);
     }
 
     // Received notification that value was invalidated externally
-    private void invalidateFromRemote(final String s) {
+    private void invalidateFromRemote(final String eventType) {
+        LOG.info("Invalidating event type {} because of remote notification", eventType);
+        invalidateInternal(eventType);
+    }
+
+    private void invalidateInternal(final String eventType) {
         try {
-            this.valueCache.invalidate(s);
-            invalidationListeners.forEach(l -> l.accept(s));
+            this.valueCache.invalidate(eventType);
+            invalidationListeners.forEach(l -> l.accept(eventType));
         } catch (RuntimeException ex) {
             LOG.error("Failed to react on external value invalidation. Wait for next update", ex);
         }
@@ -148,7 +180,8 @@ public class EventTypeCache {
 
     // Local code asked to invalidate value
     public void invalidate(final String eventTypeName) {
-        invalidateFromRemote(eventTypeName);
+        LOG.info("Invalidating event type {} and triggering changes notification", eventTypeName);
+        invalidateInternal(eventTypeName);
         try {
             this.changesRegistry.registerChange(eventTypeName);
         } catch (final Exception ex) {
@@ -184,16 +217,19 @@ public class EventTypeCache {
     }
 
     private CachedValue loadValue(final String eventTypeName) {
+        final long start = System.currentTimeMillis();
         final EventType eventType = eventTypeDbRepository.findByName(eventTypeName);
 
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
 
-        return new CachedValue(
+        final CachedValue result = new CachedValue(
                 eventType,
-                EventValidation.forType(eventType),
+                eventValidatorBuilder.build(eventType),
                 timelines
         );
+        LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
+        return result;
     }
 
     public void addInvalidationListener(final Consumer<String> listener) {

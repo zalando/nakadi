@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.zalando.nakadi.Application;
+import org.zalando.nakadi.cache.ChangesRegistry;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
@@ -186,6 +187,11 @@ public abstract class AuthenticationTest {
         @Bean
         public ZooKeeperHolder mockZKHolder() {
             return mock(ZooKeeperHolder.class);
+        }
+
+        @Bean
+        public ChangesRegistry mockChangesRegistry() {
+            return mock(ChangesRegistry.class);
         }
 
         @Bean

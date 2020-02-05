@@ -4,24 +4,31 @@ import com.google.common.base.Charsets;
 import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.Nullable;
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-@Service
+@Component
+@Profile("!test")
 public class ChangesRegistry {
     private final ZooKeeperHolder zk;
-    private static final String ET_CACHE_PATH = "/etcache_changes";
+    private static final String ET_CACHE_PATH = "/et_cache_changes";
 
     @Autowired
     public ChangesRegistry(final ZooKeeperHolder zk) {
         this.zk = zk;
+    }
+
+    @PostConstruct
+    public void postConstruct() {
         try {
             zk.get().create().creatingParentsIfNeeded().forPath(ET_CACHE_PATH);
         } catch (KeeperException.NodeExistsException ex) {
