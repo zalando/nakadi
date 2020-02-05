@@ -31,6 +31,13 @@ public class ChangeSet {
         return eventTypes;
     }
 
+    /**
+     * Because all the changes are exist in 2 forms - zookeeper form (with unknown creation date) and stored form,
+     * we have to pick up change date from the stored values. If it's not there, then consider change received time as
+     * actual one.
+     * @param change Change to get occurrence time.
+     * @return moment of change being first time seen by this change set.
+     */
     private Date getActualChangeDate(final Change change) {
         final List<Change> currentEtChanges = currentChanges.get(change.getEventTypeName());
         if (currentEtChanges == null) {
