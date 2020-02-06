@@ -46,7 +46,8 @@ import java.util.stream.Collectors;
  *     <ol>
  *         <li>Event type has changed/deleted on this instance and instance tries to notify others about the change.
  *         <ul>
- *             <li>local cache for event type is invalidated and notifications about it are issued to all local consumers</li>
+ *             <li>local cache for event type is invalidated and notifications about it are issued to all local
+ *             consumers</li>
  *             <li>new change with event type name is stored in zookeeper</li>
  *         </ul>
  *         </li>
