@@ -13,7 +13,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class PartitionStateTest {
+public class PartitionSkippedCursorsOperatorTest {
 
     private CursorOperationsService cursorOperationsService;
 
@@ -25,7 +25,8 @@ public class PartitionStateTest {
     @Test
     public void testNoSuggestionOnAbsenceOfSkippedEvents() {
         final NakadiCursor committed = mock(NakadiCursor.class);
-        final PartitionState state = new PartitionState(cursorOperationsService, committed);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, committed);
 
         Assert.assertNull(state.getAutoCommitSuggestion());
     }
@@ -34,7 +35,8 @@ public class PartitionStateTest {
     public void testAutocommitSuggestionIsNullAfterCommit() {
         final NakadiCursor[] cursors = mockCursors(0, 1, 2);
 
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
         state.addSkippedEvent(cursors[1]);
         state.onCommit(cursors[2]);
 
@@ -44,7 +46,8 @@ public class PartitionStateTest {
     @Test
     public void testAutocommitSuggestionAbsentWhenNotRead() {
         final NakadiCursor[] cursors = mockCursors(0, 1, 2);
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
 
         // skipping second event, but first is not committed yet
         state.addSkippedEvent(cursors[2]);
@@ -55,7 +58,8 @@ public class PartitionStateTest {
     @Test
     public void testSimpleAutocommitSuggestion() {
         final NakadiCursor[] cursors = mockCursors(0, 1);
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
         state.addSkippedEvent(cursors[1]);
 
         Assert.assertEquals(cursors[1], state.getAutoCommitSuggestion());
@@ -65,7 +69,8 @@ public class PartitionStateTest {
     public void test2InARow() {
         final NakadiCursor[] cursors = mockCursors(0, 1, 2);
 
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
         state.addSkippedEvent(cursors[1]);
         state.addSkippedEvent(cursors[2]);
 
@@ -75,7 +80,8 @@ public class PartitionStateTest {
     @Test
     public void testZebra() {
         final NakadiCursor[] cursors = mockCursors(LongStream.range(0, 10).toArray());
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
 
         state.addSkippedEvent(cursors[2]);
         state.addSkippedEvent(cursors[4]);
@@ -98,7 +104,8 @@ public class PartitionStateTest {
     @Test
     public void testZebraWithWideStripes() {
         final NakadiCursor[] cursors = mockCursors(LongStream.range(0, 20).toArray());
-        final PartitionState state = new PartitionState(cursorOperationsService, cursors[0]);
+        final PartitionSkippedCursorsOperator state =
+                new PartitionSkippedCursorsOperator(cursorOperationsService, cursors[0]);
 
         state.addSkippedEvent(cursors[1]);
         state.addSkippedEvent(cursors[2]);

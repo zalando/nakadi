@@ -77,7 +77,6 @@ class StreamingState extends State {
      */
     private long lastCommitMillis;
 
-    public static final long POLL_TIMEOUT_MILLIS = 100;
     private static final long AUTOCOMMIT_INTERVAL_SECONDS = 5;
 
     /**
@@ -227,10 +226,12 @@ class StreamingState extends State {
         events.forEach(this::rememberEvent);
         if (!events.isEmpty()) {
             addTask(this::streamToOutput);
-            addTask(this::pollDataFromKafka);
-        } else {
-            scheduleTask(this::pollDataFromKafka, POLL_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
         }
+
+        // Yep, no timeout. All waits are in kafka.
+        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
+        // when this state will be changed to any other state.
+        addTask(this::pollDataFromKafka);
     }
 
     private void rememberEvent(final ConsumedEvent event) {
