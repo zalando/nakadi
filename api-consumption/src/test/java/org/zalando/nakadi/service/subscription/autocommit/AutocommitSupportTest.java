@@ -95,7 +95,7 @@ public class AutocommitSupportTest {
     }
 
     private NakadiCursor[] mockCursors(final EventTypePartition etp, final long... positions) {
-        return PartitionStateTest.mockCursors(cursorOperationsService, etp, positions);
+        return PartitionSkippedCursorsOperatorTest.mockCursors(cursorOperationsService, etp, positions);
     }
 
 }

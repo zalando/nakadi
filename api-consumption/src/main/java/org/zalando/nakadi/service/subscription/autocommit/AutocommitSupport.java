@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class AutocommitSupport {
     private final CursorOperationsService cursorOperationsService;
     private final ZkSubscriptionClient zkSubscriptionClient;
-    private final Map<EventTypePartition, PartitionState> partitionsState = new HashMap<>();
+    private final Map<EventTypePartition, PartitionSkippedCursorsOperator> partitionsState = new HashMap<>();
     private static final Logger LOG = LoggerFactory.getLogger(AutocommitSupport.class);
 
     public AutocommitSupport(
@@ -31,7 +31,9 @@ public class AutocommitSupport {
         if (partitionsState.containsKey(committed.getEventTypePartition())) {
             return;
         }
-        partitionsState.put(committed.getEventTypePartition(), new PartitionState(cursorOperationsService, committed));
+        partitionsState.put(
+                committed.getEventTypePartition(),
+                new PartitionSkippedCursorsOperator(cursorOperationsService, committed));
     }
 
     public void removePartition(final EventTypePartition eventTypePartition) {
@@ -44,16 +46,18 @@ public class AutocommitSupport {
     }
 
     public void addSkippedEvent(final NakadiCursor cursor) {
-        final PartitionState partitionState = partitionsState.get(cursor.getEventTypePartition());
-        if (null != partitionState) {
-            partitionState.addSkippedEvent(cursor);
+        final PartitionSkippedCursorsOperator partitionSkippedCursorsOperator =
+                partitionsState.get(cursor.getEventTypePartition());
+        if (null != partitionSkippedCursorsOperator) {
+            partitionSkippedCursorsOperator.addSkippedEvent(cursor);
         }
     }
 
     public void onCommit(final NakadiCursor cursor) {
-        final PartitionState partitionState = partitionsState.get(cursor.getEventTypePartition());
-        if (null != partitionState) {
-            partitionState.onCommit(cursor);
+        final PartitionSkippedCursorsOperator partitionSkippedCursorsOperator =
+                partitionsState.get(cursor.getEventTypePartition());
+        if (null != partitionSkippedCursorsOperator) {
+            partitionSkippedCursorsOperator.onCommit(cursor);
         }
     }
 
@@ -63,7 +67,7 @@ public class AutocommitSupport {
     // The only limitation is about monitoring - the less times it is called -> the less accurate monitoring is.
     public void autocommit() {
         List<NakadiCursor> toAutocommit = null;
-        for (final PartitionState state : partitionsState.values()) {
+        for (final PartitionSkippedCursorsOperator state : partitionsState.values()) {
             final NakadiCursor c = state.getAutoCommitSuggestion();
             if (null == c) {
                 continue;
