@@ -7,17 +7,20 @@ import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.ShutdownHooks;
+import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
+import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -54,7 +57,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final TimelineService timelineService;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
-    private final BlacklistService blacklistService;
+    private final EventStreamChecks eventStreamChecks;
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
@@ -66,6 +69,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeChangeListener eventTypeChangeListener;
     private final Comparator<NakadiCursor> cursorComparator;
     private final NakadiKpiPublisher kpiPublisher;
+    private final AutocommitSupport autocommitSupport;
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
 
@@ -93,7 +97,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
-        this.blacklistService = builder.blacklistService;
+        this.eventStreamChecks = builder.eventStreamChecks;
         this.cursorConverter = builder.cursorConverter;
         this.subscription = builder.subscription;
         this.metricRegistry = builder.metricRegistry;
@@ -102,6 +106,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.eventTypeChangeListener = builder.eventTypeChangeListener;
         this.cursorComparator = builder.cursorComparator;
         this.kpiPublisher = builder.kpiPublisher;
+        this.autocommitSupport = new AutocommitSupport(builder.cursorOperationsService, zkClient);
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
@@ -174,6 +179,10 @@ public class StreamingContext implements SubscriptionStreamer {
                     getSubscription(),
                     ex);
         }
+    }
+
+    public AutocommitSupport getAutocommitSupport() {
+        return autocommitSupport;
     }
 
     void onNodeShutdown() {
@@ -278,9 +287,13 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isSubscriptionConsumptionBlocked() {
-        return blacklistService.isSubscriptionConsumptionBlocked(
+        return eventStreamChecks.isConsumptionBlocked(
                 subscription.getEventTypes(),
                 parameters.getConsumingClient().getClientId());
+    }
+
+    public boolean isConsumptionBlocked(final ConsumedEvent event) {
+        return eventStreamChecks.isConsumptionBlocked(event);
     }
 
     public CursorTokenService getCursorTokenService() {
@@ -363,7 +376,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private AtomicBoolean connectionReady;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
-        private BlacklistService blacklistService;
+        private EventStreamChecks eventStreamChecks;
         private CursorConverter cursorConverter;
         private Subscription subscription;
         private MetricRegistry metricRegistry;
@@ -373,6 +386,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private EventTypeChangeListener eventTypeChangeListener;
         private Comparator<NakadiCursor> cursorComparator;
         private NakadiKpiPublisher kpiPublisher;
+        private CursorOperationsService cursorOperationsService;
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
@@ -448,8 +462,8 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setBlacklistService(final BlacklistService blacklistService) {
-            this.blacklistService = blacklistService;
+        public Builder setEventStreamChecks(final EventStreamChecks eventStreamChecks) {
+            this.eventStreamChecks = eventStreamChecks;
             return this;
         }
 
@@ -485,6 +499,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKpiPublisher(final NakadiKpiPublisher kpiPublisher) {
             this.kpiPublisher = kpiPublisher;
+            return this;
+        }
+
+        public Builder setCursorOperationsService(final CursorOperationsService cursorOperationsService) {
+            this.cursorOperationsService = cursorOperationsService;
             return this;
         }
 

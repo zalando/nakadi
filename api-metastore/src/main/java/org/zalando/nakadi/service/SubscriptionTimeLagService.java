@@ -75,9 +75,6 @@ public class SubscriptionTimeLagService {
                     .allOf(futureTimeLags.values().toArray(new CompletableFuture[futureTimeLags.size()]))
                     .get(timeLagHandler.getRemainingTimeoutMs(), TimeUnit.MILLISECONDS);
 
-//            for (final Map.Entry<EventTypePartition, CompletableFuture<Duration>> entry: futureTimeLags.entrySet()) {
-//                timeLags.put(entry.getKey(), entry.getValue().get());
-//            }
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
@@ -150,6 +147,7 @@ public class SubscriptionTimeLagService {
 
                 final ConsumedEvent nextEvent = executeWithRetry(
                         () -> {
+                            // We ignore per event authorization here, because we are not exposing any data.
                             final List<ConsumedEvent> events = consumer.readEvents();
                             return events.isEmpty() ? null : events.iterator().next();
                         },

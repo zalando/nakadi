@@ -12,9 +12,10 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
+import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.NakadiCursorComparator;
@@ -45,6 +46,8 @@ public class SubscriptionStreamerFactory {
     private final EventTypeChangeListener eventTypeChangeListener;
     private final EventTypeCache eventTypeCache;
     private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final CursorOperationsService cursorOperationsService;
+    private final EventStreamChecks eventStreamChecks;
     private final String kpiDataStreamedEventType;
     private final long kpiCollectionFrequencyMs;
     private final long streamMemoryLimitBytes;
@@ -62,6 +65,8 @@ public class SubscriptionStreamerFactory {
             final EventTypeChangeListener eventTypeChangeListener,
             final EventTypeCache eventTypeCache,
             final NakadiKpiPublisher nakadiKpiPublisher,
+            final CursorOperationsService cursorOperationsService,
+            final EventStreamChecks eventStreamChecks,
             @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
             @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs,
             @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes) {
@@ -76,6 +81,8 @@ public class SubscriptionStreamerFactory {
         this.eventTypeChangeListener = eventTypeChangeListener;
         this.eventTypeCache = eventTypeCache;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.cursorOperationsService = cursorOperationsService;
+        this.eventStreamChecks = eventStreamChecks;
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
         this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = streamMemoryLimitBytes;
@@ -86,7 +93,6 @@ public class SubscriptionStreamerFactory {
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
-            final BlacklistService blacklistService,
             final Span parentSpan, final String clientId)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1, streamParameters.getPartitions());
@@ -116,7 +122,7 @@ public class SubscriptionStreamerFactory {
                 .setConnectionReady(connectionReady)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
-                .setBlacklistService(blacklistService)
+                .setEventStreamChecks(eventStreamChecks)
                 .setCursorConverter(cursorConverter)
                 .setSubscription(subscription)
                 .setMetricRegistry(metricRegistry)
@@ -126,6 +132,7 @@ public class SubscriptionStreamerFactory {
                 .setEventTypeChangeListener(eventTypeChangeListener)
                 .setCursorComparator(new NakadiCursorComparator(eventTypeCache))
                 .setKpiPublisher(nakadiKpiPublisher)
+                .setCursorOperationsService(cursorOperationsService)
                 .setKpiDataStremedEventType(kpiDataStreamedEventType)
                 .setKpiCollectionFrequencyMs(kpiCollectionFrequencyMs)
                 .setCurrentSpan(streamSpan)

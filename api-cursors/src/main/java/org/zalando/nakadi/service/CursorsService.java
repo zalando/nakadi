@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
@@ -16,7 +15,6 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
-import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -35,8 +33,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,8 +43,6 @@ import java.util.stream.Stream;
 @Component
 public class CursorsService {
 
-
-    private final EventTypeCache eventTypeCache;
     private final NakadiSettings nakadiSettings;
     private final SubscriptionClientFactory zkSubscriptionFactory;
     private final CursorConverter cursorConverter;
@@ -62,7 +56,6 @@ public class CursorsService {
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
                           final SubscriptionCache subscriptionCache,
-                          final EventTypeCache eventTypeCache,
                           final NakadiSettings nakadiSettings,
                           final SubscriptionClientFactory zkSubscriptionFactory,
                           final CursorConverter cursorConverter,
@@ -70,7 +63,6 @@ public class CursorsService {
                           final TimelineService timelineService,
                           final AuthorizationValidator authorizationValidator,
                           final NakadiAuditLogPublisher auditLogPublisher) {
-        this.eventTypeCache = eventTypeCache;
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
         this.cursorConverter = cursorConverter;
@@ -100,8 +92,7 @@ public class CursorsService {
                     subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
             validateStreamId(cursors, streamId, zkClient, subscriptionId, parentSpan);
             return zkClient.commitOffsets(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()),
-                    new SubscriptionCursorComparator(new NakadiCursorComparator(eventTypeCache)));
+                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()));
         } catch (Exception e) {
             TracingService.logErrorInSpan(parentSpan, e.getMessage());
             throw e;
@@ -252,35 +243,6 @@ public class CursorsService {
         if (!wrongEventTypes.isEmpty()) {
             TracingService.logErrorInSpan(span, "Event type does not belong to subscription: " + wrongEventTypes);
             throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
-        }
-    }
-
-    private class SubscriptionCursorComparator implements Comparator<SubscriptionCursorWithoutToken> {
-        private final Map<SubscriptionCursorWithoutToken, NakadiCursor> cached = new HashMap<>();
-        private final Comparator<NakadiCursor> comparator;
-
-        private SubscriptionCursorComparator(final Comparator<NakadiCursor> comparator) {
-            this.comparator = comparator;
-        }
-
-        @Override
-        public int compare(final SubscriptionCursorWithoutToken c1, final SubscriptionCursorWithoutToken c2) {
-            return comparator.compare(convert(c1), convert(c2));
-        }
-
-        private NakadiCursor convert(final SubscriptionCursorWithoutToken value) {
-            NakadiCursor result = cached.get(value);
-            if (null != result) {
-                return result;
-            }
-            try {
-                result = cursorConverter.convert(value);
-                cached.put(value, result);
-                return result;
-            } catch (final Exception ignore) {
-                //On this stage exception should not be generated - cursors are validated.
-                throw new NakadiRuntimeException(ignore);
-            }
         }
     }
 }

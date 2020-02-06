@@ -34,7 +34,7 @@ public class SubscriptionTimeLagServiceTest {
     private TimelineService timelineService;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         timelineService = mock(TimelineService.class);
 
         cursorComparator = mock(NakadiCursorComparator.class);
@@ -47,8 +47,11 @@ public class SubscriptionTimeLagServiceTest {
         final EventConsumer eventConsumer = mock(EventConsumer.class);
         final Timeline timeline = mock(Timeline.class);
         when(timeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
-        when(eventConsumer.readEvents()).thenAnswer(invocation ->
-                ImmutableList.of(new ConsumedEvent(null, NakadiCursor.of(timeline, "", ""), FAKE_EVENT_TIMESTAMP)));
+        when(eventConsumer.readEvents())
+                .thenAnswer(invocation ->
+                        ImmutableList.of(
+                                new ConsumedEvent(
+                                        null, NakadiCursor.of(timeline, "", ""), FAKE_EVENT_TIMESTAMP, null)));
 
         when(timelineService.createEventConsumer(any(), any())).thenReturn(eventConsumer);
 
