@@ -31,7 +31,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     public void whenPUTAuthorized200() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isOk());
@@ -42,7 +42,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Resource resource = eventType.asResource();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
@@ -58,7 +58,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         eto.setRetentionTime(Long.MAX_VALUE);
         final EventType eventType = EventTypeTestBuilder.builder().options(eto).build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
 
         putEventType(eventType, eventType.getName())
@@ -71,7 +71,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         eto.setRetentionTime(Long.MAX_VALUE);
         final EventType eventType = EventTypeTestBuilder.builder().options(eto).build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
 
         putEventType(eventType, eventType.getName())
@@ -83,7 +83,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     @Test
     public void whenPUTNullAuthorizationForExistingAuthorization() throws Exception {
         final EventType newEventType = EventTypeTestBuilder.builder().build();
-        doReturn(newEventType).when(eventTypeRepository).findByName(any());
+        doReturn(newEventType).when(eventTypeRepository).findByNameSynced(any());
         doThrow(new UnableProcessException(
                 "Changing authorization object to `null` is not possible due to existing one"))
                 .when(authorizationValidator).validateAuthorization(any(), any());

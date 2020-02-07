@@ -271,7 +271,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeUpdatedThenKPIEventSubmitted() throws Exception {
         final EventType et = TestUtils.buildDefaultEventType();
-        when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
+        when(eventTypeRepository.findByNameSynced(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
         when(nakadiSettings.getMaxTopicPartitionCount()).thenReturn(32);
         eventTypeService.update(et.getName(), et);

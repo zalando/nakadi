@@ -165,7 +165,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .defaultStatistic(new EventTypeStatistics(3, 3))
                 .build();
 
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(originalEventType).when(eventTypeRepository).findByNameSynced(any());
         doReturn(true).when(featureToggleService)
                 .isFeatureEnabled(Feature.REPARTITIONING);
 
@@ -275,7 +275,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isOk());
@@ -292,7 +292,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity());
@@ -318,7 +318,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .cleanupPolicy(CleanupPolicy.DELETE)
                 .build();
 
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(originalEventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isUnprocessableEntity());
@@ -336,7 +336,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(updatedEventType, eventType.getName()).andExpect(
                 header().string("Warning", "299 nakadi \"I am warning you\""));
@@ -355,7 +355,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isOk());
@@ -374,7 +374,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity());
@@ -393,7 +393,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity());
@@ -411,7 +411,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -548,7 +548,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                         new EventOwnerSelector(EventOwnerSelector.Type.PATH, "retailer_id", "a.retailer"))
                 .build();
 
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(originalEventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isOk());
@@ -565,7 +565,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .eventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "team", "stream"))
                 .build();
 
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
+        doReturn(originalEventType).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(updatedEventType, originalEventType.getName())
                 .andExpect(status().isUnprocessableEntity());
@@ -575,7 +575,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPUTAdmin200() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(any());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
 
@@ -780,7 +780,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
                 "path does not match resource name");
 
-        doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(eventTypeName);
 
         putEventType(eventType, eventTypeName).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -793,7 +793,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
-        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByNameSynced(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))
@@ -882,7 +882,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         builder.enrichmentStrategies(new ArrayList<>());
         final EventType update = builder.build();
 
-        doReturn(original).when(eventTypeRepository).findByName(any());
+        doReturn(original).when(eventTypeRepository).findByNameSynced(any());
 
         putEventType(update, update.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -1007,7 +1007,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(eventType.getName());
         doThrow(TopicConfigException.class).when(topicRepository).setRetentionTime(anyString(), anyLong());
         when(timelineService.getActiveTimelinesOrdered(any()))
                 .thenReturn(Collections.singletonList(
@@ -1030,7 +1030,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByNameSynced(eventType.getName());
         doThrow(InternalNakadiException.class).when(eventTypeRepository).update(any());
         when(timelineService.getActiveTimelinesOrdered(any()))
                 .thenReturn(Collections.singletonList(
