@@ -23,6 +23,8 @@ public interface EventTypeRepository {
 
     void notifyUpdated(String name);
 
+    EventType findByNameSynced(String name) throws InternalNakadiException, NoSuchEventTypeException;
+
     default Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
         try {
             return Optional.of(findByName(eventTypeName));

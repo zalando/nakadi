@@ -46,6 +46,11 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
+    public EventType findByNameSynced(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        return this.repository.findByName(name);
+    }
+
+    @Override
     public List<EventType> list() {
         return this.repository.list();
     }

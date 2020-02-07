@@ -414,7 +414,7 @@ public class EventTypeService {
         final EventType eventType;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            original = eventTypeRepository.findByName(eventTypeName);
+            original = eventTypeRepository.findByNameSynced(eventTypeName);
 
             if (featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ)
                     && eventTypeBase.getAuthorization() == null) {
