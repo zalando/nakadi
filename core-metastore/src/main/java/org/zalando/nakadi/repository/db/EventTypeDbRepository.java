@@ -68,6 +68,11 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
+    public EventType findByNameSynced(final String name) throws NoSuchEventTypeException {
+        return this.findByName(name);
+    }
+
+    @Override
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
             final String sql = "SELECT et_event_type_object -> 'schema' ->> 'version' " +
