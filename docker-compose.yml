@@ -38,7 +38,9 @@ services:
       POSTGRES_DB: local_nakadi_db
 
   zookeeper:
-    image: wurstmeister/zookeeper:3.4.6
+    image: zookeeper:3.5.6
+    environment:
+      SERVER_JVMFLAGS: -Dzookeeper.extendedTypesEnabled=true
     ports:
       - "2181:2181"
 

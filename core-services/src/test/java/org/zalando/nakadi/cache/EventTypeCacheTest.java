@@ -18,7 +18,6 @@ import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
 
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -26,7 +25,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
 import static org.mockito.Matchers.notNull;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -119,23 +117,10 @@ public class EventTypeCacheTest {
                 1000);
         // Not let's say that we have update in zk, but listener was not called
         when(changesRegistry.getCurrentChanges(any()))
-                .thenReturn(Collections.singletonList(new Change("test", "testET", new Date())));
+                .thenReturn(Collections.singletonList(new Change("test", "testET")));
         retry(
                 () -> verify(changesRegistry, times(2)).getCurrentChanges(notNull(Runnable.class)),
                 3000);
-        eventTypeCache.stopUpdates();
-    }
-
-    @Test(timeout = 6000)
-    public synchronized void ensureThatChangesAreDeletedAfterTTL() throws Exception {
-        final TimelineSync.ListenerRegistration listener = mock(TimelineSync.ListenerRegistration.class);
-        when(timelineSync.registerTimelineChangeListener(any())).thenReturn(listener);
-        final Change change = new Change("ch1", "et", new Date());
-        when(changesRegistry.getCurrentChanges(any())).thenReturn(Collections.singletonList(change));
-        eventTypeCache.startUpdates();
-        retry(() -> {
-            verify(changesRegistry, atLeastOnce()).deleteChanges(eq(Collections.singletonList(change.getId())));
-        }, 5000); // TTL + 2 * periodic check
         eventTypeCache.stopUpdates();
     }
 
@@ -168,7 +153,7 @@ public class EventTypeCacheTest {
 
         // Now, let's register new change and start updates.
         when(changesRegistry.getCurrentChanges(notNull(Runnable.class)))
-                .thenReturn(Collections.singletonList(new Change("ch1", eventTypeName, new Date())));
+                .thenReturn(Collections.singletonList(new Change("ch1", eventTypeName)));
 
         eventTypeCache.startUpdates();
         retry(
