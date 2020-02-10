@@ -73,10 +73,15 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
         if (operation == AuthorizationService.Operation.READ) {
-            return Optional.ofNullable(this.owner)
-                    .map(ConsumedEvent::authToAttribute)
-                    .map(Collections::singletonList);
+            if (null == this.owner) {
+                return Optional.of(Collections.emptyList());
+            } else {
+                return Optional.of(this.owner)
+                        .map(ConsumedEvent::authToAttribute)
+                        .map(Collections::singletonList);
+            }
         }
+        // The only supported operation for Consumed event is READ.
         return Optional.empty();
     }
 
