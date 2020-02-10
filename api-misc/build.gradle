@@ -24,8 +24,6 @@ configurations {
 dependencies {
     ext {
         dropwizardVersion = '3.1.3'
-        curatorVersion = '4.2.0'
-        zookeeperVersion = '3.4.14'
         jacksonVersion = '2.9.8'
         springFrameworkVersion = '4.3.23.RELEASE'
     }
@@ -77,11 +75,6 @@ dependencies {
     // open tracing
     compile 'io.opentracing:opentracing-api:0.31.0'
     compile 'io.opentracing:opentracing-util:0.31.0'
-
-    compile("org.apache.curator:curator-recipes:$curatorVersion") {
-        exclude module: "zookeeper"
-    }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'

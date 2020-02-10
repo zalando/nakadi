@@ -4,6 +4,7 @@ import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
@@ -25,6 +26,13 @@ public class JSONSchemaValidationTest {
         ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
     }
 
+    private EventValidatorBuilder eventValidatorBuilder;
+
+    @Before
+    public void before() {
+        eventValidatorBuilder = new EventValidatorBuilder();
+    }
+
     @Test
     public void validationOfBusinessEventShouldRequiredMetadata() {
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
@@ -33,7 +41,7 @@ public class JSONSchemaValidationTest {
 
         final JSONObject event = new JSONObject("{ \"foo\": \"bar\" }");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -56,7 +64,7 @@ public class JSONSchemaValidationTest {
                 "}}," +
                 "\"foo\": \"bar\"}");
 
-        final Optional<ValidationError> noError = EventValidation.forType(et).validate(validEvent);
+        final Optional<ValidationError> noError = eventValidatorBuilder.build(et).validate(validEvent);
 
         Assert.assertThat(noError, IsOptional.isAbsent());
 
@@ -70,7 +78,7 @@ public class JSONSchemaValidationTest {
                 "}}," +
                 "\"foo\": \"bar\"}");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(invalidEvent);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(invalidEvent);
 
         Assert.assertThat(error.get().getMessage(),
                 CoreMatchers.equalTo("#/metadata/span_ctx/ot-tracer-spanid: expected type: String, found: Integer"));
@@ -84,7 +92,7 @@ public class JSONSchemaValidationTest {
 
         final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" } }");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -100,7 +108,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = dataChangeEvent();
         event.put("foo", "anything");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -115,7 +123,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("event_type", "different-from-event-name");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -131,7 +139,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").remove("occurred_at");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -146,7 +154,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("eid", "x");
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(
                 error.get().getMessage(),
@@ -162,7 +170,7 @@ public class JSONSchemaValidationTest {
         final long startTime = System.currentTimeMillis();
 
         final JSONObject event = undefinedEvent();
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         final long duration = System.currentTimeMillis() - startTime;
 
@@ -177,7 +185,7 @@ public class JSONSchemaValidationTest {
         et.setCategory(EventCategory.DATA);
         final JSONObject event = new JSONObject(TestUtils.readFile("product-event.json"));
 
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
 
         Assert.assertThat(error, IsOptional.isAbsent());
     }

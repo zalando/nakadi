@@ -49,6 +49,12 @@ subprojects {
         dependsOn test
         finalizedBy jacocoTestReport
     }
+    dependencies {
+        ext {
+            curatorVersion = '4.2.0'
+            zookeeperVersion = '3.5.6'
+        }
+    }
 }
 
 task testInitNakadi(type: Exec) {

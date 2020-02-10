@@ -1,101 +1,251 @@
 package org.zalando.nakadi.cache;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
-import org.zalando.nakadi.validation.EventValidation;
+import org.zalando.nakadi.validation.EventValidatorBuilder;
 
-import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+/**
+ * <b>
+ * Distributed event type cache, based on zookeeper notifications about changes.</b>
+ * <p>
+ * On every update of event type cache, new node is created in zookeeper, and all the instances, that are listening
+ * for children changes on a parent zookeeper node are reading contents of all the active changes, and apply them.
+ * As it is known, that sometimes zookeeper/curator under unknown circumstances are loosing watchers, and we have
+ * to think about recreation of the watcher if it is needed.
+ * </p>
+ * <p>
+ * How it works on particular instance from 2 different points of view:
+ *     <ol>
+ *         <li>Event type has changed/deleted on this instance and instance tries to notify others about the change.
+ *         <ul>
+ *             <li>local cache for event type is invalidated and notifications about it are issued to all local
+ *             consumers</li>
+ *             <li>new change with event type name is stored in zookeeper</li>
+ *         </ul>
+ *         </li>
+ *         <li>There is notification about new change issued by zookeeper.
+ *         <ul>
+ *             <li>Notification is triggered from zk</li>
+ *             <li>Full changeset is read from zookeeper and compared with local version of changeset. In case if there
+ *             are changes (event was updated/deleted somehow), local cache for changed event types is invalidated and
+ *             notifications are issued to local consumers</li>
+ *             <li>Watcher for change notifications is recreated</li>
+ *         </ul>
+ *         </li>
+ *     </ol>
+ * </p>
+ * <p>
+ * However, there are 2 corner cases with this approach:
+ * <ol>
+ *     <li> Zookeeper for some reasons may forget to notify about change.
+ *     In order to tackle this problem, cache is periodically (with {@code periodicUpdatesIntervalSeconds} interval)
+ * trying to get current list of changes from zookeeper. In case if there are modifications to the list of changes -
+ * listener in zookeeper is recreated and notifications are processed. This way we guarantee, that all the changes will
+ * be propagated if they were written to zk.
+ *     </li>
+ *     <li>Some update was written to database, but for some reason change was not propagated to zookeeper. There are 2
+ * possible reasons for that:
+ *     <ul>
+ *          <li>zookeeper was unavailable at the moment</li>
+ *          <li>instance was terminated for some reason right after updating database.</li>
+ *     </ul>
+ * In order to tackle this problem there is TTL for value in cache, which is relatively high (2 hours hardcoded).
+ * The reason is that client anyways will receive 5XX response on event type update and will retry, therefore cache
+ * anyways will be reset from other instance. If it will not work out many times in a row (or incase of fire and forget
+ * requests), then in will be reset by this huge TTL.
+ *     </li>
+ * </ol>
+ * </p>
+ *
+ * <p>
+ * And the last part - in order to continue operating fast enough, we have to have relatively short list of changes
+ * stored in zookeeper. This is regulated by {@code zkChangesTTLSeconds}. All the changes that are written to zookeeper
+ * are written with this ttl, therefore are evicted from zookeeper itself from time to time.
+ * </p>
+ *
+ * <p>Considerations in regards to cache eviction after write are:
+ * Suppose that we have 1000 event types that are heavily used, and are running 100 instances. Then, within eviction
+ * interval there will be at least 1000 * 100 = 100_000 cache loads for event type from the cache.
+ * In case if eviction interval is 1 minute, that means we will have ~1667 guaranteed cache loads per second.
+ * In case if eviction interval is 2 hours, than there will be ~ 14 guaranteed cache loads per second.
+ * </p>
+ */
 @Service
 public class EventTypeCache {
-
-    // Enforce cache refresh/listener check every 5 minutes
-    private static final long FORCE_REFRESH_MS = TimeUnit.MINUTES.toMillis(5);
-    private static final String CACHE_ZK_NODE = "/nakadi/event_types_cache";
-
-    private final Cache<CachedValue> cache;
+    private final ChangeSet currentChangeSet = new ChangeSet();
+    private final ChangesRegistry changesRegistry;
+    private final LoadingCache<String, CachedValue> valueCache;
+    private final EventTypeDbRepository eventTypeDbRepository;
     private final TimelineDbRepository timelineRepository;
+    private final ScheduledExecutorService scheduledExecutorService;
+    private final AtomicLong lastCheck = new AtomicLong();
+    private final AtomicLong watcherCounter = new AtomicLong();
+    private final List<Consumer<String>> invalidationListeners = new ArrayList<>();
     private final TimelineSync timelineSync;
-    private final ZookeeperNodeInvalidator nodeInvalidator;
-    private final Map<String, TimelineSync.ListenerRegistration> timelineRegistrations = new ConcurrentHashMap<>();
+    private final long periodicUpdatesInterval;
+    private final long zkChangesTTL;
+    private final EventValidatorBuilder eventValidatorBuilder;
+    private TimelineSync.ListenerRegistration timelineSyncListener = null;
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
 
     @Autowired
     public EventTypeCache(
-            final ZooKeeperHolder zooKeeperHolder,
-            final EventTypeDataProvider eventTypeDataProvider,
+            final ChangesRegistry changesRegistry,
+            final EventTypeDbRepository eventTypeDbRepository,
             final TimelineDbRepository timelineRepository,
-            final TimelineSync timelineSync) {
-        cache = new SimpleCache<>(
-                eventTypeDataProvider,
-                this::convertAndRegister
-        );
-        nodeInvalidator = new ZookeeperNodeInvalidator(
-                cache,
-                zooKeeperHolder,
-                CACHE_ZK_NODE,
-                FORCE_REFRESH_MS);
-
+            final TimelineSync timelineSync,
+            final EventValidatorBuilder eventValidatorBuilder,
+            @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
+            @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
+        this.changesRegistry = changesRegistry;
+        this.eventTypeDbRepository = eventTypeDbRepository;
         this.timelineRepository = timelineRepository;
+        this.valueCache = CacheBuilder.newBuilder()
+                .expireAfterWrite(Duration.ofHours(2))
+                .build(CacheLoader.from(this::loadValue));
+        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         this.timelineSync = timelineSync;
+        this.eventValidatorBuilder = eventValidatorBuilder;
+        this.periodicUpdatesInterval = TimeUnit.SECONDS.toMillis(periodicUpdatesIntervalSeconds);
+        this.zkChangesTTL = TimeUnit.SECONDS.toMillis(zkChangesTTLSeconds);
     }
 
     @PostConstruct
-    public void start() {
-        this.nodeInvalidator.start();
+    public void startUpdates() {
+        this.timelineSyncListener = timelineSync.registerTimelineChangeListener(this::invalidateFromRemote);
+        watcherCounter.set(0L);
+        // Schedule periodic updates, so that first update will recreate zookeeper notification
+        lastCheck.set(System.currentTimeMillis());
+        // Register listener
+        scheduledExecutorService.submit(this::reprocessUntilExceptionDisappears);
+        // Periodic checks
+        scheduledExecutorService.submit(this::periodicCheck);
+        LOG.info("Started updates");
     }
 
     @PreDestroy
-    public void stop() {
-        this.nodeInvalidator.stop();
-        this.timelineRegistrations.forEach((s, listenerRegistration) -> listenerRegistration.cancel());
-        this.timelineRegistrations.clear();
+    public void stopUpdates() {
+        LOG.info("Stopping updates");
+        try {
+            timelineSyncListener.cancel();
+        } finally {
+            timelineSyncListener = null;
+            scheduledExecutorService.shutdown();
+        }
     }
 
-    private CachedValue convertAndRegister(final EventTypeDataProvider.VersionedEventType versionedEventType) {
-        final List<Timeline> timelines =
-                timelineRepository.listTimelinesOrdered(versionedEventType.getEventType().getName());
+    private void getUpdatesAndRegisterListener() throws Exception {
+        // Register watcher, only last one will be used anyways.
+        final long nextWatcherVersion = this.watcherCounter.incrementAndGet();
+        final List<Change> changes = changesRegistry.getCurrentChanges(
+                () -> reactOnZookeeperChangesExternal(nextWatcherVersion));
 
-        timelineRegistrations.computeIfAbsent(versionedEventType.getKey(), n ->
-                timelineSync.registerTimelineChangeListener(n, cache::invalidate));
+        final Collection<String> updatedEventTypes = this.currentChangeSet.getUpdatedEventTypes(changes);
+        updatedEventTypes.forEach(this::invalidateFromRemote);
 
-        return new CachedValue(
-                versionedEventType.getEventType(),
-                EventValidation.forType(versionedEventType.getEventType()),
-                timelines
-        );
+        this.lastCheck.set(System.currentTimeMillis());
     }
 
-    public void updated(final String name) {
-        cache.invalidate(name);
-        created(name);
+    private void reactOnZookeeperChangesLocal(final long watcherVersion) {
+        if (watcherVersion != watcherCounter.get()) {
+            LOG.warn("Watcher notification is ignored, as probably there are several watchers");
+        } else {
+            reprocessUntilExceptionDisappears();
+        }
     }
 
-    public void created(final String name) {
-        nodeInvalidator.notifyUpdate();
-        timelineRegistrations.computeIfAbsent(name,
-                n -> timelineSync.registerTimelineChangeListener(n, cache::invalidate));
+    private void reprocessUntilExceptionDisappears() {
+        try {
+            getUpdatesAndRegisterListener();
+        } catch (Exception ex) {
+            LOG.warn("Failed to register listener and process updates, will retry", ex);
+            this.scheduledExecutorService.schedule(this::reprocessUntilExceptionDisappears, 1, TimeUnit.SECONDS);
+        }
     }
 
-    public void removed(final String name) {
-        cache.invalidate(name);
-        Optional.ofNullable(timelineRegistrations.remove(name))
-                .ifPresent(TimelineSync.ListenerRegistration::cancel);
-        nodeInvalidator.notifyUpdate();
+    private void reactOnZookeeperChangesExternal(final long watcherVersion) {
+        // Triggered on change from zk, and is executed on zk thread, therefore should be registered scheduled executor.
+        scheduledExecutorService.submit(() -> reactOnZookeeperChangesLocal(watcherVersion));
+    }
+
+    private void periodicCheck() {
+        final long deltaMillis = (System.currentTimeMillis() - this.lastCheck.get());
+        // every 2 minutes
+        // Ensure that we are not overreacting...
+        if (deltaMillis < periodicUpdatesInterval) {
+            this.scheduledExecutorService.schedule(
+                    this::periodicCheck, periodicUpdatesInterval - deltaMillis, TimeUnit.MILLISECONDS);
+            return;
+        }
+        final boolean hasChanges;
+        try {
+            hasChanges = currentChangeSet.hasChanges(changesRegistry.getCurrentChanges(null));
+        } catch (final Exception e) {
+            LOG.warn("Failed to run periodic check, will retry soon", e);
+            scheduledExecutorService.schedule(this::periodicCheck, 1, TimeUnit.SECONDS);
+            return;
+        }
+        if (hasChanges) {
+            reprocessUntilExceptionDisappears();
+        }
+        scheduledExecutorService.schedule(this::periodicCheck, periodicUpdatesInterval, TimeUnit.MILLISECONDS);
+    }
+
+    // Received notification that value was invalidated externally
+    private void invalidateFromRemote(final String eventType) {
+        LOG.info("Invalidating event type {} because of remote notification", eventType);
+        invalidateInternal(eventType);
+    }
+
+    private void invalidateInternal(final String eventType) {
+        try {
+            this.valueCache.invalidate(eventType);
+            invalidationListeners.forEach(l -> l.accept(eventType));
+        } catch (RuntimeException ex) {
+            LOG.error("Failed to react on external value invalidation. Wait for next update", ex);
+        }
+    }
+
+    // Local code asked to invalidate value
+    public void invalidate(final String eventTypeName) {
+        LOG.info("Invalidating event type {} and triggering changes notification", eventTypeName);
+        invalidateInternal(eventTypeName);
+        try {
+            this.changesRegistry.registerChange(eventTypeName, zkChangesTTL);
+        } catch (final Exception ex) {
+            LOG.error("Failed to register invalidation requests for event type {}. " +
+                            "If it is required - update manually again",
+                    eventTypeName,
+                    ex);
+        }
     }
 
     public EventType getEventType(final String name) throws NoSuchEventTypeException {
@@ -110,22 +260,43 @@ public class EventTypeCache {
         return getCached(name).getTimelines();
     }
 
-    private CachedValue getCached(final String name) {
-        final CachedValue value = cache.get(name);
-        if (null == value) {
-            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
+    private CachedValue getCached(final String name) throws NoSuchEventTypeException {
+        try {
+            return this.valueCache.getUnchecked(name);
+        } catch (UncheckedExecutionException ex) {
+            if (ex.getCause() instanceof NoSuchEventTypeException) {
+                throw (NoSuchEventTypeException) ex.getCause();
+            } else {
+                throw new InternalNakadiException("Failed to get event type", ex);
+            }
         }
-        return value;
     }
 
-    public void addInvalidationListener(final Consumer<String> onEventTypeInvalidated) {
-        cache.addInvalidationListener(onEventTypeInvalidated);
+    private CachedValue loadValue(final String eventTypeName) {
+        final long start = System.currentTimeMillis();
+        final EventType eventType = eventTypeDbRepository.findByName(eventTypeName);
+
+        final List<Timeline> timelines =
+                timelineRepository.listTimelinesOrdered(eventTypeName);
+
+        final CachedValue result = new CachedValue(
+                eventType,
+                eventValidatorBuilder.build(eventType),
+                timelines
+        );
+        LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
+        return result;
+    }
+
+    public void addInvalidationListener(final Consumer<String> listener) {
+        synchronized (this.invalidationListeners) {
+            this.invalidationListeners.add(listener);
+        }
     }
 
     private static class CachedValue {
         private final EventType eventType;
         private final EventTypeValidator eventTypeValidator;
-        @Nonnull
         private final List<Timeline> timelines;
 
         CachedValue(final EventType eventType,
@@ -148,4 +319,5 @@ public class EventTypeCache {
             return timelines;
         }
     }
+
 }

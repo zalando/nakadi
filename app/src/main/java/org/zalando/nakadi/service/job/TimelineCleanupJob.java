@@ -100,7 +100,7 @@ public class TimelineCleanupJob {
             timelineDbRepository.updateTimelime(timeline);
             timelineUpdatedInDB = true;
 
-            eventTypeCache.updated(timeline.getEventType());
+            eventTypeCache.invalidate(timeline.getEventType());
             cacheUpdated = true;
         } catch (final InconsistentStateException e) {
             LOG.error("Failed to serialize timeline to DB when marking timeline as deleted", e);
