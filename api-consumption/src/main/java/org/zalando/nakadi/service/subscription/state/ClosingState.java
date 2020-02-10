@@ -36,7 +36,6 @@ class ClosingState extends State {
     @Override
     public void onExit() {
         try {
-            getAutocommit().autocommit();
             freePartitions(new HashSet<>(listeners.keySet()));
         } catch (final NakadiRuntimeException | NakadiBaseException ex) {
             // In order not to stuck here one will just log this exception, without rethrowing
@@ -132,8 +131,6 @@ class ClosingState extends State {
         }
         if (uncommittedOffsets.containsKey(key) &&
                 getComparator().compare(uncommittedOffsets.get(key), newCursor) <= 0) {
-            getAutocommit().onCommit(newCursor);
-            getAutocommit().autocommit();
             freePartitions(Collections.singletonList(key));
         }
         tryCompleteState();

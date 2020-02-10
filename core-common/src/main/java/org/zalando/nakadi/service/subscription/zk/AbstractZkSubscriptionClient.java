@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -413,7 +414,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public List<Boolean> commitOffsets(
-            final List<SubscriptionCursorWithoutToken> cursors) {
+            final List<SubscriptionCursorWithoutToken> cursors,
+            final Comparator<SubscriptionCursorWithoutToken> comparator) {
         final Map<EventTypePartition, List<SubscriptionCursorWithoutToken>> grouped =
                 cursors.stream().collect(Collectors.groupingBy(SubscriptionCursorWithoutToken::getEventTypePartition));
         try {
@@ -426,26 +428,31 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                             final byte[] currentOffsetData = getCurator().getData().storingStatIn(stat)
                                     .forPath(offsetPath);
                             final String currentMaxOffset = new String(currentOffsetData, UTF_8);
-                            String newMaxOffset = currentMaxOffset;
+                            SubscriptionCursorWithoutToken currentMaxCursor = new SubscriptionCursorWithoutToken(
+                                    entry.getKey().getEventType(),
+                                    entry.getKey().getPartition(),
+                                    currentMaxOffset
+                            );
                             final List<Boolean> commits = Lists.newArrayList();
 
                             for (final SubscriptionCursorWithoutToken cursor : entry.getValue()) {
-                                // Offsets are lexicographically comparable
-                                if (cursor.getOffset().compareTo(newMaxOffset) > 0) {
-                                    newMaxOffset = cursor.getOffset();
+                                if (comparator.compare(cursor, currentMaxCursor) > 0) {
+                                    currentMaxCursor = cursor;
                                     commits.add(true);
                                 } else {
                                     commits.add(false);
                                 }
                             }
-                            if (!newMaxOffset.equals(currentMaxOffset)) {
+                            if (!currentMaxCursor.getOffset().equals(currentMaxOffset)) {
                                 getLog().info("Committing {} to {}/{}",
-                                        newMaxOffset, entry.getKey().getEventType(), entry.getKey().getPartition());
+                                        currentMaxCursor.getOffset(),
+                                        entry.getKey().getEventType(),
+                                        entry.getKey().getPartition());
 
                                 getCurator()
                                         .setData()
                                         .withVersion(stat.getVersion())
-                                        .forPath(offsetPath, newMaxOffset.getBytes(Charsets.UTF_8));
+                                        .forPath(offsetPath, currentMaxCursor.getOffset().getBytes(Charsets.UTF_8));
                             }
                             return commits;
                         },

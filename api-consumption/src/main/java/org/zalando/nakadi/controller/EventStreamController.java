@@ -23,8 +23,8 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -39,12 +39,12 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -88,7 +88,7 @@ public class EventStreamController {
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
-    private final EventStreamChecks eventStreamChecks;
+    private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
@@ -103,7 +103,7 @@ public class EventStreamController {
                                  final MetricRegistry metricRegistry,
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
-                                 final EventStreamChecks eventStreamChecks,
+                                 final BlacklistService blacklistService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
                                  final EventTypeChangeListener eventTypeChangeListener,
@@ -115,7 +115,7 @@ public class EventStreamController {
         this.metricRegistry = metricRegistry;
         this.streamMetrics = streamMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
-        this.eventStreamChecks = eventStreamChecks;
+        this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
@@ -200,7 +200,7 @@ public class EventStreamController {
         return outputStream -> {
             FlowIdUtils.push(flowId);
 
-            if (eventStreamChecks.isConsumptionBlocked(Collections.singleton(eventTypeName), client.getClientId())) {
+            if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
                         Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                 return;

@@ -5,7 +5,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
 
@@ -60,12 +59,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
         for (final ConsumerRecord<byte[], byte[]> record : records) {
             final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
-
-            result.add(new ConsumedEvent(
-                    record.value(),
-                    cursor.toNakadiCursor(timeline),
-                    record.timestamp(),
-                    EventOwnerHeader.deserialize(record)));
+            result.add(new ConsumedEvent(record.value(), cursor.toNakadiCursor(timeline), record.timestamp()));
         }
         return result;
     }

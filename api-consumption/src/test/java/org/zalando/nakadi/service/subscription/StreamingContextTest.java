@@ -63,7 +63,7 @@ public class StreamingContextTest {
                 .setConnectionReady(new AtomicBoolean(true))
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
-                .setEventStreamChecks(null)
+                .setBlacklistService(null)
                 .setCurrentSpan(span)
                 .build();
     }

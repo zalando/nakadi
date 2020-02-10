@@ -24,10 +24,10 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
-import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.CursorCommitResult;
@@ -82,7 +82,7 @@ public class CursorsControllerTest {
     private final CursorConverter cursorConverter;
     private final AuthorizationService authorizationService;
     private final Client client;
-    private final EventStreamChecks eventStreamChecks;
+    private final BlacklistService blacklistService;
 
     public CursorsControllerTest() throws Exception {
 
@@ -103,10 +103,10 @@ public class CursorsControllerTest {
 
         client = mock(Client.class);
 
-        eventStreamChecks = mock(EventStreamChecks.class);
+        blacklistService = mock(BlacklistService.class);
 
         final CursorsController controller = new CursorsController(cursorsService, cursorConverter, tokenService,
-                eventStreamChecks);
+                blacklistService);
 
         final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
@@ -209,7 +209,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnPostCommit() throws Exception {
-        Mockito.when(eventStreamChecks.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
         checkForProblem(
                 postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"," +
@@ -219,7 +219,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnPatchCommit() throws Exception {
-        Mockito.when(eventStreamChecks.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
         checkForProblem(
                 patchCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"," +
@@ -229,7 +229,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenSubscriptionConsumptionBlockedThenAccessDeniedOnGetCursors() throws Exception {
-        Mockito.when(eventStreamChecks.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
+        Mockito.when(blacklistService.isSubscriptionConsumptionBlocked(anyString(), any())).thenReturn(true);
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Application or subscription is blocked");
         checkForProblem(
                 getCursors(),

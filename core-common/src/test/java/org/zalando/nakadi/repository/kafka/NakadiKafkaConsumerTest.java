@@ -138,13 +138,13 @@ public class NakadiKafkaConsumerTest {
                 consumedEvents.get(0),
                 equalTo(new ConsumedEvent(event1,
                         new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline),
-                        0, null)));
+                        0)));
 
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
                 consumedEvents.get(1),
                 equalTo(new ConsumedEvent(event2,
                         new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline),
-                        0, null)));
+                        0)));
 
         assertThat("The kafka poll should be called with timeout we defined", pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
