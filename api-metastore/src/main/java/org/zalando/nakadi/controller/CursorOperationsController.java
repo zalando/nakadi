@@ -83,19 +83,24 @@ public class CursorOperationsController {
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
-    public List<Cursor> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
-                                    @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors)
+    public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
+                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors)
             throws InternalNakadiException, NoSuchEventTypeException {
 
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
-        return cursors.getList().stream()
+        final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
-                .map(v -> cursorOperationsService.shiftCursor(v.getNakadiCursor(), v.getShift()))
-                .map(cursorConverter::convert)
                 .collect(Collectors.toList());
+
+        final List<NakadiCursor> domainResultCursors = cursorOperationsService.unshiftCursors(domainCursor);
+
+        final List<Cursor> viewResult = domainResultCursors.stream().map(cursorConverter::convert)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.status(HttpStatus.OK).body(viewResult);
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)

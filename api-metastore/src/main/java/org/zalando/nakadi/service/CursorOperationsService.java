@@ -1,13 +1,16 @@
 package org.zalando.nakadi.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
@@ -27,6 +30,7 @@ import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reaso
 @Service
 public class CursorOperationsService {
     private final TimelineService timelineService;
+    private static final Logger LOG = LoggerFactory.getLogger(CursorOperationsService.class);
 
     @Autowired
     public CursorOperationsService(final TimelineService timelineService) {
@@ -113,19 +117,23 @@ public class CursorOperationsService {
         return timelineService.getTopicRepository(timeline).loadTopicStatistics(Collections.singletonList(timeline));
     }
 
-    public NakadiCursor shiftCursor(final NakadiCursor cursor, final long shift) {
-        if (shift < 0) {
-            return moveBack(cursor, -shift);
-        } else if (shift > 0) {
-            return moveForward(cursor, shift);
+    public List<NakadiCursor> unshiftCursors(final List<ShiftedNakadiCursor> cursors) throws InvalidCursorOperation {
+        return cursors.stream().map(this::unshiftCursor).collect(Collectors.toList());
+    }
+
+    public NakadiCursor unshiftCursor(final ShiftedNakadiCursor cursor) throws InvalidCursorOperation {
+        if (cursor.getShift() < 0) {
+            return moveBack(cursor);
+        } else if (cursor.getShift() > 0) {
+            return moveForward(cursor);
         } else {
-            return cursor;
+            return cursor.getNakadiCursor();
         }
     }
 
-    private NakadiCursor moveForward(final NakadiCursor cursor, final long shift) {
-        NakadiCursor currentCursor = cursor;
-        long stillToAdd = shift;
+    private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) {
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
+        long stillToAdd = cursor.getShift();
         while (currentCursor.getTimeline().getLatestPosition() != null) {
             final NakadiCursor timelineLastPosition = currentCursor.getTimeline().getLatestPosition()
                     .toNakadiCursor(currentCursor.getTimeline(), currentCursor.getPartition());
@@ -149,9 +157,9 @@ public class CursorOperationsService {
         return currentCursor;
     }
 
-    private NakadiCursor moveBack(final NakadiCursor cursor, final long shift) {
-        NakadiCursor currentCursor = cursor;
-        long toMoveBack = shift;
+    private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) {
+        NakadiCursor currentCursor = cursor.getNakadiCursor();
+        long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
             final long totalBefore = numberOfEventsBeforeCursor(currentCursor);
             if (totalBefore < toMoveBack) {

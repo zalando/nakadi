@@ -7,7 +7,6 @@ import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
-import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import java.util.Comparator;
@@ -66,6 +65,10 @@ public abstract class State {
         return context.isConnectionReady();
     }
 
+    protected boolean isSubscriptionConsumptionBlocked() {
+        return context.isSubscriptionConsumptionBlocked();
+    }
+
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
         context.scheduleTask(linkTaskToState(task), timeout, unit);
     }
@@ -89,9 +92,5 @@ public abstract class State {
 
     public Comparator<NakadiCursor> getComparator() {
         return getContext().getCursorComparator();
-    }
-
-    protected AutocommitSupport getAutocommit() {
-        return getContext().getAutocommitSupport();
     }
 }

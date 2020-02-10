@@ -37,9 +37,9 @@ import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
-import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
@@ -114,7 +114,7 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
     private MetricRegistry streamMetrics;
     private SecuritySettings settings;
-    private EventStreamChecks eventStreamChecks;
+    private BlacklistService blacklistService;
     private EventTypeCache eventTypeCache;
     private TimelineService timelineService;
     private MockMvc mockMvc;
@@ -152,8 +152,8 @@ public class EventStreamControllerTest {
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
-        eventStreamChecks = Mockito.mock(EventStreamChecks.class);
-        Mockito.when(eventStreamChecks.isConsumptionBlocked(any(), any())).thenReturn(false);
+        blacklistService = Mockito.mock(BlacklistService.class);
+        Mockito.when(blacklistService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
         timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
@@ -167,7 +167,7 @@ public class EventStreamControllerTest {
         when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
-                streamMetrics, crutch, eventStreamChecks,
+                streamMetrics, crutch, blacklistService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
                 eventTypeChangeListener, null);
 

@@ -18,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -128,7 +129,8 @@ public interface ZkSubscriptionClient extends Closeable {
      */
     void forceCommitOffsets(List<SubscriptionCursorWithoutToken> cursors) throws NakadiRuntimeException;
 
-    List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors);
+    List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
+                                Comparator<SubscriptionCursorWithoutToken> comparator);
 
     /**
      * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id}

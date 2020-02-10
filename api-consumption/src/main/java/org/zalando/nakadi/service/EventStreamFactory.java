@@ -15,7 +15,7 @@ public class EventStreamFactory {
 
     private final CursorConverter cursorConverter;
     private final EventStreamWriter eventStreamWriter;
-    private final EventStreamChecks eventStreamChecks;
+    private final BlacklistService blacklistService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String kpiDataStreamedEventType;
     private final long kpiFrequencyMs;
@@ -24,13 +24,13 @@ public class EventStreamFactory {
     public EventStreamFactory(
             final CursorConverter cursorConverter,
             final EventStreamWriter eventStreamWriter,
-            final EventStreamChecks eventStreamChecks,
+            final BlacklistService blacklistService,
             final NakadiKpiPublisher nakadiKpiPublisher,
             @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
             @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiFrequencyMs) {
         this.cursorConverter = cursorConverter;
         this.eventStreamWriter = eventStreamWriter;
-        this.eventStreamChecks = eventStreamChecks;
+        this.blacklistService = blacklistService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
         this.kpiFrequencyMs = kpiFrequencyMs;
@@ -43,7 +43,7 @@ public class EventStreamFactory {
                 eventConsumer,
                 outputStream,
                 config,
-                eventStreamChecks,
+                blacklistService,
                 cursorConverter,
                 bytesFlushedMeter,
                 eventStreamWriter,
