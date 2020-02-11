@@ -5,7 +5,6 @@ import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.ExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.Exhibitors;
-import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -134,10 +133,7 @@ public class ZooKeeperHolder {
                 result.pollForInitialEnsemble();
                 return result;
             case ZOOKEEPER:
-                final String address = conn.getAddresses().stream()
-                        .map(AddressPort::asAddressPort)
-                        .collect(Collectors.joining(","));
-                return new FixedEnsembleProvider(address + conn.getPathPrepared());
+                return new ChrootedFixedEnsembleProvider(conn);
             default:
                 throw new RuntimeException("Connection type " + conn.getType() + " is not supported");
         }
