@@ -27,14 +27,14 @@ import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
 public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     private StorageDbRepository repository;
     private TimelineDbRepository timelineDbRepository;
-    private EventTypeDbRepository eventTypeDbRepository;
+    private EventTypeRepository eventTypeDbRepository;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         repository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
         timelineDbRepository = new TimelineDbRepository(template, TestUtils.OBJECT_MAPPER);
-        eventTypeDbRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
+        eventTypeDbRepository = new EventTypeRepository(template, TestUtils.OBJECT_MAPPER);
     }
 
     static Storage createStorage(final String name, final ZookeeperConnection zkConnection) {

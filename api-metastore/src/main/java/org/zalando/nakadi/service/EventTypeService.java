@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
@@ -52,8 +53,8 @@ import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -103,6 +104,7 @@ public class EventTypeService {
     private final AdminService adminService;
     private final RepartitioningService repartitioningService;
     private final JsonSchemaEnrichment jsonSchemaEnrichment;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public EventTypeService(
@@ -123,7 +125,8 @@ public class EventTypeService {
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
             final AdminService adminService,
-            final RepartitioningService repartitioningService) {
+            final RepartitioningService repartitioningService,
+            final EventTypeCache eventTypeCache) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -142,6 +145,7 @@ public class EventTypeService {
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
         this.repartitioningService = repartitioningService;
+        this.eventTypeCache = eventTypeCache;
         this.jsonSchemaEnrichment = new JsonSchemaEnrichment();
     }
 
@@ -189,7 +193,7 @@ public class EventTypeService {
                         partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic())));
                 return null;
             });
-            eventTypeRepository.notifyUpdated(eventType.getName());
+            eventTypeCache.updated(eventType.getName());
         } catch (final RuntimeException ex) {
             LOG.error("Failed to create event type, will clean up created data", ex);
             if (null != createdTimeline.get()) {
@@ -234,7 +238,7 @@ public class EventTypeService {
             DbWriteOperationsBlockedException,
             EventTypeOptionsValidationException {
         try {
-            eventTypeRepository.findByName(eventType.getName());
+            eventTypeCache.getEventType(eventType.getName());
             LOG.info("Event-type {} already exists", eventType.getName());
         } catch (final NoSuchEventTypeException noSuchEventTypeException) {
             LOG.info("Creating event-type {} as it is missing", eventType.getName());
@@ -289,7 +293,7 @@ public class EventTypeService {
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
-            final Optional<EventType> eventTypeOpt = eventTypeRepository.findByNameO(eventTypeName);
+            final Optional<EventType> eventTypeOpt = eventTypeCache.getEventTypeO(eventTypeName);
             if (!eventTypeOpt.isPresent()) {
                 throw new NoSuchEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
@@ -309,7 +313,7 @@ public class EventTypeService {
             } else {
                 throw new ConflictException("Can't remove event type " + eventTypeName + ", as it has subscriptions");
             }
-            eventTypeRepository.notifyUpdated(eventTypeName);
+            eventTypeCache.updated(eventTypeName);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -414,7 +418,7 @@ public class EventTypeService {
         final EventType eventType;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            original = eventTypeRepository.findByNameSynced(eventTypeName);
+            original = eventTypeRepository.findByName(eventTypeName);
 
             if (featureToggleService.isFeatureEnabled(FORCE_EVENT_TYPE_AUTHZ)
                     && eventTypeBase.getAuthorization() == null) {
@@ -499,7 +503,7 @@ public class EventTypeService {
             eventTypeRepository.update(eventType);
             return null;
         });
-        eventTypeRepository.notifyUpdated(eventType.getName());
+        eventTypeCache.updated(eventType.getName());
     }
 
     private void updateTimelinesCleanup(final String eventType, final Long newRetentionTime,
@@ -527,7 +531,7 @@ public class EventTypeService {
     }
 
     public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         return eventType;
     }

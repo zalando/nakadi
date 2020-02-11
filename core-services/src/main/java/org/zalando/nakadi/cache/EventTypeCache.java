@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -146,6 +147,16 @@ public class EventTypeCache {
 
         public List<Timeline> getTimelines() {
             return timelines;
+        }
+    }
+
+    public Optional<EventType> getEventTypeO(final String eventTypeName) throws InternalNakadiException {
+        try {
+            return Optional.of(getEventType(eventTypeName));
+        } catch (final NoSuchEventTypeException e) {
+            return Optional.empty();
+        } catch (final InternalNakadiException e) {
+            throw e;
         }
     }
 }

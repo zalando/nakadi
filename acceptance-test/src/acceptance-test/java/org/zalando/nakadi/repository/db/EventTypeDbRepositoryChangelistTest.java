@@ -19,14 +19,14 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 
 public class EventTypeDbRepositoryChangelistTest extends AbstractDbRepositoryTest {
-    private EventTypeDbRepository repository;
+    private EventTypeRepository repository;
 
     private final Map<String, String> existentEventTypes = new HashMap<>();
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        repository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
+        repository = new EventTypeRepository(template, TestUtils.OBJECT_MAPPER);
         existentEventTypes.clear();
 
         for (final EventType eventType : repository.list()) {
@@ -58,7 +58,7 @@ public class EventTypeDbRepositoryChangelistTest extends AbstractDbRepositoryTes
         final Map<String, String> old = new HashMap<>();
         old.put("test1", existentEventTypes.get("test1"));
 
-        final List<EventTypeDbRepository.EtChange> changeset = repository.getChangeset(old);
+        final List<EventTypeRepository.EtChange> changeset = repository.getChangeset(old);
 
         // In this test it is expected that there are no changes to internal list in case if something was added
         Assert.assertEquals(Collections.emptyList(), changeset);
@@ -70,10 +70,10 @@ public class EventTypeDbRepositoryChangelistTest extends AbstractDbRepositoryTes
         old.put("test1", existentEventTypes.get("test1"));
         old.put("non-existent-event-type", "it doesnt matter");
 
-        final List<EventTypeDbRepository.EtChange> changeset = repository.getChangeset(old);
+        final List<EventTypeRepository.EtChange> changeset = repository.getChangeset(old);
 
         Assert.assertEquals(
-                Collections.singletonList(new EventTypeDbRepository.EtChange("non-existent-event-type", true)),
+                Collections.singletonList(new EventTypeRepository.EtChange("non-existent-event-type", true)),
                 changeset);
     }
 
@@ -83,10 +83,10 @@ public class EventTypeDbRepositoryChangelistTest extends AbstractDbRepositoryTes
         old.put("test1", existentEventTypes.get("test1"));
         old.put("test2", "something different");
 
-        final List<EventTypeDbRepository.EtChange> changeset = repository.getChangeset(old);
+        final List<EventTypeRepository.EtChange> changeset = repository.getChangeset(old);
 
         Assert.assertEquals(
-                Collections.singletonList(new EventTypeDbRepository.EtChange("test2", false)),
+                Collections.singletonList(new EventTypeRepository.EtChange("test2", false)),
                 changeset);
     }
 }

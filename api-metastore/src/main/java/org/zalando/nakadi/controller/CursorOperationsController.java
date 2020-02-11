@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -19,7 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -39,18 +39,18 @@ public class CursorOperationsController {
 
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
-    private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public CursorOperationsController(final CursorOperationsService cursorOperationsService,
                                       final CursorConverter cursorConverter,
-                                      final EventTypeRepository eventTypeRepository,
-                                      final AuthorizationValidator authorizationValidator) {
+                                      final AuthorizationValidator authorizationValidator,
+                                      final EventTypeCache eventTypeCache) {
         this.cursorOperationsService = cursorOperationsService;
         this.cursorConverter = cursorConverter;
-        this.eventTypeRepository = eventTypeRepository;
         this.authorizationValidator = authorizationValidator;
+        this.eventTypeCache = eventTypeCache;
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
@@ -58,7 +58,7 @@ public class CursorOperationsController {
                                          @Valid @RequestBody final ValidListWrapper<CursorDistance> queries)
             throws InternalNakadiException, NoSuchEventTypeException {
 
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
@@ -87,7 +87,7 @@ public class CursorOperationsController {
                                          @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors)
             throws InternalNakadiException, NoSuchEventTypeException {
 
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
@@ -108,7 +108,7 @@ public class CursorOperationsController {
                                       @Valid @RequestBody final ValidListWrapper<Cursor> cursors)
             throws InternalNakadiException, NoSuchEventTypeException {
 
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 

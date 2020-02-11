@@ -10,6 +10,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
@@ -29,7 +30,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
@@ -93,7 +93,7 @@ public class SubscriptionControllerTest {
     private static final Timeline TIMELINE = TestUtils.buildTimelineWithTopic("topic");
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+    private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     private final MockMvc mockMvc;
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
@@ -126,9 +126,9 @@ public class SubscriptionControllerTest {
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, timelineService, eventTypeRepository, subscriptionValidationService,
+                zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class));
+                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
@@ -256,7 +256,7 @@ public class SubscriptionControllerTest {
         final Map<EventTypePartition, SubscriptionCursorWithoutToken> offsets = new HashMap<>();
         offsets.put(etp, currentOffset);
         when(zkSubscriptionClient.getOffsets(Collections.singleton(etp))).thenReturn(offsets);
-        when(eventTypeRepository.findByName(TIMELINE.getEventType()))
+        when(eventTypeCache.getEventType(TIMELINE.getEventType()))
                 .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(
                 new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
@@ -289,7 +289,7 @@ public class SubscriptionControllerTest {
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
-        when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
+        when(eventTypeCache.getEventType("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isNotFound());

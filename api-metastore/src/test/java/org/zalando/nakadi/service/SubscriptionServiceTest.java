@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
@@ -13,7 +14,6 @@ import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -45,7 +45,7 @@ public class SubscriptionServiceTest {
         final TimelineService timelineService = Mockito.mock(TimelineService.class);
         final CursorOperationsService cursorOperationsService = Mockito.mock(CursorOperationsService.class);
         final CursorConverter cursorConverter = Mockito.mock(CursorConverter.class);
-        final EventTypeRepository eventTypeRepository = Mockito.mock(EventTypeRepository.class);
+        final EventTypeCache cache = Mockito.mock(EventTypeCache.class);
         final NakadiAuditLogPublisher nakadiAuditLogPublisher = Mockito.mock(NakadiAuditLogPublisher.class);
         subscriptionValidationService = Mockito.mock(SubscriptionValidationService.class);
         nakadiKpiPublisher = Mockito.mock(NakadiKpiPublisher.class);
@@ -54,9 +54,9 @@ public class SubscriptionServiceTest {
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
-                timelineService, eventTypeRepository, subscriptionValidationService, cursorConverter,
+                timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                nakadiAuditLogPublisher, authorizationValidator);
+                nakadiAuditLogPublisher, authorizationValidator, cache);
     }
 
     @Test(expected = AuthorizationNotPresentException.class)

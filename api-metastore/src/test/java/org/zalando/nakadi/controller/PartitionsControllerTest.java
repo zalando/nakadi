@@ -21,7 +21,6 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.ClientResolver;
@@ -75,7 +74,7 @@ public class PartitionsControllerTest {
             new KafkaPartitionStatistics(TIMELINE, 0, 12, 67),
             new KafkaPartitionStatistics(TIMELINE, 1, 43, 98));
     private final AuthorizationValidator authorizationValidator = Mockito.mock(AuthorizationValidator.class);
-    private EventTypeRepository eventTypeRepositoryMock;
+    private EventTypeCache eventTypeCacheMock;
     private TopicRepository topicRepositoryMock;
     private EventTypeCache eventTypeCache;
     private TimelineService timelineService;
@@ -86,7 +85,7 @@ public class PartitionsControllerTest {
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
-        eventTypeRepositoryMock = Mockito.mock(EventTypeRepository.class);
+        eventTypeCacheMock = Mockito.mock(EventTypeCache.class);
         topicRepositoryMock = Mockito.mock(TopicRepository.class);
         eventTypeCache = Mockito.mock(EventTypeCache.class);
         timelineService = Mockito.mock(TimelineService.class);
@@ -102,7 +101,7 @@ public class PartitionsControllerTest {
         Mockito.when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         final CursorConverter cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
         final PartitionsController controller = new PartitionsController(timelineService, cursorConverter,
-                cursorOperationsService, eventTypeRepositoryMock, authorizationValidator);
+                cursorOperationsService, eventTypeCacheMock, authorizationValidator);
 
         settings = Mockito.mock(SecuritySettings.class);
 
@@ -115,7 +114,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsThenOk() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         Mockito.when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         Mockito.when(topicRepositoryMock.loadTopicStatistics(
                 eq(Collections.singletonList(TIMELINE))))
@@ -151,7 +150,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionThenOk() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         Mockito.when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         Mockito.when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
                 .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
@@ -164,7 +163,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenUnauthorizedGetPartitionThenForbiddenStatusCode() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
         Mockito.doThrow(TestUtils.mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
 
@@ -175,7 +174,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenUnauthorizedGetPartitionsThenForbiddenStatusCode() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
         Mockito.doThrow(TestUtils.mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
 
@@ -186,7 +185,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenAllDataAccessGetPartitionsThenOk() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
         Mockito.doNothing().when(authorizationValidator).authorizeStreamRead(any());
 
@@ -198,7 +197,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionWithConsumedOffsetThenOk() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         Mockito.when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         Mockito.when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
                 .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
@@ -231,7 +230,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE))
+        Mockito.when(eventTypeCacheMock.getEventType(UNKNOWN_EVENT_TYPE))
                 .thenThrow(new NoSuchEventTypeException("topic not found"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
 
@@ -243,7 +242,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
-        Mockito.when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         Mockito.when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
         Mockito.when(topicRepositoryMock.loadPartitionStatistics(
                 eq(TIMELINE), eq(UNKNOWN_PARTITION)))

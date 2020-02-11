@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.repository.db.EventTypeDbRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.util.JsonUtils;
 
 import java.util.Collection;
@@ -16,12 +16,12 @@ import java.util.stream.Collectors;
 public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataProvider.VersionedEventType, String> {
 
     private final ObjectMapper objectMapper;
-    private final EventTypeDbRepository eventTypeDbRepository;
+    private final EventTypeRepository eventTypeDbRepository;
 
     @Autowired
     public EventTypeDataProvider(
             final ObjectMapper objectMapper,
-            final EventTypeDbRepository eventTypeDbRepository) {
+            final EventTypeRepository eventTypeDbRepository) {
         this.objectMapper = objectMapper;
         this.eventTypeDbRepository = eventTypeDbRepository;
     }
@@ -36,15 +36,15 @@ public class EventTypeDataProvider implements CacheDataProvider<EventTypeDataPro
         final Map<String, String> currentValues = snapshot.stream()
                 .collect(Collectors.toMap(VersionedEventType::getKey, VersionedEventType::getVersion));
 
-        final List<EventTypeDbRepository.EtChange> changeset = eventTypeDbRepository.getChangeset(currentValues);
+        final List<EventTypeRepository.EtChange> changeset = eventTypeDbRepository.getChangeset(currentValues);
         return new CacheChange(
                 changeset.stream()
                         .filter(v -> !v.isDeleted())
-                        .map(EventTypeDbRepository.EtChange::getName)
+                        .map(EventTypeRepository.EtChange::getName)
                         .collect(Collectors.toList()),
                 changeset.stream()
-                        .filter(EventTypeDbRepository.EtChange::isDeleted)
-                        .map(EventTypeDbRepository.EtChange::getName)
+                        .filter(EventTypeRepository.EtChange::isDeleted)
+                        .map(EventTypeRepository.EtChange::getName)
                         .collect(Collectors.toList())
         );
     }

@@ -8,6 +8,7 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.CursorsExceptionHandler;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
@@ -20,7 +21,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
@@ -95,8 +95,8 @@ public class CursorsControllerTest {
                 when(cursorConverter.convert(eq(DUMMY_NAKADI_CURSORS.get(idx)), any()))
                         .thenReturn(DUMMY_CURSORS.get(idx)));
 
-        final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-        doReturn(TestUtils.buildDefaultEventType()).when(eventTypeRepository).findByName(any());
+        final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
+        doReturn(TestUtils.buildDefaultEventType()).when(eventTypeCache).getEventType(any());
         doReturn(RandomSubscriptionBuilder.builder().build()).when(subscriptionRepository).getSubscription(any());
         final CursorTokenService tokenService = mock(CursorTokenService.class);
         when(tokenService.generateToken()).thenReturn(TOKEN);

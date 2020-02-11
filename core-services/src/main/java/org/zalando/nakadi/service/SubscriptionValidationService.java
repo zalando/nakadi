@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -21,7 +22,6 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -39,20 +39,20 @@ import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 @Service
 public class SubscriptionValidationService {
 
-    private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final int maxSubscriptionPartitions;
     private final CursorConverter cursorConverter;
     private final AuthorizationValidator authorizationValidator;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public SubscriptionValidationService(final TimelineService timelineService,
-                                         final EventTypeRepository eventTypeRepository,
                                          final NakadiSettings nakadiSettings,
                                          final CursorConverter cursorConverter,
-                                         final AuthorizationValidator authorizationValidator) {
+                                         final AuthorizationValidator authorizationValidator,
+                                         final EventTypeCache eventTypeCache) {
         this.timelineService = timelineService;
-        this.eventTypeRepository = eventTypeRepository;
+        this.eventTypeCache = eventTypeCache;
         this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
@@ -181,7 +181,7 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toMap(Function.identity(),
                         et -> {
                             try {
-                                return eventTypeRepository.findByNameO(et);
+                                return eventTypeCache.getEventTypeO(et);
                             } catch (InternalNakadiException e) {
                                 throw new InconsistentStateException("Unexpected error when getting event type", e);
                             }
