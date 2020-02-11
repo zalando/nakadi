@@ -13,7 +13,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.db.EventTypeDbRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -102,7 +103,7 @@ public class EventTypeCache {
     private final ChangeSet currentChangeSet = new ChangeSet();
     private final ChangesRegistry changesRegistry;
     private final LoadingCache<String, CachedValue> valueCache;
-    private final EventTypeDbRepository eventTypeDbRepository;
+    private final EventTypeRepository eventTypeRepository;
     private final TimelineDbRepository timelineRepository;
     private final ScheduledExecutorService scheduledExecutorService;
     private final AtomicLong lastCheck = new AtomicLong();
@@ -119,14 +120,14 @@ public class EventTypeCache {
     @Autowired
     public EventTypeCache(
             final ChangesRegistry changesRegistry,
-            final EventTypeDbRepository eventTypeDbRepository,
+            final EventTypeRepository eventTypeRepository,
             final TimelineDbRepository timelineRepository,
             final TimelineSync timelineSync,
             final EventValidatorBuilder eventValidatorBuilder,
             @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
             @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
         this.changesRegistry = changesRegistry;
-        this.eventTypeDbRepository = eventTypeDbRepository;
+        this.eventTypeRepository = eventTypeRepository;
         this.timelineRepository = timelineRepository;
         this.valueCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofHours(2))
@@ -274,7 +275,7 @@ public class EventTypeCache {
 
     private CachedValue loadValue(final String eventTypeName) {
         final long start = System.currentTimeMillis();
-        final EventType eventType = eventTypeDbRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
@@ -320,4 +321,13 @@ public class EventTypeCache {
         }
     }
 
+    public Optional<EventType> getEventTypeO(final String eventTypeName) throws InternalNakadiException {
+        try {
+            return Optional.of(getEventType(eventTypeName));
+        } catch (final NoSuchEventTypeException e) {
+            return Optional.empty();
+        } catch (final InternalNakadiException e) {
+            throw e;
+        }
+    }
 }

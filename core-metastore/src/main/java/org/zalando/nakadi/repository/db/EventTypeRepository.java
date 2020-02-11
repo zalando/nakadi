@@ -17,24 +17,23 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @DB
 @Component
-public class EventTypeDbRepository extends AbstractDbRepository implements EventTypeRepository {
+public class EventTypeRepository extends AbstractDbRepository {
 
     @Autowired
-    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
+    public EventTypeRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
     }
 
-    @Override
     public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
         try {
@@ -53,7 +52,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
     public EventType findByName(final String name) throws NoSuchEventTypeException {
         final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
 
@@ -64,12 +62,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
-    public EventType findByNameSynced(final String name) throws NoSuchEventTypeException {
-        return this.findByName(name);
-    }
-
-    @Override
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
             final String sql = "SELECT et_event_type_object -> 'schema' ->> 'version' " +
@@ -149,14 +141,12 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type",
                 new EventTypeMapper());
     }
 
-    @Override
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.event_type_schema WHERE ets_event_type_name = ?", name);
@@ -169,8 +159,12 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
-    public void notifyUpdated(final String name) {
-        // Do nothing. Database is always in sync
-    }
-}
+    public Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
+        try {
+            return Optional.of(findByName(eventTypeName));
+        } catch (final NoSuchEventTypeException e) {
+            return Optional.empty();
+        } catch (final InternalNakadiException e) {
+            throw e;
+        }
+    }}

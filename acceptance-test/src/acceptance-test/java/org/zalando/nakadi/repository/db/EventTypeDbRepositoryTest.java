@@ -25,12 +25,12 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
-    private EventTypeDbRepository repository;
+    private EventTypeRepository repository;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        repository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
+        repository = new EventTypeRepository(template, TestUtils.OBJECT_MAPPER);
     }
 
     @Test

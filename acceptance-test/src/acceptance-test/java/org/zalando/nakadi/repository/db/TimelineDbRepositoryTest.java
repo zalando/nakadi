@@ -31,7 +31,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         super.setUp();
         this.tRepository = new TimelineDbRepository(template, TestUtils.OBJECT_MAPPER);
         final StorageDbRepository sRepository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
-        final EventTypeDbRepository eRepository = new EventTypeDbRepository(template, TestUtils.OBJECT_MAPPER);
+        final EventTypeRepository eRepository = new EventTypeRepository(template, TestUtils.OBJECT_MAPPER);
 
         storage = sRepository.createStorage(StorageDbRepositoryTest.createStorage(
                 randomUUID(), ZookeeperConnection.valueOf("zookeeper://localhost:8181/test")));

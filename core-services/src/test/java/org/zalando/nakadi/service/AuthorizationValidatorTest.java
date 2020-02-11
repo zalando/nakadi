@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.ResourceAuthorization;
@@ -19,7 +20,6 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
 import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedException;
 import org.zalando.nakadi.plugin.api.exceptions.PluginException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -43,7 +43,7 @@ public class AuthorizationValidatorTest {
         adminService = Mockito.mock(AdminService.class);
 
         validator = new AuthorizationValidator(authorizationService,
-                Mockito.mock(EventTypeRepository.class), adminService);
+                Mockito.mock(EventTypeCache.class), adminService);
     }
 
     @Test

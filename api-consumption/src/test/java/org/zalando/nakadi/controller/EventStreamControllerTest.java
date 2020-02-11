@@ -28,7 +28,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.Client;
@@ -107,7 +106,6 @@ public class EventStreamControllerTest {
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
     private TopicRepository topicRepositoryMock;
-    private EventTypeRepository eventTypeRepository;
     private EventStreamFactory eventStreamFactoryMock;
 
     private EventStreamController controller;
@@ -129,7 +127,6 @@ public class EventStreamControllerTest {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         timeline = buildTimelineWithTopic(TEST_TOPIC);
 
-        eventTypeRepository = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
         adminService = mock(AdminService.class);
         authorizationService = mock(AuthorizationService.class);
@@ -166,7 +163,7 @@ public class EventStreamControllerTest {
         eventTypeChangeListener = mock(EventTypeChangeListener.class);
         when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
-                eventTypeRepository, timelineService, OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
+                eventTypeCache, timelineService, OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
                 eventTypeChangeListener, null);
@@ -183,7 +180,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void testCursorsForNulls() throws Exception {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         MatcherAssert.assertThat(
                 responseToString(createStreamingResponseBody("[{\"partition\":null,\"offset\":\"0\"}]")),
                 JSON_TEST_HELPER.matchesObject(
@@ -208,7 +205,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
@@ -234,7 +231,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenTopicNotExistsThenTopicNotFound() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(NoSuchEventTypeException.class);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenThrow(NoSuchEventTypeException.class);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
@@ -244,7 +241,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenStreamLimitLowerThanBatchLimitThenUnprocessableEntity() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(20, 10, 0, 0, 0, null);
 
@@ -255,7 +252,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenStreamTimeoutLowerThanBatchTimeoutThenUnprocessableEntity() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 20, 10, 0, null);
 
@@ -266,7 +263,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenBatchLimitLowerThan1ThenUnprocessableEntity() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
@@ -276,7 +273,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenWrongCursorsFormatThenBadRequest() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
                 "cursors_with_wrong_format");
@@ -288,7 +285,7 @@ public class EventStreamControllerTest {
     @Test
     public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
         final NakadiCursor cursor = NakadiCursor.of(timeline, "0", "000000000000000000");
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(timelineService.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
@@ -303,7 +300,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNoCursorsThenLatestOffsetsAreUsed() throws IOException, InvalidCursorException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         final List<PartitionStatistics> tps2 = ImmutableList.of(
                 new KafkaPartitionStatistics(timeline, 0, 0, 87),
                 new KafkaPartitionStatistics(timeline, 1, 0, 34));
@@ -328,7 +325,7 @@ public class EventStreamControllerTest {
     @Test
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(timelineService.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000")))))
                 .thenReturn(eventConsumerMock);
@@ -376,7 +373,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNakadiExceptionIsThrownThenServiceUnavailable() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME))
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME))
                 .thenThrow(ServiceTemporarilyUnavailableException.class);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody();
@@ -387,7 +384,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenExceptionIsThrownThenInternalServerError() throws IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(NullPointerException.class);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenThrow(NullPointerException.class);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
@@ -397,7 +394,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void reportCurrentNumberOfConsumers() throws Exception {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         final EventStream eventStream = mock(EventStream.class);
 
         // block to simulate the streaming until thread is interrupted
@@ -465,7 +462,7 @@ public class EventStreamControllerTest {
         Mockito.doThrow(AccessDeniedException.class).when(authorizationValidator)
                 .authorizeStreamRead(any());
 
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
@@ -512,7 +509,7 @@ public class EventStreamControllerTest {
 
     private void prepareScopeRead() throws InvalidCursorException {
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0")))))
                 .thenReturn(eventConsumerMock);

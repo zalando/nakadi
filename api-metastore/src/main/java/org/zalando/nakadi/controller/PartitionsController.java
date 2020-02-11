@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -23,7 +24,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -48,20 +48,20 @@ public class PartitionsController {
     private final TimelineService timelineService;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
-    private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public PartitionsController(final TimelineService timelineService,
                                 final CursorConverter cursorConverter,
                                 final CursorOperationsService cursorOperationsService,
-                                final EventTypeRepository eventTypeRepository,
+                                final EventTypeCache eventTypeCache,
                                 final AuthorizationValidator authorizationValidator) {
         this.timelineService = timelineService;
         this.cursorConverter = cursorConverter;
         this.cursorOperationsService = cursorOperationsService;
-        this.eventTypeRepository = eventTypeRepository;
         this.authorizationValidator = authorizationValidator;
+        this.eventTypeCache = eventTypeCache;
     }
 
     private static NakadiCursor selectLast(final List<Timeline> activeTimelines, final PartitionEndStatistics last,
@@ -88,7 +88,7 @@ public class PartitionsController {
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
                                             final NativeWebRequest request) throws NoSuchEventTypeException {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
@@ -122,7 +122,7 @@ public class PartitionsController {
             @Nullable @RequestParam(value = "consumed_offset", required = false) final String consumedOffset,
             final NativeWebRequest request) throws NoSuchEventTypeException {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
