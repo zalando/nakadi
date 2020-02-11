@@ -627,7 +627,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
         doReturn(eventType).when(eventTypeCache).getEventType(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
         final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
@@ -655,7 +655,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType eventType = TestUtils.buildDefaultEventType();
         when(adminService.isAdmin(any())).thenReturn(true);
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
 
         postEventType(eventType);
         disableETDeletionFeature();
@@ -668,7 +668,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
         final String eventTypeName = TestUtils.randomValidEventTypeName();
-        doReturn(Optional.empty()).when(eventTypeCache).getEventTypeO(eventTypeName);
+        doReturn(Optional.empty()).when(eventTypeCache).getEventTypeIfExists(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"));
@@ -677,7 +677,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
-        when(eventTypeCache.getEventTypeO(eventType.getName())).thenReturn(Optional.of(eventType));
+        when(eventTypeCache.getEventTypeIfExists(eventType.getName())).thenReturn(Optional.of(eventType));
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
 
         final Subscription mockSubscription = mock(Subscription.class);
@@ -706,7 +706,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(new InternalNakadiException("dummy message"))
                 .when(eventTypeRepository).removeEventType(eventTypeName);
         doReturn(Optional.of(EventTypeTestBuilder.builder().name(eventTypeName).build()))
-                .when(eventTypeCache).getEventTypeO(eventTypeName);
+                .when(eventTypeCache).getEventTypeIfExists(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

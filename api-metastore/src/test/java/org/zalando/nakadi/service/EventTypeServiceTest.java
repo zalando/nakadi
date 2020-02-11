@@ -99,7 +99,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         doThrow(new InternalNakadiException("Can't delete event tye"))
                 .when(eventTypeRepository).removeEventType(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         final Multimap<TopicRepository, String> topicsToDelete = mock(Multimap.class);
         doReturn(new ArrayList<Subscription>())
                 .when(subscriptionDbRepository)
@@ -120,7 +120,7 @@ public class EventTypeServiceTest {
     public void whenSubscriptionsExistThenCantDeleteEventType() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -138,7 +138,7 @@ public class EventTypeServiceTest {
     public void testFeatureToggleAllowsDeleteEventTypeWithSubscriptions() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
@@ -155,7 +155,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.setAuthorization(TestUtils.buildResourceAuthorization());
 
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -176,7 +176,7 @@ public class EventTypeServiceTest {
     public void testFeatureToggleForbidsDeleteEventTypeWithoutAuthzSection() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -202,7 +202,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.setAuthorization(TestUtils.buildResourceAuthorization());
 
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
 
         doReturn(ImmutableList.of(TestUtils.createSubscription("someone", "something")))
                 .when(subscriptionDbRepository)
@@ -289,7 +289,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeDeletedThenKPIEventSubmitted() throws Exception {
         final EventType et = TestUtils.buildDefaultEventType();
-        when(eventTypeCache.getEventTypeO(et.getName())).thenReturn(Optional.of(et));
+        when(eventTypeCache.getEventTypeIfExists(et.getName())).thenReturn(Optional.of(et));
 
         eventTypeService.delete(et.getName());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,

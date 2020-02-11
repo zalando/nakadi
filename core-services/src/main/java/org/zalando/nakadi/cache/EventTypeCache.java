@@ -321,13 +321,11 @@ public class EventTypeCache {
         }
     }
 
-    public Optional<EventType> getEventTypeO(final String eventTypeName) throws InternalNakadiException {
+    public Optional<EventType> getEventTypeIfExists(final String eventTypeName) throws InternalNakadiException {
         try {
             return Optional.of(getEventType(eventTypeName));
         } catch (final NoSuchEventTypeException e) {
             return Optional.empty();
-        } catch (final InternalNakadiException e) {
-            throw e;
         }
     }
 }

@@ -181,7 +181,7 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toMap(Function.identity(),
                         et -> {
                             try {
-                                return eventTypeCache.getEventTypeO(et);
+                                return eventTypeCache.getEventTypeIfExists(et);
                             } catch (InternalNakadiException e) {
                                 throw new InconsistentStateException("Unexpected error when getting event type", e);
                             }

@@ -70,7 +70,7 @@ public class SubscriptionValidationServiceTest {
             eventType.setName(etName);
             eventTypes.put(etName, eventType);
         }
-        when(etCache.getEventTypeO(any()))
+        when(etCache.getEventTypeIfExists(any()))
                 .thenAnswer(invocation -> Optional.ofNullable(eventTypes.get(invocation.getArguments()[0])));
 
         final TimelineService timelineService = mock(TimelineService.class);
@@ -93,14 +93,14 @@ public class SubscriptionValidationServiceTest {
 
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
-        when(etCache.getEventTypeO(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
+        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
     public void whenNoEventTypeThenException() throws Exception {
-        when(etCache.getEventTypeO(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
-        when(etCache.getEventTypeO(ET2)).thenReturn(Optional.of(new EventType()));
+        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
+        when(etCache.getEventTypeIfExists(ET2)).thenReturn(Optional.of(new EventType()));
 
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase);

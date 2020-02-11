@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 @DB
 @Component
@@ -87,49 +85,6 @@ public class EventTypeRepository extends AbstractDbRepository {
                 jsonMapper.writer().writeValueAsString(eventType.getSchema()));
     }
 
-    public static class EtChange {
-        private final String name;
-        private final boolean deleted;
-
-        EtChange(final String name, final boolean deleted) {
-            this.name = name;
-            this.deleted = deleted;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public boolean isDeleted() {
-            return deleted;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            final EtChange etChange = (EtChange) o;
-            return deleted == etChange.deleted && Objects.equals(name, etChange.name);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, deleted);
-        }
-
-        @Override
-        public String toString() {
-            return "EtChange{" +
-                    "name='" + name + '\'' +
-                    ", deleted=" + deleted +
-                    '}';
-        }
-    }
-
     private class EventTypeMapper implements RowMapper<EventType> {
         @Override
         public EventType mapRow(final ResultSet rs, final int rowNum) throws SQLException {
@@ -158,13 +113,4 @@ public class EventTypeRepository extends AbstractDbRepository {
             throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
         }
     }
-
-    public Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
-        try {
-            return Optional.of(findByName(eventTypeName));
-        } catch (final NoSuchEventTypeException e) {
-            return Optional.empty();
-        } catch (final InternalNakadiException e) {
-            throw e;
-        }
-    }}
+}

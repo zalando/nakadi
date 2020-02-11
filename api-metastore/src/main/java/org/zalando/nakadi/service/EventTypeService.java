@@ -293,7 +293,7 @@ public class EventTypeService {
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
-            final Optional<EventType> eventTypeOpt = eventTypeCache.getEventTypeO(eventTypeName);
+            final Optional<EventType> eventTypeOpt = eventTypeCache.getEventTypeIfExists(eventTypeName);
             if (!eventTypeOpt.isPresent()) {
                 throw new NoSuchEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }

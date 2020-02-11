@@ -194,7 +194,7 @@ public class AuthorizationValidator {
         subscription.getEventTypes().forEach(
                 (eventTypeName) -> {
                     try {
-                        eventTypeCache.getEventTypeO(eventTypeName).ifPresent(this::authorizeStreamRead);
+                        eventTypeCache.getEventTypeIfExists(eventTypeName).ifPresent(this::authorizeStreamRead);
                     } catch (final InternalNakadiException e) {
                         throw new ServiceTemporarilyUnavailableException(e);
                     }
