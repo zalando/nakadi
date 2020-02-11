@@ -133,7 +133,10 @@ public class ZooKeeperHolder {
                 result.pollForInitialEnsemble();
                 return result;
             case ZOOKEEPER:
-                return new ChrootedFixedEnsembleProvider(conn);
+                final String addressesJoined = conn.getAddresses().stream()
+                        .map(AddressPort::asAddressPort)
+                        .collect(Collectors.joining(","));
+                return new ChrootedFixedEnsembleProvider(addressesJoined, conn.getPathPrepared());
             default:
                 throw new RuntimeException("Connection type " + conn.getType() + " is not supported");
         }

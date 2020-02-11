@@ -3,11 +3,8 @@ package org.zalando.nakadi.repository.zookeeper;
 import org.apache.curator.ensemble.EnsembleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.domain.storage.AddressPort;
-import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
 
 /**
  * Zookeeper 3.5 introduced configuration updates. Unfortunately, this configuration updates are cleaning chroot path
@@ -20,12 +17,9 @@ public class ChrootedFixedEnsembleProvider implements EnsembleProvider {
     private volatile String preparedConnection;
     private static final Logger LOG = LoggerFactory.getLogger(ChrootedFixedEnsembleProvider.class);
 
-    public ChrootedFixedEnsembleProvider(final ZookeeperConnection zookeeperConnection) {
-        final String addresses = zookeeperConnection.getAddresses().stream()
-                .map(AddressPort::asAddressPort)
-                .collect(Collectors.joining(","));
-        this.chrootPath = zookeeperConnection.getPathPrepared();
-        this.preparedConnection = addresses + chrootPath;
+    public ChrootedFixedEnsembleProvider(final String addressesJoined, final String chrootPath) {
+        this.chrootPath = chrootPath;
+        this.preparedConnection = addressesJoined + chrootPath;
     }
 
     @Override
