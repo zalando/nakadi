@@ -78,8 +78,8 @@ dependencies {
     compile 'io.opentracing:opentracing-api:0.31.0'
     compile 'io.opentracing:opentracing-util:0.31.0'
 
-    compile 'org.apache.kafka:kafka-clients:2.1.0'
-    compile('org.apache.kafka:kafka_2.12:2.1.0') {
+    compile 'org.apache.kafka:kafka-clients:2.4.0'
+    compile('org.apache.kafka:kafka_2.12:2.4.0') {
         exclude module: "zookeeper"
     }
 

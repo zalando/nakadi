@@ -102,8 +102,8 @@ dependencies {
     compile 'org.echocat.jomon:runtime:1.6.3'
 
     // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:2.1.0'
-    compile('org.apache.kafka:kafka_2.12:2.1.0') {
+    compile 'org.apache.kafka:kafka-clients:2.4.0'
+    compile('org.apache.kafka:kafka_2.12:2.4.0') {
         exclude module: "zookeeper"
     }
 
