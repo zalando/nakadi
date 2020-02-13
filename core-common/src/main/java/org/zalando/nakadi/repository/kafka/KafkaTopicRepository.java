@@ -210,7 +210,7 @@ public class KafkaTopicRepository implements TopicRepository {
     public String createTopic(final NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException {
 
         final KafkaTopicConfig kafkaTopicConfig = kafkaTopicConfigFactory.createKafkaTopicConfig(nakadiTopicConfig);
-        try (KafkaZkClient client = getZkClient()) {
+        try (KafkaZkClient client = createZkClient()) {
             final AdminZkClient adminZkClient = new AdminZkClient(client);
             adminZkClient.createTopic(
                     kafkaTopicConfig.getTopicName(),
@@ -246,7 +246,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void deleteTopic(final String topic) throws TopicDeletionException {
-        try (KafkaZkClient zkClient = getZkClient()) {
+        try (KafkaZkClient zkClient = createZkClient()) {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
             final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
             adminZkClient.deleteTopic(topic);
@@ -619,7 +619,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-        try (KafkaZkClient zkClient = getZkClient()) {
+        try (KafkaZkClient zkClient = createZkClient()) {
             final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
             final Properties topicProps = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
             topicProps.setProperty("retention.ms", Long.toString(retentionMs));
@@ -638,7 +638,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private KafkaZkClient getZkClient() {
+    private KafkaZkClient createZkClient() {
         // The calling method should make sure to close connection
         return new KafkaZkClient(
                     new ZooKeeperClient(

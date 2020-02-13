@@ -100,22 +100,15 @@ public class KafkaTestHelper {
     }
 
     public void createTopic(final String topic, final String zkUrl) {
-        KafkaZkClient zkClient = null;
-        try {
-            zkClient = getZkClient(zkUrl);
+        try (KafkaZkClient zkClient = createZkClient(zkUrl)) {
             final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
             adminZkClient.createTopic(topic, 1, 1,
                     new Properties(), RackAwareMode.Safe$.MODULE$);
-        } finally {
-            if (zkClient != null) {
-                zkClient.close();
-            }
         }
     }
 
-    private static KafkaZkClient getZkClient(final String zkUrl) {
-        KafkaZkClient zkClient = null;
-        zkClient = new KafkaZkClient(
+    private static KafkaZkClient createZkClient(final String zkUrl) {
+        return new KafkaZkClient(
                 new ZooKeeperClient(
                         zkUrl,
                         30000,
@@ -128,7 +121,6 @@ public class KafkaTestHelper {
                 false,
                 Time.SYSTEM
         );
-        return zkClient;
     }
 
     public static Long getTopicRetentionTime(final String topic, final String zkPath) {
@@ -140,16 +132,10 @@ public class KafkaTestHelper {
     }
 
     public static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
-        KafkaZkClient zkClient = null;
-        try {
-            zkClient = getZkClient(zkPath);
+        try (KafkaZkClient zkClient = createZkClient(zkPath)) {
             final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
             final Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
             return topicConfig.getProperty(propertyName);
-        } finally {
-            if (zkClient != null) {
-                zkClient.close();
-            }
         }
     }
 }
