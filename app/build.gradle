@@ -121,6 +121,7 @@ dependencies {
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
     compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
+    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'org.json:json:20180130'
 
