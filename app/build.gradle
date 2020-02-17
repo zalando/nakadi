@@ -101,12 +101,6 @@ dependencies {
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
     compile 'org.echocat.jomon:runtime:1.6.3'
 
-    // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:2.1.0'
-    compile('org.apache.kafka:kafka_2.12:2.1.0') {
-        exclude module: "zookeeper"
-    }
-
     // json
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
@@ -121,6 +115,7 @@ dependencies {
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
     compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
+    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
     compile 'org.zalando:twintip-spring-web:1.1.0'
     compile 'org.json:json:20180130'
 

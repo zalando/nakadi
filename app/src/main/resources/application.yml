@@ -80,6 +80,8 @@ nakadi:
     connectionString: zookeeper://zookeeper:2181
     sessionTimeoutMs: 10000
     connectionTimeoutMs: 3000
+    maxInFlightRequests: 1000
+
   oauth2:
     mode: BASIC
     adminClientId: adminClientId
