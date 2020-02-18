@@ -62,7 +62,7 @@ public class ChangeSet {
             final List<Change> newChangesSorted = newEntry.getValue().stream()
                     .sorted(Comparator.comparing(this::getActualChangeDate).reversed())
                     .collect(Collectors.toList());
-            final long newestAge = System.currentTimeMillis() - newChangesSorted.get(0).getOccurredAt().getTime();
+            final long newestAge = System.currentTimeMillis() - getActualChangeDate(newChangesSorted.get(0)).getTime();
             if (newestAge > changeTTLms) {
                 toDelete.addAll(newChangesSorted);
             } else if (newChangesSorted.size() > 1) {
