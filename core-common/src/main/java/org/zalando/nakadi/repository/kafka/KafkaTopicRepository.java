@@ -3,9 +3,10 @@ package org.zalando.nakadi.repository.kafka;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
-import kafka.utils.ZkUtils;
+import kafka.zk.AdminZkClient;
+import kafka.zk.KafkaZkClient;
+import kafka.zookeeper.ZooKeeperClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -19,6 +20,7 @@ import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.apache.kafka.common.utils.Time;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
@@ -208,15 +210,15 @@ public class KafkaTopicRepository implements TopicRepository {
     public String createTopic(final NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException {
 
         final KafkaTopicConfig kafkaTopicConfig = kafkaTopicConfigFactory.createKafkaTopicConfig(nakadiTopicConfig);
-        try {
-            doWithZkUtils(zkUtils -> {
-                AdminUtils.createTopic(zkUtils,
-                        kafkaTopicConfig.getTopicName(),
-                        kafkaTopicConfig.getPartitionCount(),
-                        kafkaTopicConfig.getReplicaFactor(),
-                        kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig),
-                        kafkaTopicConfig.getRackAwareMode());
-            });
+        try (KafkaZkClient client = createZkClient()) {
+            final AdminZkClient adminZkClient = new AdminZkClient(client);
+            adminZkClient.createTopic(
+                    kafkaTopicConfig.getTopicName(),
+                    kafkaTopicConfig.getPartitionCount(),
+                    kafkaTopicConfig.getReplicaFactor(),
+                    kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig),
+                    kafkaTopicConfig.getRackAwareMode()
+            );
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + kafkaTopicConfig.getTopicName() +
                     " already exists (or wasn't completely removed yet)", e);
@@ -244,9 +246,10 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void deleteTopic(final String topic) throws TopicDeletionException {
-        try {
+        try (KafkaZkClient zkClient = createZkClient()) {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
-            doWithZkUtils(zkUtils -> AdminUtils.deleteTopic(zkUtils, topic));
+            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
+            adminZkClient.deleteTopic(topic);
         } catch (final Exception e) {
             throw new TopicDeletionException("Unable to delete topic " + topic, e);
         }
@@ -616,12 +619,11 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-        try {
-            doWithZkUtils(zkUtils -> {
-                final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
-                topicProps.setProperty("retention.ms", Long.toString(retentionMs));
-                AdminUtils.changeTopicConfig(zkUtils, topic, topicProps);
-            });
+        try (KafkaZkClient zkClient = createZkClient()) {
+            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
+            final Properties topicProps = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
+            topicProps.setProperty("retention.ms", Long.toString(retentionMs));
+            adminZkClient.changeTopicConfig(topic, topicProps);
         } catch (final Exception e) {
             throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
         }
@@ -636,24 +638,20 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private void doWithZkUtils(final ZkUtilsAction action) throws Exception {
-        ZkUtils zkUtils = null;
-        try {
-            zkUtils = ZkUtils.apply(
-                    kafkaZookeeper.getZookeeperConnectionString(),
-                    zookeeperSettings.getZkSessionTimeoutMs(),
-                    zookeeperSettings.getZkConnectionTimeoutMs(),
-                    false);
-            action.execute(zkUtils);
-        } finally {
-            if (zkUtils != null) {
-                zkUtils.close();
-            }
-        }
-    }
-
-    @FunctionalInterface
-    private interface ZkUtilsAction {
-        void execute(ZkUtils zkUtils) throws Exception;
+    private KafkaZkClient createZkClient() {
+        // The calling method should make sure to close connection
+        return new KafkaZkClient(
+                    new ZooKeeperClient(
+                            kafkaZookeeper.getZookeeperConnectionString(),
+                            zookeeperSettings.getZkSessionTimeoutMs(),
+                            zookeeperSettings.getZkConnectionTimeoutMs(),
+                            zookeeperSettings.getMaxInFlightRequests(),
+                            Time.SYSTEM,
+                            ZookeeperSettings.METRIC_GROUP,
+                            ZookeeperSettings.METRIC_TYPE
+                    ),
+                    false,
+                    Time.SYSTEM
+        );
     }
 }
