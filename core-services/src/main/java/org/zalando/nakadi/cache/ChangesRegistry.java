@@ -2,7 +2,6 @@ package org.zalando.nakadi.cache;
 
 import com.google.common.base.Charsets;
 import org.apache.curator.framework.api.CuratorWatcher;
-import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -13,6 +12,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import javax.annotation.Nullable;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,17 +59,24 @@ public class ChangesRegistry {
         final List<Change> changes = new ArrayList<>();
         for (final String child : children) {
             final byte[] data = zk.get().getData().forPath(getPath(child));
-            changes.add(new Change(child, new String(data, Charsets.UTF_8)));
+            changes.add(new Change(child, new String(data, Charsets.UTF_8), new Date()));
         }
         return changes;
     }
 
-    public void registerChange(final String eventType, final long ttlMs) throws Exception {
+    public void registerChange(final String eventType) throws Exception {
         final String key = UUID.randomUUID().toString(); // Let's assume, that this value is unique.
-        zk.get().create()
-                .withTtl(ttlMs)
-                .withMode(CreateMode.PERSISTENT_WITH_TTL)
-                .forPath(getPath(key), eventType.getBytes(Charsets.UTF_8));
+        zk.get().create().forPath(getPath(key), eventType.getBytes(Charsets.UTF_8));
+    }
+
+    public void deleteChanges(final List<String> changeIds) throws Exception {
+        for (final String child : changeIds) {
+            try {
+                zk.get().delete().forPath(getPath(child));
+            } catch (KeeperException.NoNodeException ex) {
+                // That's fine
+            }
+        }
     }
 
     private String getPath(final String child) {
