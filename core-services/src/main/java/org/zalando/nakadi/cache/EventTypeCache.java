@@ -186,6 +186,7 @@ public class EventTypeCache {
             LOG.info("Detected changes to remove, will try to remove {}", String.join(", ", changeIdsToRemove));
             this.changesRegistry.deleteChanges(changeIdsToRemove);
         }
+        this.currentChangeSet.apply(changes);
         this.lastCheck.set(System.currentTimeMillis());
     }
 
