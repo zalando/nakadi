@@ -46,6 +46,7 @@ public class ChangeSet {
         return currentEtChanges.stream()
                 .filter(ch -> ch.getId().equals(change.getId()))
                 .map(Change::getOccurredAt)
+                .sorted(Comparator.reverseOrder())
                 .findAny()
                 .orElse(change.getOccurredAt());
     }
@@ -60,7 +61,7 @@ public class ChangeSet {
         for (final Map.Entry<String, List<Change>> newEntry : newChangeMap.entrySet()) {
             // figure out proper dates of the changes
             final List<Change> newChangesSorted = newEntry.getValue().stream()
-                    .sorted(Comparator.comparing(this::getActualChangeDate).reversed())
+                    .sorted(Comparator.comparing(this::getActualChangeDate).thenComparing(Change::getId).reversed())
                     .collect(Collectors.toList());
             final long newestAge = System.currentTimeMillis() - getActualChangeDate(newChangesSorted.get(0)).getTime();
             if (newestAge > changeTTLms) {
