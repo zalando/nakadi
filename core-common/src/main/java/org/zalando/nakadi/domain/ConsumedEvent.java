@@ -66,7 +66,7 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
 
     @Override
     public String getType() {
-        return null;
+        return ResourceImpl.EVENT_RESOURCE;
     }
 
     @Override
