@@ -17,24 +17,21 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Objects;
 
 @DB
 @Component
-public class EventTypeDbRepository extends AbstractDbRepository implements EventTypeRepository {
+public class EventTypeRepository extends AbstractDbRepository {
 
     @Autowired
-    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
+    public EventTypeRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
     }
 
-    @Override
     public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
         try {
@@ -53,7 +50,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
     public EventType findByName(final String name) throws NoSuchEventTypeException {
         final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
 
@@ -64,7 +60,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
             final String sql = "SELECT et_event_type_object -> 'schema' ->> 'version' " +
@@ -90,49 +85,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
                 jsonMapper.writer().writeValueAsString(eventType.getSchema()));
     }
 
-    public static class EtChange {
-        private final String name;
-        private final boolean deleted;
-
-        EtChange(final String name, final boolean deleted) {
-            this.name = name;
-            this.deleted = deleted;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public boolean isDeleted() {
-            return deleted;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            final EtChange etChange = (EtChange) o;
-            return deleted == etChange.deleted && Objects.equals(name, etChange.name);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, deleted);
-        }
-
-        @Override
-        public String toString() {
-            return "EtChange{" +
-                    "name='" + name + '\'' +
-                    ", deleted=" + deleted +
-                    '}';
-        }
-    }
-
     private class EventTypeMapper implements RowMapper<EventType> {
         @Override
         public EventType mapRow(final ResultSet rs, final int rowNum) throws SQLException {
@@ -144,14 +96,12 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         }
     }
 
-    @Override
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type",
                 new EventTypeMapper());
     }
 
-    @Override
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.event_type_schema WHERE ets_event_type_name = ?", name);
@@ -162,10 +112,5 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
         }
-    }
-
-    @Override
-    public void notifyUpdated(final String name) {
-        // Do nothing. Database is always in sync
     }
 }

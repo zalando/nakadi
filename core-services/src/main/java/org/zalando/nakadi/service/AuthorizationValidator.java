@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.base.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
@@ -18,7 +19,6 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
 import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedException;
 import org.zalando.nakadi.plugin.api.exceptions.PluginException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -33,17 +33,17 @@ import static com.google.common.collect.Sets.newHashSet;
 public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
-    private final EventTypeRepository eventTypeRepository;
+    private final EventTypeCache eventTypeCache;
     private final AdminService adminService;
 
     @Autowired
     public AuthorizationValidator(
             final AuthorizationService authorizationService,
-            final EventTypeRepository eventTypeRepository,
+            final EventTypeCache eventTypeCache,
             final AdminService adminService) {
         this.authorizationService = authorizationService;
-        this.eventTypeRepository = eventTypeRepository;
         this.adminService = adminService;
+        this.eventTypeCache = eventTypeCache;
     }
 
     public void validateAuthorization(final Resource resource) throws UnableProcessException,
@@ -194,7 +194,7 @@ public class AuthorizationValidator {
         subscription.getEventTypes().forEach(
                 (eventTypeName) -> {
                     try {
-                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(this::authorizeStreamRead);
+                        eventTypeCache.getEventTypeIfExists(eventTypeName).ifPresent(this::authorizeStreamRead);
                     } catch (final InternalNakadiException e) {
                         throw new ServiceTemporarilyUnavailableException(e);
                     }

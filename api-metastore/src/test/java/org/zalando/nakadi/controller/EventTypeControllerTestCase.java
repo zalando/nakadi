@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SchemaValidatorConfig;
 import org.zalando.nakadi.config.SecuritySettings;
@@ -20,8 +21,8 @@ import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
@@ -70,6 +71,7 @@ public class EventTypeControllerTestCase {
     protected static final long NAKADI_EVENT_MAX_BYTES = 1000000;
     protected static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
     protected final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+    protected final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     protected final TopicRepository topicRepository = mock(TopicRepository.class);
     protected final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     protected final Enrichment enrichment = mock(Enrichment.class);
@@ -118,7 +120,7 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class));
+                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache);
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

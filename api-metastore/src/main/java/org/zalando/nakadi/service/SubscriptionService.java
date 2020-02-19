@@ -3,13 +3,12 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.Feature;
@@ -40,7 +39,6 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -69,11 +67,9 @@ import java.util.stream.Collectors;
 @Component
 public class SubscriptionService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionService.class);
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
 
     private final SubscriptionDbRepository subscriptionRepository;
-    private final EventTypeRepository eventTypeRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
@@ -85,12 +81,12 @@ public class SubscriptionService {
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final SubscriptionClientFactory subscriptionClientFactory,
                                final TimelineService timelineService,
-                               final EventTypeRepository eventTypeRepository,
                                final SubscriptionValidationService subscriptionValidationService,
                                final CursorConverter converter,
                                final CursorOperationsService cursorOperationsService,
@@ -99,11 +95,11 @@ public class SubscriptionService {
                                final SubscriptionTimeLagService subscriptionTimeLagService,
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                               final AuthorizationValidator authorizationValidator) {
+                               final AuthorizationValidator authorizationValidator,
+                               final EventTypeCache eventTypeCache) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
-        this.eventTypeRepository = eventTypeRepository;
         this.subscriptionValidationService = subscriptionValidationService;
         this.converter = converter;
         this.cursorOperationsService = cursorOperationsService;
@@ -113,6 +109,7 @@ public class SubscriptionService {
         this.subLogEventType = subLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
+        this.eventTypeCache = eventTypeCache;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -290,7 +287,7 @@ public class SubscriptionService {
     private List<EventType> getEventTypesForSubscription(final Subscription subscription)
             throws NoSuchEventTypeException {
         return subscription.getEventTypes().stream()
-                .map(Try.wrap(eventTypeRepository::findByName))
+                .map(Try.wrap(eventTypeCache::getEventType))
                 .map(Try::getOrThrow)
                 .sorted(Comparator.comparing(EventType::getName))
                 .collect(Collectors.toList());

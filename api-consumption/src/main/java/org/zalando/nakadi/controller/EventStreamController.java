@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -35,7 +36,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -82,7 +82,6 @@ public class EventStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
 
-    private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
@@ -94,9 +93,10 @@ public class EventStreamController {
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
     private final Long maxMemoryUsageBytes;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
-    public EventStreamController(final EventTypeRepository eventTypeRepository,
+    public EventStreamController(final EventTypeCache eventTypeCache,
                                  final TimelineService timelineService,
                                  final ObjectMapper jsonMapper,
                                  final EventStreamFactory eventStreamFactory,
@@ -108,7 +108,6 @@ public class EventStreamController {
                                  final AuthorizationValidator authorizationValidator,
                                  final EventTypeChangeListener eventTypeChangeListener,
                                  @Value("${nakadi.stream.maxStreamMemoryBytes}") final Long maxMemoryUsageBytes) {
-        this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
@@ -119,6 +118,7 @@ public class EventStreamController {
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
+        this.eventTypeCache = eventTypeCache;
         this.maxMemoryUsageBytes = maxMemoryUsageBytes;
     }
 
@@ -178,7 +178,7 @@ public class EventStreamController {
     private void authorizeStreamRead(final String eventType) throws AccessDeniedException,
             ServiceTemporarilyUnavailableException {
         try {
-            authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventType));
+            authorizationValidator.authorizeStreamRead(eventTypeCache.getEventType(eventType));
         } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
             throw new ServiceTemporarilyUnavailableException(ex);
         }
@@ -215,7 +215,7 @@ public class EventStreamController {
 
             try (Closeable ignore = eventTypeChangeListener.registerListener(et -> needCheckAuthorization.set(true),
                     Collections.singletonList(eventTypeName))) {
-                final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+                final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
                 authorizationValidator.authorizeEventTypeView(eventType);
                 authorizeStreamRead(eventTypeName);

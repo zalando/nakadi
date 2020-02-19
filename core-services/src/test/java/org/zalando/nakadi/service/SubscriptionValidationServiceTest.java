@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -18,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -48,7 +48,7 @@ public class SubscriptionValidationServiceTest {
     public static final String P0 = "p0";
 
     private TopicRepository topicRepository;
-    private EventTypeRepository etRepo;
+    private EventTypeCache etCache;
     private SubscriptionValidationService subscriptionValidationService;
     private SubscriptionBase subscriptionBase;
     private CursorConverter cursorConverter;
@@ -63,14 +63,14 @@ public class SubscriptionValidationServiceTest {
         when(topicRepository.listPartitionNames(argThat(isOneOf(topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
                 .thenReturn(ImmutableList.of(P0));
 
-        etRepo = mock(EventTypeRepository.class);
+        etCache = mock(EventTypeCache.class);
         final Map<String, EventType> eventTypes = new HashMap<>();
         for (final String etName : new String[]{ET1, ET2, ET3}) {
             final EventType eventType = new EventType();
             eventType.setName(etName);
             eventTypes.put(etName, eventType);
         }
-        when(etRepo.findByNameO(any()))
+        when(etCache.getEventTypeIfExists(any()))
                 .thenAnswer(invocation -> Optional.ofNullable(eventTypes.get(invocation.getArguments()[0])));
 
         final TimelineService timelineService = mock(TimelineService.class);
@@ -83,8 +83,8 @@ public class SubscriptionValidationServiceTest {
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
-        subscriptionValidationService = new SubscriptionValidationService(timelineService, etRepo, nakadiSettings,
-                cursorConverter, authorizationValidator);
+        subscriptionValidationService = new SubscriptionValidationService(timelineService, nakadiSettings,
+                cursorConverter, authorizationValidator, etCache);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
@@ -93,14 +93,14 @@ public class SubscriptionValidationServiceTest {
 
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
-        when(etRepo.findByNameO(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
+        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
     public void whenNoEventTypeThenException() throws Exception {
-        when(etRepo.findByNameO(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
-        when(etRepo.findByNameO(ET2)).thenReturn(Optional.of(new EventType()));
+        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
+        when(etCache.getEventTypeIfExists(ET2)).thenReturn(Optional.of(new EventType()));
 
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase);

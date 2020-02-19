@@ -626,8 +626,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(eventType).when(eventTypeCache).getEventType(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
         final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
@@ -655,7 +655,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final EventType eventType = TestUtils.buildDefaultEventType();
         when(adminService.isAdmin(any())).thenReturn(true);
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
 
         postEventType(eventType);
         disableETDeletionFeature();
@@ -668,7 +668,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
         final String eventTypeName = TestUtils.randomValidEventTypeName();
-        doReturn(Optional.empty()).when(eventTypeRepository).findByNameO(eventTypeName);
+        doReturn(Optional.empty()).when(eventTypeCache).getEventTypeIfExists(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"));
@@ -677,7 +677,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
-        when(eventTypeRepository.findByNameO(eventType.getName())).thenReturn(Optional.of(eventType));
+        when(eventTypeCache.getEventTypeIfExists(eventType.getName())).thenReturn(Optional.of(eventType));
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
 
         final Subscription mockSubscription = mock(Subscription.class);
@@ -706,7 +706,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(new InternalNakadiException("dummy message"))
                 .when(eventTypeRepository).removeEventType(eventTypeName);
         doReturn(Optional.of(EventTypeTestBuilder.builder().name(eventTypeName).build()))
-                .when(eventTypeRepository).findByNameO(eventTypeName);
+                .when(eventTypeCache).getEventTypeIfExists(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
@@ -804,7 +804,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void canExposeASingleEventType() throws Exception {
         final EventType expectedEventType = TestUtils.buildDefaultEventType();
 
-        when(eventTypeRepository.findByName(expectedEventType.getName())).thenReturn(expectedEventType);
+        when(eventTypeCache.getEventType(expectedEventType.getName())).thenReturn(expectedEventType);
 
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + expectedEventType.getName()).accept(
                 APPLICATION_JSON);
@@ -818,7 +818,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void askingForANonExistingEventTypeResultsIn404() throws Exception {
         final String eventTypeName = TestUtils.randomValidEventTypeName();
-        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(
+        when(eventTypeCache.getEventType(anyString())).thenThrow(new NoSuchEventTypeException(
                 String.format("EventType '%s' does not exist.", eventTypeName)));
 
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName).accept(
@@ -920,7 +920,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         defaultEventType.getOptions().setRetentionTime(TOPIC_RETENTION_TIME_MS);
         final String eventTypeName = defaultEventType.getName();
 
-        doReturn(defaultEventType).when(eventTypeRepository).findByName(eventTypeName);
+        doReturn(defaultEventType).when(eventTypeCache).getEventType(eventTypeName);
 
         getEventType(eventTypeName)
                 .andExpect(status().is2xxSuccessful())
@@ -1051,7 +1051,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void testGetEventTypeWhenViewAccessForbidden() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
         final String eventTypeName = eventType.getName();
-        when(eventTypeRepository.findByName(any())).thenReturn(eventType);
+        when(eventTypeCache.getEventType(any())).thenReturn(eventType);
         doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, eventType.asResource()))
                 .when(authorizationValidator).authorizeEventTypeView(eventType);
         getEventType(eventTypeName).andExpect(status().isForbidden());

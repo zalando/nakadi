@@ -11,7 +11,7 @@ import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.db.EventTypeDbRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -36,7 +36,7 @@ public class EventTypeCacheTest {
     @Mock
     private ChangesRegistry changesRegistry;
     @Mock
-    private EventTypeDbRepository eventTypeDbRepository;
+    private EventTypeRepository eventTypeRepository;
     @Mock
     private TimelineDbRepository timelineDbRepository;
     @Mock
@@ -54,7 +54,7 @@ public class EventTypeCacheTest {
         MockitoAnnotations.initMocks(this);
 
         eventTypeCache = new EventTypeCache(
-                changesRegistry, eventTypeDbRepository, timelineDbRepository, timelineSync, eventValidatorBuilder,
+                changesRegistry, eventTypeRepository, timelineDbRepository, timelineSync, eventValidatorBuilder,
                 1,
                 3); // Update every second, so tests should be fast enough
     }
@@ -154,7 +154,7 @@ public class EventTypeCacheTest {
         final EventTypeValidator validator2 = mock(EventTypeValidator.class);
         final List<Timeline> expectedTimelines2 = mock(List.class);
 
-        when(eventTypeDbRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
+        when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
         when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
         when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))
@@ -190,7 +190,7 @@ public class EventTypeCacheTest {
 
     @Test
     public void testThatExceptionFromRepositoryIsPropagated() {
-        when(eventTypeDbRepository.findByName(eq("test"))).thenThrow(new NoSuchEventTypeException("blablabla"));
+        when(eventTypeRepository.findByName(eq("test"))).thenThrow(new NoSuchEventTypeException("blablabla"));
         try {
             eventTypeCache.getEventType("test");
             Assert.fail();

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -19,7 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -47,6 +48,7 @@ public class RepartitioningService {
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
     private final FeatureToggleService featureToggleService;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public RepartitioningService(
@@ -58,7 +60,8 @@ public class RepartitioningService {
             @Value("${nakadi.repartitioning.subscriptions.limit:1000}") final Integer repartitioningSubscriptionsLimit,
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
-            final FeatureToggleService featureToggleService) {
+            final FeatureToggleService featureToggleService,
+            final EventTypeCache eventTypeCache) {
         this.transactionTemplate = transactionTemplate;
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -68,6 +71,7 @@ public class RepartitioningService {
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
         this.featureToggleService = featureToggleService;
+        this.eventTypeCache = eventTypeCache;
     }
 
     public void repartition(final EventType eventType, final int partitions)
@@ -79,7 +83,7 @@ public class RepartitioningService {
             return null;
         });
 
-        eventTypeRepository.notifyUpdated(eventType.getName());
+        eventTypeCache.invalidate(eventType.getName());
         updateSubscriptionsForRepartitioning(eventType, partitions);
     }
 

@@ -99,7 +99,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Resource resource = eventType.asResource();
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(any());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(any());
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 

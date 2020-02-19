@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventCategory;
@@ -24,8 +25,8 @@ import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -61,6 +62,7 @@ public class EventTypeServiceTest {
 
     private final Enrichment enrichment = mock(Enrichment.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+    private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final PartitionsCalculator partitionsCalculator = mock(PartitionsCalculator.class);
@@ -84,7 +86,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(RepartitioningService.class));
+                adminService, mock(RepartitioningService.class), eventTypeCache);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -97,7 +99,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         doThrow(new InternalNakadiException("Can't delete event tye"))
                 .when(eventTypeRepository).removeEventType(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         final Multimap<TopicRepository, String> topicsToDelete = mock(Multimap.class);
         doReturn(new ArrayList<Subscription>())
                 .when(subscriptionDbRepository)
@@ -118,7 +120,7 @@ public class EventTypeServiceTest {
     public void whenSubscriptionsExistThenCantDeleteEventType() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -136,7 +138,7 @@ public class EventTypeServiceTest {
     public void testFeatureToggleAllowsDeleteEventTypeWithSubscriptions() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
@@ -153,7 +155,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.setAuthorization(TestUtils.buildResourceAuthorization());
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -174,7 +176,7 @@ public class EventTypeServiceTest {
     public void testFeatureToggleForbidsDeleteEventTypeWithoutAuthzSection() throws Exception {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
@@ -200,7 +202,7 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.setAuthorization(TestUtils.buildResourceAuthorization());
 
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
 
         doReturn(ImmutableList.of(TestUtils.createSubscription("someone", "something")))
                 .when(subscriptionDbRepository)
@@ -287,7 +289,7 @@ public class EventTypeServiceTest {
     @Test
     public void whenEventTypeDeletedThenKPIEventSubmitted() throws Exception {
         final EventType et = TestUtils.buildDefaultEventType();
-        when(eventTypeRepository.findByNameO(et.getName())).thenReturn(Optional.of(et));
+        when(eventTypeCache.getEventTypeIfExists(et.getName())).thenReturn(Optional.of(et));
 
         eventTypeService.delete(et.getName());
         checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
