@@ -51,7 +51,7 @@ subprojects {
     }
     dependencies {
         ext {
-            kafkaClientVersion = '2.4.0'
+            kafkaClientVersion = '2.3.1'
         }
     }
 }
