@@ -24,7 +24,7 @@ public class CursorsServiceTest {
     @Before
     public void setup() {
         authorizationValidator = mock(AuthorizationValidator.class);
-        service = new CursorsService(mock(SubscriptionDbRepository.class), mock(SubscriptionCache.class), null, null,
+        service = new CursorsService(mock(SubscriptionDbRepository.class), mock(SubscriptionCache.class), null,
                 null, null, null, null, authorizationValidator, null);
     }
 
