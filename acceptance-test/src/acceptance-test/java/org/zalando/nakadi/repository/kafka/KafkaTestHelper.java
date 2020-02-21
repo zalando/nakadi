@@ -1,16 +1,14 @@
 package org.zalando.nakadi.repository.kafka;
 
+import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
 import kafka.server.ConfigType;
-import kafka.zk.AdminZkClient;
-import kafka.zk.KafkaZkClient;
-import kafka.zookeeper.ZooKeeperClient;
+import kafka.utils.ZkUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.Time;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.List;
@@ -100,27 +98,15 @@ public class KafkaTestHelper {
     }
 
     public void createTopic(final String topic, final String zkUrl) {
-        try (KafkaZkClient zkClient = createZkClient(zkUrl)) {
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            adminZkClient.createTopic(topic, 1, 1,
-                    new Properties(), RackAwareMode.Safe$.MODULE$);
+        ZkUtils zkUtils = null;
+        try {
+            zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
+            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+        } finally {
+            if (zkUtils != null) {
+                zkUtils.close();
+            }
         }
-    }
-
-    private static KafkaZkClient createZkClient(final String zkUrl) {
-        return new KafkaZkClient(
-                new ZooKeeperClient(
-                        zkUrl,
-                        30000,
-                        10000,
-                        1000,
-                        Time.SYSTEM,
-                        "dummyMetricGroup",
-                        "dummyMetricType"
-                ),
-                false,
-                Time.SYSTEM
-        );
     }
 
     public static Long getTopicRetentionTime(final String topic, final String zkPath) {
@@ -132,10 +118,8 @@ public class KafkaTestHelper {
     }
 
     public static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
-        try (KafkaZkClient zkClient = createZkClient(zkPath)) {
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            final Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
-            return topicConfig.getProperty(propertyName);
-        }
+        final ZkUtils zkUtils = ZkUtils.apply(zkPath, 30000, 10000, false);
+        final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
+        return topicConfig.getProperty(propertyName);
     }
 }
