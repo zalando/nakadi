@@ -6,18 +6,23 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AutocommitSupportTest {
 
@@ -25,6 +30,8 @@ public class AutocommitSupportTest {
     private ZkSubscriptionClient zkClientMock;
     @Mock
     private CursorOperationsService cursorOperationsService;
+    @Mock
+    private CursorConverter cursorConverter;
     private AutocommitSupport autocommitSupport;
     private EventTypePartition etp1;
     private NakadiCursor[] etp1Cursors;
@@ -37,7 +44,7 @@ public class AutocommitSupportTest {
     @Before
     public void before() {
         MockitoAnnotations.initMocks(this);
-        autocommitSupport = new AutocommitSupport(cursorOperationsService, zkClientMock);
+        autocommitSupport = new AutocommitSupport(cursorOperationsService, zkClientMock, cursorConverter);
 
         etp1 = new EventTypePartition("t", "p1");
         etp1Cursors = mockCursors(etp1, LongStream.range(0, 10).toArray());
@@ -46,6 +53,14 @@ public class AutocommitSupportTest {
         etp2 = new EventTypePartition("t", "p2");
         etp2Cursors = mockCursors(etp2, LongStream.range(0, 10).toArray());
         autocommitSupport.addPartition(etp2Cursors[0]);
+
+        Stream.concat(Arrays.stream(etp1Cursors), Arrays.stream(etp2Cursors))
+                .forEach(c -> {
+                    final SubscriptionCursorWithoutToken result = new SubscriptionCursorWithoutToken(
+                            c.getEventType(), c.getPartition(), c.getOffset());
+                    when(cursorConverter.convertToNoToken(Mockito.eq(c)))
+                            .thenReturn(result);
+                });
     }
 
     @Test

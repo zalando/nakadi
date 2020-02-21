@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -18,13 +19,17 @@ public class AutocommitSupport {
     private final CursorOperationsService cursorOperationsService;
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final Map<EventTypePartition, PartitionSkippedCursorsOperator> partitionsState = new HashMap<>();
+    private final CursorConverter cursorConverter;
+
     private static final Logger LOG = LoggerFactory.getLogger(AutocommitSupport.class);
 
     public AutocommitSupport(
             final CursorOperationsService cursorOperationsService,
-            final ZkSubscriptionClient zkSubscriptionClient) {
+            final ZkSubscriptionClient zkSubscriptionClient,
+            final CursorConverter cursorConverter) {
         this.cursorOperationsService = cursorOperationsService;
         this.zkSubscriptionClient = zkSubscriptionClient;
+        this.cursorConverter = cursorConverter;
     }
 
     public void addPartition(final NakadiCursor committed) {
@@ -82,7 +87,7 @@ public class AutocommitSupport {
         }
 
         final List<SubscriptionCursorWithoutToken> converted = toAutocommit.stream()
-                .map(v -> new SubscriptionCursorWithoutToken(v.getEventType(), v.getPartition(), v.getOffset()))
+                .map(cursorConverter::convertToNoToken)
                 .collect(Collectors.toList());
         zkSubscriptionClient.commitOffsets(converted);
     }
