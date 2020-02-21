@@ -106,7 +106,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.eventTypeChangeListener = builder.eventTypeChangeListener;
         this.cursorComparator = builder.cursorComparator;
         this.kpiPublisher = builder.kpiPublisher;
-        this.autocommitSupport = new AutocommitSupport(builder.cursorOperationsService, zkClient);
+        this.autocommitSupport = new AutocommitSupport(builder.cursorOperationsService, zkClient, cursorConverter);
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
