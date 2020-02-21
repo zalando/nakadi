@@ -697,6 +697,8 @@ class StreamingState extends State {
             final NakadiCursor cursor = createNakadiCursor(data.getSubscription().getData());
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
+            getAutocommit().onCommit(cursor);
+
             if (commitResult.seekOnKafka) {
                 reconfigureKafkaConsumer(true);
             }
