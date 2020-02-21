@@ -70,7 +70,6 @@ dependencies {
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
     compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
     compile 'org.zalando:jackson-datatype-problem:0.22.0'
     compile 'org.zalando:problem:0.22.0'
     compile 'org.json:json:20180130'
@@ -81,8 +80,8 @@ dependencies {
     compile 'io.opentracing:opentracing-api:0.31.0'
     compile 'io.opentracing:opentracing-util:0.31.0'
 
-    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
-    compile("org.apache.kafka:kafka_2.12:$kafkaClientVersion") {
+    compile 'org.apache.kafka:kafka-clients:2.1.0'
+    compile('org.apache.kafka:kafka_2.12:2.1.0') {
         exclude module: "zookeeper"
     }
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
