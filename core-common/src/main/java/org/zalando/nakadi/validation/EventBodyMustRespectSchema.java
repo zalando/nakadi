@@ -5,23 +5,24 @@ import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 
 import java.util.Optional;
 
+@Component
 public class EventBodyMustRespectSchema extends ValidationStrategy {
 
     private final JsonSchemaEnrichment loader;
 
+    @Autowired
     public EventBodyMustRespectSchema(final JsonSchemaEnrichment loader) {
         this.loader = loader;
     }
 
-    public static final String NAME = "schema-validation";
-
     @Override
-    public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
+    public EventValidator materialize(final EventType eventType) {
 
         final JSONObject effectiveSchema = this.loader.effectiveSchema(eventType);
 

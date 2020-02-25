@@ -37,6 +37,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,7 +87,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(RepartitioningService.class), eventTypeCache);
+                adminService, mock(RepartitioningService.class), eventTypeCache, new JsonSchemaEnrichment(""));
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

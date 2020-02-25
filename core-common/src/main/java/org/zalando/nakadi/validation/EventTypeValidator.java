@@ -1,20 +1,17 @@
 package org.zalando.nakadi.validation;
 
-import com.google.common.collect.Lists;
 import org.json.JSONObject;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 
 import java.util.List;
 import java.util.Optional;
 
 public class EventTypeValidator {
 
-    private final EventType eventType;
-    private final List<EventValidator> validators = Lists.newArrayList();
+    private final List<EventValidator> validators;
 
-    public EventTypeValidator(final EventType eventType) {
-        this.eventType = eventType;
+    public EventTypeValidator(
+            final List<EventValidator> eventValidators) {
+        this.validators = eventValidators;
     }
 
     public Optional<ValidationError> validate(final JSONObject event) {
@@ -25,12 +22,4 @@ public class EventTypeValidator {
                 .findFirst()
                 .orElse(Optional.empty());
     }
-
-    public EventTypeValidator withConfiguration(final ValidationStrategyConfiguration vsc) {
-        final ValidationStrategy vs = ValidationStrategy.lookup(vsc.getStrategyName());
-        validators.add(vs.materialize(eventType, vsc));
-
-        return this;
-    }
-
 }

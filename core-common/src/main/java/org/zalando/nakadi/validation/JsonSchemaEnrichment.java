@@ -5,6 +5,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+@Component
 public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
     public static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
@@ -32,6 +36,13 @@ public class JsonSchemaEnrichment {
     private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems",
             "items");
     private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
+    private final String metadataExtensionResource;
+
+    @Autowired
+    public JsonSchemaEnrichment(
+            @Value("${nakadi.schema.metadata.extension:}") final String metadataExtensionFile) {
+        this.metadataExtensionResource = metadataExtensionFile;
+    }
 
     public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
@@ -118,7 +129,7 @@ public class JsonSchemaEnrichment {
         );
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventTypeBase eventType) {
+    private JSONObject wrapSchemaInData(final JSONObject schema, final EventTypeBase eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
@@ -149,7 +160,7 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    private static JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
+    private JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
         normalizeSchema(schema);
         final JSONObject metadata = createMetadata(eventType.getName(), eventType.getCleanupPolicy());
 
@@ -158,12 +169,18 @@ public class JsonSchemaEnrichment {
         return schema;
     }
 
-    public static JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
+    public JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
         final JSONObject result = loadResource("schema_metadata.json");
         if (cleanupPolicy == CleanupPolicy.COMPACT) {
             JSONTools.extendJson(
                     result,
                     loadResource("schema_metadata_compact_extension.json"));
+        }
+        if (null != metadataExtensionResource && !metadataExtensionResource.isEmpty()) {
+            JSONTools.extendJson(
+                    result,
+                    loadResource(metadataExtensionResource)
+            );
         }
         JSONTools.replaceAll(result, "{{EVENT_TYPE_NAME}}", eventTypeName);
         return result;

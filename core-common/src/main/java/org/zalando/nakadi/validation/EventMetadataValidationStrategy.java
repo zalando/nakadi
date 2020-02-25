@@ -1,13 +1,13 @@
 package org.zalando.nakadi.validation;
 
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 
+@Component
 public class EventMetadataValidationStrategy extends ValidationStrategy {
-    public static final String NAME = "metadata-validation";
 
     @Override
-    public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
+    public EventValidator materialize(final EventType eventType) {
         return new MetadataValidator();
     }
 }

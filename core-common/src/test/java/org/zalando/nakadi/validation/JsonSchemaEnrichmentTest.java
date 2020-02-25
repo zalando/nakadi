@@ -16,7 +16,7 @@ import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 public class JsonSchemaEnrichmentTest {
-    private final JsonSchemaEnrichment loader = new JsonSchemaEnrichment();
+    private final JsonSchemaEnrichment loader = new JsonSchemaEnrichment(null);
 
     @Test
     public void enforceStrict() throws Exception {

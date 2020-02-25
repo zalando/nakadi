@@ -19,18 +19,13 @@ import java.util.Optional;
 
 public class JSONSchemaValidationTest {
 
-    static {
-        ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(
-                new JsonSchemaEnrichment()));
-        ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
-        ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
-    }
-
     private EventValidatorBuilder eventValidatorBuilder;
 
     @Before
     public void before() {
-        eventValidatorBuilder = new EventValidatorBuilder();
+        eventValidatorBuilder = new EventValidatorBuilder(
+                new EventBodyMustRespectSchema(new JsonSchemaEnrichment("")),
+                new EventMetadataValidationStrategy());
     }
 
     @Test

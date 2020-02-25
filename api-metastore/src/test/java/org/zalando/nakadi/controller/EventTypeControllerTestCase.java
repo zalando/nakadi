@@ -41,6 +41,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
@@ -120,7 +121,8 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache);
+                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache,
+                new JsonSchemaEnrichment(""));
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
-
 import org.zalando.nakadi.domain.Audience;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
@@ -17,7 +16,6 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ResourceAuthorization;
-import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
@@ -29,7 +27,6 @@ public class EventTypeTestBuilder {
 
     public static final String DEFAULT_OWNING_APPLICATION = "event-producer-application";
     private static final String DEFAULT_SCHEMA = "{ \"properties\": { \"foo\": { \"type\": \"string\" } } }";
-    private final List<ValidationStrategyConfiguration> validationStrategies;
     private String name;
     private String owningApplication;
     private EventCategory category;
@@ -52,7 +49,6 @@ public class EventTypeTestBuilder {
         this.name = TestUtils.randomValidEventTypeName();
         this.owningApplication = DEFAULT_OWNING_APPLICATION;
         this.category = EventCategory.UNDEFINED;
-        this.validationStrategies = Lists.newArrayList();
         this.enrichmentStrategies = Lists.newArrayList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.partitionKeyFields = Lists.newArrayList();
@@ -168,7 +164,7 @@ public class EventTypeTestBuilder {
 
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
-                validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
+                enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, compatibilityMode, cleanupPolicy);
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
