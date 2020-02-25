@@ -4,18 +4,18 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventTypeBase;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
@@ -149,52 +149,55 @@ public class JsonSchemaEnrichment {
 
     private static JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
         normalizeSchema(schema);
-
-        final JSONObject metadata = new JSONObject();
-        final JSONObject metadataProperties = new JSONObject();
-
-        final JSONObject uuid = new JSONObject()
-                .put("type", "string")
-                .put("pattern", "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$");
-        final JSONObject arrayOfUUIDs = new JSONObject()
-                .put("type", "array")
-                .put("items", uuid);
-        final JSONObject eventTypeString = new JSONObject()
-                .put("type", "string")
-                .put("enum", Arrays.asList(new String[]{eventType.getName()}));
-        final JSONObject string = new JSONObject().put("type", "string");
-        final JSONObject stringMap = new JSONObject().put("type", "object").put("additionalProperties", string);
-        final JSONObject dateTime = new JSONObject()
-                .put("type", "string");
-
-        metadataProperties.put("eid", uuid);
-        metadataProperties.put("event_type", eventTypeString);
-        metadataProperties.put("occurred_at", dateTime);
-        metadataProperties.put("parent_eids", arrayOfUUIDs);
-        metadataProperties.put("flow_id", string);
-        metadataProperties.put("partition", string);
-        metadataProperties.put("span_ctx", stringMap);
-
-        final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
-            final JSONObject compactionKey = new JSONObject()
-                    .put("type", "string")
-                    .put("minLength", 1);
-            metadataProperties.put("partition_compaction_key", compactionKey);
-            requiredFields.add("partition_compaction_key");
-        }
-
-        metadata.put("type", "object");
-        metadata.put("properties", metadataProperties);
-        metadata.put("required", requiredFields);
-        metadata.put("additionalProperties", false);
+        final JSONObject metadata = createMetadata(eventType.getName(), eventType.getCleanupPolicy());
 
         schema.getJSONObject("properties").put("metadata", metadata);
-
         addToRequired(schema, new String[]{"metadata"});
-
         return schema;
     }
+
+    public static JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
+        final InputStream metadataSchema = JsonSchemaEnrichment.class.getClassLoader().getResourceAsStream(
+                "schema_metadata_" + cleanupPolicy.name().toLowerCase() + ".json");
+        if (null == metadataSchema) {
+            throw new RuntimeException("Metadata schema for policy of type " + cleanupPolicy + " is not found");
+        }
+        final JSONObject result = new JSONObject(new JSONTokener(metadataSchema));
+        replaceAll(result, "{{EVENT_TYPE_NAME}}", eventTypeName);
+        return result;
+    }
+
+    private static void replaceAll(final JSONArray array, final String toRemove, final String toAdd) {
+        for (int i = 0; i < array.length(); ++i) {
+            final Object o = array.get(i);
+            if (o instanceof String) {
+                if (o.equals(toRemove)) {
+                    array.put(i, toAdd);
+                }
+            } else if (o instanceof JSONArray) {
+                replaceAll((JSONArray) o, toRemove, toAdd);
+            } else if (o instanceof JSONObject) {
+                replaceAll((JSONObject) o, toRemove, toAdd);
+            }
+        }
+    }
+
+    private static void replaceAll(final JSONObject obj, final String toRemove, final String toAdd) {
+        final List<String> keys = new ArrayList<>(obj.keySet()); // To avoid concurrent modification exception.
+        for (final String key : keys) {
+            final Object o = obj.get(key);
+            if (o instanceof String) {
+                if (o.equals(toRemove)) {
+                    obj.put(key, toAdd);
+                }
+            } else if (o instanceof JSONObject) {
+                replaceAll((JSONObject) o, toRemove, toAdd);
+            } else if (o instanceof JSONArray) {
+                replaceAll((JSONArray) o, toRemove, toAdd);
+            }
+        }
+    }
+
 
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {
         final Set<String> required = new HashSet<>(Arrays.asList(toBeRequired));

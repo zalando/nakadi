@@ -2,9 +2,13 @@ package org.zalando.nakadi.validation;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import java.util.UUID;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -28,6 +32,16 @@ public class JsonSchemaEnrichmentTest {
             final EventType eventType = EventTypeTestBuilder.builder().schema(original).build();
 
             assertThat(description, loader.effectiveSchema(eventType), is(sameJSONObjectAs(effective)));
+        }
+    }
+
+    @Test
+    public void testMetadata() {
+        final String randomEventTypeName = UUID.randomUUID().toString();
+        for (final CleanupPolicy policy : CleanupPolicy.values()) {
+            final JSONObject metadata = loader.createMetadata(randomEventTypeName, policy);
+            Assert.assertNotNull(metadata);
+            Assert.assertTrue(metadata.toString(0).contains(randomEventTypeName));
         }
     }
 }
