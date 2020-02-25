@@ -31,17 +31,12 @@
         "type": "string"
       }
     },
-    "partition_compaction_key": {
-      "minLength": 1,
-      "type": "string"
-    },
     "flow_id": {
       "type": "string"
     }
   },
   "required": [
     "eid",
-    "occurred_at",
-    "partition_compaction_key"
+    "occurred_at"
   ]
 }

@@ -9,8 +9,10 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventTypeBase;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -157,47 +159,36 @@ public class JsonSchemaEnrichment {
     }
 
     public static JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
-        final InputStream metadataSchema = JsonSchemaEnrichment.class.getClassLoader().getResourceAsStream(
-                "schema_metadata_" + cleanupPolicy.name().toLowerCase() + ".json");
-        if (null == metadataSchema) {
-            throw new RuntimeException("Metadata schema for policy of type " + cleanupPolicy + " is not found");
+        final JSONObject result = loadResource("schema_metadata.json");
+        if (cleanupPolicy == CleanupPolicy.COMPACT) {
+            JSONTools.extendJson(
+                    result,
+                    loadResource("schema_metadata_compact_extension.json"));
         }
-        final JSONObject result = new JSONObject(new JSONTokener(metadataSchema));
-        replaceAll(result, "{{EVENT_TYPE_NAME}}", eventTypeName);
+        JSONTools.replaceAll(result, "{{EVENT_TYPE_NAME}}", eventTypeName);
         return result;
     }
 
-    private static void replaceAll(final JSONArray array, final String toRemove, final String toAdd) {
-        for (int i = 0; i < array.length(); ++i) {
-            final Object o = array.get(i);
-            if (o instanceof String) {
-                if (o.equals(toRemove)) {
-                    array.put(i, toAdd);
-                }
-            } else if (o instanceof JSONArray) {
-                replaceAll((JSONArray) o, toRemove, toAdd);
-            } else if (o instanceof JSONObject) {
-                replaceAll((JSONObject) o, toRemove, toAdd);
+    private static JSONObject loadResource(final String resource) {
+        InputStream in = JsonSchemaEnrichment.class.getClassLoader().getResourceAsStream(resource);
+        if (null == in) {
+            // Resource is not bundled, probably external file
+            try {
+                in = new FileInputStream(resource);
+            } catch (final FileNotFoundException e) {
+                throw new RuntimeException("Failed to find resource " + resource, e);
+            }
+        }
+        try {
+            return new JSONObject(new JSONTokener(in));
+        } finally {
+            try {
+                in.close();
+            } catch (final IOException ignore) {
+                // Failed to close file, but it's fine. probably...
             }
         }
     }
-
-    private static void replaceAll(final JSONObject obj, final String toRemove, final String toAdd) {
-        final List<String> keys = new ArrayList<>(obj.keySet()); // To avoid concurrent modification exception.
-        for (final String key : keys) {
-            final Object o = obj.get(key);
-            if (o instanceof String) {
-                if (o.equals(toRemove)) {
-                    obj.put(key, toAdd);
-                }
-            } else if (o instanceof JSONObject) {
-                replaceAll((JSONObject) o, toRemove, toAdd);
-            } else if (o instanceof JSONArray) {
-                replaceAll((JSONArray) o, toRemove, toAdd);
-            }
-        }
-    }
-
 
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {
         final Set<String> required = new HashSet<>(Arrays.asList(toBeRequired));
