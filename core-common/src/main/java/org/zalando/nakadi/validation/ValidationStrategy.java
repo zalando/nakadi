@@ -2,7 +2,10 @@ package org.zalando.nakadi.validation;
 
 import org.zalando.nakadi.domain.EventType;
 
-public abstract class ValidationStrategy {
+import javax.annotation.Nullable;
 
-    public abstract EventValidator materialize(EventType eventType);
+public interface ValidationStrategy {
+
+    @Nullable
+    EventValidator createValidator(EventType eventType);
 }

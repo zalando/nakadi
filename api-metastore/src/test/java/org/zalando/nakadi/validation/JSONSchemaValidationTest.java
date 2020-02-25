@@ -23,9 +23,9 @@ public class JSONSchemaValidationTest {
 
     @Before
     public void before() {
-        eventValidatorBuilder = new EventValidatorBuilder(
-                new EventBodyMustRespectSchema(new JsonSchemaEnrichment("")),
-                new EventMetadataValidationStrategy());
+        eventValidatorBuilder = new EventValidatorBuilder(Arrays.asList(
+                new EventBodySchemaValidationStrategy(new JsonSchemaEnrichment("")),
+                new EventMetadataValidationStrategy()));
     }
 
     @Test

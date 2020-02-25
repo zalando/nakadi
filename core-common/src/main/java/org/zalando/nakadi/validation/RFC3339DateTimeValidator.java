@@ -38,4 +38,9 @@ public class RFC3339DateTimeValidator implements FormatValidator {
             return Optional.of(error.get() + " " + e.getMessage());
         }
     }
+
+    @Override
+    public String formatName() {
+        return "date-time";
+    }
 }
