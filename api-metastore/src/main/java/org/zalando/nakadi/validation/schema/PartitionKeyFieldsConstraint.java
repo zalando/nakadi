@@ -9,10 +9,7 @@ import java.util.Optional;
 public class  PartitionKeyFieldsConstraint implements SchemaEvolutionConstraint {
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
-        if (!original.getPartitionKeyFields().isEmpty()
-                && !eventType.getPartitionKeyFields().equals(original.getPartitionKeyFields())) {
-            return Optional.of(new SchemaEvolutionIncompatibility("changing partition_key_fields is not allowed"));
-        } else if (eventType.getPartitionStrategy().equals(PartitionStrategy.HASH_STRATEGY)
+        if (eventType.getPartitionStrategy().equals(PartitionStrategy.HASH_STRATEGY)
                 && eventType.getPartitionKeyFields().isEmpty()) {
             return Optional.of(new SchemaEvolutionIncompatibility("partition_key_fields is required " +
                     "when partition strategy is 'hash'"));
