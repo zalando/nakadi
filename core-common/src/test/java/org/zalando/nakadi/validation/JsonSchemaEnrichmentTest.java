@@ -3,11 +3,14 @@ package org.zalando.nakadi.validation;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import static org.hamcrest.core.Is.is;
@@ -16,7 +19,12 @@ import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 public class JsonSchemaEnrichmentTest {
-    private final JsonSchemaEnrichment loader = new JsonSchemaEnrichment(null);
+    private JsonSchemaEnrichment loader;
+
+    @Before
+    public void before() throws IOException {
+        loader = new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json");
+    }
 
     @Test
     public void enforceStrict() throws Exception {

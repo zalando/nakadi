@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Before;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -122,7 +123,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache,
-                new JsonSchemaEnrichment(""));
+                new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"));
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

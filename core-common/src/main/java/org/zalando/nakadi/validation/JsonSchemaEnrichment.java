@@ -7,18 +7,22 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventTypeBase;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,12 +40,20 @@ public class JsonSchemaEnrichment {
     private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems",
             "items");
     private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
-    private final String metadataExtensionResource;
+    private final Map<CleanupPolicy, JSONObject> metadataSchemas = new HashMap<>();
 
     @Autowired
     public JsonSchemaEnrichment(
-            @Value("${nakadi.schema.metadata.extension:}") final String metadataExtensionFile) {
-        this.metadataExtensionResource = metadataExtensionFile;
+            final ResourceLoader resourceLoader,
+            @Value("${nakadi.schema.metadata:classpath:schema_metadata.json}") final String metadataSchemaResource)
+            throws IOException {
+        final Resource resource = resourceLoader.getResource(metadataSchemaResource);
+        try (InputStream in = resource.getInputStream()) {
+            final JSONObject schemas = new JSONObject(new JSONTokener(new InputStreamReader(in)));
+            for (final CleanupPolicy cp : CleanupPolicy.values()) {
+                metadataSchemas.put(cp, schemas.getJSONObject(cp.name().toLowerCase()));
+            }
+        }
     }
 
     public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
@@ -170,41 +182,14 @@ public class JsonSchemaEnrichment {
     }
 
     public JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
-        final JSONObject result = loadResource("schema_metadata.json");
-        if (cleanupPolicy == CleanupPolicy.COMPACT) {
-            JSONTools.extendJson(
-                    result,
-                    loadResource("schema_metadata_compact_extension.json"));
-        }
-        if (null != metadataExtensionResource && !metadataExtensionResource.isEmpty()) {
-            JSONTools.extendJson(
-                    result,
-                    loadResource(metadataExtensionResource)
-            );
-        }
-        JSONTools.replaceAll(result, "{{EVENT_TYPE_NAME}}", eventTypeName);
-        return result;
-    }
+        // We are creating a copy of metadata object, as we are modifying it afterwards.
+        final JSONObject metadataSchema = new JSONObject(metadataSchemas.get(cleanupPolicy).toString());
 
-    private static JSONObject loadResource(final String resource) {
-        InputStream in = JsonSchemaEnrichment.class.getClassLoader().getResourceAsStream(resource);
-        if (null == in) {
-            // Resource is not bundled, probably external file
-            try {
-                in = new FileInputStream(resource);
-            } catch (final FileNotFoundException e) {
-                throw new RuntimeException("Failed to find resource " + resource, e);
-            }
-        }
-        try {
-            return new JSONObject(new JSONTokener(in));
-        } finally {
-            try {
-                in.close();
-            } catch (final IOException ignore) {
-                // Failed to close file, but it's fine. probably...
-            }
-        }
+        metadataSchema
+                .getJSONObject("properties")
+                .getJSONObject("event_type")
+                .put("enum", new JSONArray(Collections.singleton(eventTypeName)));
+        return metadataSchema;
     }
 
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {

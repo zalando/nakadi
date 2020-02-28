@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -13,6 +14,7 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.IsOptional;
 import org.zalando.nakadi.utils.TestUtils;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -22,9 +24,10 @@ public class JSONSchemaValidationTest {
     private EventValidatorBuilder eventValidatorBuilder;
 
     @Before
-    public void before() {
+    public void before() throws IOException {
         eventValidatorBuilder = new EventValidatorBuilder(Arrays.asList(
-                new EventBodySchemaValidationStrategy(new JsonSchemaEnrichment("")),
+                new EventBodySchemaValidationStrategy(
+                        new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json")),
                 new EventMetadataValidationStrategy()));
     }
 
