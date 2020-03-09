@@ -359,7 +359,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenGetEventTypeWithRegisteredExceptionThenOk() throws Exception {
+    public void whenGetEventTypeWithRegisteredExtensionThenOk() throws Exception {
         final EventType et = NakadiTestUtils.buildSimpleEventType();
         et.setName(et.getName() + ".ps");
         NakadiTestUtils.createEventTypeInNakadi(et);
