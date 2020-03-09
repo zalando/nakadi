@@ -27,7 +27,7 @@ public class EventValidatorBuilder {
     }
 
     public EventTypeValidator build(final EventType eventType) {
-        final List<Function<JSONObject, Optional<ValidationError>>> validators = new ArrayList<>();
+        final List<Function<JSONObject, Optional<ValidationError>>> validators = new ArrayList<>(2);
 
         // 1. We always validate schema.
         final Schema schema = SchemaLoader.builder()
