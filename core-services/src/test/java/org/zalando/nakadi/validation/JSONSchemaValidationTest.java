@@ -25,10 +25,8 @@ public class JSONSchemaValidationTest {
 
     @Before
     public void before() throws IOException {
-        eventValidatorBuilder = new EventValidatorBuilder(Arrays.asList(
-                new EventBodySchemaValidationStrategy(
-                        new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json")),
-                new EventMetadataValidationStrategy()));
+        eventValidatorBuilder = new EventValidatorBuilder(
+                new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"));
     }
 
     @Test
