@@ -103,7 +103,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Override
-    protected void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+    protected void configureContentNegotiation(final ContentNegotiationConfigurer configurer) {
         super.configureContentNegotiation(configurer);
         configurer.favorPathExtension(false);
     }
