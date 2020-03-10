@@ -16,6 +16,7 @@ import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
+import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.zalando.nakadi.filters.TracingFilter;
@@ -56,6 +57,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     public FilterRegistrationBean flowIdRequestFilter() {
         return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
     }
+
     @Bean
     public FilterRegistrationBean traceRequestFilter() {
         return createFilterRegistrationBean(new TracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 1);
@@ -98,6 +100,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
         final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
         handlerMapping.setUseSuffixPatternMatch(false);
         return handlerMapping;
+    }
+
+    @Override
+    protected void configureContentNegotiation(final ContentNegotiationConfigurer configurer) {
+        super.configureContentNegotiation(configurer);
+        configurer.favorPathExtension(false);
     }
 
     private FilterRegistrationBean createFilterRegistrationBean(final Filter filter, final int order) {

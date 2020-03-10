@@ -359,6 +359,16 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
+    public void whenGetEventTypeWithRegisteredExtensionThenOk() throws Exception {
+        final EventType et = NakadiTestUtils.buildSimpleEventType();
+        et.setName(et.getName() + ".ps");
+        NakadiTestUtils.createEventTypeInNakadi(et);
+        given().get(ENDPOINT + "/" + et.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
     public void whenPOSTEventTypeWithAuthorizationThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
