@@ -4,19 +4,29 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventTypeBase;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.collect.Lists.newArrayList;
-
+@Component
 public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
     public static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
@@ -30,6 +40,21 @@ public class JsonSchemaEnrichment {
     private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems",
             "items");
     private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
+    private final Map<CleanupPolicy, JSONObject> metadataSchemas = new HashMap<>();
+
+    @Autowired
+    public JsonSchemaEnrichment(
+            final ResourceLoader resourceLoader,
+            @Value("${nakadi.schema.metadata:classpath:schema_metadata.json}") final String metadataSchemaResource)
+            throws IOException {
+        final Resource resource = resourceLoader.getResource(metadataSchemaResource);
+        try (InputStream in = resource.getInputStream()) {
+            final JSONObject schemas = new JSONObject(new JSONTokener(new InputStreamReader(in)));
+            for (final CleanupPolicy cp : CleanupPolicy.values()) {
+                metadataSchemas.put(cp, schemas.getJSONObject(cp.name().toLowerCase()));
+            }
+        }
+    }
 
     public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
@@ -116,7 +141,7 @@ public class JsonSchemaEnrichment {
         );
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventTypeBase eventType) {
+    private JSONObject wrapSchemaInData(final JSONObject schema, final EventTypeBase eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
@@ -147,53 +172,24 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    private static JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
+    private JSONObject addMetadata(final JSONObject schema, final EventTypeBase eventType) {
         normalizeSchema(schema);
-
-        final JSONObject metadata = new JSONObject();
-        final JSONObject metadataProperties = new JSONObject();
-
-        final JSONObject uuid = new JSONObject()
-                .put("type", "string")
-                .put("pattern", "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$");
-        final JSONObject arrayOfUUIDs = new JSONObject()
-                .put("type", "array")
-                .put("items", uuid);
-        final JSONObject eventTypeString = new JSONObject()
-                .put("type", "string")
-                .put("enum", Arrays.asList(new String[]{eventType.getName()}));
-        final JSONObject string = new JSONObject().put("type", "string");
-        final JSONObject stringMap = new JSONObject().put("type", "object").put("additionalProperties", string);
-        final JSONObject dateTime = new JSONObject()
-                .put("type", "string");
-
-        metadataProperties.put("eid", uuid);
-        metadataProperties.put("event_type", eventTypeString);
-        metadataProperties.put("occurred_at", dateTime);
-        metadataProperties.put("parent_eids", arrayOfUUIDs);
-        metadataProperties.put("flow_id", string);
-        metadataProperties.put("partition", string);
-        metadataProperties.put("span_ctx", stringMap);
-
-        final ArrayList<String> requiredFields = newArrayList("eid", "occurred_at");
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
-            final JSONObject compactionKey = new JSONObject()
-                    .put("type", "string")
-                    .put("minLength", 1);
-            metadataProperties.put("partition_compaction_key", compactionKey);
-            requiredFields.add("partition_compaction_key");
-        }
-
-        metadata.put("type", "object");
-        metadata.put("properties", metadataProperties);
-        metadata.put("required", requiredFields);
-        metadata.put("additionalProperties", false);
+        final JSONObject metadata = createMetadata(eventType.getName(), eventType.getCleanupPolicy());
 
         schema.getJSONObject("properties").put("metadata", metadata);
-
         addToRequired(schema, new String[]{"metadata"});
-
         return schema;
+    }
+
+    public JSONObject createMetadata(final String eventTypeName, final CleanupPolicy cleanupPolicy) {
+        // We are creating a copy of metadata object, as we are modifying it afterwards.
+        final JSONObject metadataSchema = new JSONObject(metadataSchemas.get(cleanupPolicy).toString());
+
+        metadataSchema
+                .getJSONObject("properties")
+                .getJSONObject("event_type")
+                .put("enum", new JSONArray(Collections.singleton(eventTypeName)));
+        return metadataSchema;
     }
 
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {

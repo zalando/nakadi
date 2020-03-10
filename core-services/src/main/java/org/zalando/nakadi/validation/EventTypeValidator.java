@@ -4,6 +4,7 @@ import org.json.JSONObject;
 
 import java.util.Optional;
 
-interface EventValidator {
-    Optional<ValidationError> accepts(JSONObject event);
+public interface EventTypeValidator {
+
+    Optional<ValidationError> validate(JSONObject event);
 }

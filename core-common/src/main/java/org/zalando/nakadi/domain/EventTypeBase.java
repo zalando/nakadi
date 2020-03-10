@@ -34,9 +34,6 @@ public class EventTypeBase implements EventTypeAuthz {
     @NotNull
     private EventCategory category;
 
-    @JsonIgnore
-    private List<ValidationStrategyConfiguration> validationStrategies;
-
     @NotNull
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies;
 
@@ -81,7 +78,6 @@ public class EventTypeBase implements EventTypeAuthz {
     private EventOwnerSelector eventOwnerSelector;
 
     public EventTypeBase() {
-        this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.options = new EventTypeOptions();
@@ -92,7 +88,6 @@ public class EventTypeBase implements EventTypeAuthz {
     public EventTypeBase(final String name,
                          final String owningApplication,
                          final EventCategory category,
-                         final List<ValidationStrategyConfiguration> validationStrategies,
                          final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
                          final String partitionStrategy,
                          final List<String> partitionKeyFields,
@@ -104,7 +99,6 @@ public class EventTypeBase implements EventTypeAuthz {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
-        this.validationStrategies = validationStrategies;
         this.enrichmentStrategies = enrichmentStrategies;
         this.partitionStrategy = partitionStrategy;
         this.partitionKeyFields = partitionKeyFields;
@@ -119,7 +113,6 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setName(eventType.getName());
         this.setOwningApplication(eventType.getOwningApplication());
         this.setCategory(eventType.getCategory());
-        this.setValidationStrategies(eventType.getValidationStrategies());
         this.setEnrichmentStrategies(eventType.getEnrichmentStrategies());
         this.setPartitionStrategy(eventType.getPartitionStrategy());
         this.setPartitionKeyFields(eventType.getPartitionKeyFields());
@@ -157,10 +150,6 @@ public class EventTypeBase implements EventTypeAuthz {
 
     public void setCategory(final EventCategory category) {
         this.category = category;
-    }
-
-    public List<ValidationStrategyConfiguration> getValidationStrategies() {
-        return validationStrategies;
     }
 
     public String getPartitionStrategy() {
@@ -241,10 +230,6 @@ public class EventTypeBase implements EventTypeAuthz {
 
     public void setCompatibilityMode(final CompatibilityMode compatibilityMode) {
         this.compatibilityMode = compatibilityMode;
-    }
-
-    public void setValidationStrategies(final List<ValidationStrategyConfiguration> validationStrategies) {
-        this.validationStrategies = validationStrategies;
     }
 
     @Nullable

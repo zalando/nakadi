@@ -126,7 +126,8 @@ public class EventTypeService {
             final EventTypeOptionsValidator eventTypeOptionsValidator,
             final AdminService adminService,
             final RepartitioningService repartitioningService,
-            final EventTypeCache eventTypeCache) {
+            final EventTypeCache eventTypeCache,
+            final JsonSchemaEnrichment jsonSchemaEnrichment) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -146,7 +147,7 @@ public class EventTypeService {
         this.adminService = adminService;
         this.repartitioningService = repartitioningService;
         this.eventTypeCache = eventTypeCache;
-        this.jsonSchemaEnrichment = new JsonSchemaEnrichment();
+        this.jsonSchemaEnrichment = jsonSchemaEnrichment;
     }
 
     public List<EventType> list() {
