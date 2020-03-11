@@ -59,8 +59,8 @@ public interface ZkSubscriptionClient extends Closeable {
     void deleteSubscription();
 
     /**
-     * Fills subscription object using partitions information provided (mapping from (topic, partition) to real offset
-     * (NOT "BEGIN").
+     * Fills subscription object using partitions information provided (mapping from (topic, partition) to offset,
+     * "BEGIN" is allowed.
      *
      * @param cursors Data to use for subscription filling.
      */
