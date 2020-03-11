@@ -432,7 +432,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
                             for (final SubscriptionCursorWithoutToken cursor : entry.getValue()) {
                                 // Offsets are lexicographically comparable, except 'BEGIN'
-                                if (cursor.getOffset().compareTo(newMaxOffset) > 0 || newMaxOffset.equalsIgnoreCase(Cursor.BEFORE_OLDEST_OFFSET)) {
+                                if (cursor.getOffset().compareTo(newMaxOffset) > 0
+                                        || newMaxOffset.equalsIgnoreCase(Cursor.BEFORE_OLDEST_OFFSET)) {
                                     newMaxOffset = cursor.getOffset();
                                     commits.add(true);
                                 } else {
