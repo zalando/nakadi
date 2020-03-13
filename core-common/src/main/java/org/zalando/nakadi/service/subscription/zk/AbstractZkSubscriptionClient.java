@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
@@ -430,8 +431,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                             final List<Boolean> commits = Lists.newArrayList();
 
                             for (final SubscriptionCursorWithoutToken cursor : entry.getValue()) {
-                                // Offsets are lexicographically comparable
-                                if (cursor.getOffset().compareTo(newMaxOffset) > 0) {
+                                // Offsets are lexicographically comparable, except 'BEGIN'
+                                if (cursor.getOffset().compareTo(newMaxOffset) > 0
+                                        || newMaxOffset.equalsIgnoreCase(Cursor.BEFORE_OLDEST_OFFSET)) {
                                     newMaxOffset = cursor.getOffset();
                                     commits.add(true);
                                 } else {
