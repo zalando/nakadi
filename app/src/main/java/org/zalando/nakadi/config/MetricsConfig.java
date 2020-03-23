@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.zalando.nakadi.metrics.NakadiMetricsServlet;
 
 import java.lang.management.ManagementFactory;
 
@@ -21,7 +20,7 @@ import java.lang.management.ManagementFactory;
 public class MetricsConfig {
     @Bean
     public ServletRegistrationBean servletRegistrationBean(final MetricRegistry metricRegistry) {
-        return new ServletRegistrationBean(new NakadiMetricsServlet(metricRegistry), "/metrics/*");
+        return new ServletRegistrationBean(new MetricsServlet(metricRegistry), "/metrics/*");
     }
 
     class SubscriptionMetricsServlet extends MetricsServlet {
