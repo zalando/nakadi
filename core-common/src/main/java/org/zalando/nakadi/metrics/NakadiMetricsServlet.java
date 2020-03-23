@@ -25,7 +25,7 @@ public class NakadiMetricsServlet extends HttpServlet {
      * {@link MetricRegistry}, rate and duration units, and allowed origin for
      * {@link com.codahale.metrics.servlets.MetricsServlet}.
      */
-    public static abstract class ContextListener implements ServletContextListener {
+    public abstract static class ContextListener implements ServletContextListener {
         /**
          * @return the {@link MetricRegistry} to inject into the servlet context.
          */
@@ -74,18 +74,21 @@ public class NakadiMetricsServlet extends HttpServlet {
         }
 
         @Override
-        public void contextInitialized(ServletContextEvent event) {
+        public void contextInitialized(final ServletContextEvent event) {
             final ServletContext context = event.getServletContext();
             context.setAttribute(METRICS_REGISTRY, getMetricRegistry());
             context.setAttribute(METRIC_FILTER, getMetricFilter());
             if (getDurationUnit() != null) {
-                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.DURATION_UNIT, getDurationUnit().toString());
+                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.DURATION_UNIT,
+                        getDurationUnit().toString());
             }
             if (getRateUnit() != null) {
-                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.RATE_UNIT, getRateUnit().toString());
+                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.RATE_UNIT,
+                        getRateUnit().toString());
             }
             if (getAllowedOrigin() != null) {
-                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.ALLOWED_ORIGIN, getAllowedOrigin());
+                context.setInitParameter(com.codahale.metrics.servlets.MetricsServlet.ALLOWED_ORIGIN,
+                        getAllowedOrigin());
             }
             if (getJsonpCallbackParameter() != null) {
                 context.setAttribute(CALLBACK_PARAM, getJsonpCallbackParameter());
@@ -93,20 +96,27 @@ public class NakadiMetricsServlet extends HttpServlet {
         }
 
         @Override
-        public void contextDestroyed(ServletContextEvent event) {
+        public void contextDestroyed(final ServletContextEvent event) {
             // no-op
         }
     }
 
-    public static final String RATE_UNIT = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".rateUnit";
-    public static final String DURATION_UNIT = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".durationUnit";
-    public static final String SHOW_SAMPLES = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".showSamples";
-    public static final String METRICS_REGISTRY = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".registry";
-    public static final String ALLOWED_ORIGIN = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".allowedOrigin";
-    public static final String METRIC_FILTER = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".metricFilter";
-    public static final String CALLBACK_PARAM = com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".jsonpCallback";
+    public static final String RATE_UNIT =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".rateUnit";
+    public static final String DURATION_UNIT =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".durationUnit";
+    public static final String SHOW_SAMPLES =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".showSamples";
+    public static final String METRICS_REGISTRY =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".registry";
+    public static final String ALLOWED_ORIGIN =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".allowedOrigin";
+    public static final String METRIC_FILTER =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".metricFilter";
+    public static final String CALLBACK_PARAM =
+            com.codahale.metrics.servlets.MetricsServlet.class.getCanonicalName() + ".jsonpCallback";
 
-    private static final long serialVersionUID = 1049773947734939602L;
+    private static final long serialVersionUID = 1049773947734559602L;
     private static final String CONTENT_TYPE = "application/json";
 
     private String allowedOrigin;
@@ -114,15 +124,12 @@ public class NakadiMetricsServlet extends HttpServlet {
     private transient MetricRegistry registry;
     private transient ObjectMapper mapper;
 
-    public NakadiMetricsServlet() {
-    }
-
-    public NakadiMetricsServlet(MetricRegistry registry) {
+    public NakadiMetricsServlet(final MetricRegistry registry) {
         this.registry = registry;
     }
 
     @Override
-    public void init(ServletConfig config) throws ServletException {
+    public void init(final ServletConfig config) throws ServletException {
         super.init(config);
 
         final ServletContext context = config.getServletContext();
@@ -154,8 +161,8 @@ public class NakadiMetricsServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest req,
-                         HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(final HttpServletRequest req,
+                         final HttpServletResponse resp) throws IOException {
         resp.setContentType(CONTENT_TYPE);
         if (allowedOrigin != null) {
             resp.setHeader("Access-Control-Allow-Origin", allowedOrigin);
@@ -175,7 +182,7 @@ public class NakadiMetricsServlet extends HttpServlet {
         }
     }
 
-    private ObjectWriter getWriter(HttpServletRequest request) {
+    private ObjectWriter getWriter(final HttpServletRequest request) {
         final boolean prettyPrint = Boolean.parseBoolean(request.getParameter("pretty"));
         if (prettyPrint) {
             return mapper.writerWithDefaultPrettyPrinter();
@@ -183,7 +190,7 @@ public class NakadiMetricsServlet extends HttpServlet {
         return mapper.writer();
     }
 
-    private TimeUnit parseTimeUnit(String value, TimeUnit defaultValue) {
+    private TimeUnit parseTimeUnit(final String value, final TimeUnit defaultValue) {
         try {
             return TimeUnit.valueOf(String.valueOf(value).toUpperCase(Locale.US));
         } catch (IllegalArgumentException e) {

@@ -30,9 +30,9 @@ public class NakadiMetricsModule extends Module {
         }
 
         @Override
-        public void serialize(Gauge gauge,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final Gauge gauge,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             final Object value;
             try {
@@ -51,9 +51,9 @@ public class NakadiMetricsModule extends Module {
         }
 
         @Override
-        public void serialize(Counter counter,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final Counter counter,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             json.writeNumberField("count", counter.getCount());
             json.writeEndObject();
@@ -63,15 +63,15 @@ public class NakadiMetricsModule extends Module {
     private static class HistogramSerializer extends StdSerializer<Histogram> {
         private final boolean showSamples;
 
-        private HistogramSerializer(boolean showSamples) {
+        private HistogramSerializer(final boolean showSamples) {
             super(Histogram.class);
             this.showSamples = showSamples;
         }
 
         @Override
-        public void serialize(Histogram histogram,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final Histogram histogram,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             final Snapshot snapshot = histogram.getSnapshot();
             json.writeNumberField("count", histogram.getCount());
@@ -89,16 +89,16 @@ public class NakadiMetricsModule extends Module {
         private final String rateUnit;
         private final double rateFactor;
 
-        public MeterSerializer(TimeUnit rateUnit) {
+        MeterSerializer(final TimeUnit rateUnit) {
             super(Meter.class);
             this.rateFactor = rateUnit.toSeconds(1);
             this.rateUnit = calculateRateUnit(rateUnit, "events");
         }
 
         @Override
-        public void serialize(Meter meter,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final Meter meter,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             json.writeNumberField("count", meter.getCount());
             json.writeNumberField("m1_rate", meter.getOneMinuteRate() * rateFactor);
@@ -114,9 +114,9 @@ public class NakadiMetricsModule extends Module {
         private final double durationFactor;
         private final boolean showSamples;
 
-        private TimerSerializer(TimeUnit rateUnit,
-                                TimeUnit durationUnit,
-                                boolean showSamples) {
+        private TimerSerializer(final TimeUnit rateUnit,
+                                final TimeUnit durationUnit,
+                                final boolean showSamples) {
             super(Timer.class);
             this.rateUnit = calculateRateUnit(rateUnit, "calls");
             this.rateFactor = rateUnit.toSeconds(1);
@@ -126,9 +126,9 @@ public class NakadiMetricsModule extends Module {
         }
 
         @Override
-        public void serialize(Timer timer,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final Timer timer,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             final Snapshot snapshot = timer.getSnapshot();
             json.writeNumberField("count", timer.getCount());
@@ -154,15 +154,15 @@ public class NakadiMetricsModule extends Module {
 
         private final MetricFilter filter;
 
-        private MetricRegistrySerializer(MetricFilter filter) {
+        private MetricRegistrySerializer(final MetricFilter filter) {
             super(MetricRegistry.class);
             this.filter = filter;
         }
 
         @Override
-        public void serialize(MetricRegistry registry,
-                              JsonGenerator json,
-                              SerializerProvider provider) throws IOException {
+        public void serialize(final MetricRegistry registry,
+                              final JsonGenerator json,
+                              final SerializerProvider provider) throws IOException {
             json.writeStartObject();
             json.writeStringField("version", VERSION.toString());
             json.writeObjectField("gauges", registry.getGauges(filter));
@@ -179,11 +179,16 @@ public class NakadiMetricsModule extends Module {
     private final boolean showSamples;
     private final MetricFilter filter;
 
-    public NakadiMetricsModule(TimeUnit rateUnit, TimeUnit durationUnit, boolean showSamples) {
+    public NakadiMetricsModule(final TimeUnit rateUnit,
+                               final TimeUnit durationUnit,
+                               final boolean showSamples) {
         this(rateUnit, durationUnit, showSamples, MetricFilter.ALL);
     }
 
-    public NakadiMetricsModule(TimeUnit rateUnit, TimeUnit durationUnit, boolean showSamples, MetricFilter filter) {
+    public NakadiMetricsModule(final TimeUnit rateUnit,
+                               final TimeUnit durationUnit,
+                               final boolean showSamples,
+                               final MetricFilter filter) {
         this.rateUnit = rateUnit;
         this.durationUnit = durationUnit;
         this.showSamples = showSamples;
@@ -201,7 +206,7 @@ public class NakadiMetricsModule extends Module {
     }
 
     @Override
-    public void setupModule(SetupContext context) {
+    public void setupModule(final SetupContext context) {
         context.addSerializers(new SimpleSerializers(Arrays.<JsonSerializer<?>>asList(
                 new GaugeSerializer(),
                 new CounterSerializer(),
@@ -212,7 +217,7 @@ public class NakadiMetricsModule extends Module {
         )));
     }
 
-    private static String calculateRateUnit(TimeUnit unit, String name) {
+    private static String calculateRateUnit(final TimeUnit unit, final String name) {
         final String s = unit.toString().toLowerCase(Locale.US);
         return name + '/' + s.substring(0, s.length() - 1);
     }
