@@ -81,7 +81,10 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.response = response;
             this.flowId = flowId;
             this.requestLogInfo = new RequestLogInfo(request, startTime);
-            logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
+
+            if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
+                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
+            }
         }
 
         private void logOnEvent() {
@@ -134,9 +137,12 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        if (!isSuccessPublishingRequest(requestLogInfo, statusCode)) {
+        final boolean isAccessLogEnabled = featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
+
+        if (statusCode >= 500 || (isAccessLogEnabled && !isSuccessPublishingRequest(requestLogInfo, statusCode))) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
+
         logToKpiPublisher(requestLogInfo, statusCode, timeSpentMs);
     }
 
@@ -152,21 +158,18 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                    requestLogInfo.method,
-                    requestLogInfo.path,
-                    requestLogInfo.query,
-                    requestLogInfo.userAgent,
-                    requestLogInfo.user,
-                    statusCode,
-                    timeSpentMs,
-                    requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding,
-                    requestLogInfo.contentLength);
-        }
+        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+                requestLogInfo.method,
+                requestLogInfo.path,
+                requestLogInfo.query,
+                requestLogInfo.userAgent,
+                requestLogInfo.user,
+                statusCode,
+                timeSpentMs,
+                requestLogInfo.contentEncoding,
+                requestLogInfo.acceptEncoding,
+                requestLogInfo.contentLength);
     }
-
 
     private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         return isPublishingRequest(requestLogInfo) && statusCode == 200;
