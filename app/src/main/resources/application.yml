@@ -172,6 +172,7 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     REPARTITIONING: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
+    ACCESS_LOG_ENABLED: true
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
@@ -197,3 +198,4 @@ nakadi.features.defaultFeatures:
   FORCE_SUBSCRIPTION_AUTHZ: false
   REPARTITIONING: true
   EVENT_OWNER_SELECTOR_AUTHZ: false
+  ACCESS_LOG_ENABLED: true
