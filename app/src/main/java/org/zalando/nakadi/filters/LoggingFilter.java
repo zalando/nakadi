@@ -137,7 +137,9 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        if (statusCode >= 500 || featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
+        final boolean isAccessLogEnabled = featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
+
+        if (statusCode >= 500 || (isAccessLogEnabled && !isSuccessPublishingRequest(requestLogInfo, statusCode))) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
 
@@ -167,5 +169,15 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.contentEncoding,
                 requestLogInfo.acceptEncoding,
                 requestLogInfo.contentLength);
+    }
+
+    private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+        return isPublishingRequest(requestLogInfo) && statusCode == 200;
+    }
+
+    private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
+        return requestLogInfo.path != null && "POST".equals(requestLogInfo.method) &&
+                requestLogInfo.path.startsWith("/event-types/") &&
+                (requestLogInfo.path.endsWith("/events") || requestLogInfo.path.endsWith("/events/"));
     }
 }
