@@ -9,8 +9,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -31,14 +33,17 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final String accessLogEventType;
     private final AuthorizationService authorizationService;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
                          final AuthorizationService authorizationService,
+                         final FeatureToggleService featureToggleService,
                          @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
         this.authorizationService = authorizationService;
+        this.featureToggleService = featureToggleService;
     }
 
     private class RequestLogInfo {
@@ -147,17 +152,19 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                requestLogInfo.method,
-                requestLogInfo.path,
-                requestLogInfo.query,
-                requestLogInfo.userAgent,
-                requestLogInfo.user,
-                statusCode,
-                timeSpentMs,
-                requestLogInfo.contentEncoding,
-                requestLogInfo.acceptEncoding,
-                requestLogInfo.contentLength);
+        if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
+            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+                    requestLogInfo.method,
+                    requestLogInfo.path,
+                    requestLogInfo.query,
+                    requestLogInfo.userAgent,
+                    requestLogInfo.user,
+                    statusCode,
+                    timeSpentMs,
+                    requestLogInfo.contentEncoding,
+                    requestLogInfo.acceptEncoding,
+                    requestLogInfo.contentLength);
+        }
     }
 
 

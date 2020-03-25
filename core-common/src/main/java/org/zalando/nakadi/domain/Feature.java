@@ -16,7 +16,8 @@ public enum Feature {
     FORCE_EVENT_TYPE_AUTHZ("force_event_type_authz"),
     FORCE_SUBSCRIPTION_AUTHZ("force_subscription_authz"),
     REPARTITIONING("repartitioning"),
-    EVENT_OWNER_SELECTOR_AUTHZ("event_owner_selector_authz");
+    EVENT_OWNER_SELECTOR_AUTHZ("event_owner_selector_authz"),
+    ACCESS_LOG_ENABLED("access_log_enabled");
 
     private final String id;
 
