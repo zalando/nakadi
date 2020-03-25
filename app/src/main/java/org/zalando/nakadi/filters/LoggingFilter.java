@@ -81,7 +81,10 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.response = response;
             this.flowId = flowId;
             this.requestLogInfo = new RequestLogInfo(request, startTime);
-            logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
+
+            if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
+                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
+            }
         }
 
         private void logOnEvent() {
@@ -153,18 +156,16 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
-            ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
-                    requestLogInfo.method,
-                    requestLogInfo.path,
-                    requestLogInfo.query,
-                    requestLogInfo.userAgent,
-                    requestLogInfo.user,
-                    statusCode,
-                    timeSpentMs,
-                    requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding,
-                    requestLogInfo.contentLength);
-        }
+        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+                requestLogInfo.method,
+                requestLogInfo.path,
+                requestLogInfo.query,
+                requestLogInfo.userAgent,
+                requestLogInfo.user,
+                statusCode,
+                timeSpentMs,
+                requestLogInfo.contentEncoding,
+                requestLogInfo.acceptEncoding,
+                requestLogInfo.contentLength);
     }
 }
