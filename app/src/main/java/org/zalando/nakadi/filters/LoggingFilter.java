@@ -137,13 +137,17 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        final boolean isAccessLogEnabled = featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
+        final boolean isServerSideError = statusCode >= 500 || statusCode == 207;
 
-        if (statusCode >= 500 || (isAccessLogEnabled && !isSuccessPublishingRequest(requestLogInfo, statusCode))) {
+        if (isServerSideError || (isAccessLogEnabled() && !isPublishingRequest(requestLogInfo))) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
 
         logToKpiPublisher(requestLogInfo, statusCode, timeSpentMs);
+    }
+
+    private boolean isAccessLogEnabled() {
+        return featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
     }
 
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
@@ -169,10 +173,6 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.contentEncoding,
                 requestLogInfo.acceptEncoding,
                 requestLogInfo.contentLength);
-    }
-
-    private boolean isSuccessPublishingRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
-        return isPublishingRequest(requestLogInfo) && statusCode == 200;
     }
 
     private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
