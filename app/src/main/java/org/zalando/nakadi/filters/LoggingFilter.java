@@ -137,7 +137,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
-        boolean isServerSideError = statusCode >= 500 || statusCode == 207;
+        final boolean isServerSideError = statusCode >= 500 || statusCode == 207;
 
         if (isServerSideError || (isAccessLogEnabled() && !isPublishingRequest(requestLogInfo))) {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
