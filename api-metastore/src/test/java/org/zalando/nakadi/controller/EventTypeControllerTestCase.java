@@ -86,10 +86,10 @@ public class EventTypeControllerTestCase {
     protected final TimelineService timelineService = mock(TimelineService.class);
     protected final TimelineSync timelineSync = mock(TimelineSync.class);
     protected final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
-    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig()
+    protected final AdminService adminService = mock(AdminService.class);
+    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService)
             .schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
-    protected final AdminService adminService = mock(AdminService.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
@@ -115,6 +115,7 @@ public class EventTypeControllerTestCase {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
         });
+        when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
