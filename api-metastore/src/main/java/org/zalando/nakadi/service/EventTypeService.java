@@ -612,6 +612,9 @@ public class EventTypeService {
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
             }
+        } catch (final com.google.re2j.PatternSyntaxException e) {
+            throw new InvalidEventTypeException("invalid regex pattern in the schema: "
+                    + e.getDescription() + " \"" + e.getPattern() + "\"");
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
