@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
+import org.everit.json.schema.loader.SchemaClient;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -69,6 +70,7 @@ import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -593,7 +595,14 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
             }
 
-            final Schema schema = SchemaLoader.load(schemaAsJson);
+            final Schema schema = SchemaLoader
+                    .builder()
+                    .httpClient(new BlockedHttpClient())
+                    .schemaJson(schemaAsJson)
+                    .build()
+                    .load()
+                    .build();
+
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
@@ -641,5 +650,12 @@ public class EventTypeService {
 
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");
+    }
+
+    private class BlockedHttpClient implements SchemaClient {
+        @Override
+        public InputStream get(final String ref) {
+            throw new InvalidEventTypeException("external url reference is not supported: " + ref);
+        }
     }
 }

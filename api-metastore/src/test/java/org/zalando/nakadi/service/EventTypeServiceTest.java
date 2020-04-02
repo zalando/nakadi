@@ -24,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -46,6 +47,7 @@ import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -243,6 +245,20 @@ public class EventTypeServiceTest {
                 .thenReturn(true);
 
         eventTypeService.create(eventType, true);
+    }
+
+    @Test
+    public void doNotSupportSchemaWithExternalRef() {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        eventType.getSchema().setSchema("{\n" +
+                "    \"properties\": {\n" +
+                "      \"foo\": {\n" +
+                "        \"$ref\": \"/invalid/url\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }");
+
+        assertThrows(InvalidEventTypeException.class, () -> eventTypeService.create(eventType, true));
     }
 
     @Test
