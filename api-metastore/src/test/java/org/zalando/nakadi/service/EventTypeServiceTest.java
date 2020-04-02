@@ -24,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -46,6 +47,7 @@ import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -303,6 +305,21 @@ public class EventTypeServiceTest {
                         .put("category", et.getCategory())
                         .put("authz", "disabled")
                         .put("compatibility_mode", et.getCompatibilityMode()));
+    }
+
+    @Test
+    public void throwsInvalidSchemaOnInvalidRegex() throws Exception {
+        final EventType et = TestUtils.buildDefaultEventType();
+        et.getSchema().setSchema("{\n" +
+                "      \"properties\": {\n" +
+                "        \"foo\": {\n" +
+                "          \"type\": \"string\",\n" +
+                "          \"pattern\": \"^(?!\\\\s*$).+\"\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }");
+
+        assertThrows(InvalidEventTypeException.class, () -> eventTypeService.create(et, false));
     }
 
 }
