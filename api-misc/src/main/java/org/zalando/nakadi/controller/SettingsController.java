@@ -82,7 +82,7 @@ public class SettingsController {
     }
 
     @RequestMapping(path = "/features", method = RequestMethod.POST)
-    public ResponseEntity<?> setFeature(@RequestBody final FeatureWrapper featureWrapper,
+    public ResponseEntity<?> setFeature(@Valid @RequestBody final FeatureWrapper featureWrapper,
                                         final NativeWebRequest request)
             throws ForbiddenOperationException {
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
