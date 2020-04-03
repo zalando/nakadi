@@ -248,6 +248,20 @@ public class EventTypeServiceTest {
     }
 
     @Test
+    public void doNotSupportSchemaWithExternalRef() {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        eventType.getSchema().setSchema("{\n" +
+                "    \"properties\": {\n" +
+                "      \"foo\": {\n" +
+                "        \"$ref\": \"/invalid/url\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }");
+
+        assertThrows(InvalidEventTypeException.class, () -> eventTypeService.create(eventType, true));
+    }
+
+    @Test
     public void shouldRemoveEventTypeWhenTimelineCreationFails() {
         final EventType eventType = TestUtils.buildDefaultEventType();
         when(eventTypeRepository.saveEventType(any())).thenReturn(eventType);
