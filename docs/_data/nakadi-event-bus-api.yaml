@@ -2866,7 +2866,7 @@ definitions:
       retention_time:
         type: integer
         format: int64
-        default: 345600000 # 4 days
+        default: 172800000 # 2 days
         description: |
           Number of milliseconds that Nakadi stores events published to this event type.
 
