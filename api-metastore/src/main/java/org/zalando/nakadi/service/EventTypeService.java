@@ -2,10 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import org.everit.json.schema.Schema;
-import org.everit.json.schema.SchemaException;
-import org.everit.json.schema.loader.SchemaLoader;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +13,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -62,20 +57,15 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.util.JsonUtils;
-import org.zalando.nakadi.validation.JsonSchemaEnrichment;
-import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS;
 import static org.zalando.nakadi.domain.Feature.FORCE_EVENT_TYPE_AUTHZ;
@@ -103,8 +93,9 @@ public class EventTypeService {
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
     private final RepartitioningService repartitioningService;
-    private final JsonSchemaEnrichment jsonSchemaEnrichment;
+
     private final EventTypeCache eventTypeCache;
+    private final SchemaService schemaService;
 
     @Autowired
     public EventTypeService(
@@ -127,7 +118,7 @@ public class EventTypeService {
             final AdminService adminService,
             final RepartitioningService repartitioningService,
             final EventTypeCache eventTypeCache,
-            final JsonSchemaEnrichment jsonSchemaEnrichment) {
+            final SchemaService schemaService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -147,7 +138,7 @@ public class EventTypeService {
         this.adminService = adminService;
         this.repartitioningService = repartitioningService;
         this.eventTypeCache = eventTypeCache;
-        this.jsonSchemaEnrichment = jsonSchemaEnrichment;
+        this.schemaService = schemaService;
     }
 
     public List<EventType> list() {
@@ -174,7 +165,7 @@ public class EventTypeService {
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
-        validateSchema(eventType);
+        schemaService.validateSchema(eventType);
         validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
@@ -435,7 +426,7 @@ public class EventTypeService {
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
-            validateSchema(eventTypeBase);
+            schemaService.validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
@@ -579,67 +570,5 @@ public class EventTypeService {
         } else if (updatedEventOwnerSelector == null && originalEventOwnerSelector != null) {
             throw new InvalidEventTypeException("event_owner_selector can't be set back to null");
         }
-    }
-
-    private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
-        try {
-            final String eventTypeSchema = eventType.getSchema().getSchema();
-
-            JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
-
-            final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
-
-            if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
-                throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
-            }
-
-            final Schema schema = SchemaLoader.load(schemaAsJson);
-            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
-                throw new InvalidEventTypeException("\"metadata\" property is reserved");
-            }
-
-            final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
-            final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
-            if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
-                throw new InvalidEventTypeException(
-                        "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
-            }
-            final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
-            final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
-            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
-            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
-
-            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-                validateJsonSchemaConstraints(schemaAsJson);
-            }
-        } catch (final JSONException e) {
-            throw new InvalidEventTypeException("schema must be a valid json");
-        } catch (final SchemaException e) {
-            throw new InvalidEventTypeException("schema must be a valid json-schema");
-        }
-    }
-
-    private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
-
-        if (!incompatibilities.isEmpty()) {
-            final String errorMessage = incompatibilities.stream().map(Object::toString)
-                    .collect(Collectors.joining(", "));
-            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
-        }
-    }
-
-    private void validateFieldsInSchema(final String fieldName, final List<String> fields, final Schema schema) {
-        final List<String> absentFields = fields.stream()
-                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
-                .collect(Collectors.toList());
-        if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException(fieldName + " " + absentFields + " absent in schema");
-        }
-    }
-
-
-    private String convertToJSONPointer(final String value) {
-        return value.replaceAll("\\.", "/");
     }
 }

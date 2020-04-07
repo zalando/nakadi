@@ -2,7 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Before;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -34,6 +33,7 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
+import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -42,7 +42,6 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
@@ -94,6 +93,7 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     protected final TracingService tracingService = mock(TracingService.class);
+    private final SchemaService schemaService = mock(SchemaService.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() throws IOException {
@@ -124,7 +124,8 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache,
-                new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"));
+                schemaService);
+
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
         doReturn(randomUUID).when(uuid).randomUUID();

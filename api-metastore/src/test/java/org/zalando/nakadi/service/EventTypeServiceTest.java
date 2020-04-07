@@ -8,7 +8,6 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -38,7 +37,6 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,6 +77,7 @@ public class EventTypeServiceTest {
     private final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     private final AdminService adminService = mock(AdminService.class);
+    private final SchemaService schemaService = mock(SchemaService.class);
     private EventTypeService eventTypeService;
 
     @Before
@@ -89,8 +88,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(RepartitioningService.class), eventTypeCache,
-                new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"));
+                adminService, mock(RepartitioningService.class), eventTypeCache, schemaService);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

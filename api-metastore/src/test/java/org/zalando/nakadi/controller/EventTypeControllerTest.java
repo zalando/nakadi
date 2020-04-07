@@ -1,12 +1,10 @@
 package org.zalando.nakadi.controller;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -28,7 +26,6 @@ import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -236,17 +233,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", "
                 + "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
 
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void whenPostWithRootElementOfTypeArrayThenReturn422() throws Exception {
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem("\"type\" of root element in"
-                + " schema can only be \"object\"");
-
-        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", \n" +
-                "  \"name\": \"blah-event-type\",\n" +
-                "  \"schema\": {\"type\": \"json_schema\", \"schema\": \"{\\\"type\\\":\\\"array\\\" }\"}}";
         postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
@@ -584,44 +570,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPOSTBusinessEventTypeMetadataThen422() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.getSchema().setSchema(
-                "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
-        eventType.setCategory(BUSINESS);
-
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
-                "\"metadata\" property is reserved");
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void whenPOSTInvalidSchemaThen422() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.getSchema().setSchema(
-                "{\"not\": {\"type\": \"object\"} }");
-        eventType.setCategory(BUSINESS);
-
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
-                "Invalid schema: Invalid schema found in [#]: extraneous key [not] is not permitted");
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void whenPostDuplicatedEventTypeReturn409() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(CONFLICT, "some-name");
-
-        doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
-                EventTypeBase.class));
-
-        postEventType(TestUtils.buildDefaultEventType()).andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeThenOk() throws Exception {
 
         final EventType eventType = TestUtils.buildDefaultEventType();
@@ -831,45 +779,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json")).andExpect(content().string(
                 matchesProblem(expectedProblem)));
 
-    }
-
-    @Test
-    public void whenEventTypeSchemaJsonIsMalformedThen422() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.getSchema().setSchema("invalid-json");
-
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
-                "schema must be a valid json: Unexpected symbol 'i' at pos 1");
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void invalidEventTypeSchemaJsonSchemaThen422() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        final String jsonSchemaString = Resources.toString(
-                Resources.getResource("sample-invalid-json-schema.json"),
-                Charsets.UTF_8);
-        eventType.getSchema().setSchema(jsonSchemaString);
-
-        final Problem expectedProblem = TestUtils.createInvalidEventTypeExceptionProblem(
-                "schema must be a valid json-schema");
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void whenPOSTWithInvalidEnrichmentStrategyThen422() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        doThrow(InvalidEventTypeException.class)
-                .when(enrichment)
-                .validate(any());
-
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
