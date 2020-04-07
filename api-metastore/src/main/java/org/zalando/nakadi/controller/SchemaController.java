@@ -25,7 +25,6 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 
 import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 import static org.springframework.http.ResponseEntity.status;
 
@@ -43,7 +42,7 @@ public class SchemaController {
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
     public ResponseEntity<?> create(@PathVariable("name") final String name,
-                                    @Valid @RequestBody @NotNull final EventTypeSchemaBase schema,
+                                    @Valid @RequestBody final EventTypeSchemaBase schema,
                                     final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
