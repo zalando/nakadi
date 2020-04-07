@@ -21,6 +21,7 @@ public class SettingsControllerAT extends BaseAT {
 
     private static final String BLACKLIST_URL = "/settings/blacklist";
     private static final String ADMINS_URL = "/settings/admins";
+    private static final String FEATURES_URL = "/settings/features";
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
     @Test
@@ -80,6 +81,12 @@ public class SettingsControllerAT extends BaseAT {
                 "{\"data_type\": \"service\", \"value\": \"service1\"}], " +
                 "\"writers\":[]}")
                 .contentType(ContentType.JSON).post(ADMINS_URL).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    public void testInvalidFeatureToggle() throws Exception {
+        given().body("{\"feeeeeeeature\":\"close_crutch\",\"enabled\":false}")
+                .contentType(ContentType.JSON).post(FEATURES_URL).then().statusCode(HttpStatus.SC_BAD_REQUEST);
     }
 
     public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {

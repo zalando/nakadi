@@ -154,4 +154,33 @@ public class SchemaServiceTest {
 
         assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
     }
+
+    @Test
+    public void throwsInvalidSchemaOnInvalidRegex() throws Exception {
+        final EventType et = TestUtils.buildDefaultEventType();
+        et.getSchema().setSchema("{\n" +
+                "      \"properties\": {\n" +
+                "        \"foo\": {\n" +
+                "          \"type\": \"string\",\n" +
+                "          \"pattern\": \"^(?!\\\\s*$).+\"\n" +
+                "        }\n" +
+                "      }\n" +
+                "    }");
+
+        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(et));
+    }
+
+    @Test
+    public void doNotSupportSchemaWithExternalRef() {
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        eventType.getSchema().setSchema("{\n" +
+                "    \"properties\": {\n" +
+                "      \"foo\": {\n" +
+                "        \"$ref\": \"/invalid/url\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }");
+
+        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+    }
 }

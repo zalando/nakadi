@@ -1,7 +1,11 @@
 package org.zalando.nakadi.domain;
 
+import javax.validation.constraints.NotNull;
+
 public class FeatureWrapper {
+    @NotNull
     private Feature feature;
+    @NotNull
     private boolean enabled;
 
     public FeatureWrapper() {

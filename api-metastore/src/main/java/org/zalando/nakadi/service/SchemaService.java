@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
+import org.everit.json.schema.loader.SchemaClient;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,6 +27,7 @@ import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -119,7 +121,14 @@ public class SchemaService {
                 throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
             }
 
-            final Schema schema = SchemaLoader.load(schemaAsJson);
+            final Schema schema = SchemaLoader
+                    .builder()
+                    .httpClient(new BlockedHttpClient())
+                    .schemaJson(schemaAsJson)
+                    .build()
+                    .load()
+                    .build();
+
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
@@ -138,6 +147,9 @@ public class SchemaService {
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);
             }
+        } catch (final com.google.re2j.PatternSyntaxException e) {
+            throw new InvalidEventTypeException("invalid regex pattern in the schema: "
+                    + e.getDescription() + " \"" + e.getPattern() + "\"");
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
@@ -166,5 +178,12 @@ public class SchemaService {
 
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");
+    }
+
+    private class BlockedHttpClient implements SchemaClient {
+        @Override
+        public InputStream get(final String ref) {
+            throw new InvalidEventTypeException("external url reference is not supported: " + ref);
+        }
     }
 }

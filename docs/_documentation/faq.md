@@ -8,7 +8,6 @@ position: 14
 ## Table of Contents
 
 - [How long will events be persisted for?](#how-long-will-events-be-persisted-for-)
-- [How do I define how long will events be persisted for?](#how-do-i-define-how-long-will-events-be-persisted-for-)
 - [How many partitions will an event type be given?](#how-many-partitions-will-an-event-type-be-given-)
 - [How do I configure the number of partitions?](#how-do-i-configure-the-number-of-partitions-)
 - [Which partitioning strategy should I use?](#which-partitioning-strategy-should-i-use-)
@@ -32,12 +31,6 @@ position: 14
 The default retention time in the project is set by the `retentionMs` value in `application.yml`, which is currently 2 days. 
 
 The service installation you're working with may have a different operational setting, and you should get in touch with the team operating that internal Nakadi service. 
-
-#### How do I define how long will events be persisted for?
-
-At the moment, retention can't be defined via the API per event type. It may be added as an option in the future. The best option for now would be to configure the underlying Kafka topic directly.
-
-If you want to change the default for a server installation, you can set the `retentionMs` value in `application.yml` to a new value.
 
 #### How many partitions will an event type be given?
 

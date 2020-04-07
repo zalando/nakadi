@@ -302,5 +302,4 @@ public class EventTypeServiceTest {
                         .put("authz", "disabled")
                         .put("compatibility_mode", et.getCompatibilityMode()));
     }
-
 }
