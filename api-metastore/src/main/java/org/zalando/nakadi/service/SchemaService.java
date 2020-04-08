@@ -8,7 +8,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
@@ -68,7 +67,6 @@ public class SchemaService {
         this.eventTypeCache = eventTypeCache;
     }
 
-    @Transactional
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
         final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
 
