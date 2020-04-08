@@ -48,8 +48,7 @@ public class SchemaController {
             throw new ValidationException(errors);
         }
 
-        final EventType eventType = eventTypeService.get(name);
-        schemaService.addSchema(eventType, schema);
+        schemaService.addSchema(name, schema);
 
         return status(HttpStatus.OK).build();
     }

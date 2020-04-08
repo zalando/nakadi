@@ -25,7 +25,6 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class SchemaServiceTest {
 
@@ -38,6 +37,7 @@ public class SchemaServiceTest {
     private AdminService adminService;
     private AuthorizationValidator authorizationValidator;
     private EventTypeCache eventTypeCache;
+    private EventType eventType;
 
     @Before
     public void setUp() throws IOException {
@@ -49,6 +49,8 @@ public class SchemaServiceTest {
         adminService = Mockito.mock(AdminService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
         eventTypeCache = Mockito.mock(EventTypeCache.class);
+        eventType = TestUtils.buildDefaultEventType();
+        Mockito.when(eventTypeRepository.findByName(any())).thenReturn(eventType);
         schemaService = new SchemaService(schemaRepository, paginationService,
                 new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"),
                 schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache);
@@ -77,7 +79,6 @@ public class SchemaServiceTest {
 
     @Test(expected = NoSuchSchemaException.class)
     public void testIllegalVersionNumber() throws Exception {
-        final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName() + "wrong",
                 eventType.getSchema().getVersion().toString()))
                 .thenThrow(NoSuchSchemaException.class);
@@ -87,7 +88,6 @@ public class SchemaServiceTest {
 
     @Test(expected = NoSuchSchemaException.class)
     public void testNonExistingVersionNumber() throws Exception {
-        final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().bump(Version.Level.MINOR).toString()))
                 .thenThrow(NoSuchSchemaException.class);
@@ -97,7 +97,6 @@ public class SchemaServiceTest {
 
     @Test
     public void testGetSchemaSuccess() throws Exception {
-        final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().toString()))
                 .thenReturn(eventType.getSchema());
@@ -108,8 +107,6 @@ public class SchemaServiceTest {
 
     @Test
     public void invalidEventTypeSchemaJsonSchemaThenThrows() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
         final String jsonSchemaString = Resources.toString(
                 Resources.getResource("sample-invalid-json-schema.json"),
                 Charsets.UTF_8);
@@ -120,7 +117,6 @@ public class SchemaServiceTest {
 
     @Test
     public void whenPOSTBusinessEventTypeMetadataThenThrows() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.getSchema().setSchema(
                 "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
@@ -130,7 +126,6 @@ public class SchemaServiceTest {
 
     @Test
     public void whenEventTypeSchemaJsonIsMalformedThenThrows() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.getSchema().setSchema("invalid-json");
 
         assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
@@ -138,8 +133,6 @@ public class SchemaServiceTest {
 
     @Test
     public void whenSchemaHasIncompatibilitiesThenThrows() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        
         Mockito.doThrow(InvalidEventTypeException.class).when(schemaEvolutionService).collectIncompatibilities(any());
 
         assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
@@ -147,7 +140,6 @@ public class SchemaServiceTest {
 
     @Test
     public void whenPostWithRootElementOfTypeArrayThenThrows() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.getSchema().setSchema(
                 "{\\\"type\\\":\\\"array\\\" }");
         eventType.setCategory(BUSINESS);
@@ -157,8 +149,7 @@ public class SchemaServiceTest {
 
     @Test
     public void throwsInvalidSchemaOnInvalidRegex() throws Exception {
-        final EventType et = TestUtils.buildDefaultEventType();
-        et.getSchema().setSchema("{\n" +
+        eventType.getSchema().setSchema("{\n" +
                 "      \"properties\": {\n" +
                 "        \"foo\": {\n" +
                 "          \"type\": \"string\",\n" +
@@ -167,12 +158,11 @@ public class SchemaServiceTest {
                 "      }\n" +
                 "    }");
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(et));
+        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
     public void doNotSupportSchemaWithExternalRef() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
         eventType.getSchema().setSchema("{\n" +
                 "    \"properties\": {\n" +
                 "      \"foo\": {\n" +
