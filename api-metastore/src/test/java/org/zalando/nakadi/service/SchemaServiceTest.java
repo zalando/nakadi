@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
@@ -17,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
@@ -38,6 +40,8 @@ public class SchemaServiceTest {
     private AuthorizationValidator authorizationValidator;
     private EventTypeCache eventTypeCache;
     private EventType eventType;
+    private TimelineSync timelineSync;
+    private NakadiSettings nakadiSettings;
 
     @Before
     public void setUp() throws IOException {
@@ -51,9 +55,12 @@ public class SchemaServiceTest {
         eventTypeCache = Mockito.mock(EventTypeCache.class);
         eventType = TestUtils.buildDefaultEventType();
         Mockito.when(eventTypeRepository.findByName(any())).thenReturn(eventType);
+        timelineSync = Mockito.mock(TimelineSync.class);
+        nakadiSettings = Mockito.mock(NakadiSettings.class);
         schemaService = new SchemaService(schemaRepository, paginationService,
                 new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"),
-                schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache);
+                schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache,
+                timelineSync, nakadiSettings);
     }
 
     @Test(expected = InvalidLimitException.class)

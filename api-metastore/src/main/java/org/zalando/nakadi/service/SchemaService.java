@@ -6,9 +6,12 @@ import org.everit.json.schema.loader.SchemaClient;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -16,6 +19,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
@@ -23,19 +27,25 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
 public class SchemaService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaService.class);
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("\\d+\\.\\d+\\.\\d+");
 
@@ -47,6 +57,8 @@ public class SchemaService {
     private final AdminService adminService;
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeCache eventTypeCache;
+    private final TimelineSync timelineSync;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -56,7 +68,9 @@ public class SchemaService {
                          final EventTypeRepository eventTypeRepository,
                          final AdminService adminService,
                          final AuthorizationValidator authorizationValidator,
-                         final EventTypeCache eventTypeCache) {
+                         final EventTypeCache eventTypeCache,
+                         final TimelineSync timelineSync,
+                         final NakadiSettings nakadiSettings) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -65,24 +79,45 @@ public class SchemaService {
         this.adminService = adminService;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
+        this.timelineSync = timelineSync;
+        this.nakadiSettings = nakadiSettings;
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
-        final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
+        Closeable closeable = null;
+        try {
+            closeable = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
+            final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
 
-        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-            authorizationValidator.authorizeEventTypeAdmin(originalEventType);
+            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+                authorizationValidator.authorizeEventTypeAdmin(originalEventType);
+            }
+
+            final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
+            updatedEventType.setSchema(newSchema);
+            validateSchema(updatedEventType);
+
+            final EventType eventType = schemaEvolutionService.evolve(originalEventType, updatedEventType);
+
+            eventTypeRepository.update(eventType);
+
+            eventTypeCache.invalidate(eventType.getName());
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new EventTypeUnavailableException("Event type " + eventTypeName
+                    + " is currently in maintenance, please repeat request");
+        } catch (final TimeoutException e) {
+            throw new EventTypeUnavailableException("Event type " + eventTypeName
+                    + " is currently in maintenance, please repeat request");
+        } finally {
+            try {
+                if (closeable != null) {
+                    closeable.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
-
-        final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
-        updatedEventType.setSchema(newSchema);
-        validateSchema(updatedEventType);
-
-        final EventType eventType = schemaEvolutionService.evolve(originalEventType, updatedEventType);
-
-        eventTypeRepository.update(eventType);
-
-        eventTypeCache.invalidate(eventType.getName());
     }
 
     public PaginationWrapper getSchemas(final String name, final int offset, final int limit)
