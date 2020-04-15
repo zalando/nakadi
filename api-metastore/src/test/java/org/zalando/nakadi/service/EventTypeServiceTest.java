@@ -8,7 +8,6 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -24,7 +23,6 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -39,7 +37,6 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,7 +44,6 @@ import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.fail;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -81,6 +77,7 @@ public class EventTypeServiceTest {
     private final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     private final AdminService adminService = mock(AdminService.class);
+    private final SchemaService schemaService = mock(SchemaService.class);
     private EventTypeService eventTypeService;
 
     @Before
@@ -91,8 +88,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                adminService, mock(RepartitioningService.class), eventTypeCache,
-                new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"));
+                adminService, mock(RepartitioningService.class), eventTypeCache, schemaService);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -248,20 +244,6 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void doNotSupportSchemaWithExternalRef() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.getSchema().setSchema("{\n" +
-                "    \"properties\": {\n" +
-                "      \"foo\": {\n" +
-                "        \"$ref\": \"/invalid/url\"\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }");
-
-        assertThrows(InvalidEventTypeException.class, () -> eventTypeService.create(eventType, true));
-    }
-
-    @Test
     public void shouldRemoveEventTypeWhenTimelineCreationFails() {
         final EventType eventType = TestUtils.buildDefaultEventType();
         when(eventTypeRepository.saveEventType(any())).thenReturn(eventType);
@@ -320,20 +302,4 @@ public class EventTypeServiceTest {
                         .put("authz", "disabled")
                         .put("compatibility_mode", et.getCompatibilityMode()));
     }
-
-    @Test
-    public void throwsInvalidSchemaOnInvalidRegex() throws Exception {
-        final EventType et = TestUtils.buildDefaultEventType();
-        et.getSchema().setSchema("{\n" +
-                "      \"properties\": {\n" +
-                "        \"foo\": {\n" +
-                "          \"type\": \"string\",\n" +
-                "          \"pattern\": \"^(?!\\\\s*$).+\"\n" +
-                "        }\n" +
-                "      }\n" +
-                "    }");
-
-        assertThrows(InvalidEventTypeException.class, () -> eventTypeService.create(et, false));
-    }
-
 }

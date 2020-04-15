@@ -530,6 +530,46 @@ paths:
             $ref: '#/definitions/Problem'
 
   '/event-types/{name}/schemas':
+    post:
+      tags:
+        - schema-registry-api
+      description: |
+        Adds a new schema for this event type. New schemas are automatically used for validation of events. The rules
+        for adding a new schema are described in details in the
+        [event types](https://zalando.github.io/nakadi/manual.html#using_event-types) section of the documentation.
+
+        For API backward compatibility, adding a new schema can also be done by updating the entire event type via PUT.
+    parameters:
+      - name: name
+        in: path
+        description: EventType name
+        type: string
+        required: true
+      - name:
+        description: |
+          New version of the event type's schema to be used for validating published events.
+        schema:
+          $ref: '#/definitions/EventTypeSchema'
+        required: true
+    responses:
+      '201':
+        description: |
+          New schema registered with success.
+      '401':
+        description: Not authenticated
+        schema:
+          $ref: '#/definitions/Problem'
+      '422':
+        description: |
+          Unprocessable entity. For understanding the rules on what can be changed in a schema, please refer to
+          the [schema evolution documentation](https://zalando.github.io/nakadi/manual.html#using_event-types).
+        schema:
+          $ref: '#/definitions/Problem'
+      '403':
+        description: Access is forbidden for the client or event type
+        schema:
+          $ref: '#/definitions/Problem'
+
     get:
       tags:
         - schema-registry-api

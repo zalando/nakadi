@@ -136,6 +136,30 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
 
+        // update schema
+        jsonRequestSpec()
+                .body("{\"type\": \"json_schema\", \"schema\": \"{\\\"type\\\": \\\"object\\\", \\\"properties\\\": " +
+                        "{\\\"foo\\\": {\\\"type\\\": \\\"string\\\"}, \\\"bar\\\": {\\\"type\\\": " +
+                        "\\\"object\\\", \\\"properties\\\": {\\\"baz\\\": {\\\"type\\\": \\\"string\\\"}," +
+                        "\\\"opt\\\": {\\\"type\\\": \\\"string\\\"}}}}, \\\"required\\\": [\\\"foo\\\"]}\"}")
+                .post("/event-types/" + eventTypeName + "/schemas")
+                .then()
+                .body(equalTo(""))
+                .statusCode(OK.value());
+
+        executeWithRetry(() -> {
+                    // get event type to check that schema update is done
+                    jsonRequestSpec()
+                            .when()
+                            .get("/event-types/" + eventTypeName)
+                            .then()
+                            .statusCode(OK.value())
+                            .body("schema.version", equalTo("1.1.0"));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000)
+                        .withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
+
         // push two events to event-type
         postEvents(EVENT1, EVENT2);
 
