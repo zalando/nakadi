@@ -90,10 +90,8 @@ securityDefinitions:
         Grants access for changing Nakadi configuration.
       nakadi.event_type.write: |
         Grants access for applications to define and update EventTypes.
-      nakadi.event_stream.write: |
-        Grants access for applications to submit Events.
-      nakadi.event_stream.read: |
-        Grants access for consuming Event streams.
+      uid: |
+        Grants access for applications to submit or consume Events.
 
 paths:
   /metrics:
