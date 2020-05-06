@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
@@ -217,6 +218,8 @@ public class SchemaEvolutionService {
         final DateTime now = new DateTime(DateTimeZone.UTC);
         final String newVersion = original.getSchema().getVersion().bump(changeLevel).toString();
 
-        return new EventType(eventType, newVersion, original.getCreatedAt(), now);
+        final EventTypeSchema schema = changeLevel == NO_CHANGES ? original.getSchema():
+                new EventTypeSchema(eventType.getSchema(), newVersion, now);
+        return new EventType(eventType, original.getCreatedAt(), now, schema);
     }
 }

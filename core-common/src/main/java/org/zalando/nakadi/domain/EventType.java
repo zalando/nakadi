@@ -18,6 +18,14 @@ public class EventType extends EventTypeBase {
         this.setSchema(new EventTypeSchema(eventType.getSchema(), version, updatedAt));
     }
 
+    public EventType(final EventTypeBase eventType, final DateTime createdAt, final DateTime updatedAt,
+                     final EventTypeSchema eventTypeSchema) {
+        super(eventType);
+        this.updatedAt = updatedAt;
+        this.createdAt = createdAt;
+        this.setSchema(eventTypeSchema);
+    }
+
     public EventType() {
         super();
     }
