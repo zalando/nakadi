@@ -122,6 +122,17 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
+    public void whenNoSchemaChangeThenSchemaCreatedAtUnchanged() {
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
+        final EventType oldEventType = builder.build();
+        final EventType newEventType = builder.build();
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+        final EventType eventType = service.evolve(oldEventType, newEventType);
+        Assert.assertEquals(eventType.getSchema().getCreatedAt(), oldEventType.getSchema().getCreatedAt());
+    }
+
+    @Test
     public void whenPatchChangesBumpVersion() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
