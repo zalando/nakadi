@@ -24,6 +24,14 @@ public class TracingService {
         }
     }
 
+    public static void logErrorInSpan(final Span span, final Exception ex) {
+        if (ex.getMessage() != null) {
+            span.log(ImmutableMap.of("error.description", ex.getMessage()));
+        } else {
+            span.log(ImmutableMap.of("error.description", ex.toString()));
+        }
+    }
+
     public static void logStreamCloseReason(final Span span, final String error) {
         if (error != null) {
             span.log(ImmutableMap.of("stream.close.reason", error));

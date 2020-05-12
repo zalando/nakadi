@@ -255,7 +255,7 @@ public class SubscriptionService {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
-            TracingService.logErrorInSpan(span, ex.getMessage());
+            TracingService.logErrorInSpan(span, ex);
             throw new InconsistentStateException(ex.getMessage());
         }
         final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, statsMode);
