@@ -81,7 +81,7 @@ public class SubscriptionController {
             NoSuchEventTypeException, NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Span statsSpan = TracingService.extractSpan(request, "fetch_stats")
                 .setTag("subscription_id", subscriptionId)
-                .setTag("time_lag", showTimeLag);
+                .setTag("show_time_lag", showTimeLag);
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
         return subscriptionService.getSubscriptionStat(subscriptionId, statsMode, statsSpan);
     }
