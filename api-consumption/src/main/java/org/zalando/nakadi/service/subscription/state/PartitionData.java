@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -13,17 +14,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Predicate;
 
 class PartitionData {
     private final Comparator<NakadiCursor> comparator;
     private final ZkSubscription<SubscriptionCursorWithoutToken> subscription;
     private final List<ConsumedEvent> nakadiEvents = new LinkedList<>();
-    private final NavigableSet<NakadiCursor> allCursorsOrdered;
     private final Logger log;
+    private final CursorOperationsService cursorOperationsService;
 
     private NakadiCursor commitOffset;
     private NakadiCursor sentOffset;
@@ -38,9 +36,15 @@ class PartitionData {
                   final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
                   final NakadiCursor commitOffset,
                   final long currentTime,
-                  final long batchTimespanMillis) {
-        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime,
-                batchTimespanMillis);
+                  final long batchTimespanMillis,
+                  final CursorOperationsService cursorOperationsService) {
+        this(comparator,
+                subscription,
+                commitOffset,
+                LoggerFactory.getLogger(PartitionData.class),
+                currentTime,
+                batchTimespanMillis,
+                cursorOperationsService);
         bytesInMemory = 0L;
     }
 
@@ -48,8 +52,15 @@ class PartitionData {
     PartitionData(final Comparator<NakadiCursor> comparator,
                   final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
                   final NakadiCursor commitOffset,
-                  final long currentTime) {
-        this(comparator, subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime, 0L);
+                  final long currentTime,
+                  final CursorOperationsService cursorOperationsService) {
+        this(comparator,
+                subscription,
+                commitOffset,
+                LoggerFactory.getLogger(PartitionData.class),
+                currentTime,
+                0L,
+                cursorOperationsService);
         bytesInMemory = 0L;
     }
 
@@ -59,12 +70,13 @@ class PartitionData {
             final NakadiCursor commitOffset,
             final Logger log,
             final long currentTime,
-            final long batchTimespanMillis) {
+            final long batchTimespanMillis,
+            final CursorOperationsService cursorOperationsService) {
         this.batchTimespanMillis = batchTimespanMillis;
         this.comparator = comparator;
-        this.allCursorsOrdered = new TreeSet<>(comparator);
         this.subscription = subscription;
         this.log = log;
+        this.cursorOperationsService = cursorOperationsService;
 
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
@@ -121,7 +133,7 @@ class PartitionData {
 
         // needed to fast forward the window start in case there are no events for an extended period of time
         if (!events.isEmpty()) {
-            batchWindowStartTimestamp = Math.max(batchWindowEndTimestamp, events.get(events.size()-1).getTimestamp());
+            batchWindowStartTimestamp = Math.max(batchWindowEndTimestamp, events.get(events.size() - 1).getTimestamp());
         }
 
         return events;
@@ -165,7 +177,7 @@ class PartitionData {
 
     public List<ConsumedEvent> extractMaxEvents(final long currentTimeMillis, final int count) {
         final List<ConsumedEvent> result = extractCount(count);
-        if(!result.isEmpty()) {
+        if (!result.isEmpty()) {
             lastSendMillis = currentTimeMillis;
         }
         return result;
@@ -215,18 +227,14 @@ class PartitionData {
         }
         final long committed;
         if (comparator.compare(offset, commitOffset) >= 0) {
-            final Set<NakadiCursor> committedCursors = allCursorsOrdered.headSet(offset, true);
-            committed = committedCursors.size();
+            committed = cursorOperationsService.calculateDistance(commitOffset, offset);
             commitOffset = offset;
-            // Operation is cascaded to allCursorsOrdered set.
-            committedCursors.clear();
         } else {
             log.error("Commits in past are evil!: Committing in {} while current commit is {}", offset, commitOffset);
             // Commit in past occurred. One should move storage pointer to sentOffset.
             seekKafka = true;
             commitOffset = offset;
             sentOffset = commitOffset;
-            allCursorsOrdered.clear();
             nakadiEvents.clear();
             bytesInMemory = 0L;
             committed = 0;
@@ -241,15 +249,14 @@ class PartitionData {
     void addEvent(final ConsumedEvent event) {
         nakadiEvents.add(event);
         bytesInMemory += event.getEvent().length;
-        allCursorsOrdered.add(event.getPosition());
     }
 
     boolean isCommitted() {
         return comparator.compare(sentOffset, commitOffset) <= 0;
     }
 
-    int getUnconfirmed() {
-        return allCursorsOrdered.headSet(sentOffset, true).size();
+    long getUnconfirmed() {
+        return cursorOperationsService.calculateDistance(commitOffset, sentOffset);
     }
 
     public ZkSubscription<SubscriptionCursorWithoutToken> getSubscription() {

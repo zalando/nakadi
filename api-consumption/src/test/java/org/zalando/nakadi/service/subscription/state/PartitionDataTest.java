@@ -2,11 +2,14 @@ package org.zalando.nakadi.service.subscription.state;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Comparator;
 import java.util.List;
@@ -23,11 +26,13 @@ import static org.mockito.Mockito.when;
 public class PartitionDataTest {
 
     private static Timeline firstTimeline = mock(Timeline.class);
+    private static TimelineService timelineService = Mockito.mock(TimelineService.class);
     private static final Comparator<NakadiCursor> COMP = Comparator.comparing(NakadiCursor::getOffset);
 
     @BeforeClass
     public static void initTimeline() {
         when(firstTimeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
+        when(firstTimeline.getOrder()).thenReturn(0);
     }
 
     private static NakadiCursor createCursor(final long offset) {
@@ -36,7 +41,8 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportRollback() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(90L));
 
         assertEquals(0L, cr.committedCount);
@@ -47,10 +53,11 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportCommitInFuture() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(110L));
 
-        assertEquals(0L, cr.committedCount);
+        assertEquals(10L, cr.committedCount);
         assertEquals(true, cr.seekOnKafka);
         assertEquals(110L, Long.parseLong(pd.getSentOffset().getOffset()));
         assertEquals(0L, pd.getUnconfirmed());
@@ -58,7 +65,8 @@ public class PartitionDataTest {
 
     @Test
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         for (long i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1), 0, null));
         }
@@ -75,7 +83,8 @@ public class PartitionDataTest {
 
     @Test
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.takeEventsToStream(currentTimeMillis(), 10, 0L, false);
             assertEquals(i + 1, pd.getKeepAliveInARow());
@@ -93,7 +102,8 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         long currentTime = System.currentTimeMillis();
 
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime,
+                new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0, null));
         }
@@ -124,7 +134,8 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnBatchSize() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0, null));
         }
@@ -137,7 +148,8 @@ public class PartitionDataTest {
     @Test
     public void streamsBatchesWithSingleEventForBatchTimespan() {
         final long currentTime = System.currentTimeMillis();
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime, 5);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime, 5,
+                new CursorOperationsService(timelineService));
 
         pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(0), currentTime + 1, null));
 
@@ -151,7 +163,8 @@ public class PartitionDataTest {
 
     @Test
     public void eventsShouldBeStreamedOnTimespanReached() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5,
+                new CursorOperationsService(timelineService));
         final long timeout = TimeUnit.SECONDS.toMillis(100);
 
         final int[] timestamps = new int[]{2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 17, 19, 20, 30};
@@ -178,7 +191,8 @@ public class PartitionDataTest {
 
     @Test
     public void testBatchTimespanIsTriggeredByLastEventsTimestamp() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5);
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 5,
+                new CursorOperationsService(timelineService));
         final long timeout = TimeUnit.SECONDS.toMillis(100);
 
         // under some circumstances, Kafka might contain events with out of order timestamps. But since the
@@ -203,7 +217,8 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnStreamTimeout() {
         final long timeout = TimeUnit.SECONDS.toMillis(100);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         for (int i = 0; i < 10; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0, null));
         }
@@ -213,7 +228,8 @@ public class PartitionDataTest {
     @Test
     public void noEmptyBatchShouldBeStreamedOnStreamTimeoutWhenNoEvents() {
         final long timeout = TimeUnit.SECONDS.toMillis(100);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis());
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+                new CursorOperationsService(timelineService));
         for (int i = 0; i < 10; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0, null));
         }

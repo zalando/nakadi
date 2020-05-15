@@ -72,6 +72,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final AutocommitSupport autocommitSupport;
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
+    private final CursorOperationsService cursorOperationsService;
 
     private final long kpiCollectionFrequencyMs;
 
@@ -111,6 +112,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.currentSpan = builder.currentSpan;
+        this.cursorOperationsService = builder.cursorOperationsService;
     }
 
     public Span getCurrentSpan() {
@@ -167,6 +169,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public long getKpiCollectionFrequencyMs() {
         return kpiCollectionFrequencyMs;
+    }
+
+    public CursorOperationsService getCursorOperationsService() {
+        return cursorOperationsService;
     }
 
     @Override
