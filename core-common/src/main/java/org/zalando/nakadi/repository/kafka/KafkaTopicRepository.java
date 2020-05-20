@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -80,6 +81,7 @@ import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
+    private static final String HYSTRIX_SHORT_CIRCUIT_COUNTER = "hystrix.short.circuit.%s";
 
     private final KafkaZookeeper kafkaZookeeper;
     private final KafkaFactory kafkaFactory;
@@ -89,25 +91,86 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final KafkaLocationManager kafkaLocationManager;
+    private final MetricRegistry metricRegistry;
 
-    public KafkaTopicRepository(final KafkaZookeeper kafkaZookeeper,
-                                final KafkaFactory kafkaFactory,
-                                final NakadiSettings nakadiSettings,
-                                final KafkaSettings kafkaSettings,
-                                final ZookeeperSettings zookeeperSettings,
-                                final KafkaTopicConfigFactory kafkaTopicConfigFactory,
-                                final KafkaLocationManager kafkaLocationManager) {
-        this.kafkaZookeeper = kafkaZookeeper;
-        this.kafkaFactory = kafkaFactory;
-        this.nakadiSettings = nakadiSettings;
-        this.kafkaSettings = kafkaSettings;
-        this.zookeeperSettings = zookeeperSettings;
-        this.kafkaLocationManager = kafkaLocationManager;
-        this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
-        this.circuitBreakers = new ConcurrentHashMap<>();
+    public KafkaTopicRepository(final Builder builder) {
+        this.kafkaZookeeper = builder.kafkaZookeeper;
+        this.kafkaFactory = builder.kafkaFactory;
+        this.nakadiSettings = builder.nakadiSettings;
+        this.kafkaSettings = builder.kafkaSettings;
+        this.zookeeperSettings = builder.zookeeperSettings;
+        this.kafkaLocationManager = builder.kafkaLocationManager;
+        this.kafkaTopicConfigFactory = builder.kafkaTopicConfigFactory;
+        if (builder.circuitBreakers == null) {
+            this.circuitBreakers = new ConcurrentHashMap<>();
+        } else {
+            this.circuitBreakers = builder.circuitBreakers;
+        }
+        this.metricRegistry = builder.metricRegistry;
     }
 
-    private CompletableFuture<Exception> publishItem (
+    public static class Builder {
+        private KafkaZookeeper kafkaZookeeper;
+        private KafkaFactory kafkaFactory;
+        private NakadiSettings nakadiSettings;
+        private KafkaSettings kafkaSettings;
+        private ZookeeperSettings zookeeperSettings;
+        private ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
+        private KafkaTopicConfigFactory kafkaTopicConfigFactory;
+        private KafkaLocationManager kafkaLocationManager;
+        private MetricRegistry metricRegistry;
+
+        public Builder setKafkaZookeeper(final KafkaZookeeper kafkaZookeeper) {
+            this.kafkaZookeeper = kafkaZookeeper;
+            return this;
+        }
+
+        public Builder setKafkaFactory(final KafkaFactory kafkaFactory) {
+            this.kafkaFactory = kafkaFactory;
+            return this;
+        }
+
+        public Builder setNakadiSettings(final NakadiSettings nakadiSettings) {
+            this.nakadiSettings = nakadiSettings;
+            return this;
+        }
+
+        public Builder setKafkaSettings(final KafkaSettings kafkaSettings) {
+            this.kafkaSettings = kafkaSettings;
+            return this;
+        }
+
+        public Builder setZookeeperSettings(final ZookeeperSettings zookeeperSettings) {
+            this.zookeeperSettings = zookeeperSettings;
+            return this;
+        }
+
+        public Builder setCircuitBreakers(final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers) {
+            this.circuitBreakers = circuitBreakers;
+            return this;
+        }
+
+        public Builder setKafkaTopicConfigFactory(final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
+            this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
+            return this;
+        }
+
+        public Builder setKafkaLocationManager(final KafkaLocationManager kafkaLocationManager) {
+            this.kafkaLocationManager = kafkaLocationManager;
+            return this;
+        }
+
+        public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
+            this.metricRegistry = metricRegistry;
+            return this;
+        }
+
+        public KafkaTopicRepository build() {
+            return new KafkaTopicRepository(this);
+        }
+    }
+
+    private CompletableFuture<Exception> publishItem(
             final Producer<String, String> producer,
             final String topicId,
             final BatchItem item,
@@ -269,7 +332,9 @@ public class KafkaTopicRepository implements TopicRepository {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
-                    Collectors.toMap(p -> String.valueOf(p.partition()), p -> String.valueOf(p.leader().id())));
+                    Collectors.toMap(
+                            p -> String.valueOf(p.partition()),
+                            p -> p.leader().idString() + "_" + p.leader().host()));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
                         item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
@@ -287,6 +352,11 @@ public class KafkaTopicRepository implements TopicRepository {
                 } else {
                     shortCircuited++;
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
+                    metricRegistry
+                            .meter(String.format(
+                                    HYSTRIX_SHORT_CIRCUIT_COUNTER,
+                                    item.getBrokerId()))
+                            .mark();
                 }
             }
             if (shortCircuited > 0) {
@@ -641,17 +711,17 @@ public class KafkaTopicRepository implements TopicRepository {
     private KafkaZkClient createZkClient() {
         // The calling method should make sure to close connection
         return new KafkaZkClient(
-                    new ZooKeeperClient(
-                            kafkaZookeeper.getZookeeperConnectionString(),
-                            zookeeperSettings.getZkSessionTimeoutMs(),
-                            zookeeperSettings.getZkConnectionTimeoutMs(),
-                            zookeeperSettings.getMaxInFlightRequests(),
-                            Time.SYSTEM,
-                            ZookeeperSettings.METRIC_GROUP,
-                            ZookeeperSettings.METRIC_TYPE
-                    ),
-                    false,
-                    Time.SYSTEM
+                new ZooKeeperClient(
+                        kafkaZookeeper.getZookeeperConnectionString(),
+                        zookeeperSettings.getZkSessionTimeoutMs(),
+                        zookeeperSettings.getZkConnectionTimeoutMs(),
+                        zookeeperSettings.getMaxInFlightRequests(),
+                        Time.SYSTEM,
+                        ZookeeperSettings.METRIC_GROUP,
+                        ZookeeperSettings.METRIC_TYPE
+                ),
+                false,
+                Time.SYSTEM
         );
     }
 }
