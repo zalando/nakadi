@@ -7,7 +7,7 @@ public enum Audience {
     EXTERNAL_PARTNER("external-partner"),
     EXTERNAL_PUBLIC("external-public");
 
-    private String text;
+    private final String text;
 
     Audience(final String text) {
         this.text = text;

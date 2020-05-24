@@ -7,7 +7,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import java.util.Map;
 
 @Component
-public class EnrichmentsRegistry {
+public class EnrichmentRegistry {
 
     private static final Map<EnrichmentStrategyDescriptor, EnrichmentStrategy> ENRICHMENT_STRATEGIES =
         ImmutableMap.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT, new MetadataEnrichmentStrategy());

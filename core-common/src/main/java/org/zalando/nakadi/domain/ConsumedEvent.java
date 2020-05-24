@@ -6,11 +6,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Immutable
 public class ConsumedEvent implements Resource<ConsumedEvent> {
@@ -50,7 +46,7 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
         }
 
         final ConsumedEvent that = (ConsumedEvent) o;
-        return Objects.equals(this.event, that.event)
+        return Arrays.equals(this.event, that.event)
                 && Objects.equals(this.position, that.position);
     }
 

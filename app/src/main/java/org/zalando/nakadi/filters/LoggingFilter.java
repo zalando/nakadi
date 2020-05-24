@@ -48,15 +48,15 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private class RequestLogInfo {
 
-        private String userAgent;
-        private String user;
-        private String method;
-        private String path;
-        private String query;
-        private String contentEncoding;
-        private Long contentLength;
-        private String acceptEncoding;
-        private Long requestTime;
+        private final String userAgent;
+        private final String user;
+        private final String method;
+        private final String path;
+        private final String query;
+        private final String contentEncoding;
+        private final Long contentLength;
+        private final String acceptEncoding;
+        private final Long requestTime;
 
         private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
             this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");

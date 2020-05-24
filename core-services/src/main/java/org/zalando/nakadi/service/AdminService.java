@@ -42,7 +42,7 @@ public class AdminService {
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
     private final NakadiSettings nakadiSettings;
-    private Cache<String, Resource<Void>> resourceCache;
+    private final Cache<String, Resource<Void>> resourceCache;
     private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
@@ -72,9 +72,9 @@ public class AdminService {
         validateAllAdmins(newAdmins);
         final List<Permission> currentAdmins = authorizationDbRepository.listAdmins();
         final List<Permission> add = removeDefaultAdmin(newAdmins.stream()
-                .filter(p -> !currentAdmins.stream().anyMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
+                .filter(p -> currentAdmins.stream().noneMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
         final List<Permission> delete = removeDefaultAdmin(currentAdmins.stream()
-                .filter(p -> !newAdmins.stream().anyMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
+                .filter(p -> newAdmins.stream().noneMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
         authorizationDbRepository.update(add, delete);
 
         auditLogPublisher.publish(
@@ -101,7 +101,7 @@ public class AdminService {
     public boolean isAdmin(final AuthorizationService.Operation operation) throws PluginException {
         Resource<Void> resource;
         try {
-            resource = resourceCache.get(ADMIN_RESOURCE, () -> getAdminResource());
+            resource = resourceCache.get(ADMIN_RESOURCE, this::getAdminResource);
         } catch (ExecutionException e) {
             resource = getAdminResource();
         }
@@ -111,7 +111,7 @@ public class AdminService {
     public boolean hasAllDataAccess(final AuthorizationService.Operation operation) throws PluginException {
         try {
             final Resource resource = resourceCache.get(ALL_DATA_ACCESS_RESOURCE,
-                    () -> getAllDataAccessResource());
+                this::getAllDataAccessResource);
             return authorizationService.isAuthorized(operation, resource);
         } catch (ExecutionException e) {
             LOG.error("Could not determine whether this application has all data access", e);

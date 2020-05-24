@@ -18,12 +18,12 @@ public class JettyConfig {
             @Value("${jetty.threadPool.minThreads:8}") final String minThreads,
             @Value("${jetty.threadPool.idleTimeout:60000}") final String idleTimeout) {
         final JettyEmbeddedServletContainerFactory factory =
-                new JettyEmbeddedServletContainerFactory(Integer.valueOf(port));
-        factory.addServerCustomizers((JettyServerCustomizer) server -> {
+                new JettyEmbeddedServletContainerFactory(Integer.parseInt(port));
+        factory.addServerCustomizers(server -> {
             final QueuedThreadPool threadPool = server.getBean(QueuedThreadPool.class);
-            threadPool.setMaxThreads(Integer.valueOf(maxThreads));
-            threadPool.setMinThreads(Integer.valueOf(minThreads));
-            threadPool.setIdleTimeout(Integer.valueOf(idleTimeout));
+            threadPool.setMaxThreads(Integer.parseInt(maxThreads));
+            threadPool.setMinThreads(Integer.parseInt(minThreads));
+            threadPool.setIdleTimeout(Integer.parseInt(idleTimeout));
 
             final GzipHandler gzipHandler = new GzipHandler();
             gzipHandler.addIncludedMethods(HttpMethod.POST.asString());

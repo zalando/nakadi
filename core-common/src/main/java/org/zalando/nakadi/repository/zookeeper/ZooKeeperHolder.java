@@ -27,8 +27,8 @@ public class ZooKeeperHolder {
     private final long maxCommitTimeoutMs;
     private final ZookeeperConnection conn;
 
-    private CuratorFramework zooKeeper;
-    private CuratorFramework subscriptionCurator;
+    private final CuratorFramework zooKeeper;
+    private final CuratorFramework subscriptionCurator;
 
     public ZooKeeperHolder(final ZookeeperConnection conn,
                            final Integer sessionTimeoutMs,

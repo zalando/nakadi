@@ -17,7 +17,7 @@ import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.domain.EventCategory.DATA;
 
 public class EnrichmentTest {
-    private final EnrichmentsRegistry registry = mock(EnrichmentsRegistry.class);
+    private final EnrichmentRegistry registry = mock(EnrichmentRegistry.class);
     private final Enrichment enrichment = new Enrichment(registry);
 
     @Test(expected = InvalidEventTypeException.class)

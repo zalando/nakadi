@@ -43,8 +43,7 @@ public class VersionZeroConverter implements VersionedConverter {
             InvalidCursorException, InternalNakadiException, NoSuchEventTypeException,
             ServiceTemporarilyUnavailableException {
         final NakadiCursor[] result = new NakadiCursor[cursors.size()];
-        for (int idx = 0; idx < cursors.size(); ++idx) {
-            final SubscriptionCursorWithoutToken cursor = cursors.get(idx);
+        for (final SubscriptionCursorWithoutToken cursor : cursors) {
             if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(cursor.getOffset())) {
                 // Preform begin checks afterwards to optimize calls
                 continue;

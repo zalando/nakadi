@@ -8,7 +8,7 @@ import java.util.List;
 public class ValidListWrapper<T> {
 
     @Valid
-    private List<T> list;
+    private final List<T> list;
 
     @JsonCreator
     public ValidListWrapper(final List<T> list) {

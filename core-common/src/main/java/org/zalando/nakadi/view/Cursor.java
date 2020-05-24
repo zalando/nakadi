@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Objects;
 
 @Immutable
 public class Cursor {
@@ -43,10 +44,10 @@ public class Cursor {
 
         final Cursor cursor = (Cursor) o;
 
-        if (partition != null ? !partition.equals(cursor.partition) : cursor.partition != null) {
+        if (!Objects.equals(partition, cursor.partition)) {
             return false;
         }
-        return !(offset != null ? !offset.equals(cursor.offset) : cursor.offset != null);
+        return Objects.equals(offset, cursor.offset);
     }
 
     @Override
