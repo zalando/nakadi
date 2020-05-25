@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
@@ -310,14 +311,17 @@ public class CursorOperationsServiceTest {
         }
         Mockito.when(timeline.isActive()).thenReturn(null == latestOffset);
 
-        final TopicRepository repository = new KafkaTopicRepository(
-                Mockito.mock(KafkaZookeeper.class),
-                Mockito.mock(KafkaFactory.class),
-                Mockito.mock(NakadiSettings.class),
-                Mockito.mock(KafkaSettings.class),
-                Mockito.mock(ZookeeperSettings.class),
-                Mockito.mock(KafkaTopicConfigFactory.class),
-                Mockito.mock(KafkaLocationManager.class));
+        final TopicRepository repository = new KafkaTopicRepository.Builder()
+                .setKafkaZookeeper(Mockito.mock(KafkaZookeeper.class))
+                .setKafkaFactory(Mockito.mock(KafkaFactory.class))
+                .setNakadiSettings(Mockito.mock(NakadiSettings.class))
+                .setKafkaSettings(Mockito.mock(KafkaSettings.class))
+                .setZookeeperSettings(Mockito.mock(ZookeeperSettings.class))
+                .setKafkaTopicConfigFactory(Mockito.mock(KafkaTopicConfigFactory.class))
+                .setKafkaLocationManager(Mockito.mock(KafkaLocationManager.class))
+                .setMetricRegistry(new MetricRegistry())
+                .build();
+
         Mockito.when(timelineService.getTopicRepository(timeline)).thenReturn(repository);
         return timeline;
     }

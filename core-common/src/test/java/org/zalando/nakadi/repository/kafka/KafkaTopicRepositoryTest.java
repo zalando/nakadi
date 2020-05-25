@@ -1,5 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
@@ -68,6 +70,7 @@ public class KafkaTopicRepositoryTest {
 
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
+    private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
@@ -117,15 +120,29 @@ public class KafkaTopicRepositoryTest {
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
-        System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
-        System.setProperty("hystrix.command.1.metrics.rollingStats.timeInMilliseconds", "500");
-        System.setProperty("hystrix.command.1.circuitBreaker.sleepWindowInMilliseconds", "500");
+        //lower hystrix configs for tests to execute faster
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.metrics.healthSnapshot.intervalInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "10");
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.metrics.rollingStats.timeInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "500");
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.circuitBreaker.sleepWindowInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "500");
+
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
         kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
     }
 
@@ -147,7 +164,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = ImmutableList.of(item);
 
         when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
-                new PartitionInfo(myTopic, 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
             kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
@@ -274,7 +291,7 @@ public class KafkaTopicRepositoryTest {
         batch.add(item);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
         Mockito
                 .doReturn(mock(Future.class))
@@ -301,7 +318,7 @@ public class KafkaTopicRepositoryTest {
         batch.add(item);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
 
         Mockito
                 .doThrow(BufferExhaustedException.class)
@@ -331,8 +348,8 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null),
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null),
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, NODE, null, null)));
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
@@ -360,24 +377,24 @@ public class KafkaTopicRepositoryTest {
     public void checkCircuitBreakerStateBasedOnKafkaResponse() {
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
 
         //Timeout Exception should cause circuit breaker to open
-        List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException());
+        List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
         Assert.assertTrue(batches.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
                         item.getResponse().getDetail().equals("short circuited"))
                 .count() >= 1);
 
         //No exception should close the circuit
-        batches = setResponseForSendingBatches(null);
+        batches = setResponseForSendingBatches(null, new MetricRegistry());
         Assert.assertTrue(batches.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED &&
                         item.getResponse().getDetail().equals(""))
                 .count() >= 1);
 
         //Timeout Exception should cause circuit breaker to open again
-        batches = setResponseForSendingBatches(new TimeoutException());
+        batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
         Assert.assertTrue(batches.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
                         item.getResponse().getDetail().equals("short circuited"))
@@ -385,7 +402,7 @@ public class KafkaTopicRepositoryTest {
 
     }
 
-    private List<BatchItem> setResponseForSendingBatches(final Exception e) {
+    private List<BatchItem> setResponseForSendingBatches(final Exception e, final MetricRegistry metricRegistry) {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
             if (callback != null) {
@@ -394,6 +411,7 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
         final List<BatchItem> batches = new LinkedList<>();
+        final KafkaTopicRepository kafkaTopicRepository = createKafkaRepository(kafkaFactory, metricRegistry);
         for (int i = 0; i < 100; i++) {
             try {
                 final BatchItem batchItem = new BatchItem("{}",
@@ -430,7 +448,9 @@ public class KafkaTopicRepositoryTest {
         stats2.get("t3").put("0", 222L);
         when(kz.getSizeStatsForBroker(eq("2"))).thenReturn(new BubukuSizeStats(null, stats2));
 
-        final KafkaTopicRepository ktr = new KafkaTopicRepository(kz, null, null, null, null, null, null);
+        final KafkaTopicRepository ktr = new KafkaTopicRepository.Builder()
+                .setKafkaZookeeper(kz)
+                .build();
 
         final Map<TopicPartition, Long> result = ktr.getSizeStats();
 
@@ -441,18 +461,38 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
     }
 
+
+    @Test
+    public void whenPublishShortCircuitingIsRecorded() {
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "10.10.0.1", 9091), null, null)));
+
+        final MetricRegistry metricRegistry = new MetricRegistry();
+        setResponseForSendingBatches(new TimeoutException(), metricRegistry);
+        final String meterName = metricRegistry.getMeters().firstKey();
+        final Meter meter = metricRegistry.getMeters().get(meterName);
+        Assert.assertEquals(meterName, "hystrix.short.circuit.1_10.10.0.1");
+        Assert.assertTrue(meter.getCount() >= 1);
+    }
+
     private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
 
-    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory,
+                                                       final MetricRegistry metricRegistry) {
         try {
-            return new KafkaTopicRepository(createKafkaZookeeper(),
-                    kafkaFactory,
-                    nakadiSettings,
-                    kafkaSettings,
-                    zookeeperSettings,
-                    kafkaTopicConfigFactory, kafkaLocationManager);
+            return new KafkaTopicRepository.Builder()
+                    .setKafkaZookeeper(createKafkaZookeeper())
+                    .setKafkaFactory(kafkaFactory)
+                    .setNakadiSettings(nakadiSettings)
+                    .setKafkaSettings(kafkaSettings)
+                    .setZookeeperSettings(zookeeperSettings)
+                    .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
+                    .setKafkaLocationManager(kafkaLocationManager)
+                    .setMetricRegistry(metricRegistry)
+                    .build();
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
