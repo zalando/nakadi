@@ -70,6 +70,7 @@ public class KafkaTopicRepositoryTest {
 
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
+    private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
@@ -119,9 +120,23 @@ public class KafkaTopicRepositoryTest {
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
-        System.setProperty("hystrix.command.1.metrics.healthSnapshot.intervalInMilliseconds", "10");
-        System.setProperty("hystrix.command.1.metrics.rollingStats.timeInMilliseconds", "500");
-        System.setProperty("hystrix.command.1.circuitBreaker.sleepWindowInMilliseconds", "500");
+        //lower hystrix configs for tests to execute faster
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.metrics.healthSnapshot.intervalInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "10");
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.metrics.rollingStats.timeInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "500");
+        System.setProperty(
+                String.format(
+                        "hystrix.command.%s.circuitBreaker.sleepWindowInMilliseconds",
+                        NODE.idString() + "_" + NODE.host()),
+                "500");
+
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -149,7 +164,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = ImmutableList.of(item);
 
         when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
-                new PartitionInfo(myTopic, 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
             kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
@@ -276,7 +291,7 @@ public class KafkaTopicRepositoryTest {
         batch.add(item);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
         Mockito
                 .doReturn(mock(Future.class))
@@ -303,7 +318,7 @@ public class KafkaTopicRepositoryTest {
         batch.add(item);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
 
         Mockito
                 .doThrow(BufferExhaustedException.class)
@@ -333,8 +348,8 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null),
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null),
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, NODE, null, null)));
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
@@ -362,7 +377,7 @@ public class KafkaTopicRepositoryTest {
     public void checkCircuitBreakerStateBasedOnKafkaResponse() {
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
 
         //Timeout Exception should cause circuit breaker to open
         List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
