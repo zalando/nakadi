@@ -41,6 +41,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDE
 import static org.zalando.nakadi.domain.SchemaChange.Type.SCHEMA_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SUB_SCHEMA_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_NARROWED;
 
 @Configuration
 public class SchemaValidatorConfig {
@@ -68,6 +69,7 @@ public class SchemaValidatorConfig {
 
         final Map<SchemaChange.Type, String> errorMessage = new HashMap<>();
         errorMessage.put(SCHEMA_REMOVED, "change not allowed");
+        errorMessage.put(TYPE_NARROWED, "schema types cannot be narrowed");
         errorMessage.put(TYPE_CHANGED, "schema types must be the same");
         errorMessage.put(NUMBER_OF_ITEMS_CHANGED, "the number of schema items cannot be changed");
         errorMessage.put(PROPERTY_REMOVED, "schema properties cannot be removed");
