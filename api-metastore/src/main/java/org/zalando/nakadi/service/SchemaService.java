@@ -19,6 +19,8 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.StrictJsonParser;
+import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
@@ -28,7 +30,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
@@ -131,7 +132,7 @@ public class SchemaService {
         }
 
         return paginationService
-                .paginate(offset,  limit, String.format("/event-types/%s/schemas", name),
+                .paginate(offset, limit, String.format("/event-types/%s/schemas", name),
                         (o, l) -> schemaRepository.getSchemas(name, o, l),
                         () -> schemaRepository.getSchemasCount(name));
     }
@@ -146,16 +147,16 @@ public class SchemaService {
         return schema;
     }
 
-    public void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
+    public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
 
-            JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
+            isStrictlyValidJson(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
 
             if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
-                throw new InvalidEventTypeException("\"type\" of root element in schema can only be \"object\"");
+                throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
             }
 
             final Schema schema = SchemaLoader
@@ -167,13 +168,13 @@ public class SchemaService {
                     .build();
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
-                throw new InvalidEventTypeException("\"metadata\" property is reserved");
+                throw new SchemaValidationException("\"metadata\" property is reserved");
             }
 
             final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
             final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
             if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
-                throw new InvalidEventTypeException(
+                throw new SchemaValidationException(
                         "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
             }
             final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
@@ -185,22 +186,22 @@ public class SchemaService {
                 validateJsonSchemaConstraints(schemaAsJson);
             }
         } catch (final com.google.re2j.PatternSyntaxException e) {
-            throw new InvalidEventTypeException("invalid regex pattern in the schema: "
+            throw new SchemaValidationException("invalid regex pattern in the schema: "
                     + e.getDescription() + " \"" + e.getPattern() + "\"");
         } catch (final JSONException e) {
-            throw new InvalidEventTypeException("schema must be a valid json");
+            throw new SchemaValidationException("schema must be a valid json");
         } catch (final SchemaException e) {
-            throw new InvalidEventTypeException("schema must be a valid json-schema");
+            throw new SchemaValidationException("schema must be a valid json-schema");
         }
     }
 
-    private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
+    private void validateJsonSchemaConstraints(final JSONObject schema) throws SchemaValidationException {
         final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
-            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
+            throw new SchemaValidationException("Invalid schema: " + errorMessage);
         }
     }
 
@@ -209,7 +210,7 @@ public class SchemaService {
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());
         if (!absentFields.isEmpty()) {
-            throw new InvalidEventTypeException(fieldName + " " + absentFields + " absent in schema");
+            throw new SchemaValidationException(fieldName + " " + absentFields + " absent in schema");
         }
     }
 
@@ -219,8 +220,16 @@ public class SchemaService {
 
     private class BlockedHttpClient implements SchemaClient {
         @Override
-        public InputStream get(final String ref) {
-            throw new InvalidEventTypeException("external url reference is not supported: " + ref);
+        public InputStream get(final String ref) throws SchemaValidationException {
+            throw new SchemaValidationException("external url reference is not supported: " + ref);
+        }
+    }
+
+    public static void isStrictlyValidJson(final String jsonInString) throws InvalidEventTypeException {
+        try {
+            StrictJsonParser.parse(jsonInString, false);
+        } catch (final RuntimeException jpe) {
+            throw new SchemaValidationException("schema must be a valid json: " + jpe.getMessage());
         }
     }
 }
