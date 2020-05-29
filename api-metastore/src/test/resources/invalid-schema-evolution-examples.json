@@ -40,6 +40,15 @@
     "errors": ["TYPE_CHANGED #/"]
   },
   {
+    "description": "Narrowing type definition",
+    "original_schema": {
+    },
+    "update_schema": {
+      "type": "string"
+    },
+    "errors": ["TYPE_NARROWED #/"]
+  },
+  {
     "description": "Do not allow changes to minLength string schema",
     "original_schema": {
       "type": "string",
