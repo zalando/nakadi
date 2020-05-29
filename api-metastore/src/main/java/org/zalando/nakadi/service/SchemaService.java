@@ -147,7 +147,7 @@ public class SchemaService {
         return schema;
     }
 
-    public void validateSchema(final EventTypeBase eventType) {
+    public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
 
@@ -195,7 +195,7 @@ public class SchemaService {
         }
     }
 
-    private void validateJsonSchemaConstraints(final JSONObject schema) {
+    private void validateJsonSchemaConstraints(final JSONObject schema) throws SchemaValidationException {
         final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
 
         if (!incompatibilities.isEmpty()) {
@@ -220,7 +220,7 @@ public class SchemaService {
 
     private class BlockedHttpClient implements SchemaClient {
         @Override
-        public InputStream get(final String ref) {
+        public InputStream get(final String ref) throws SchemaValidationException {
             throw new SchemaValidationException("external url reference is not supported: " + ref);
         }
     }

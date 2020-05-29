@@ -37,7 +37,7 @@ public class SchemaExceptionHandler implements AdviceTrait {
     }
 
     @ExceptionHandler(SchemaValidationException.class)
-    public ResponseEntity<Problem> handleSchemaEvolutionException(
+    public ResponseEntity<Problem> handleSchemaValidationException(
             final SchemaValidationException exception,
             final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());

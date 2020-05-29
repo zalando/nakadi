@@ -96,7 +96,7 @@ public class SchemaEvolutionService {
         }
     }
 
-    public EventType evolve(final EventType original, final EventTypeBase eventType) {
+    public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
         checkEvolutionIncompatibilities(original, eventType);
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
@@ -113,7 +113,8 @@ public class SchemaEvolutionService {
         return bumpVersion(original, eventType, changeLevel);
     }
 
-    private void checkEvolutionIncompatibilities(final EventType from, final EventTypeBase to) {
+    private void checkEvolutionIncompatibilities(final EventType from, final EventTypeBase to)
+            throws SchemaEvolutionException {
         final List<SchemaEvolutionIncompatibility> incompatibilities = schemaEvolutionConstraints.stream()
                 .map(c -> c.validate(from, to))
                 .filter(Optional::isPresent)
@@ -155,7 +156,7 @@ public class SchemaEvolutionService {
                 && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE;
     }
 
-    private void validateCompatibilityModeMigration(final List<SchemaChange> changes) {
+    private void validateCompatibilityModeMigration(final List<SchemaChange> changes) throws SchemaEvolutionException {
         final List<SchemaChange> forbiddenChanges = changes.stream()
                 .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                 .collect(Collectors.toList());

@@ -447,10 +447,10 @@ public class EventTypeService {
             throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final SchemaValidationException e) {
-            LOG.error("Schema validation failed {}", e.getMessage());
+            LOG.warn("Schema validation failed {}", e.getMessage());
             throw new InvalidEventTypeException(e);
         } catch (final SchemaEvolutionException e) {
-            LOG.error("Schema evolution failed {}", e.getMessage());
+            LOG.warn("Schema evolution failed {}", e.getMessage());
             throw new InvalidEventTypeException(e);
         } catch (final InternalNakadiException e) {
             LOG.error("Unable to update event type", e);
