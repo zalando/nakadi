@@ -19,6 +19,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.ID_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SCHEMA_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_NARROWED;
 
 public class SchemaDiff {
     public List<SchemaChange> collectChanges(final Schema original, final Schema update) {
@@ -55,6 +56,9 @@ public class SchemaDiff {
             if (originalIn instanceof EmptySchema && updateIn instanceof ObjectSchema) {
                 original = replaceWithEmptyObjectSchema(originalIn);
                 update = updateIn;
+            } else if (typeNarrowed(originalIn, updateIn)) {
+                state.addChange(TYPE_NARROWED);
+                return;
             } else {
                 state.addChange(TYPE_CHANGED);
                 return;
@@ -93,6 +97,10 @@ public class SchemaDiff {
                 ReferenceSchemaDiff.recursiveCheck((ReferenceSchema) original, (ReferenceSchema) update, state);
             }
         });
+    }
+
+    private static boolean typeNarrowed(final Schema originalIn, final Schema updateIn) {
+        return originalIn instanceof EmptySchema && !(updateIn instanceof EmptySchema);
     }
 
     private static Schema replaceWithEmptyObjectSchema(final Schema in) {
