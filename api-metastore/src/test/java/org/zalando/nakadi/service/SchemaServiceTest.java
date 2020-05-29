@@ -13,7 +13,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exception.SchemaEvolutionException;
+import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
@@ -119,7 +120,7 @@ public class SchemaServiceTest {
                 Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
@@ -128,21 +129,23 @@ public class SchemaServiceTest {
                 "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
     public void whenEventTypeSchemaJsonIsMalformedThenThrows() throws Exception {
         eventType.getSchema().setSchema("invalid-json");
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
     public void whenSchemaHasIncompatibilitiesThenThrows() throws Exception {
-        Mockito.doThrow(InvalidEventTypeException.class).when(schemaEvolutionService).collectIncompatibilities(any());
+        Mockito.doThrow(SchemaEvolutionException.class)
+                .when(schemaEvolutionService).collectIncompatibilities(any());
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaEvolutionException.class,
+                () -> schemaService.validateSchema(eventType));
     }
 
     @Test
@@ -151,7 +154,7 @@ public class SchemaServiceTest {
                 "{\\\"type\\\":\\\"array\\\" }");
         eventType.setCategory(BUSINESS);
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
@@ -165,7 +168,7 @@ public class SchemaServiceTest {
                 "      }\n" +
                 "    }");
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
     }
 
     @Test
@@ -178,6 +181,49 @@ public class SchemaServiceTest {
                 "    }\n" +
                 "  }");
 
-        assertThrows(InvalidEventTypeException.class, () -> schemaService.validateSchema(eventType));
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaEndingBracket() {
+        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}}");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaMultipleRoots() {
+        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}{\"additionalProperties\": true}");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaArbitraryEnding() {
+        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}NakadiRocks");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaArrayEnding() {
+        SchemaService.isStrictlyValidJson("[{\"additionalProperties\": true}]]");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaEndingCommaArray() {
+        SchemaService.isStrictlyValidJson("[{\"test\": true},]");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaEndingCommaArray2() {
+        SchemaService.isStrictlyValidJson("[\"test\",]");
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testValidateSchemaEndingCommaObject() {
+        SchemaService.isStrictlyValidJson("{\"test\": true,}");
+    }
+
+    @Test
+    public void testValidateSchemaFormattedJson() {
+        SchemaService.isStrictlyValidJson("{\"properties\":{\"event_class\":{\"type\":\"string\"}," +
+                "\"app_domain_id\":{\"type\":\"integer\"},\"event_type\":{\"type\":\"string\"},\"time\"" +
+                ":{\"type\":\"number\"},\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\"" +
+                ":\"object\"}},\"additionalProperties\":true}");
     }
 }
