@@ -99,7 +99,7 @@ public class SchemaDiff {
         });
     }
 
-    private static boolean typeNarrowed(Schema originalIn, Schema updateIn) {
+    private static boolean typeNarrowed(final Schema originalIn, final Schema updateIn) {
         return originalIn instanceof EmptySchema && !(updateIn instanceof EmptySchema);
     }
 
