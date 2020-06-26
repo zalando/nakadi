@@ -105,7 +105,6 @@ dependencies {
     testCompile 'org.springframework.boot:spring-boot-starter-test'
     testCompile 'org.skyscreamer:jsonassert'
     testCompile 'uk.co.datumedge:hamcrest-json:0.2'
-    testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile('com.jayway.restassured:rest-assured:2.9.0') {
         exclude module: "hamcrest-core"
         exclude module: "hamcrest-library"

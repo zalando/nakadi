@@ -20,13 +20,13 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 public class TimelineCleaningJobTest {
 
@@ -61,7 +61,7 @@ public class TimelineCleaningJobTest {
         when(timelineDbRepository.getExpiredTimelines()).thenReturn(expiredTimelines);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
-//        when(timelineService.getTopicRepository(argThat(isOneOf(t1, t2)))).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository(argThat(isOneOf(t1, t2)))).thenReturn(topicRepository);
 
         timelineCleanupJob.cleanupTimelines();
 
