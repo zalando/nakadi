@@ -513,7 +513,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .stream(body.split(SEPARATOR))
                 .map(batch -> {
                     try {
-                        return jsonMapper.<Map<String, Object>>readValue(batch,
+                        return jsonMapper.readValue(batch,
                                 new TypeReference<HashMap<String, Object>>() {
                                 });
                     } catch (IOException e) {

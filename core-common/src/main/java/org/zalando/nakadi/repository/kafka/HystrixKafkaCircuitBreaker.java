@@ -46,7 +46,7 @@ public class HystrixKafkaCircuitBreaker {
     }
 
     public boolean attemptExecution() {
-        return circuitBreaker.attemptExecution();
+        return circuitBreaker.allowRequest();
     }
 
     public void markStart() {
@@ -66,7 +66,6 @@ public class HystrixKafkaCircuitBreaker {
         concurrentExecutionCount.decrementAndGet();
         HystrixThreadEventStream.getInstance()
                 .executionDone(ExecutionResult.from(HystrixEventType.FAILURE), commandKey, threadPoolKey);
-        circuitBreaker.markNonSuccess();
     }
 
     public String getMetrics() {

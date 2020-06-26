@@ -3,7 +3,7 @@ import java.util.concurrent.TimeUnit
 subprojects {
     buildscript {
         ext {
-            springBootVersion = '1.5.20.RELEASE'
+            springBootVersion = '2.3.0.RELEASE'
         }
         repositories {
             mavenCentral()
@@ -51,7 +51,7 @@ subprojects {
     }
     dependencies {
         ext {
-            kafkaClientVersion = '2.3.1'
+            kafkaClientVersion = '2.5.0'
         }
     }
 }
@@ -79,11 +79,11 @@ task initNakadi(type: Exec) {
 }
 
 task startNakadi(type: GradleBuild) {
-    tasks = ['clean', 'app:bootRepackage', 'initNakadi']
+    tasks = ['clean', 'app:bootJar', 'initNakadi']
 }
 
 task startNakadiForTests(type: GradleBuild) {
-    tasks = ['clean', 'app:bootRepackage', 'testInitNakadi']
+    tasks = ['clean', 'app:bootJar', 'testInitNakadi']
 }
 
 

@@ -39,6 +39,9 @@ dependencies {
     testCompile project(path: ':core-services', configuration: 'testOutput')
 }
 
-bootRepackage {
+bootJar {
     enabled = false
+}
+jar {
+    enabled = true
 }

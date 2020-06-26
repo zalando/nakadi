@@ -61,7 +61,7 @@ public class TimelineCleaningJobTest {
         when(timelineDbRepository.getExpiredTimelines()).thenReturn(expiredTimelines);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
-        when(timelineService.getTopicRepository(argThat(isOneOf(t1, t2)))).thenReturn(topicRepository);
+//        when(timelineService.getTopicRepository(argThat(isOneOf(t1, t2)))).thenReturn(topicRepository);
 
         timelineCleanupJob.cleanupTimelines();
 

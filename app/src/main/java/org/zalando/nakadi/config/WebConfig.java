@@ -95,12 +95,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
         argumentResolvers.add(clientResolver);
     }
 
-    @Override
-    public RequestMappingHandlerMapping requestMappingHandlerMapping() {
-        final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
-        handlerMapping.setUseSuffixPatternMatch(false);
-        return handlerMapping;
-    }
+    //@Override
+//    public RequestMappingHandlerMapping requestMappingHandlerMapping() {
+//        final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
+//        handlerMapping.setUseSuffixPatternMatch(false);
+//        return handlerMapping;
+//    }
 
     @Override
     protected void configureContentNegotiation(final ContentNegotiationConfigurer configurer) {

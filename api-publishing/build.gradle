@@ -36,6 +36,9 @@ dependencies {
 }
 // end::dependencies[]
 
-bootRepackage {
+bootJar {
     enabled = false
+}
+jar {
+    enabled = true
 }

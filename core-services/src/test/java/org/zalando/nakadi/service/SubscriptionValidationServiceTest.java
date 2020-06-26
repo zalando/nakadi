@@ -60,8 +60,8 @@ public class SubscriptionValidationServiceTest {
         when(nakadiSettings.getMaxSubscriptionPartitions()).thenReturn(MAX_SUBSCRIPTION_PARTITIONS);
 
         topicRepository = mock(TopicRepository.class);
-        when(topicRepository.listPartitionNames(argThat(isOneOf(topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
-                .thenReturn(ImmutableList.of(P0));
+//        when(topicRepository.listPartitionNames(argThat(isOneOf(topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
+//                .thenReturn(ImmutableList.of(P0));
 
         etCache = mock(EventTypeCache.class);
         final Map<String, EventType> eventTypes = new HashMap<>();
@@ -93,13 +93,13 @@ public class SubscriptionValidationServiceTest {
 
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
-        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
+//        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
     @Test
     public void whenNoEventTypeThenException() throws Exception {
-        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
+//        when(etCache.getEventTypeIfExists(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
         when(etCache.getEventTypeIfExists(ET2)).thenReturn(Optional.of(new EventType()));
 
         try {
@@ -114,9 +114,9 @@ public class SubscriptionValidationServiceTest {
 
     @Test(expected = TooManyPartitionsException.class)
     public void whenTooManyPartitionsThenException() {
-        when(topicRepository.listPartitionNames(argThat(isOneOf(
-                topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
-                .thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
+//        when(topicRepository.listPartitionNames(argThat(isOneOf(
+//                topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
+//                .thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
 
