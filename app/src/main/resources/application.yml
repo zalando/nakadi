@@ -110,7 +110,7 @@ nakadi:
     timelineCleanup:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
-    diskUsageStats:
+    disk-usage-stats:
       runPeriodMs: 3600000 # 1 hour
       authDataType: "*"
       authValue: "*"
