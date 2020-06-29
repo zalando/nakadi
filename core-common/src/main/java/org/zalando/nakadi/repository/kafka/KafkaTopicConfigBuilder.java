@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import kafka.admin.RackAwareMode;
 
 import java.util.Optional;
 
@@ -13,6 +14,7 @@ public final class KafkaTopicConfigBuilder {
     private Long retentionMs;
     private Long segmentBytes;
     private Long minCompactionLagMs;
+    private RackAwareMode rackAwareMode;
 
     private KafkaTopicConfigBuilder() {
     }
@@ -61,6 +63,11 @@ public final class KafkaTopicConfigBuilder {
         return this;
     }
 
+    public KafkaTopicConfigBuilder withRackAwareMode(final RackAwareMode rackAwareMode) {
+        this.rackAwareMode = rackAwareMode;
+        return this;
+    }
+
     public KafkaTopicConfig build() {
         return new KafkaTopicConfig(
                 topicName,
@@ -70,7 +77,8 @@ public final class KafkaTopicConfigBuilder {
                 segmentMs,
                 Optional.ofNullable(retentionMs),
                 Optional.ofNullable(segmentBytes),
-                Optional.ofNullable(minCompactionLagMs));
+                Optional.ofNullable(minCompactionLagMs),
+                rackAwareMode);
     }
 
 }

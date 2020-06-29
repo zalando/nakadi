@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import kafka.admin.RackAwareMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -43,8 +44,8 @@ public class KafkaTopicConfigFactory {
         final KafkaTopicConfigBuilder configBuilder = KafkaTopicConfigBuilder.builder()
                 .withTopicName(uuidGenerator.randomUUID().toString())
                 .withPartitionCount(topicConfig.getPartitionCount())
-                .withReplicaFactor(defaultTopicReplicaFactor);
-//                .withRackAwareMode(RackAwareMode.Safe$.MODULE$);
+                .withReplicaFactor(defaultTopicReplicaFactor)
+                .withRackAwareMode(RackAwareMode.Safe$.MODULE$);
 
         if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT) {
             // set values specific for cleanup policy 'compact'

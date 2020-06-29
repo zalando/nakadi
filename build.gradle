@@ -3,7 +3,7 @@ import java.util.concurrent.TimeUnit
 subprojects {
     buildscript {
         ext {
-            springBootVersion = '2.3.0.RELEASE'
+            springBootVersion = '2.3.1.RELEASE'
         }
         repositories {
             mavenCentral()
@@ -51,7 +51,7 @@ subprojects {
     }
     dependencies {
         ext {
-            kafkaClientVersion = '2.5.0'
+            kafkaClientVersion = '2.3.1'
         }
     }
 }
