@@ -162,7 +162,7 @@ public class SubscriptionStreamController {
 
     }
 
-    @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.POST)
+    @RequestMapping(value = "/subscriptions/{subscription_id:.+}/events", method = RequestMethod.POST)
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final UserStreamParameters userParameters,
@@ -175,7 +175,7 @@ public class SubscriptionStreamController {
                 (Span) request.getAttribute("span"));
     }
 
-    @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
+    @RequestMapping(value = "/subscriptions/{subscription_id:.+}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Nullable @RequestParam(value = "max_uncommitted_events", required = false) final Integer

@@ -220,7 +220,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            log.info("Switching state from {} to {}",
+            log.debug("Switching state from {} to {}",
                     currentState.getClass().getSimpleName(),
                     newState.getClass().getSimpleName());
             // There is a problem with onExit call - it can not throw exceptions, otherwise it won't be possible
@@ -231,7 +231,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void switchStateImmediately(final State newState) {
-        log.info("Cleaning task queue & Switching state immediately from {} to {}",
+        log.debug("Cleaning task queue & Switching state immediately from {} to {}",
                 currentState.getClass().getSimpleName(),
                 newState.getClass().getSimpleName());
         taskQueue.clear();
@@ -249,7 +249,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void registerSession() throws NakadiRuntimeException {
-        log.info("Registering session {}", session);
+        log.debug("Registering session {}", session);
         zkClient.registerSession(session);
         sessionRegistered = true;
     }
@@ -262,7 +262,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void unregisterSession() {
-        log.info("Unregistering session {}", session);
+        log.debug("Unregistering session {}", session);
         try {
             if (sessionListSubscription != null) {
                 sessionListSubscription.close();
@@ -330,7 +330,7 @@ public class StreamingContext implements SubscriptionStreamer {
                         zkClient.updatePartitionsConfiguration(actualHash, changeset);
                     }
                 } else {
-                    log.info("Skipping rebalance, because hash is the same: {}", sessionsHash);
+                    log.debug("Skipping rebalance, because hash is the same: {}", sessionsHash);
                 }
             });
         }
