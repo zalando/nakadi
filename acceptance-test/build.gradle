@@ -49,7 +49,7 @@ dependencies {
     compile project(':core-services')
     
     compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
-    implementation 'org.springframework.boot:spring-boot-starter-test'
+    //implementation 'org.springframework.boot:spring-boot-starter-test'
     compile project(':api-publishing')
     compile project(':api-consumption')
     compile project(':api-metastore')
