@@ -22,6 +22,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -50,7 +51,6 @@ public class NakadiResourceServerTokenServicesTest {
     @Test
     public void whenLocalIisDisabledItIsNotUsed() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(true);
-        when(localService.loadAuthentication(any())).thenReturn(mock(OAuth2Authentication.class));
         when(remoteService.loadAuthentication(any())).thenReturn(mock(OAuth2Authentication.class));
 
         objectToTest.loadAuthentication("bbb");
@@ -65,10 +65,10 @@ public class NakadiResourceServerTokenServicesTest {
 
         final OAuth2Authentication expectedResponse = mock(OAuth2Authentication.class);
         when(localService.loadAuthentication(any())).thenReturn(expectedResponse);
-        when(remoteService.loadAuthentication(any())).thenReturn(mock(OAuth2Authentication.class));
 
         final OAuth2Authentication response = objectToTest.loadAuthentication("bbb");
 
+        verifyNoInteractions(remoteService);
         assertSame(expectedResponse, response);
     }
 
@@ -78,7 +78,6 @@ public class NakadiResourceServerTokenServicesTest {
 
         final OAuth2Exception expectedException = mock(OAuth2Exception.class);
         when(localService.loadAuthentication(any())).thenThrow(expectedException);
-        when(remoteService.loadAuthentication(any())).thenReturn(mock(OAuth2Authentication.class));
 
         try {
             objectToTest.loadAuthentication("bbb");
@@ -86,6 +85,7 @@ public class NakadiResourceServerTokenServicesTest {
         } catch (OAuth2Exception ex) {
             assertSame(expectedException, ex);
         }
+        verifyNoInteractions(remoteService);
     }
 
     @Test

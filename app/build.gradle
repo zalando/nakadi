@@ -20,6 +20,7 @@ targetCompatibility = 1.8
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
+    all*.exclude group: "com.vaadin.external.google", module: "android-json"
 }
 
 dependencies {
@@ -100,7 +101,7 @@ dependencies {
     compile 'com.google.guava:guava:27.1-jre'
     compile 'org.slf4j:slf4j-log4j12'
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile ("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
+    compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
         exclude module: 'spring-core'
     }
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
