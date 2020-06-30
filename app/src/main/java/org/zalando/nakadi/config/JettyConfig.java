@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class JettyConfig {
     @Bean
-    public JettyServletWebServerFactory jettyEmbeddedServletContainerFactory(
+    public JettyServletWebServerFactory jettyServletWebServerFactory(
             @Value("${server.port:8080}") final String port,
             @Value("${jetty.threadPool.maxThreads:200}") final String maxThreads,
             @Value("${jetty.threadPool.minThreads:8}") final String minThreads,
