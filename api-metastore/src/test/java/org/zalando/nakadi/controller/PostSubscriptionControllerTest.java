@@ -144,7 +144,7 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withOwningApplication(null)
                 .buildSubscriptionBase();
-        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "must not be null");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -170,7 +170,7 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenEventTypesIsNullThenUnprocessableEntity() throws Exception {
         final String subscription = "{\"owning_application\":\"app\",\"consumer_group\":\"myGroup\"}";
-        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "must not be null");
         checkForProblem(postSubscriptionAsJson(subscription), expectedProblem);
     }
 
