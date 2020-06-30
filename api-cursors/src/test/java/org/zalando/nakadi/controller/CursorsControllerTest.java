@@ -188,7 +188,7 @@ public class CursorsControllerTest {
     public void whenCommitCursorWithoutEventTypeThenUnprocessableEntity() throws Exception {
         checkForProblem(
                 postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"}]}"),
-                TestUtils.invalidProblem("items[0].event_type", "may not be null"));
+                TestUtils.invalidProblem("items[0].event_type", "must not be null"));
     }
 
     @Test

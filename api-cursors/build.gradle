@@ -44,6 +44,9 @@ dependencies {
         exclude module: 'spring-boot-starter-tomcat'
     }
 
+    // validation
+    compile("org.springframework.boot:spring-boot-starter-validation")
+
     // oauth
     compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
         exclude module: 'spring-webmvc'
