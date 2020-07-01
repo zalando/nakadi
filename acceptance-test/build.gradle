@@ -28,6 +28,7 @@ sourceSets {
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
+    all*.exclude group: "com.vaadin.external.google", module: "android-json"
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
 }
