@@ -49,7 +49,7 @@ public class NakadiConfig {
             storage.setId(storageId);
             storage.setType(Storage.Type.KAFKA);
             storage.setConfiguration(new KafkaConfiguration(
-                    ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connectionString"))));
+                    ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connection-string"))));
             try {
                 storageDbRepository.createStorage(storage);
             } catch (final DuplicatedStorageException e) {

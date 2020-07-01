@@ -16,11 +16,11 @@ public class HashPartitionStrategyCrutchTest {
     @Test
     public void whenAdjustPartitionIndexThenOk() {
         final Environment env = mock(Environment.class);
-        when(env.getProperty("nakadi.hashPartitioning.overrideOrder.p3", List.class))
+        when(env.getProperty("nakadi.hash-partitioning.override-order.p3", List.class))
                 .thenReturn(ImmutableList.of("1", "2", "0"));
-        when(env.getProperty("nakadi.hashPartitioning.overrideOrder.p4", List.class))
+        when(env.getProperty("nakadi.hash-partitioning.override-order.p4", List.class))
                 .thenReturn(ImmutableList.of("2", "0", "1", "3"));
-        when(env.getProperty("nakadi.hashPartitioning.overrideOrder.p5", List.class))
+        when(env.getProperty("nakadi.hash-partitioning.override-order.p5", List.class))
                 .thenReturn(ImmutableList.of("4", "3", "0", "2", "1"));
 
         final HashPartitionStrategyCrutch hashStrategyCrutch = new HashPartitionStrategyCrutch(env, 4);
@@ -46,7 +46,7 @@ public class HashPartitionStrategyCrutchTest {
     @Test(expected = IllegalArgumentException.class)
     public void whenPartitionCountIsWrongThenIllegalArgumentException() {
         final Environment env = mock(Environment.class);
-        when(env.getProperty("nakadi.hashPartitioning.overrideOrder.p3", List.class))
+        when(env.getProperty("nakadi.hash-partitioning.override-order.p3", List.class))
                 .thenReturn(ImmutableList.of("1", "2", "0", "3"));
         new HashPartitionStrategyCrutch(env, 4);
     }
@@ -54,7 +54,7 @@ public class HashPartitionStrategyCrutchTest {
     @Test(expected = IllegalArgumentException.class)
     public void whenPartitionIndexIsWrongThenIllegalArgumentException() {
         final Environment env = mock(Environment.class);
-        when(env.getProperty("nakadi.hashPartitioning.overrideOrder.p3", List.class))
+        when(env.getProperty("nakadi.hash-partitioning.override-order.p3", List.class))
                 .thenReturn(ImmutableList.of("1", "0", "3"));
         new HashPartitionStrategyCrutch(env, 4);
     }
