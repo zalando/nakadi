@@ -26,8 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.mockito.Matchers.anyInt;
-
+import static org.mockito.ArgumentMatchers.anyInt;
 
 public class HilaRepartitionAT extends BaseAT {
     private static final Logger LOG = LoggerFactory.getLogger(HilaRepartitionAT.class);

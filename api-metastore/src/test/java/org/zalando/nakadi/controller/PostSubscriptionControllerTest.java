@@ -31,7 +31,7 @@ import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;

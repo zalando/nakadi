@@ -15,7 +15,7 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import java.util.Optional;
 
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;

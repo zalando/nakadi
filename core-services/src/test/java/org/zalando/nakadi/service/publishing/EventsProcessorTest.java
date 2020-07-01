@@ -6,8 +6,8 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 public class EventsProcessorTest {
 
