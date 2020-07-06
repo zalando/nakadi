@@ -1,5 +1,3 @@
-import java.util.concurrent.TimeUnit
-
 subprojects {
     buildscript {
         ext {
@@ -56,68 +54,24 @@ subprojects {
     }
 }
 
-task testInitNakadi(type: Exec) {
-    environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
-    commandLine "bash", "-c", "docker-compose up -d --build"
-    doLast {
-        println "Waiting for Nakadi to start up"
-        long start = System.currentTimeMillis()
-        waitForNakadi()
-        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
-    }
+task startNakadi(type: Exec) {
+    commandLine "bash", "-c", "./nakadi.sh start-nakadi"
 }
 
-task initNakadi(type: Exec) {
-    environment "SPRING_PROFILES_ACTIVE", "local"
-    commandLine "bash", "-c", "docker-compose up -d --build"
-    doLast {
-        println "Waiting for Nakadi to start up"
-        long start = System.currentTimeMillis()
-        waitForNakadi()
-        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
-    }
-}
-
-task startNakadi(type: GradleBuild) {
-    tasks = ['clean', 'app:bootJar', 'initNakadi']
-}
-
-task startNakadiForTests(type: GradleBuild) {
-    tasks = ['clean', 'app:bootJar', 'testInitNakadi']
-}
-
-
-task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['startNakadiForTests', ':acceptance-test:acceptanceTest', 'stopNakadi']
+task fullAcceptanceTest(type: Exec) {
+    commandLine "bash", "-c", "./nakadi.sh acceptance-tests"
 }
 
 task stopNakadi(type: Exec) {
-    commandLine "bash", "-c", "docker-compose down"
-}
-
-def waitForNakadi() {
-    // wait till application is up (health check is successful)
-    int result = 1
-    while (result != 0) {
-        result = execAndWait('curl http://localhost:8080/health')
-        sleep(1000L)
-    }
-}
-
-def execAndWait(command, timeoutInSeconds = 15) {
-    println "Running command: " + command
-    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO()
-    Process proc = pb.start()
-    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS)
-    return proc.exitValue()
+    commandLine "bash", "-c", "./nakadi.sh stop-nakadi"
 }
 
 task startStorages(type: Exec) {
-    commandLine "bash", "-c", "docker-compose up -d postgres zookeeper kafka"
+    commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
 task stopStorages(type: Exec) {
-    commandLine "bash", "-c", "docker-compose down"
+    commandLine "bash", "-c", "./nakadi.sh stop-storages"
 }
 
 task checkstyle {
