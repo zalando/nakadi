@@ -23,8 +23,6 @@ pipeline:
   - id: build-push
     overlay: ci/java
     type: script
-    when:
-      - branch: master
     commands:
       - desc: Build and push to repo
         cmd: |
