@@ -9,7 +9,7 @@ function waitForNakadi() {
       return
     fi
     echo "Nakadi boots up"
-    sleep 5
+    sleep 10
   done
 }
 
@@ -35,13 +35,17 @@ function acceptanceTests() {
   export SPRING_PROFILES_ACTIVE=acceptanceTest
   docker-compose up -d --build
   waitForNakadi
+  set -e
   ./gradlew :acceptance-test:acceptanceTest
+  set +e
   docker-compose down
 }
 
 function buildNakadi() {
+  set -e
   ./gradlew clean
   ./gradlew :app:bootJar
+  set +e
 }
 
 function help() {
