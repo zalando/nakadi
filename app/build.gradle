@@ -140,6 +140,9 @@ dependencies {
 }
 // end::dependencies[]
 
-springBoot {
+bootJar {
+    manifest {
+        attributes 'Main-Class': 'org.springframework.boot.loader.PropertiesLauncher'
+    }
     mainClassName = 'org.zalando.nakadi.Application'
 }
