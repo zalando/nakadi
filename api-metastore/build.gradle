@@ -28,6 +28,9 @@ dependencies {
 
     compile 'org.json:json:20180130'
 
+    // validation
+    compile("org.springframework.boot:spring-boot-starter-validation")
+
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
         exclude module: "hamcrest-core"
@@ -39,6 +42,9 @@ dependencies {
     testCompile project(path: ':core-services', configuration: 'testOutput')
 }
 
-bootRepackage {
+bootJar {
     enabled = false
+}
+jar {
+    enabled = true
 }

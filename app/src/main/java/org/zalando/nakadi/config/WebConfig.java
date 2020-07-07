@@ -17,8 +17,8 @@ import org.springframework.web.context.request.async.TimeoutCallableProcessingIn
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
@@ -96,10 +96,11 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Override
-    public RequestMappingHandlerMapping requestMappingHandlerMapping() {
-        final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
-        handlerMapping.setUseSuffixPatternMatch(false);
-        return handlerMapping;
+    protected PathMatchConfigurer getPathMatchConfigurer() {
+        final PathMatchConfigurer pathMatchConfigurer = super.getPathMatchConfigurer();
+        pathMatchConfigurer.setUseSuffixPatternMatch(false);
+
+        return pathMatchConfigurer;
     }
 
     @Override

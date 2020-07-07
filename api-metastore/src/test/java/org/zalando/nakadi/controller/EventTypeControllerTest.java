@@ -51,11 +51,11 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -202,7 +202,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType invalidEventType = TestUtils.buildDefaultEventType();
         invalidEventType.setSchema(null);
 
-        final Problem expectedProblem = TestUtils.invalidProblem("schema", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("schema", "must not be null");
         postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
@@ -211,7 +211,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final EventType invalidEventType = TestUtils.buildDefaultEventType();
         invalidEventType.setName(null);
 
-        final Problem expectedProblem = TestUtils.invalidProblem("name", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("name", "must not be null");
         postETAndExpect422WithProblem(invalidEventType, expectedProblem);
     }
 
@@ -222,13 +222,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         jsonObject.remove("category");
 
-        final Problem expectedProblem = TestUtils.invalidProblem("category", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("category", "must not be null");
         postETAndExpect422WithProblem(jsonObject.toString(), expectedProblem);
     }
 
     @Test
     public void whenPostWithNoSchemaSchemaThenReturn422() throws Exception {
-        final Problem expectedProblem = TestUtils.invalidProblem("schema.schema", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("schema.schema", "must not be null");
 
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", "
                 + "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
@@ -448,11 +448,11 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(
-                        containsString("Field \\\"authorization.admins\\\" may not be null")))
+                        containsString("Field \\\"authorization.admins\\\" must not be null")))
                 .andExpect(content().string(
-                        containsString("Field \\\"authorization.readers\\\" may not be null")))
+                        containsString("Field \\\"authorization.readers\\\" must not be null")))
                 .andExpect(content().string(
-                        containsString("Field \\\"authorization.writers\\\" may not be null")));
+                        containsString("Field \\\"authorization.writers\\\" must not be null")));
     }
 
     @Test
@@ -482,9 +482,9 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(
-                        containsString("Field \\\"authorization.readers[0].data_type\\\" may not be null")))
+                        containsString("Field \\\"authorization.readers[0].data_type\\\" must not be null")))
                 .andExpect(content().string(
-                        containsString("Field \\\"authorization.writers[0].value\\\" may not be null")));
+                        containsString("Field \\\"authorization.writers[0].value\\\" must not be null")));
     }
 
     @Test
@@ -665,7 +665,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void whenPersistencyErrorThen500() throws Exception {
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR);
 
-        doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventType.class));
+        doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventTypeBase.class));
 
         postEventType(TestUtils.buildDefaultEventType()).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -681,7 +681,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
-        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventTypeBase.class));
         verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
     }
 
@@ -698,7 +698,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
                 matchesProblem(expectedProblem)));
 
-        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventTypeBase.class));
         verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
         verify(eventTypeRepository, times(1)).removeEventType(et.getName());
     }
@@ -710,7 +710,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         jsonObject.remove("category");
 
-        final Problem expectedProblem = TestUtils.invalidProblem("category", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("category", "must not be null");
 
         putEventType(jsonObject.toString(), invalidEventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType(

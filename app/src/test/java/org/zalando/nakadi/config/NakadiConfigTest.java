@@ -28,7 +28,7 @@ public class NakadiConfigTest {
         zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
         Mockito.when(zooKeeperHolder.get()).thenReturn(curatorFramework);
         Mockito.when(curatorFramework.getData()).thenReturn(dataBuilder);
-        Mockito.when(environment.getProperty("nakadi.zookeeper.connectionString"))
+        Mockito.when(environment.getProperty("nakadi.zookeeper.connection-string"))
                 .thenReturn("exhibitor://localhost:8181/path");
     }
 

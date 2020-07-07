@@ -23,7 +23,9 @@ public class JsonTestHelper {
     }
 
     public static List<Map<String, String>> asMapsList(final String body) throws IOException {
-        return JSON_MAPPER.readValue(body, LIST_OF_MAPS_REF);
+        final TypeReference<List<Map<String, String>>> typeReference = new TypeReference<List<Map<String, String>>>() {
+        };
+        return JSON_MAPPER.readValue(body, typeReference);
     }
 
     public static Map<String, String> asMap(final String body) throws IOException {

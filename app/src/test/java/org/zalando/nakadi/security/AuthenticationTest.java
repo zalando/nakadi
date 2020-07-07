@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -40,6 +41,7 @@ import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
+import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventStreamFactory;
@@ -62,7 +64,7 @@ import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.Matchers.not;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -131,6 +133,7 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        @Primary
         public ResourceServerTokenServices mockResourceTokenServices() {
             final ResourceServerTokenServices tokenServices = mock(ResourceServerTokenServices.class);
 
@@ -157,117 +160,143 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        @Primary
         public EventTypeRepository mockDbRepository() {
             return mock(EventTypeRepository.class);
         }
 
         @Bean
+        @Primary
         public SubscriptionDbRepository mockSubscriptionDbRepo() {
             return mock(SubscriptionDbRepository.class);
         }
 
         @Bean
-        public EventTypeCache eventTypeCache() {
+        @Primary
+        public EventTypeCache mockEventTypeCache() {
             return mock(EventTypeCache.class);
         }
 
         @Bean
-        public UUIDGenerator uuidGenerator() {
+        @Primary
+        public UUIDGenerator mockUuidGenerator() {
             return new UUIDGenerator();
         }
 
         @Bean
-        public FeatureToggleService featureToggleService() {
+        @Primary
+        public FeatureToggleService mockFeatureToggleService() {
             final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
             when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
             return featureToggleService;
         }
 
         @Bean
+        @Primary
         public ZooKeeperHolder mockZKHolder() {
             return mock(ZooKeeperHolder.class);
         }
 
         @Bean
+        @Primary
         public ChangesRegistry mockChangesRegistry() {
             return mock(ChangesRegistry.class);
         }
 
         @Bean
-        public EventTypeService eventTypeService() {
+        @Primary
+        public EventTypeService mockEventTypeService() {
             return mock(EventTypeService.class);
         }
 
         @Bean
+        @Primary
         public TopicRepository mockTopicaRepository() {
             return mock(TopicRepository.class);
         }
 
         @Bean
-        public CursorsService cursorsCommitService() {
+        @Primary
+        public CursorsService mockCursorsCommitService() {
             return mock(CursorsService.class);
         }
 
         @Bean
-        public EventPublisher eventPublisher() {
+        @Primary
+        public EventPublisher mockEventPublisher() {
             return mock(EventPublisher.class);
         }
 
         @Bean
-        public EventTypeMetricRegistry eventTypeMetricRegistry() {
+        @Primary
+        public EventTypeMetricRegistry mockEventTypeMetricRegistry() {
             return mock(EventTypeMetricRegistry.class);
         }
 
         @Bean
-        public EventStreamFactory eventStreamFactory() {
+        @Primary
+        public EventStreamFactory mockEventStreamFactory() {
             return mock(EventStreamFactory.class);
         }
 
         @Bean
-        public ClientResolver clientResolver() {
+        @Primary
+        public ClientResolver mockClientResolver() {
             return mock(ClientResolver.class);
         }
 
         @Bean
-        public KafkaLocationManager kafkaLocationManager() {
+        @Primary
+        public KafkaLocationManager mockKafkaLocationManager() {
             return mock(KafkaLocationManager.class);
         }
 
         @Bean
-        public SecuritySettings securitySettings() {
+        @Primary
+        public SecuritySettings mockSecuritySettings() {
             final SecuritySettings securitySettings = mock(SecuritySettings.class);
             doReturn(authMode).when(securitySettings).getAuthMode();
             return securitySettings;
         }
 
         @Bean
-        public TimelineSync timelineSync() {
+        @Primary
+        public TimelineSync mockTimelineSync() {
             return mock(TimelineSync.class);
         }
 
         @Bean
-        public TopicRepositoryHolder topicRepositoryHolder() {
+        @Primary
+        public TopicRepositoryHolder mockTopicRepositoryHolder() {
             return mock(TopicRepositoryHolder.class);
         }
 
         @Bean
+        @Primary
         @Qualifier("default_storage")
-        public DefaultStorage defaultStorage() {
+        public DefaultStorage mockDefaultStorage() {
             return new DefaultStorage(mock(Storage.class));
         }
 
         @Bean
-        public StorageDbRepository storageDbRepository() {
+        @Primary
+        public StorageDbRepository mockStorageDbRepository() {
             final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
             when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
             return storageDbRepository;
         }
 
         @Bean
-        public MessageDigest sha256MessageDigest() {
+        @Primary
+        public MessageDigest mockSha256MessageDigest() {
             return mock(MessageDigest.class);
         }
 
+        @Bean
+        @Primary
+        public PartitionsCalculator mockPartitionsCalculator(){
+            return mock(PartitionsCalculator.class);
+        }
     }
 
     protected static final ResultMatcher STATUS_NOT_401_OR_403 = status().is(not(

@@ -31,7 +31,7 @@ import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -144,7 +144,7 @@ public class PostSubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withOwningApplication(null)
                 .buildSubscriptionBase();
-        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "must not be null");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -170,7 +170,7 @@ public class PostSubscriptionControllerTest {
     @Test
     public void whenEventTypesIsNullThenUnprocessableEntity() throws Exception {
         final String subscription = "{\"owning_application\":\"app\",\"consumer_group\":\"myGroup\"}";
-        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "may not be null");
+        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "must not be null");
         checkForProblem(postSubscriptionAsJson(subscription), expectedProblem);
     }
 

@@ -272,7 +272,7 @@ public class NakadiTestUtils {
     public static void switchTimelineDefaultStorage(final EventType eventType) {
         RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body(new JSONObject().put("storage_id", "default"))
+                .body(new JSONObject().put("storage_id", "default").toString())
                 .post("event-types/{et_name}/timelines", eventType.getName())
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);

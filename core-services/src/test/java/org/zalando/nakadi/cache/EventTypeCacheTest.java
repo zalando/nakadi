@@ -22,8 +22,8 @@ import java.util.Date;
 import java.util.List;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.isNull;
 import static org.mockito.Matchers.notNull;
 import static org.mockito.Mockito.atLeastOnce;
@@ -139,7 +139,7 @@ public class EventTypeCacheTest {
         eventTypeCache.stopUpdates();
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     public synchronized void testThatCacheIsActuallyWorkingAndValueIsLoaded() throws Exception {
         final TimelineSync.ListenerRegistration listener = mock(TimelineSync.ListenerRegistration.class);
         when(timelineSync.registerTimelineChangeListener(any())).thenReturn(listener);

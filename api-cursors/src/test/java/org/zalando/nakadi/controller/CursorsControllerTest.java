@@ -39,9 +39,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -188,7 +188,7 @@ public class CursorsControllerTest {
     public void whenCommitCursorWithoutEventTypeThenUnprocessableEntity() throws Exception {
         checkForProblem(
                 postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"}]}"),
-                TestUtils.invalidProblem("items[0].event_type", "may not be null"));
+                TestUtils.invalidProblem("items[0].event_type", "must not be null"));
     }
 
     @Test

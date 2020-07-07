@@ -26,8 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.mockito.Matchers.anyInt;
-
+import static org.mockito.ArgumentMatchers.anyLong;
 
 public class HilaRepartitionAT extends BaseAT {
     private static final Logger LOG = LoggerFactory.getLogger(HilaRepartitionAT.class);
@@ -42,7 +41,7 @@ public class HilaRepartitionAT extends BaseAT {
     public void testSubscriptionRepartitioningWithSingleEventType() throws Exception {
         zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
         Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyInt()))
+        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
                 .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
 
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
@@ -71,7 +70,7 @@ public class HilaRepartitionAT extends BaseAT {
     public void testSubscriptionRepartitioningWithMultipleEventTypes() throws Exception {
         zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
         Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyInt()))
+        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
                 .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
 
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(

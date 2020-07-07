@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@ConfigurationProperties(prefix = "nakadi.audit")
+@ConfigurationProperties("nakadi.audit")
 public class NakadiAuditLogInitialization {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiAuditLogInitialization.class);
 

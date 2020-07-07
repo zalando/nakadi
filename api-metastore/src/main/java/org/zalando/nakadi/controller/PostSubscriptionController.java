@@ -27,7 +27,7 @@ import org.zalando.nakadi.service.SubscriptionService;
 
 import javax.validation.Valid;
 
-import static org.apache.http.HttpHeaders.CONTENT_LOCATION;
+import static org.springframework.http.HttpHeaders.CONTENT_LOCATION;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.domain.Feature.DISABLE_SUBSCRIPTION_CREATION;
 

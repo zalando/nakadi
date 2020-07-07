@@ -28,6 +28,7 @@ sourceSets {
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
+    all*.exclude group: "com.vaadin.external.google", module: "android-json"
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
 }
@@ -38,7 +39,6 @@ dependencies {
         curatorVersion = '4.2.0'
         zookeeperVersion = '3.4.14'
         jacksonVersion = '2.9.8'
-        springFrameworkVersion = '4.3.23.RELEASE'
     }
     // Override spring-boot BOM versions
     ext['json.version'] = '20180130'
@@ -48,7 +48,8 @@ dependencies {
     compile project(':core-common')
     compile project(':core-metastore')
     compile project(':core-services')
-
+    
+    compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
     compile project(':api-publishing')
     compile project(':api-consumption')
     compile project(':api-metastore')
@@ -62,36 +63,30 @@ dependencies {
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile "org.springframework:spring-context:$springFrameworkVersion"
-    compile "org.springframework:spring-web:$springFrameworkVersion"
-    compile "org.springframework:spring-webmvc:$springFrameworkVersion"
+    compile "org.springframework:spring-context"
+    compile "org.springframework:spring-web"
+    compile "org.springframework:spring-webmvc"
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
 
+    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
+    compile("org.apache.kafka:kafka_2.12:$kafkaClientVersion") {
+        exclude module: "zookeeper"
+    }
+
     compile 'org.slf4j:slf4j-log4j12'
 
-    compile("com.fasterxml.jackson.datatype:jackson-datatype-json-org:$jacksonVersion") {
-        exclude module: "json"
-    }
-    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
+    compile "org.springframework.boot:spring-boot-starter-json"
     compile 'org.zalando:jackson-datatype-problem:0.22.0'
     compile 'org.zalando:problem:0.22.0'
     compile 'org.json:json:20180130'
 
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.22') {
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.24') {
         exclude module: "httpclient"
     }
-    compile 'org.zalando:twintip-spring-web:1.1.0'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
@@ -103,7 +98,6 @@ dependencies {
     testCompile 'org.springframework.boot:spring-boot-starter-test'
     testCompile 'org.skyscreamer:jsonassert'
     testCompile 'uk.co.datumedge:hamcrest-json:0.2'
-    testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile('com.jayway.restassured:rest-assured:2.9.0') {
         exclude module: "hamcrest-core"
         exclude module: "hamcrest-library"
@@ -127,6 +121,9 @@ acceptanceTest {
     maxParallelForks = 1
 }
 
-bootRepackage {
+bootJar {
     enabled = false
+}
+jar {
+    enabled = true
 }

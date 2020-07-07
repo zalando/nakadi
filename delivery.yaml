@@ -23,12 +23,10 @@ pipeline:
   - id: build-push
     overlay: ci/java
     type: script
-    when:
-      - branch: master
     commands:
       - desc: Build and push to repo
         cmd: |
-          ./gradlew clean app:bootRepackage
+          ./gradlew clean app:bootJar
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           docker build -t ${IMAGE} .
           docker push ${IMAGE}
