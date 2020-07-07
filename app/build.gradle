@@ -82,6 +82,10 @@ dependencies {
 
     // actuator
     compile "org.springframework.boot:spring-boot-starter-actuator"
+    compile('org.zalando.zmon:zmon-actuator:0.9.8') {
+        exclude module: 'spring-webmvc'
+        exclude module: 'spring-boot-autoconfigure'
+    }
 
     // storage
     compile "org.springframework.boot:spring-boot-starter-jdbc"
