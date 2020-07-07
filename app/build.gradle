@@ -124,7 +124,6 @@ dependencies {
     }
     compile "org.springframework.boot:spring-boot-starter-json"
     compile 'org.json:json:20180130'
-    runtime("org.springframework.boot:spring-boot-properties-migrator")
 
     // open tracing
     compile 'io.opentracing:opentracing-api:0.31.0'
