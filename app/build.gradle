@@ -54,7 +54,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
 
     compile "org.springframework.boot:spring-boot-starter-security"
-    compile 'org.springframework.security.oauth.boot:spring-security-oauth2-autoconfigure:2.3.0.RELEASE'
 
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
