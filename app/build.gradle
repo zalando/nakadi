@@ -88,7 +88,10 @@ dependencies {
     }
 
     // storage
-    compile "org.springframework.boot:spring-boot-starter-jdbc"
+    compile("org.springframework.boot:spring-boot-starter-jdbc") {
+        exclude module: 'HikariCP'
+    }
+    compile 'org.apache.tomcat:tomcat-jdbc'
     compile 'org.postgresql:postgresql:42.2.5'
 
     compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
