@@ -55,6 +55,7 @@ import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecu
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
+import javax.sql.DataSource;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
@@ -157,6 +158,12 @@ public abstract class AuthenticationTest {
 
         public ExtendedOAuth2WebSecurityExpressionHandler extendedOAuth2WebSecurityExpressionHandler() {
             return mock(ExtendedOAuth2WebSecurityExpressionHandler.class);
+        }
+
+        @Bean
+        @Primary
+        public DataSource mockDataSource() {
+            return mock(DataSource.class);
         }
 
         @Bean
@@ -294,7 +301,7 @@ public abstract class AuthenticationTest {
 
         @Bean
         @Primary
-        public PartitionsCalculator mockPartitionsCalculator(){
+        public PartitionsCalculator mockPartitionsCalculator() {
             return mock(PartitionsCalculator.class);
         }
     }
