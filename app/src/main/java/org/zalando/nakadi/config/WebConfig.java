@@ -13,6 +13,7 @@ import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.xml.SourceHttpMessageConverter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
@@ -46,6 +47,17 @@ public class WebConfig extends WebMvcConfigurationSupport {
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(nakadiStreamTimeout);
         configurer.registerCallableInterceptors(timeoutInterceptor());
+        configurer.setTaskExecutor(buildThreadPoolForAsyncSupport());
+    }
+
+    private ThreadPoolTaskExecutor buildThreadPoolForAsyncSupport() {
+        final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(5);
+        executor.setThreadNamePrefix("async-support-pool-");
+        executor.initialize();
+        return executor;
     }
 
     @Bean
