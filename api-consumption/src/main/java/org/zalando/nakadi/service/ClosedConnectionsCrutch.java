@@ -156,7 +156,8 @@ public class ClosedConnectionsCrutch {
         }
     }
 
-    @Scheduled(fixedDelay = 1000)
+    // Disabling as to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
+    //@Scheduled(fixedDelay = 1000)
     public void refresh() throws IOException {
         if (!featureToggleService.isFeatureEnabled(Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;
