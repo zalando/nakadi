@@ -42,9 +42,9 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -206,7 +206,9 @@ public class EventStreamController {
                 return;
             }
 
-            final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
+            final AtomicBoolean connectionReady = new AtomicBoolean(true);
+            // Setting always true to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
+            //closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
