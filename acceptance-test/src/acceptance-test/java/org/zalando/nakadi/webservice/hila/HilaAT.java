@@ -435,7 +435,7 @@ public class HilaAT extends BaseAT {
         client.close();
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 20000)
     public void whenConsumerIsBlocked403() throws Exception {
         SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
