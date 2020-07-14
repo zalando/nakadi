@@ -47,24 +47,37 @@ public class KafkaTopicConfigFactory {
                 .withReplicaFactor(defaultTopicReplicaFactor)
                 .withRackAwareMode(RackAwareMode.Safe$.MODULE$);
 
-        if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT) {
-            // set values specific for cleanup policy 'compact'
+        if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
             configBuilder
-                    .withCleanupPolicy("compact")
-                    .withSegmentMs(compactedTopicRotationMs)
-                    .withSegmentBytes(compactedTopicSegmentBytes)
-                    .withMinCompactionLagMs(compactedTopicCompactionLagMs);
-
+                    .withCleanupPolicy("compact,delete");
+            configureCompactionParameters(configBuilder);
+            configureDeletionRetentionMs(topicConfig, configBuilder);
+        } else if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            configBuilder
+                    .withCleanupPolicy("compact");
+            configureCompactionParameters(configBuilder);
         } else if (topicConfig.getCleanupPolicy() == CleanupPolicy.DELETE) {
-            // set values specific for cleanup policy 'delete'
             configBuilder
                     .withCleanupPolicy("delete")
-                    .withRetentionMs(topicConfig.getRetentionTimeMs()
-                            .orElseThrow(() -> new TopicConfigException("retention time should be specified " +
-                                    "for topic with cleanup policy 'delete'")))
                     .withSegmentMs(defaultTopicRotationMs);
+            configureDeletionRetentionMs(topicConfig, configBuilder);
         }
         return configBuilder.build();
+    }
+
+    private void configureDeletionRetentionMs(final NakadiTopicConfig topicConfig,
+                                              final KafkaTopicConfigBuilder configBuilder) {
+        configBuilder
+                .withRetentionMs(topicConfig.getRetentionTimeMs()
+                        .orElseThrow(() -> new TopicConfigException("retention time should be specified " +
+                                "for topic with cleanup policy 'delete' or 'compact_and_delete'")));
+    }
+
+    private void configureCompactionParameters(final KafkaTopicConfigBuilder configBuilder) {
+        configBuilder
+                .withSegmentMs(compactedTopicRotationMs)
+                .withSegmentBytes(compactedTopicSegmentBytes)
+                .withMinCompactionLagMs(compactedTopicCompactionLagMs);
     }
 
     public Properties createKafkaTopicLevelProperties(final KafkaTopicConfig kafkaTopicConfig) {

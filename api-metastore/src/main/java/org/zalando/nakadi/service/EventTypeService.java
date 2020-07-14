@@ -160,7 +160,8 @@ public class EventTypeService {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT
+        if ((eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)
                 && featureToggleService.isFeatureEnabled(Feature.DISABLE_LOG_COMPACTION)) {
             throw new FeatureNotAvailableException("log compaction is not available",
                     Feature.DISABLE_LOG_COMPACTION);
@@ -247,7 +248,8 @@ public class EventTypeService {
     private void validateCompaction(final EventTypeBase eventType) throws
             InvalidEventTypeException {
         if (eventType.getCategory() == EventCategory.UNDEFINED &&
-                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+                (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                        eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)) {
             throw new InvalidEventTypeException(
                     "cleanup_policy 'compact' is not available for 'undefined' event type category");
         }
