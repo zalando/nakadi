@@ -194,7 +194,6 @@ public class TimelineService {
                 eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
             storage = storageDbRepository.getStorage(compactedStorageName).orElseThrow(() ->
                     new TopicCreationException("No storage defined for compacted topics"));
-            retentionTime = Optional.empty();
         }
 
         final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionsCount, eventType.getCleanupPolicy(),
