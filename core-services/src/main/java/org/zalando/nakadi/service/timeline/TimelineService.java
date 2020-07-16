@@ -189,7 +189,7 @@ public class TimelineService {
         }
 
         Storage storage = defaultStorage.getStorage();
-        Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
+        final Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
                 eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
             storage = storageDbRepository.getStorage(compactedStorageName).orElseThrow(() ->
