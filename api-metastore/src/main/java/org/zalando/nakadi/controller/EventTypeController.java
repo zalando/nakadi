@@ -144,8 +144,7 @@ public class EventTypeController {
 
         final List<String> warnings = Lists.newArrayList(nakadiSettings.getWarnAllDataAccessMessage());
 
-        if (eventType.getCleanupPolicy().equals(CleanupPolicy.COMPACT) ||
-                eventType.getCleanupPolicy().equals(CleanupPolicy.COMPACT_AND_DELETE)) {
+        if (eventType.getCleanupPolicy().equals(CleanupPolicy.COMPACT)) {
             warnings.add(nakadiSettings.getLogCompactionWarnMessage());
         }
 
