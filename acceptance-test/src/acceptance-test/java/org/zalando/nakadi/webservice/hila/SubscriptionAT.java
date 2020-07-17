@@ -249,7 +249,14 @@ public class SubscriptionAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
-        String cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+        // commit lower offsets and expect 200
+        String cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"-1\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]}";
+        commitCursors(subscription, cursor, client.getSessionId())
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+
+        cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]}";
         commitCursors(subscription, cursor, client.getSessionId())
                 .then()
@@ -257,17 +264,6 @@ public class SubscriptionAT extends BaseAT {
 
         // check that offset is actually committed to Zookeeper
         String committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
-        assertThat(committedOffset, equalTo(TestUtils.toTimelineOffset(25)));
-
-        // commit lower offsets and expect 200
-        cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
-                "\",\"cursor_token\":\"abc\"}]}";
-        commitCursors(subscription, cursor, client.getSessionId())
-                .then()
-                .statusCode(HttpStatus.SC_OK);
-
-        // check that committed offset in Zookeeper is not changed
-        committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
         assertThat(committedOffset, equalTo(TestUtils.toTimelineOffset(25)));
     }
 
