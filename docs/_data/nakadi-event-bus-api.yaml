@@ -2150,7 +2150,8 @@ definitions:
         description: |
           Value used for per-partition compaction of the event type. Given two events with the same
           partition_compaction_key value are published to the same partition, the later overwrites the former.
-          Required when 'cleanup_policy' of event type is set to 'compact'. Must be absent otherwise.
+          Required when 'cleanup_policy' of event type is set to 'compact' or 'compact_and_delete'. Must be absent
+          otherwise.
 
           When using more than one partition for event type - it will make sense to specify 'partition_compaction_key'
           and partitioning parameters in a way that events with the same partition_compaction_key are published to the
@@ -2691,9 +2692,10 @@ definitions:
         x-extensible-enum:
           - delete
           - compact
+          - compact_and_delete
         default: 'delete'
         description: |
-          Event type cleanup policy. There are two possible values:
+          Event type cleanup policy. Possible values:
 
           - 'delete' cleanup policy will delete old events after retention time expires. Nakadi guarantees that each
             event will be available for at least the retention time period. However Nakadi doesn't guarantee that event
@@ -2704,7 +2706,13 @@ definitions:
             specified in 'partition_compaction_key' field of event metadata. This cleanup policy is not available for
             'undefined' category of event types.
 
-            The compaction can be not applied to events that were published recently and located at the head of the
+          - 'compact_and_delete' cleanup policy combines both time based retention and per key compaction. It's
+            useful in situations where the entire keyset may be too large and require too much disk space to keep a
+            copy of each event but at the same time allowing users to benefit from compaction in order to reduce
+            duplication of events with the same key within the retention time. Its usage requires events to have a
+            `partition_compaction_key` in the `metadata` in the same way as `compact` option.
+
+            The compaction can not be applied to events that were published recently and located at the head of the
             queue, which means that the actual amount of events received by consumers can be different depending on time
             when the consumption happened.
 

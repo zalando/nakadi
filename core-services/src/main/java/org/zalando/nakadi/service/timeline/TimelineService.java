@@ -120,7 +120,8 @@ public class TimelineService {
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
             }
-            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+            if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                    eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
                 throw new TimelinesNotSupportedException("It is not possible to create a timeline " +
                         "for event type with 'compact' cleanup_policy");
             }
@@ -188,11 +189,11 @@ public class TimelineService {
         }
 
         Storage storage = defaultStorage.getStorage();
-        Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+        final Optional<Long> retentionTime = Optional.ofNullable(eventType.getOptions().getRetentionTime());
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
             storage = storageDbRepository.getStorage(compactedStorageName).orElseThrow(() ->
                     new TopicCreationException("No storage defined for compacted topics"));
-            retentionTime = Optional.empty();
         }
 
         final NakadiTopicConfig nakadiTopicConfig = new NakadiTopicConfig(partitionsCount, eventType.getCleanupPolicy(),

@@ -1,5 +1,5 @@
 package org.zalando.nakadi.domain;
 
 public enum CleanupPolicy {
-    DELETE, COMPACT
+    DELETE, COMPACT, COMPACT_AND_DELETE
 }
