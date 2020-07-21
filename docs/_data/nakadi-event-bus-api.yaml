@@ -946,12 +946,14 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.write']
       description: |
-        Once an event is published to a logcompacted event-type in nakadi, it
+        Once an event is published to a log compacted event-type in nakadi, it
         will stay there until another event with the same key is published.
-        In order to delete an event from a logcompacted event-type, it can be
+        In order to delete an event from a log compacted event-type, it can be
         posted to the deleted-events endpoint. The content of the event is not
         validated, but the information required to generate key and select
-        partition should be present.
+        partition should be present. On next log compaction, which could be
+        hours later based on configurations, any previous events with the same
+        key is removed from the specified partition + event-type.
       parameters:
         - name: name
           in: path
@@ -982,7 +984,7 @@ paths:
         '200':
           description: |
             Deletion event successfully published; any existing events with
-            same key will be deleted on log compaction.
+            same key will be deleted on next log compaction.
           headers:
             span_ctx:
               type: string
