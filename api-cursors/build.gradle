@@ -48,7 +48,7 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-validation")
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
         exclude module: 'spring-webmvc'
         exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
