@@ -59,7 +59,7 @@ dependencies {
     }
 
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:27.1-jre'
+    compile 'com.google.guava:guava:29.0-jre'
     compile 'org.apache.commons:commons-lang3:3.8.1'
 
     compile "org.springframework.boot:spring-boot-starter-json"
