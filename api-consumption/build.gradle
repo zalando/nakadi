@@ -95,7 +95,7 @@ dependencies {
         exclude module: 'HikariCP'
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.2.5'
+    compile 'org.postgresql:postgresql:42.2.14'
 
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
