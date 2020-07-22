@@ -97,6 +97,7 @@ dependencies {
     compile 'org.apache.tomcat:tomcat-jdbc'
     compile 'org.postgresql:postgresql:42.2.14'
 
+    compile('commons-beanutils:commons-beanutils:1.9.4')
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
     }
