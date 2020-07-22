@@ -263,7 +263,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that offset is actually committed to Zookeeper
-        String committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
+        final String committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
         assertThat(committedOffset, equalTo(TestUtils.toTimelineOffset(25)));
     }
 
