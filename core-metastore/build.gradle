@@ -82,7 +82,9 @@ dependencies {
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
 
     compile 'org.echocat.jomon:runtime:1.6.3'
     compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
