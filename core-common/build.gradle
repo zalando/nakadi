@@ -43,9 +43,6 @@ dependencies {
     compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
     //compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
     compile "org.springframework.boot:spring-boot-starter-jetty"
-    compile 'org.eclipse.jetty:jetty-server:9.4.30.v20200611'
-    compile 'org.eclipse.jetty.websocket:websocket-server:9.4.30.v20200611'
-    compile "org.eclipse.jetty.websocket:javax-websocket-server-impl:9.4.30.v20200611"
     compile 'jakarta.websocket:jakarta.websocket-api:2.0.0-RC1'
 
     // oauth
