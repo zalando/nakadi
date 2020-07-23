@@ -2,7 +2,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
     }
 }
 
@@ -43,9 +43,10 @@ dependencies {
     compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
     //compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
     compile "org.springframework.boot:spring-boot-starter-jetty"
+    compile 'jakarta.websocket:jakarta.websocket-api:2.0.0-RC1'
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
         exclude module: 'spring-webmvc'
         exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
@@ -57,7 +58,7 @@ dependencies {
     }
 
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:27.1-jre'
+    compile 'com.google.guava:guava:29.0-jre'
     compile 'org.apache.commons:commons-lang3:3.8.1'
 
     compile "org.springframework.boot:spring-boot-starter-json"
@@ -80,9 +81,12 @@ dependencies {
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
 
     compile 'org.echocat.jomon:runtime:1.6.3'
+    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
 
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
     compile ("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
@@ -95,8 +99,9 @@ dependencies {
         exclude module: 'HikariCP'
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.2.5'
+    compile 'org.postgresql:postgresql:42.2.14'
 
+    compile('commons-beanutils:commons-beanutils:1.9.4')
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
     }

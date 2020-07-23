@@ -1,7 +1,7 @@
 package org.zalando.nakadi.domain.storage;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.codehaus.jackson.annotate.JsonIgnore;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;

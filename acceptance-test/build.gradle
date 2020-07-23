@@ -2,7 +2,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
     }
 }
 
@@ -67,6 +67,7 @@ dependencies {
     compile "org.springframework:spring-web"
     compile "org.springframework:spring-webmvc"
     compile "org.springframework.boot:spring-boot-starter-jetty"
+    compile 'jakarta.websocket:jakarta.websocket-api:2.0.0-RC1'
 
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"

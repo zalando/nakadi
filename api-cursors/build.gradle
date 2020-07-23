@@ -2,7 +2,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
     }
 }
 
@@ -48,7 +48,7 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-validation")
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
         exclude module: 'spring-webmvc'
         exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
@@ -60,7 +60,7 @@ dependencies {
     }
 
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:27.1-jre'
+    compile 'com.google.guava:guava:29.0-jre'
     compile 'org.apache.commons:commons-lang3:3.8.1'
 
     compile "org.springframework.boot:spring-boot-starter-json"
@@ -77,7 +77,10 @@ dependencies {
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
+
     compile 'org.zalando:problem-spring-web:0.23.0'
 
     // tests

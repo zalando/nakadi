@@ -32,7 +32,7 @@ public class StorageControllerAT extends BaseAT {
                 .statusCode(HttpStatus.SC_CREATED);
 
         NakadiTestUtils.createEventTypeInNakadi(EventTypeTestBuilder.builder().name("event_a").build());
-        String storageId = (String) NakadiTestUtils.listTimelines("event_a").get(0).get("storage_id");
+        final String storageId = (String) NakadiTestUtils.listTimelines("event_a").get(0).get("storage_id");
         Assert.assertEquals("default", storageId);
 
         given().contentType(JSON).put("/storages/default/default-test")
