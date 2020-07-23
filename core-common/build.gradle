@@ -86,6 +86,7 @@ dependencies {
     compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
 
     compile 'org.echocat.jomon:runtime:1.6.3'
+    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
 
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
     compile ("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {

@@ -118,6 +118,7 @@ dependencies {
     compile 'org.apache.commons:commons-lang3:3.8.1'
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
     compile 'org.echocat.jomon:runtime:1.6.3'
+    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
 
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
