@@ -67,6 +67,8 @@ dependencies {
     compile "org.springframework:spring-web"
     compile "org.springframework:spring-webmvc"
     compile "org.springframework.boot:spring-boot-starter-jetty"
+    compile "org.eclipse.jetty.websocket:javax-websocket-server-impl:9.4.30.v20200611"
+    compile 'jakarta.websocket:jakarta.websocket-api:2.0.0-RC1'
 
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
