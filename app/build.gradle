@@ -49,7 +49,6 @@ dependencies {
     compile("org.apache.kafka:kafka_2.12:$kafkaClientVersion") {
         exclude module: "zookeeper"
     }
-    compile 'org.scala-lang:scala-reflect:2.13.3'
 
     compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
     implementation 'org.springframework.boot:spring-boot-starter'
