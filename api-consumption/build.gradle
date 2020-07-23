@@ -80,6 +80,8 @@ dependencies {
     compile("org.apache.kafka:kafka_2.12:$kafkaClientVersion") {
         exclude module: "zookeeper"
     }
+    compile 'org.scala-lang:scala-reflect:2.13.3'
+
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
