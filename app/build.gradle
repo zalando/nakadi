@@ -126,6 +126,7 @@ dependencies {
     compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
         exclude module: "log4j"
     }
+    compile 'io.netty:netty:4.0.0.Alpha8'
 
     compile('commons-beanutils:commons-beanutils:1.9.4')
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {

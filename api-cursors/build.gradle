@@ -80,6 +80,8 @@ dependencies {
     compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
         exclude module: "log4j"
     }
+    compile 'io.netty:netty:4.0.0.Alpha8'
+
     compile 'org.zalando:problem-spring-web:0.23.0'
 
     // tests
