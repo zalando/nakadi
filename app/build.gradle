@@ -67,7 +67,6 @@ dependencies {
     compile "org.springframework:spring-web"
     compile "org.springframework:spring-webmvc"
     compile "org.springframework.boot:spring-boot-starter-jetty"
-    compile 'jakarta.websocket:jakarta.websocket-api:2.0.0-RC1'
 
     // oauth
     compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
