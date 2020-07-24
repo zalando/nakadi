@@ -2749,7 +2749,7 @@ definitions:
         items:
           type: string
         description: |
-          Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
+          Required when 'partition_strategy' is set to 'hash'. Must be absent otherwise.
           Indicates the fields used for evaluation the partition of Events of this type.
 
           If this is set it MUST be a valid required field as defined in the schema.
