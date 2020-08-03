@@ -39,9 +39,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
@@ -97,7 +97,7 @@ public class CursorsServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
-        when(zkHolder.getSubscriptionCurator(anyInt()))
+        when(zkHolder.getSubscriptionCurator(anyLong()))
                 .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);

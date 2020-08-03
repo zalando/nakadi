@@ -117,6 +117,7 @@ Supported changes:
 2. addition of new attributes, both optional and required.
 3. marking attributes as required.
 4. change additionalProperties from true to object.
+5. narrow schema type definition from empty to specific 
 
 Under this mode event validation accepts events with fields not
 declared in the schema. In other words, it's not necessary to specify

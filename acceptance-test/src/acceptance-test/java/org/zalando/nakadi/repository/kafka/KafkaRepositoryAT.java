@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -32,7 +33,7 @@ import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -242,7 +243,7 @@ public class KafkaRepositoryAT extends BaseAT {
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         }
-}
+    }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {
         final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
@@ -264,12 +265,16 @@ public class KafkaRepositoryAT extends BaseAT {
                 .when(factory)
                 .takeProducer();
 
-        return new KafkaTopicRepository(kafkaZookeeper,
-                factory,
-                nakadiSettings,
-                kafkaSettings,
-                zookeeperSettings,
-                kafkaTopicConfigFactory, kafkaLocationManager);
+        return new KafkaTopicRepository.Builder()
+                .setKafkaZookeeper(kafkaZookeeper)
+                .setKafkaFactory(factory)
+                .setNakadiSettings(nakadiSettings)
+                .setKafkaSettings(kafkaSettings)
+                .setZookeeperSettings(zookeeperSettings)
+                .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
+                .setKafkaLocationManager(kafkaLocationManager)
+                .setMetricRegistry(new MetricRegistry())
+                .build();
     }
 
 }

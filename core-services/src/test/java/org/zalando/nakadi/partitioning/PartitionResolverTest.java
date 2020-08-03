@@ -15,8 +15,8 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
@@ -46,7 +46,9 @@ public class PartitionResolverTest {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
-        when(timelineService.getActiveTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
+        final Timeline mockTimeline = mock(Timeline.class);
+        when(mockTimeline.getTopic()).thenReturn("topic-id");
+        when(timelineService.getActiveTimeline(eq(eventType))).thenReturn(mockTimeline);
 
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");

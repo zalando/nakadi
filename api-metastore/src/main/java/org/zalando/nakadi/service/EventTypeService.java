@@ -21,6 +21,8 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exception.SchemaEvolutionException;
+import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
 import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
@@ -158,14 +160,19 @@ public class EventTypeService {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT
+        if ((eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)
                 && featureToggleService.isFeatureEnabled(Feature.DISABLE_LOG_COMPACTION)) {
             throw new FeatureNotAvailableException("log compaction is not available",
                     Feature.DISABLE_LOG_COMPACTION);
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
-        schemaService.validateSchema(eventType);
+        try {
+            schemaService.validateSchema(eventType);
+        } catch (final SchemaValidationException e) {
+            throw new InvalidEventTypeException(e);
+        }
         validateCompaction(eventType);
         enrichment.validate(eventType);
         partitionResolver.validate(eventType);
@@ -241,7 +248,8 @@ public class EventTypeService {
     private void validateCompaction(final EventTypeBase eventType) throws
             InvalidEventTypeException {
         if (eventType.getCategory() == EventCategory.UNDEFINED &&
-                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+                (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                        eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)) {
             throw new InvalidEventTypeException(
                     "cleanup_policy 'compact' is not available for 'undefined' event type category");
         }
@@ -440,6 +448,12 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
+        } catch (final SchemaValidationException e) {
+            LOG.warn("Schema validation failed {}", e.getMessage());
+            throw new InvalidEventTypeException(e);
+        } catch (final SchemaEvolutionException e) {
+            LOG.warn("Schema evolution failed {}", e.getMessage());
+            throw new InvalidEventTypeException(e);
         } catch (final InternalNakadiException e) {
             LOG.error("Unable to update event type", e);
             throw new NakadiRuntimeException(e);

@@ -2,7 +2,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
     }
 }
 
@@ -27,7 +27,6 @@ dependencies {
         curatorVersion = '4.2.0'
         zookeeperVersion = '3.4.14'
         jacksonVersion = '2.9.8'
-        springFrameworkVersion = '4.3.23.RELEASE'
     }
     // Override spring-boot BOM versions
     ext['json.version'] = '20180130'
@@ -45,8 +44,13 @@ dependencies {
         exclude module: 'spring-boot-starter-tomcat'
     }
 
+    // validation
+    compile("org.springframework.boot:spring-boot-starter-validation")
+
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
+        exclude module: 'spring-webmvc'
+        exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
         exclude module: 'spring-core'
         exclude module: 'spring-context'
@@ -56,20 +60,10 @@ dependencies {
     }
 
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:27.1-jre'
+    compile 'com.google.guava:guava:29.0-jre'
     compile 'org.apache.commons:commons-lang3:3.8.1'
 
-    compile("com.fasterxml.jackson.datatype:jackson-datatype-json-org:$jacksonVersion") {
-        exclude module: "json"
-    }
-    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
+    compile "org.springframework.boot:spring-boot-starter-json"
     compile 'org.zalando:jackson-datatype-problem:0.22.0'
     compile 'org.zalando:problem:0.22.0'
     compile 'org.json:json:20180130'
@@ -83,7 +77,10 @@ dependencies {
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
+
     compile 'org.zalando:problem-spring-web:0.23.0'
 
     // tests
@@ -100,6 +97,9 @@ dependencies {
 }
 // end::dependencies[]
 
-bootRepackage {
+bootJar {
     enabled = false
+}
+jar {
+    enabled = true
 }

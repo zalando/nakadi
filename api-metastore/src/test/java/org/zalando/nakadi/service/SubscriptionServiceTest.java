@@ -23,8 +23,8 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.TestKpiUtils;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 public class SubscriptionServiceTest {
 

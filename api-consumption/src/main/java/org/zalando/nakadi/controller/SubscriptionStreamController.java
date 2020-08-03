@@ -214,7 +214,9 @@ public class SubscriptionStreamController {
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
-            final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
+            // Setting always true to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
+            final AtomicBoolean connectionReady = new AtomicBoolean(true);
+            // closedConnectionsCrutch.listenForConnectionClose(request);
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {

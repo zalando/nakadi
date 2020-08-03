@@ -539,7 +539,7 @@ paths:
         [event types](https://zalando.github.io/nakadi/manual.html#using_event-types) section of the documentation.
 
         For API backward compatibility, adding a new schema can also be done by updating the entire event type via PUT.
-    parameters:
+      parameters:
       - name: name
         in: path
         description: EventType name
@@ -551,24 +551,24 @@ paths:
         schema:
           $ref: '#/definitions/EventTypeSchema'
         required: true
-    responses:
-      '201':
-        description: |
-          New schema registered with success.
-      '401':
-        description: Not authenticated
-        schema:
-          $ref: '#/definitions/Problem'
-      '422':
-        description: |
-          Unprocessable entity. For understanding the rules on what can be changed in a schema, please refer to
-          the [schema evolution documentation](https://zalando.github.io/nakadi/manual.html#using_event-types).
-        schema:
-          $ref: '#/definitions/Problem'
-      '403':
-        description: Access is forbidden for the client or event type
-        schema:
-          $ref: '#/definitions/Problem'
+      responses:
+        '201':
+          description: |
+            New schema registered with success.
+        '401':
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: |
+            Unprocessable entity. For understanding the rules on what can be changed in a schema, please refer to
+            the [schema evolution documentation](https://zalando.github.io/nakadi/manual.html#using_event-types).
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
     get:
       tags:
@@ -938,6 +938,73 @@ paths:
           description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/deleted-events':
+    post:
+      tags:
+        - stream-api
+      security:
+        - oauth2: ['nakadi.event_stream.write']
+      description: |
+        Once an event is published to a log compacted event-type in nakadi, it
+        will stay there until another event with the same key is published.
+        In order to delete an event from a log compacted event-type, it can be
+        posted to the deleted-events endpoint. The content of the event is not
+        validated, but the information required to generate key and select
+        partition should be present. On next log compaction, which could be
+        hours later based on configurations, any previous events with the same
+        key is removed from the specified partition + event-type.
+      parameters:
+        - name: name
+          in: path
+          type: string
+          description: Name of the EventType
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: span_ctx
+          in: header
+          description: |
+            The span context, which is used to trace the spans and passed to called services. Helpful
+            for operational troubleshooting and will help users integrate Nakadi as a part of their trace.
+          type: string
+        - name: event
+          in: body
+          description: The Event being deleted.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Event'
+          required: true
+      responses:
+        '200':
+          description: |
+            Deletion event successfully published; any existing events with
+            same key will be deleted on next log compaction.
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
+          headers:
+            span_ctx:
+              type: string
+              description: Span context of the span used to trace the request in Nakadi
 
   /subscriptions:
     post:
@@ -2150,7 +2217,8 @@ definitions:
         description: |
           Value used for per-partition compaction of the event type. Given two events with the same
           partition_compaction_key value are published to the same partition, the later overwrites the former.
-          Required when 'cleanup_policy' of event type is set to 'compact'. Must be absent otherwise.
+          Required when 'cleanup_policy' of event type is set to 'compact' or 'compact_and_delete'. Must be absent
+          otherwise.
 
           When using more than one partition for event type - it will make sense to specify 'partition_compaction_key'
           and partitioning parameters in a way that events with the same partition_compaction_key are published to the
@@ -2691,9 +2759,10 @@ definitions:
         x-extensible-enum:
           - delete
           - compact
+          - compact_and_delete
         default: 'delete'
         description: |
-          Event type cleanup policy. There are two possible values:
+          Event type cleanup policy. Possible values:
 
           - 'delete' cleanup policy will delete old events after retention time expires. Nakadi guarantees that each
             event will be available for at least the retention time period. However Nakadi doesn't guarantee that event
@@ -2704,7 +2773,13 @@ definitions:
             specified in 'partition_compaction_key' field of event metadata. This cleanup policy is not available for
             'undefined' category of event types.
 
-            The compaction can be not applied to events that were published recently and located at the head of the
+          - 'compact_and_delete' cleanup policy combines both time based retention and per key compaction. It's
+            useful in situations where the entire keyset may be too large and require too much disk space to keep a
+            copy of each event but at the same time allowing users to benefit from compaction in order to reduce
+            duplication of events with the same key within the retention time. Its usage requires events to have a
+            `partition_compaction_key` in the `metadata` in the same way as `compact` option.
+
+            The compaction can not be applied to events that were published recently and located at the head of the
             queue, which means that the actual amount of events received by consumers can be different depending on time
             when the consumption happened.
 

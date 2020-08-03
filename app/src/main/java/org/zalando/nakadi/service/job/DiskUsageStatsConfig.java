@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "nakadi.jobs.diskUsageStats")
+@ConfigurationProperties(prefix = "nakadi.jobs.disk-usage-stats")
 public class DiskUsageStatsConfig {
     private String authDataType;
     private String authValue;

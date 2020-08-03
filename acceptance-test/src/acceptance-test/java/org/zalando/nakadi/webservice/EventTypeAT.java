@@ -427,7 +427,7 @@ public class EventTypeAT extends BaseAT {
 
     private void postTimeline(final EventType eventType) {
         given().contentType(JSON)
-                .body(new JSONObject().put("storage_id", "default"))
+                .body(new JSONObject().put("storage_id", "default").toString())
                 .post("event-types/{et_name}/timelines", eventType.getName())
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);

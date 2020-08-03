@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -33,8 +33,8 @@ import java.util.function.BiFunction;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
@@ -78,7 +78,7 @@ public class SchemaEvolutionServiceTest {
         Mockito.doReturn("error").when(errorMessages).get(any());
     }
 
-    @Test(expected = InvalidEventTypeException.class)
+    @Test(expected = SchemaEvolutionException.class)
     public void checkEvolutionConstraints() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
@@ -168,7 +168,7 @@ public class SchemaEvolutionServiceTest {
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
 
-    @Test(expected = InvalidEventTypeException.class)
+    @Test(expected = SchemaEvolutionException.class)
     public void whenCompatibleModeDoNotAllowMajorChanges() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
@@ -241,7 +241,7 @@ public class SchemaEvolutionServiceTest {
             try {
                 eventType = service.evolve(oldEventType, newEventType);
                 Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("1.1.0"))));
-            } catch (final InvalidEventTypeException e) {
+            } catch (final SchemaEvolutionException e) {
                 Assert.fail();
             }
         });
@@ -253,7 +253,7 @@ public class SchemaEvolutionServiceTest {
             try {
                 service.evolve(oldEventType, newEventType);
                 Assert.fail();
-            } catch (final InvalidEventTypeException e) {
+            } catch (final SchemaEvolutionException e) {
             }
         });
     }

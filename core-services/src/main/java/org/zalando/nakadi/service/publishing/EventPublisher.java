@@ -142,7 +142,8 @@ public class EventPublisher {
             return ok(batch);
         } catch (final EventValidationException e) {
             LOG.info(
-                    "Event validation error: {}",
+                    "Event type {} validation error: {}",
+                    eventTypeName,
                     Optional.ofNullable(e.getMessage()).map(s -> s.replaceAll("\n", "; ")).orElse(null)
             );
             return aborted(EventPublishingStep.VALIDATING, batch);
@@ -210,7 +211,8 @@ public class EventPublisher {
     }
 
     private void setEventKey(final List<BatchItem> batch, final EventType eventType) {
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT) {
+        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                 eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
             for (final BatchItem item : batch) {
                 final String compactionKey = item.getEvent()
                         .getJSONObject("metadata")
@@ -263,7 +265,7 @@ public class EventPublisher {
         final Span validationSpan = TracingService.getNewSpanWithParent("validation", System.currentTimeMillis(),
                 parentSpan);
         validationSpan.setTag("event_type", eventType.getName());
-        if (delete && eventType.getCleanupPolicy() != CleanupPolicy.COMPACT) {
+        if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
             throw new EventValidationException("It is not allowed to delete events from non compacted event type");
         }
         try {

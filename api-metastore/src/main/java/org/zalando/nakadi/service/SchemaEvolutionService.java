@@ -16,12 +16,13 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
-import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,7 +96,7 @@ public class SchemaEvolutionService {
         }
     }
 
-    public EventType evolve(final EventType original, final EventTypeBase eventType) throws InvalidEventTypeException {
+    public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
         checkEvolutionIncompatibilities(original, eventType);
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
@@ -113,7 +114,7 @@ public class SchemaEvolutionService {
     }
 
     private void checkEvolutionIncompatibilities(final EventType from, final EventTypeBase to)
-            throws InvalidEventTypeException {
+            throws SchemaEvolutionException {
         final List<SchemaEvolutionIncompatibility> incompatibilities = schemaEvolutionConstraints.stream()
                 .map(c -> c.validate(from, to))
                 .filter(Optional::isPresent)
@@ -141,11 +142,11 @@ public class SchemaEvolutionService {
                     }
                 }
             }
-            throw new InvalidEventTypeException("Category change is allowed only from 'undefined' to 'business'. " +
+            throw new SchemaEvolutionException("Category change is allowed only from 'undefined' to 'business'. " +
                     "'enrichment_strategies' should be properly set as well");
         }
 
-        throw new InvalidEventTypeException(incompatibilities.stream()
+        throw new SchemaEvolutionException(incompatibilities.stream()
                 .map(SchemaEvolutionIncompatibility::getReason)
                 .collect(Collectors.joining("; ")));
     }
@@ -155,14 +156,14 @@ public class SchemaEvolutionService {
                 && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE;
     }
 
-    private void validateCompatibilityModeMigration(final List<SchemaChange> changes) throws InvalidEventTypeException {
+    private void validateCompatibilityModeMigration(final List<SchemaChange> changes) throws SchemaEvolutionException {
         final List<SchemaChange> forbiddenChanges = changes.stream()
                 .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                 .collect(Collectors.toList());
         if (!forbiddenChanges.isEmpty()) {
             final String errorMessage = forbiddenChanges.stream().map(this::formatErrorMessage)
                     .collect(Collectors.joining(", "));
-            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
+            throw new SchemaEvolutionException("Invalid schema: " + errorMessage);
         }
     }
 
@@ -176,7 +177,7 @@ public class SchemaEvolutionService {
                             levelResolver.apply(change.getType(), original.getCompatibilityMode())))
                     .map(this::formatErrorMessage)
                     .collect(Collectors.joining(", "));
-            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
+            throw new SchemaEvolutionException("Invalid schema: " + errorMessage);
         }
     }
 
@@ -218,8 +219,9 @@ public class SchemaEvolutionService {
         final DateTime now = new DateTime(DateTimeZone.UTC);
         final String newVersion = original.getSchema().getVersion().bump(changeLevel).toString();
 
-        final EventTypeSchema schema = changeLevel == NO_CHANGES ? original.getSchema():
+        final EventTypeSchema schema = changeLevel == NO_CHANGES ? original.getSchema() :
                 new EventTypeSchema(eventType.getSchema(), newVersion, now);
         return new EventType(eventType, original.getCreatedAt(), now, schema);
     }
+
 }

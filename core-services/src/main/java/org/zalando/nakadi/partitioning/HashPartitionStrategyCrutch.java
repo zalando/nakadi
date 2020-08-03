@@ -17,7 +17,7 @@ public class HashPartitionStrategyCrutch {
 
     private static final Logger LOG = LoggerFactory.getLogger(HashPartitionStrategyCrutch.class);
 
-    private static final String PROPERTY_PREFIX = "nakadi.hashPartitioning.overrideOrder";
+    private static final String PROPERTY_PREFIX = "nakadi.hash-partitioning.override-order";
 
     // due to initial problem with order of partitions we need to keep the original order now
     private final Map<Integer, List<Integer>> partitionsOrder;

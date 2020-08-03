@@ -8,6 +8,7 @@ public class SchemaChange {
         PROPERTIES_ADDED(Version.Level.MINOR),
         SCHEMA_REMOVED(Version.Level.MAJOR),
         TYPE_CHANGED(Version.Level.MAJOR),
+        TYPE_NARROWED(Version.Level.MINOR, Version.Level.MAJOR),
         NUMBER_OF_ITEMS_CHANGED(Version.Level.MAJOR),
         PROPERTY_REMOVED(Version.Level.MAJOR),
         DEPENDENCY_ARRAY_CHANGED(Version.Level.MAJOR),

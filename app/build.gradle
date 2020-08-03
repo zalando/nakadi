@@ -2,7 +2,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
-        classpath 'org.owasp:dependency-check-gradle:3.3.2'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
     }
 }
 
@@ -18,17 +18,9 @@ group 'org.zalando'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-mainClassName = 'org.zalando.nakadi.Application'
-springBoot {
-    layout = "ZIP"
-}
-
-jar {
-    baseName = 'nakadi'
-}
-
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
+    all*.exclude group: "com.vaadin.external.google", module: "android-json"
 }
 
 dependencies {
@@ -37,7 +29,6 @@ dependencies {
         curatorVersion = '4.2.0'
         zookeeperVersion = '3.4.14'
         jacksonVersion = '2.9.8'
-        springFrameworkVersion = '4.3.23.RELEASE'
     }
     // Override spring-boot BOM versions
     ext['json.version'] = '20180130'
@@ -54,19 +45,33 @@ dependencies {
     compile project(':api-cursors')
     compile project(':api-misc')
 
+    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
+    compile("org.apache.kafka:kafka_2.12:$kafkaClientVersion") {
+        exclude module: "zookeeper"
+    }
+
+    compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
+    implementation 'org.springframework.boot:spring-boot-starter'
+
+    compile "org.springframework.boot:spring-boot-starter-security"
+
     // spring
     compile("org.springframework.boot:spring-boot-starter-web") {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile "org.springframework:spring-context:$springFrameworkVersion"
-    compile "org.springframework:spring-web:$springFrameworkVersion"
-    compile "org.springframework:spring-webmvc:$springFrameworkVersion"
+    compile "org.springframework:spring-core"
+    compile "org.springframework:spring-beans"
+    compile "org.springframework:spring-context"
+    compile "org.springframework:spring-web"
+    compile "org.springframework:spring-webmvc"
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.3.5.RELEASE') {
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
+        exclude module: 'spring-webmvc'
+        exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
         exclude module: 'spring-core'
         exclude module: 'spring-context'
@@ -77,53 +82,53 @@ dependencies {
 
     // actuator
     compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile 'org.zalando.zmon:zmon-actuator:0.9.8'
+    compile('org.zalando.zmon:zmon-actuator:0.9.8') {
+        exclude module: 'spring-webmvc'
+        exclude module: 'spring-boot-autoconfigure'
+    }
 
     // storage
-    compile "org.springframework.boot:spring-boot-starter-jdbc"
-    compile 'org.postgresql:postgresql:42.2.5'
+    compile("org.springframework.boot:spring-boot-starter-jdbc") {
+        exclude module: 'HikariCP'
+    }
+    compile 'org.apache.tomcat:tomcat-jdbc'
+    compile 'org.postgresql:postgresql:42.2.14'
 
-    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
+    compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
 
     // misc
     compile 'org.apache.httpcomponents:httpclient'
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.22') {
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.24') {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.22.0'
     compile 'org.zalando:problem:0.22.0'
     compile 'org.zalando:problem-spring-web:0.23.0'
-    compile 'com.google.guava:guava:27.1-jre'
+    compile 'com.google.guava:guava:29.0-jre'
     compile 'org.slf4j:slf4j-log4j12'
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile "com.ryantenney.metrics:metrics-spring:$dropwizardVersion"
+    compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
+        exclude module: 'spring-core'
+    }
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
     compile 'org.apache.commons:commons-lang3:3.8.1'
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
     compile 'org.echocat.jomon:runtime:1.6.3'
+    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
 
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
 
-    // json
+    compile('commons-beanutils:commons-beanutils:1.9.4')
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
     }
-    compile("com.fasterxml.jackson.datatype:jackson-datatype-json-org:$jacksonVersion") {
-        exclude module: "json"
-    }
-    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonVersion"
-    compile "com.fasterxml.jackson.module:jackson-module-scala_2.12:$jacksonVersion"
-    compile 'org.zalando:twintip-spring-web:1.1.0'
+    compile "org.springframework.boot:spring-boot-starter-json"
     compile 'org.json:json:20180130'
 
     // open tracing
@@ -142,3 +147,10 @@ dependencies {
     testCompile project(path: ':core-services', configuration: 'testOutput')
 }
 // end::dependencies[]
+
+bootJar {
+    manifest {
+        attributes 'Main-Class': 'org.springframework.boot.loader.PropertiesLauncher'
+    }
+    mainClassName = 'org.zalando.nakadi.Application'
+}

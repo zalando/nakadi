@@ -15,9 +15,9 @@ public class ZookeeperConfig {
     public ZooKeeperHolder zooKeeperHolder(final Environment environment,
                                            final NakadiSettings nakadiSettings) throws Exception {
         return new ZooKeeperHolder(
-                ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connectionString")),
-                Integer.parseInt(environment.getProperty("nakadi.zookeeper.sessionTimeoutMs")),
-                Integer.parseInt(environment.getProperty("nakadi.zookeeper.connectionTimeoutMs")),
+                ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connection-string")),
+                Integer.parseInt(environment.getProperty("nakadi.zookeeper.session-timeout-ms")),
+                Integer.parseInt(environment.getProperty("nakadi.zookeeper.connection-timeout-ms")),
                 nakadiSettings
         );
     }

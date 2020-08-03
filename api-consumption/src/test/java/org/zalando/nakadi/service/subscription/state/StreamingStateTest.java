@@ -40,8 +40,8 @@ import java.util.Comparator;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -158,7 +158,7 @@ public class StreamingStateTest {
         final Timeline timeline = new Timeline("t", 0, storage, "t", new Date());
         final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
 
-        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(anyCursor);
+        when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(anyCursor);
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
         final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
         when(consumer.getAssignment()).thenReturn(Collections.emptySet());
@@ -208,7 +208,7 @@ public class StreamingStateTest {
 
         state.onEnter();
         final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
-        when(cursorConverter.convert(any(SubscriptionCursorWithoutToken.class))).thenReturn(anyCursor);
+        when(cursorConverter.convert((SubscriptionCursorWithoutToken)any())).thenReturn(anyCursor);
 
         state.refreshTopologyUnlocked(new Partition[]{
                 new Partition(

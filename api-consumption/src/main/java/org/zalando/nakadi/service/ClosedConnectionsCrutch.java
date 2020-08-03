@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Feature;
 
@@ -156,7 +155,8 @@ public class ClosedConnectionsCrutch {
         }
     }
 
-    @Scheduled(fixedDelay = 1000)
+    // Disabling as to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
+    //@Scheduled(fixedDelay = 1000)
     public void refresh() throws IOException {
         if (!featureToggleService.isFeatureEnabled(Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;

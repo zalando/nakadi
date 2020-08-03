@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@ConfigurationProperties(prefix = "nakadi.kpi.event-types")
+@ConfigurationProperties("nakadi.kpi.event-types")
 public class NakadiKpiInitialization {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiInitialization.class);
 
