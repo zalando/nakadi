@@ -86,11 +86,11 @@ public class EventTypeControllerTestCase {
     protected final TimelineSync timelineSync = mock(TimelineSync.class);
     protected final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     protected final AdminService adminService = mock(AdminService.class);
-    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService)
-            .schemaEvolutionService();
+    protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService,
+            authorizationService).schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
-    protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     protected final TracingService tracingService = mock(TracingService.class);
     private final SchemaService schemaService = mock(SchemaService.class);
