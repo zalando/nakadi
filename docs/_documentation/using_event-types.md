@@ -143,8 +143,8 @@ reason not to provide any compatibility guarantee.
 
 #### Changing compatibility modes
 
-Compatibility modes are designed to offer data consumers with constraints
-on what can and cannot be changed with regards to event schema. With that
+Compatibility modes are designed to provide data consumers with guarantees about
+what can and cannot be changed with regards to event schema. With that
 in mind, it's highly recommended that schema compatibility be changed only
 from lesser restrictive modes to more strict modes, e.g. `none` to `forward`
 to `compatible`. That way consumers are protected against incompatible 
