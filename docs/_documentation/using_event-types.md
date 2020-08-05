@@ -143,13 +143,18 @@ reason not to provide any compatibility guarantee.
 
 #### Changing compatibility modes
 
-It's possible to change the compatibility mode from `none` to
-`forward` and from `forward` to `compatible`, e.g. it's possible to
-make the schema validation more strict but never more relaxed.
+Compatibility modes are designed to provide data consumers with guarantees about
+what can and cannot be changed with regards to event schema. With that
+in mind, it's highly recommended that schema compatibility be changed only
+from lesser restrictive modes to more strict modes, e.g. `none` to `forward`
+to `compatible`. That way consumers are protected against incompatible 
+changes.
 
-It's not possible to upgrade directly from `none` to
-`compatible`. It's necessary to go first through `forward` for later
-upgrading to `compatible`.
+In the case an incompatible change to a schema is required, it's 
+possible for event type admins to change the compatibility mode freely without
+any restrictions. This level of flexibility assumes that admins are
+sure that the changes to be made to a schema are not going to cause any
+disruption to downstream services.
 
 Users should be aware about changes in validation behaviour when
 upgrading to `compatible`. Please, be sure to read the section on
