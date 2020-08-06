@@ -9,6 +9,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -29,6 +30,8 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -38,6 +41,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,6 +64,9 @@ public class SchemaService {
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final String etLogEventType;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -71,7 +78,10 @@ public class SchemaService {
                          final AuthorizationValidator authorizationValidator,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
-                         final NakadiSettings nakadiSettings) {
+                         final NakadiSettings nakadiSettings,
+                         final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+                         final NakadiKpiPublisher nakadiKpiPublisher,
+                         @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -82,6 +92,9 @@ public class SchemaService {
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
+        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.etLogEventType = etLogEventType;
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
@@ -103,6 +116,18 @@ public class SchemaService {
             eventTypeRepository.update(eventType);
 
             eventTypeCache.invalidate(eventType.getName());
+            if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
+                nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
+                        .put("event_type", eventTypeName)
+                        .put("status", "updated")
+                        .put("category", eventType.getCategory())
+                        .put("authz", eventType.getAuthorization() == null ? "disabled" : "enabled")
+                        .put("compatibility_mode", eventType.getCompatibilityMode()));
+
+                nakadiAuditLogPublisher.publish(Optional.of(originalEventType), Optional.of(eventType),
+                        NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
+                        eventType.getName());
+            }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new EventTypeUnavailableException("Event type " + eventTypeName
