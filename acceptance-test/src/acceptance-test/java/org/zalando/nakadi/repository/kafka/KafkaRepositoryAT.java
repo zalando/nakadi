@@ -34,6 +34,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.zalando.nakadi.repository.kafka.KafkaTestHelper.createKafkaProperties;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -130,14 +131,19 @@ public class KafkaRepositoryAT extends BaseAT {
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                    final Long retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL);
-                    assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
+                    final Long retentionTime;
+                    try {
+                        retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName);
+                        assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
 
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
-                    assertThat(cleanupPolicy, equalTo("delete"));
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("delete"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -162,19 +168,23 @@ public class KafkaRepositoryAT extends BaseAT {
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
-                    assertThat(cleanupPolicy, equalTo("compact"));
+                    try {
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("compact"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
 
-                    final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
-                            "segment.bytes");
-                    assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
+                        final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName,
+                                "segment.bytes");
+                        assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
 
-                    final String compactionLag = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
-                            "min.compaction.lag.ms");
-                    assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
+                        final String compactionLag = KafkaTestHelper.getTopicProperty(topicName,
+                                "min.compaction.lag.ms");
+                        assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -186,7 +196,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ARRANGE //
         final String topicName = UUID.randomUUID().toString();
-        kafkaHelper.createTopic(topicName, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicName);
 
         // wait for topic to be created
         executeWithRetry(() -> {
@@ -211,7 +221,7 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
-        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicId);
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
@@ -230,7 +240,7 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenSendBatchWithItemHeadersThenCheckBatchStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
-        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicId);
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
@@ -260,6 +270,10 @@ public class KafkaRepositoryAT extends BaseAT {
         final KafkaFactory factory = Mockito.mock(KafkaFactory.class);
         Mockito.when(factory.getConsumer()).thenReturn(consumer);
         final KafkaLocationManager kafkaLocationManager = Mockito.mock(KafkaLocationManager.class);
+        Mockito
+                .when(kafkaLocationManager.getProperties())
+                .thenReturn(createKafkaProperties());
+
         Mockito
                 .doReturn(kafkaHelper.createProducer())
                 .when(factory)

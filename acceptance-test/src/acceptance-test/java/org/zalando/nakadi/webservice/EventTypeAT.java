@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -285,7 +286,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void compactedEventTypeJourney() throws IOException {
+    public void compactedEventTypeJourney() throws IOException, ExecutionException, InterruptedException {
         // create event type with 'compact' cleanup_policy
         final EventType eventType = EventTypeTestBuilder.builder()
                 .category(EventCategory.BUSINESS)
@@ -309,7 +310,7 @@ public class EventTypeAT extends BaseAT {
 
         // assert that created topic in kafka has correct cleanup_policy
         final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
-        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic, ZOOKEEPER_URL);
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic);
         assertThat(cleanupPolicy, equalTo("compact"));
 
         // publish event to compacted event type
@@ -421,8 +422,14 @@ public class EventTypeAT extends BaseAT {
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
         TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
                 .map(Timeline::getTopic)
-                .forEach(topic -> waitFor(() -> Assert.assertEquals(checkingRetentionTime,
-                        KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
+                .forEach(topic -> waitFor(() -> {
+                    try {
+                        Assert.assertEquals(checkingRetentionTime,
+                                KafkaTestHelper.getTopicRetentionTime(topic));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
     }
 
     private void postTimeline(final EventType eventType) {
