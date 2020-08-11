@@ -17,6 +17,7 @@ public class ShutdownHooks {
     }
 
     private static void onNodeShutdown() {
+        LOG.info("Processing shutdown hooks");
         boolean haveHooks = true;
         while (haveHooks) {
             final Runnable hook;
@@ -33,6 +34,7 @@ public class ShutdownHooks {
                 }
             }
         }
+        LOG.info("Finished processing shutdown hooks");
     }
 
     public static Closeable addHook(final Runnable runnable) {
