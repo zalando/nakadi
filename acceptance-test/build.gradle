@@ -72,7 +72,7 @@ dependencies {
         exclude module: "logback-classic"
     }
 
-    compile "org.springframework.kafka:spring-kafka"
+    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
 
     compile 'org.slf4j:slf4j-log4j12'
 

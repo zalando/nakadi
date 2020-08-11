@@ -45,7 +45,7 @@ dependencies {
     compile project(':api-cursors')
     compile project(':api-misc')
 
-    compile "org.springframework.kafka:spring-kafka"
+    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
 
     compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
     implementation 'org.springframework.boot:spring-boot-starter'

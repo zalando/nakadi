@@ -47,6 +47,11 @@ subprojects {
         dependsOn test
         finalizedBy jacocoTestReport
     }
+    dependencies {
+        ext {
+            kafkaClientVersion = '2.6.0'
+        }
+    }
 }
 
 task startNakadi(type: Exec) {
