@@ -281,11 +281,14 @@ public class KafkaTopicRepository implements TopicRepository {
                     .configs(kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig))
                     .build();
 
-            adminClient.createTopics(Lists.newArrayList(newTopic));
+            adminClient.createTopics(Lists.newArrayList(newTopic)).all().get(30, TimeUnit.SECONDS);
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + kafkaTopicConfig.getTopicName() +
                     " already exists (or wasn't completely removed yet)", e);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicCreationException("Unable to create topic " + kafkaTopicConfig.getTopicName(), e);
         }
         // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
@@ -311,8 +314,11 @@ public class KafkaTopicRepository implements TopicRepository {
     public void deleteTopic(final String topic) throws TopicDeletionException {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
-            adminClient.deleteTopics(Lists.newArrayList(topic));
+            adminClient.deleteTopics(Lists.newArrayList(topic)).all().get(30, TimeUnit.SECONDS);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicDeletionException("Unable to delete topic " + topic, e);
         }
     }
@@ -696,8 +702,11 @@ public class KafkaTopicRepository implements TopicRepository {
             final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>();
             configs.put(configResource, Lists.newArrayList(op));
 
-            adminClient.incrementalAlterConfigs(configs);
+            adminClient.incrementalAlterConfigs(configs).all().get(30, TimeUnit.SECONDS);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
         }
     }
