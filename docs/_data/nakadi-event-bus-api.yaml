@@ -821,11 +821,13 @@ paths:
           description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
+
+  '/event-types/{name}/partitions-number':
     put:
       tags:
         - repartitioning-api
       description: |
-        Repartitioning given evnet type to the number of provided paritions.
+        Repartitioning given event type to the number of provided paritions.
 
       parameters:
         - name: name

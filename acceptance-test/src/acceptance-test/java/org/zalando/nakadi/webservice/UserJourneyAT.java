@@ -238,7 +238,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         jsonRequestSpec()
                 .body(MAPPER.writeValueAsString(new PartitionsNumberView(3)))
                 .when()
-                .put("/event-types/" + eventTypeName + "/partitions")
+                .put("/event-types/" + eventTypeName + "/partitions-number")
                 .then()
                 .body(equalTo(""))
                 .statusCode(NO_CONTENT.value());
