@@ -250,6 +250,22 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(3));
+
+        // check idempotency
+        jsonRequestSpec()
+                .body(MAPPER.writeValueAsString(new PartitionsNumberView(3)))
+                .when()
+                .put("/event-types/" + eventTypeName + "/partitions-number")
+                .then()
+                .body(equalTo(""))
+                .statusCode(NO_CONTENT.value());
+
+        jsonRequestSpec()
+                .when()
+                .get("/event-types/" + eventTypeName + "/partitions")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(3));
     }
 
     @Test(timeout = 3000)
