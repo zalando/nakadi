@@ -122,7 +122,7 @@ public class NakadiTestUtils {
         final int statusCode = given()
                 .body(MAPPER.writeValueAsString(new PartitionsNumberView(partitionsNumber)))
                 .contentType(JSON)
-                .put(format("/event-types/{0}/partitions-number", eventType.getName()))
+                .put(format("/event-types/{0}/partition-count", eventType.getName()))
                 .getStatusCode();
         if (statusCode != NO_CONTENT.value()) {
             throw new RuntimeException("Failed to repartition event type");

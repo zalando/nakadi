@@ -154,7 +154,7 @@ public class PartitionsController {
         }
     }
 
-    @PutMapping(value = "/event-types/{name}/partitions-number")
+    @PutMapping(value = "/event-types/{name}/partition-count")
     public ResponseEntity<?> repartition(
             @PathVariable("name") final String eventTypeName,
             @RequestBody final PartitionsNumberView partitionsNumberView) throws NoSuchEventTypeException {
