@@ -17,7 +17,7 @@ pipeline:
       - desc: Install dependencies
         cmd: |
           apt-get update
-          apt-get install -y python3-dev libffi-dev libssl gcc libc-dev make
+          apt-get install -y python3-dev libffi-dev gcc libc-dev make
           pip install docker-compose==1.26.2
       - desc: Acceptance Test
         cmd: |
