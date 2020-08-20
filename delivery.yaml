@@ -16,7 +16,9 @@ pipeline:
     commands:
       - desc: Install dependencies
         cmd: |
-          pip install docker-compose==1.24.1
+          apt-get update
+          apt-get install -y py-pip python-dev libffi-dev openssl-dev gcc libc-dev make
+          pip install docker-compose==1.26.2
       - desc: Acceptance Test
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
