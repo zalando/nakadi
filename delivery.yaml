@@ -17,8 +17,8 @@ pipeline:
       - desc: Install dependencies
         cmd: |
           apt-get update
-          apt-get install -y python-dev libffi-dev gcc libc-dev make
-          pip install docker-compose==1.26.2
+          apt-get install -y python3-pip python3-setuptools python3-wheel gcc python3-dev libffi-dev gcc libc-dev make
+          pip3 install docker-compose==1.26.2
       - desc: Acceptance Test
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
