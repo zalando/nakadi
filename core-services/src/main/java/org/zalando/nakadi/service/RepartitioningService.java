@@ -83,7 +83,7 @@ public class RepartitioningService {
         }
         final int currentPartitionsNumber = Math.max(defaultStatistic.getReadParallelism(),
                 defaultStatistic.getWriteParallelism());
-        if (partitions <= currentPartitionsNumber) {
+        if (partitions < currentPartitionsNumber) {
             throw new InvalidEventTypeException("Number of partitions should be greater " +
                     "than existing values.");
         }
