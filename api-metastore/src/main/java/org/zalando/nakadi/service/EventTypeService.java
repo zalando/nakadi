@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -65,6 +66,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -117,10 +119,10 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
-            final AdminService adminService,
             final RepartitioningService repartitioningService,
             final EventTypeCache eventTypeCache,
-            final SchemaService schemaService) {
+            final SchemaService schemaService,
+            final AdminService adminService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -438,7 +440,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            repartitioningService.checkAndRepartition(original, eventType);
+            validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic());
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -555,6 +557,14 @@ public class EventTypeService {
         } catch (InternalNakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
+        }
+    }
+
+    private void validateStatisticsUpdate(
+            final EventTypeStatistics existing,
+            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+        if (!Objects.equals(existing, newStatistics)) {
+            throw new InvalidEventTypeException("default statistics must not be changed");
         }
     }
 

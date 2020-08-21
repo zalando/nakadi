@@ -7,12 +7,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -39,7 +37,6 @@ public class RepartitioningService {
 
     private static final Logger LOG = LoggerFactory.getLogger(RepartitioningService.class);
 
-    private final TransactionTemplate transactionTemplate;
     private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
@@ -52,7 +49,6 @@ public class RepartitioningService {
 
     @Autowired
     public RepartitioningService(
-            final TransactionTemplate transactionTemplate,
             final EventTypeRepository eventTypeRepository,
             final TimelineService timelineService,
             final SubscriptionDbRepository subscriptionRepository,
@@ -62,7 +58,6 @@ public class RepartitioningService {
             final CursorConverter cursorConverter,
             final FeatureToggleService featureToggleService,
             final EventTypeCache eventTypeCache) {
-        this.transactionTemplate = transactionTemplate;
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
@@ -76,15 +71,37 @@ public class RepartitioningService {
 
     public void repartition(final EventType eventType, final int partitions)
             throws InternalNakadiException, NakadiRuntimeException {
-        LOG.info("start repartitioning for {} to {} partitions", eventType.getName(), partitions);
-        transactionTemplate.execute(action -> {
-            eventTypeRepository.update(eventType);
-            timelineService.updateTimeLineForRepartition(eventType, partitions);
-            return null;
-        });
+        if (partitions > nakadiSettings.getMaxTopicPartitionCount()) {
+            throw new InvalidEventTypeException("Number of partitions should not be more than "
+                    + nakadiSettings.getMaxTopicPartitionCount());
+        }
 
-        eventTypeCache.invalidate(eventType.getName());
+        EventTypeStatistics defaultStatistic = eventType.getDefaultStatistic();
+        if (defaultStatistic == null) {
+            defaultStatistic = new EventTypeStatistics(1, 1);
+            eventType.setDefaultStatistic(defaultStatistic);
+        }
+        final int currentPartitionsNumber = Math.max(defaultStatistic.getReadParallelism(),
+                defaultStatistic.getWriteParallelism());
+        if (partitions < currentPartitionsNumber) {
+            throw new InvalidEventTypeException("Number of partitions should be greater " +
+                    "than existing values.");
+        }
+
+        LOG.info("Start repartitioning for {} to {} partitions", eventType.getName(), partitions);
+        timelineService.updateTimeLineForRepartition(eventType, partitions);
+
         updateSubscriptionsForRepartitioning(eventType, partitions);
+
+        // it is clear that the operation has to be done under the lock with other related work for changing event type,
+        // but it is skipped, because it is quite rare operation to change event type and repartition at the same time
+        try {
+            defaultStatistic.setReadParallelism(partitions);
+            defaultStatistic.setWriteParallelism(partitions);
+            eventTypeRepository.update(eventType);
+        } catch (Exception e) {
+            throw new NakadiBaseException(e.getMessage(), e);
+        }
     }
 
     private void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
@@ -122,49 +139,4 @@ public class RepartitioningService {
                     TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
         }
     }
-
-    public void checkAndRepartition(final EventType original,
-                                    final EventType newEventType)
-            throws InvalidEventTypeException {
-        if (!featureToggleService.isFeatureEnabled(Feature.REPARTITIONING)) {
-            return;
-        }
-
-        final EventTypeStatistics existingStatistics = original.getDefaultStatistic();
-        final EventTypeStatistics newStatistics = newEventType.getDefaultStatistic();
-        if (newStatistics == null) {
-            return;
-        }
-
-        final int oldMaxPartitions;
-        if (existingStatistics == null) {
-            oldMaxPartitions = 1;
-        } else {
-            oldMaxPartitions = Math.max(existingStatistics.getReadParallelism(),
-                    existingStatistics.getWriteParallelism());
-        }
-
-        final int newMaxPartitions = Math.max(newStatistics.getReadParallelism(),
-                newStatistics.getWriteParallelism());
-        if (newMaxPartitions > nakadiSettings.getMaxTopicPartitionCount()) {
-            throw new InvalidEventTypeException("Number of partitions should not be more than "
-                    + nakadiSettings.getMaxTopicPartitionCount());
-        }
-        if (newMaxPartitions < oldMaxPartitions) {
-            throw new InvalidEventTypeException("Read and write parallelism should be greater " +
-                    "than existing values.");
-        }
-        if (newMaxPartitions == oldMaxPartitions) {
-            // avoid shuffling
-            if ((existingStatistics.getReadParallelism() != newStatistics.getReadParallelism()) ||
-                    (existingStatistics.getWriteParallelism() != newStatistics.getWriteParallelism())) {
-                throw new InvalidEventTypeException("Read and write parallelism can be changed only to change" +
-                        "the number of partition (max of read and write parallelism)");
-            }
-            return;
-        }
-
-        repartition(newEventType, newMaxPartitions);
-    }
-
 }
