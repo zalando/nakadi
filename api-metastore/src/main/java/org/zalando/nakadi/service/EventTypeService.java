@@ -563,7 +563,7 @@ public class EventTypeService {
     private void validateStatisticsUpdate(
             final EventTypeStatistics existing,
             final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-        if (existing != null && !Objects.equals(existing, newStatistics)) {
+        if (!Objects.equals(existing, newStatistics)) {
             throw new InvalidEventTypeException("default statistics must not be changed");
         }
     }
