@@ -38,7 +38,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
-import org.zalando.nakadi.view.PartitionsNumberView;
+import org.zalando.nakadi.view.PartitionCountView;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -157,13 +157,13 @@ public class PartitionsController {
     @PutMapping(value = "/event-types/{name}/partition-count")
     public ResponseEntity<?> repartition(
             @PathVariable("name") final String eventTypeName,
-            @RequestBody final PartitionsNumberView partitionsNumberView) throws NoSuchEventTypeException {
+            @RequestBody final PartitionCountView partitionsNumberView) throws NoSuchEventTypeException {
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
         }
 
-        repartitioningService.repartition(eventType, partitionsNumberView.getPartitionsNumber());
+        repartitioningService.repartition(eventType, partitionsNumberView.getPartitionCount());
         return noContent().build();
     }
 

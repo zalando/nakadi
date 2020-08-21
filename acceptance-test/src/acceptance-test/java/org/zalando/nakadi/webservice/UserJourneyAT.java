@@ -22,7 +22,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.view.PartitionsNumberView;
+import org.zalando.nakadi.view.PartitionCountView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -236,7 +236,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     public void testRepartition() throws JsonProcessingException {
         //repartition Event Type
         jsonRequestSpec()
-                .body(MAPPER.writeValueAsString(new PartitionsNumberView(3)))
+                .body(MAPPER.writeValueAsString(new PartitionCountView(3)))
                 .when()
                 .put("/event-types/" + eventTypeName + "/partition-count")
                 .then()
@@ -253,7 +253,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // check idempotency
         jsonRequestSpec()
-                .body(MAPPER.writeValueAsString(new PartitionsNumberView(3)))
+                .body(MAPPER.writeValueAsString(new PartitionCountView(3)))
                 .when()
                 .put("/event-types/" + eventTypeName + "/partition-count")
                 .then()

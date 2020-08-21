@@ -25,7 +25,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.nakadi.view.PartitionsNumberView;
+import org.zalando.nakadi.view.PartitionCountView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.TimelineView;
 
@@ -120,7 +120,7 @@ public class NakadiTestUtils {
         defaultStatistic.setWriteParallelism(partitionsNumber);
         eventType.setDefaultStatistic(defaultStatistic);
         final int statusCode = given()
-                .body(MAPPER.writeValueAsString(new PartitionsNumberView(partitionsNumber)))
+                .body(MAPPER.writeValueAsString(new PartitionCountView(partitionsNumber)))
                 .contentType(JSON)
                 .put(format("/event-types/{0}/partition-count", eventType.getName()))
                 .getStatusCode();

@@ -11,9 +11,9 @@ Throughput of event type is defined by default statistic, which basically sets n
    about in the ["API Reference"](#nakadi-event-bus-api). At the moment the request can be performed only by Nakadi
     admins.
 ```sh
-curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types/order_received/partitions -d '[
+curl -v -XPOST -H "Content-Type: application/json" http://localhost:8080/event-types/order_received/partition-count -d '[
 {
-    "partitions_number": 3
+    "partition_count": 3
 }
 
 
