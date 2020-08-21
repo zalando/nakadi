@@ -822,6 +822,48 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  '/event-types/{name}/partition-count':
+    put:
+      tags:
+        - repartitioning-api
+      description: |
+        Repartitioning given event type to the number of provided paritions.
+
+        This endpoint is idempotent. In case of unexpected server failures the user must call this endpoint again until
+        it succeeds in order to avoid corrupting internal structures.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: partition_count
+          in: body
+          schema:
+            $ref: '#/definitions/PartitionCount'
+      responses:
+        '204':
+          description: Repartitioning was successful
+        '422':
+          description: |
+            If asked number of parititons is more than maximum for the event type, or paritions number is
+            smaller than current number of partitions.
+          schema:
+            $ref: '#/definitions/Problem'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
+
   /event-types/{name}/partitions/{partition}:
     get:
       tags:
@@ -3442,3 +3484,11 @@ parameters:
       - 'PRODUCER_ET': producer event type.
     type: string
     required: true
+
+  PartitionCount:
+    properties:
+      partition_count:
+        type: integer
+        description: |
+          Desired number of partitions for an event type. Should always be more than or equal to existing number of
+          partitions.

@@ -22,11 +22,14 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -41,6 +44,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -73,7 +77,7 @@ public class PartitionsControllerTest {
     private static final List<PartitionStatistics> TEST_POSITION_STATS = ImmutableList.of(
             new KafkaPartitionStatistics(TIMELINE, 0, 12, 67),
             new KafkaPartitionStatistics(TIMELINE, 1, 43, 98));
-    private final AuthorizationValidator authorizationValidator = Mockito.mock(AuthorizationValidator.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     private EventTypeCache eventTypeCacheMock;
     private TopicRepository topicRepositoryMock;
     private EventTypeCache eventTypeCache;
@@ -85,12 +89,12 @@ public class PartitionsControllerTest {
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
-        eventTypeCacheMock = Mockito.mock(EventTypeCache.class);
-        topicRepositoryMock = Mockito.mock(TopicRepository.class);
-        eventTypeCache = Mockito.mock(EventTypeCache.class);
-        timelineService = Mockito.mock(TimelineService.class);
-        cursorOperationsService = Mockito.mock(CursorOperationsService.class);
-        authorizationService = Mockito.mock(AuthorizationService.class);
+        eventTypeCacheMock = mock(EventTypeCache.class);
+        topicRepositoryMock = mock(TopicRepository.class);
+        eventTypeCache = mock(EventTypeCache.class);
+        timelineService = mock(TimelineService.class);
+        cursorOperationsService = mock(CursorOperationsService.class);
+        authorizationService = mock(AuthorizationService.class);
         Mockito.when(authorizationService.getSubject()).thenReturn(Optional.empty());
         Mockito.when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
                 .thenThrow(new NoSuchEventTypeException("topic not found"));
@@ -101,9 +105,10 @@ public class PartitionsControllerTest {
         Mockito.when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         final CursorConverter cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
         final PartitionsController controller = new PartitionsController(timelineService, cursorConverter,
-                cursorOperationsService, eventTypeCacheMock, authorizationValidator);
+                cursorOperationsService, eventTypeCacheMock, mock(EventTypeRepository.class), authorizationValidator,
+                        mock(AdminService.class), mock(RepartitioningService.class));
 
-        settings = Mockito.mock(SecuritySettings.class);
+        settings = mock(SecuritySettings.class);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
@@ -216,9 +221,9 @@ public class PartitionsControllerTest {
     }
 
     private List<NakadiCursorLag> mockCursorLag() {
-        final Timeline timeline = Mockito.mock(Timeline.class);
+        final Timeline timeline = mock(Timeline.class);
         Mockito.when(timeline.getStorage()).thenReturn(new Storage("ccc", Storage.Type.KAFKA));
-        final NakadiCursorLag lag = Mockito.mock(NakadiCursorLag.class);
+        final NakadiCursorLag lag = mock(NakadiCursorLag.class);
         final NakadiCursor firstCursor = NakadiCursor.of(timeline, "0", "0");
         final NakadiCursor lastCursor = NakadiCursor.of(timeline, "0", "1");
         Mockito.when(lag.getLag()).thenReturn(42L);

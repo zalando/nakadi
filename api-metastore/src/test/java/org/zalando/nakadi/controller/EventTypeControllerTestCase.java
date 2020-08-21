@@ -123,8 +123,8 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache,
-                schemaService);
+                eventTypeOptionsValidator, mock(RepartitioningService.class), eventTypeCache,
+                schemaService, adminService);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
