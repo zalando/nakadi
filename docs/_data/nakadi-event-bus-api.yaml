@@ -842,10 +842,10 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: partitions_number
+        - name: partition_count
           in: body
           schema:
-            $ref: '#/definitions/PartitionsNumber'
+            $ref: '#/definitions/PartitionCount'
       responses:
         '204':
           description: Repartitioning was successful
@@ -3485,9 +3485,9 @@ parameters:
     type: string
     required: true
 
-  PartitionsNumber:
+  PartitionCount:
     properties:
-      partitions_number:
+      partition_count:
         type: integer
         description: |
           Desired number of partitions for an event type. Should always be more than or equal to existing number of
