@@ -1,7 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import kafka.admin.RackAwareMode;
-
 import java.util.Optional;
 
 public class KafkaTopicConfig {
@@ -22,8 +20,6 @@ public class KafkaTopicConfig {
 
     private final Optional<Long> minCompactionLagMs;
 
-    private final RackAwareMode rackAwareMode;
-
     public KafkaTopicConfig(final String topicName,
                             final int partitionCount,
                             final int replicaFactor,
@@ -31,8 +27,7 @@ public class KafkaTopicConfig {
                             final long segmentMs,
                             final Optional<Long> retentionMs,
                             final Optional<Long> segmentBytes,
-                            final Optional<Long> minCompactionLagMs,
-                            final RackAwareMode rackAwareMode) {
+                            final Optional<Long> minCompactionLagMs) {
         this.topicName = topicName;
         this.partitionCount = partitionCount;
         this.replicaFactor = replicaFactor;
@@ -41,7 +36,6 @@ public class KafkaTopicConfig {
         this.retentionMs = retentionMs;
         this.segmentBytes = segmentBytes;
         this.minCompactionLagMs = minCompactionLagMs;
-        this.rackAwareMode = rackAwareMode;
     }
 
     public String getTopicName() {
@@ -75,9 +69,4 @@ public class KafkaTopicConfig {
     public Optional<Long> getMinCompactionLagMs() {
         return minCompactionLagMs;
     }
-
-    public RackAwareMode getRackAwareMode() {
-        return rackAwareMode;
-    }
-
 }
