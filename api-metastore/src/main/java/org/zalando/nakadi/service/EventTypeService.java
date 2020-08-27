@@ -364,7 +364,8 @@ public class EventTypeService {
         try {
             return transactionTemplate.execute(action -> {
                 final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), 0, 100000);
+                        ImmutableSet.of(eventType), Optional.empty(), 0, 100000,
+                        SubscriptionDbRepository.Token.createEmpty());
                 subscriptions.forEach(s -> {
                     try {
                         subscriptionRepository.deleteSubscription(s.getId());
@@ -381,10 +382,11 @@ public class EventTypeService {
     }
 
 
+    // TODO: This method should be fixed by creating proper db query.
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
         int offset = 0;
         List<Subscription> subs = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20, null);
         while (!subs.isEmpty()) {
             for (final Subscription sub : subs) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
@@ -395,7 +397,7 @@ public class EventTypeService {
             }
             offset += 20;
             subs = subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20, null);
         }
         return false;
     }

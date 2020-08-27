@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
@@ -43,17 +45,17 @@ public class SubscriptionController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> listSubscriptions(
+    public PaginationWrapper<Subscription> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
             @Nullable @RequestParam(value = "event_type", required = false) final Set<String> eventTypes,
             @RequestParam(value = "show_status", required = false, defaultValue = "false") final boolean showStatus,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
+            @RequestParam(value = "token", required = false) final String token,
             final NativeWebRequest request)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
-        return status(OK)
-                .body(subscriptionService
-                        .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset));
+        return subscriptionService
+                .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset, token);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)

@@ -80,7 +80,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
-import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
+import static org.zalando.nakadi.service.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.problem.Status.BAD_REQUEST;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
@@ -102,7 +102,7 @@ public class SubscriptionControllerTest {
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
 
-    public SubscriptionControllerTest() throws Exception {
+    public SubscriptionControllerTest() {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(Feature.DISABLE_SUBSCRIPTION_CREATION))
@@ -167,7 +167,8 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt(), any()))
+                .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
@@ -175,13 +176,15 @@ public class SubscriptionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
-        verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
+        verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20,
+                SubscriptionDbRepository.Token.createEmpty());
     }
 
     @Test
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt(), any()))
+                .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
@@ -190,12 +193,13 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
+                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30,
+                        SubscriptionDbRepository.Token.createEmpty());
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt(), any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
@@ -217,7 +221,8 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt(), any()))
+                .thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
                 "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=0&limit=10");
@@ -305,7 +310,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false, null);
         return mockMvc.perform(get(url));
     }
 

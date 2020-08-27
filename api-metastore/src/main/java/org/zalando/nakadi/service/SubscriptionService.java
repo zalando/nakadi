@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import io.opentracing.Span;
+import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,6 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -187,7 +187,8 @@ public class SubscriptionService {
                                                              @Nullable final Set<String> eventTypes,
                                                              final boolean showStatus,
                                                              final int limit,
-                                                             final int offset)
+                                                             final int offset,
+                                                             final String token)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         if (limit < 1 || limit > 1000) {
             throw new InvalidLimitException("'limit' parameter should have value between 1 and 1000");
@@ -199,10 +200,29 @@ public class SubscriptionService {
 
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-        final List<Subscription> subscriptions =
-                subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
+        SubscriptionDbRepository.Token tokenObj = null;
+        // Here we are basically trying to support 3 situations
+        // - In case if feature is not enabled, but token is provided - use token
+        // - In case if feature is enabled but service is handcrafting offset - use offset instead of token
+        //   This behavior is actually buggy, because first and other pages will use different sorting criteria.
+        // - In case if feature is enabled and there is no handcraft - try to use token.
+        if (!StringUtils.isEmpty(token) ||
+                (0 == offset && featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))) {
+            if ("new".equalsIgnoreCase(token)) { // in order to test without feature toggle
+                // TODO: remove handling of "new"
+                tokenObj = SubscriptionDbRepository.Token.createEmpty();
+            } else {
+                tokenObj = SubscriptionDbRepository.Token.parse(token);
+            }
+        }
+        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                eventTypesFilter,
+                owningAppOption,
+                offset,
+                limit,
+                tokenObj);
         final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
+                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions, tokenObj);
         final PaginationWrapper<Subscription> paginationWrapper =
                 new PaginationWrapper<>(subscriptions, paginationLinks);
         if (showStatus) {

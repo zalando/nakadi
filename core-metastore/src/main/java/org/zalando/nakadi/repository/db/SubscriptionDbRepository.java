@@ -25,11 +25,15 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
+import sun.java2d.pipe.DrawImage;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -121,8 +125,88 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
+    public static enum TokenType {
+        FORWARD('F'),
+        BACKWARD('B'),
+        BACKWARD_INCL('I'),
+        ;
+        private final char symbol;
+
+        TokenType(char symbol) {
+            this.symbol = symbol;
+        }
+
+        public static TokenType of(final char symbol) {
+            for (final TokenType tt : TokenType.values()) {
+                if (tt.symbol == symbol) {
+                    return tt;
+                }
+            }
+            throw new IllegalArgumentException("Token type not supported");
+        }
+    }
+
+    public static class Token {
+        private final String subscriptionId;
+        private final TokenType tokenType;
+
+        public Token(final String subscriptionId, final TokenType tokenType) {
+            this.subscriptionId = subscriptionId;
+            this.tokenType = tokenType;
+        }
+
+        public boolean hasSubscriptionId() {
+            return !StringUtils.isEmpty(subscriptionId);
+        }
+
+        public String getSubscriptionId() {
+            return subscriptionId;
+        }
+
+        public TokenType getTokenType() {
+            return tokenType;
+        }
+
+        public static Token createEmpty() {
+            return new Token("", TokenType.FORWARD);
+        }
+
+        public String encode() {
+            return tokenType.symbol + subscriptionId;
+        }
+
+        public static Token parse(final String value) {
+            if (StringUtils.isEmpty(value) || value.length() < 1) {
+                return createEmpty();
+            }
+            return new Token(value.substring(1), TokenType.of(value.charAt(0)));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Token token = (Token) o;
+            return Objects.equals(subscriptionId, token.subscriptionId) &&
+                    tokenType == token.tokenType;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(subscriptionId, tokenType);
+        }
+
+        @Override
+        public String toString() {
+            return "Token{" +
+                    "subscriptionId='" + subscriptionId + '\'' +
+                    ", tokenType=" + tokenType +
+                    '}';
+        }
+    }
+
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
-                                                final int offset, final int limit)
+                                                final int offset, final int limit, @Nullable final Token token)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription ");
@@ -142,16 +226,43 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
         }
+
+        final String order;
+        if (token == null) {
+            order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
+            params.add(limit);
+            params.add(offset);
+        } else {
+            if (!token.subscriptionId.isEmpty()) {
+                if (token.getTokenType() == TokenType.FORWARD) {
+                    clauses.add(" s_id > ? ");
+                } else if (token.getTokenType() == TokenType.BACKWARD){
+                    clauses.add(" s_id < ? ");
+                } else if (token.getTokenType() == TokenType.BACKWARD_INCL) {
+                    clauses.add(" s_id <= ?");
+                } else {
+                    throw new IllegalStateException("Token type is not supported");
+                }
+                params.add(token.subscriptionId);
+            }
+            if (token.getTokenType() == TokenType.FORWARD) {
+                order = " ORDER BY s_id LIMIT ?";
+            } else {
+                order = " ORDER BY s_id DESC LIMIT ?";
+            }
+            params.add(limit);
+        }
         if (!clauses.isEmpty()) {
             queryBuilder.append(" WHERE ");
             queryBuilder.append(StringUtils.join(clauses, " AND "));
         }
-
-        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ");
-        params.add(limit);
-        params.add(offset);
+        queryBuilder.append(order);
         try {
-            return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
+            final List<Subscription> result = jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
+            if (null != token && token.getTokenType() != TokenType.FORWARD) {
+                Collections.reverse(result);
+            }
+            return result;
         } catch (final DataAccessException e) {
             LOG.error("Database error when listing subscriptions", e);
             throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");

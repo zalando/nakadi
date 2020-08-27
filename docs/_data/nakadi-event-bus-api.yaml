@@ -1142,12 +1142,22 @@ paths:
           maximum: 1000
         - name: offset
           in: query
-          description: page offset
+          description: page offset. Should be deprecated as may generate a lot of load for database.
           type: integer
           format: int64
           required: false
           default: 0
           minimum: 0
+        - name: token
+          in: query
+          description: |
+            Replacement for offset. Used as a base for detecting from where and in which direction to iterate over
+            subscription list. In case if specified - `offset` parameter is ignored.
+            Used only in case if feature toggle `token_subscription_iteration` is on.
+            For test purposes it is possible to set to special value "new" in order to force migration from `offset`
+            based iteration even if feature is not on.
+          type: string
+          required: false
         - name: show_status
           in: query
           description: show subscription status
@@ -3340,7 +3350,7 @@ definitions:
       href:
         type: string
         format: uri
-        example: '/subscriptions?offset=20&limit=10'
+        example: '/subscriptions?offset=0&limit=10&token=abracadabra'
 
   Feature:
     description: Feature of Nakadi to be enabled or disabled
