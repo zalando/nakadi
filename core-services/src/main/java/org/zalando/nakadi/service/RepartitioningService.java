@@ -126,9 +126,6 @@ public class RepartitioningService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type " + eventType.getName()
                     + " is currently in maintenance, please repeat request");
-        } catch (final InternalNakadiException | ServiceTemporarilyUnavailableException e) {
-            LOG.error("Error deleting event type " + eventType.getName(), e);
-            throw new EventTypeDeletionException("Failed to repartition event type " + eventType.getName());
         } finally {
             try {
                 if (closeable != null) {
