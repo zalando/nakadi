@@ -14,22 +14,29 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +53,7 @@ public class RepartitioningService {
     private final CursorConverter cursorConverter;
     private final FeatureToggleService featureToggleService;
     private final EventTypeCache eventTypeCache;
+    private final TimelineSync timelineSync;
 
     @Autowired
     public RepartitioningService(
@@ -57,7 +65,8 @@ public class RepartitioningService {
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
             final FeatureToggleService featureToggleService,
-            final EventTypeCache eventTypeCache) {
+            final EventTypeCache eventTypeCache,
+            final TimelineSync timelineSync) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
@@ -67,6 +76,7 @@ public class RepartitioningService {
         this.cursorConverter = cursorConverter;
         this.featureToggleService = featureToggleService;
         this.eventTypeCache = eventTypeCache;
+        this.timelineSync = timelineSync;
     }
 
     public void repartition(final EventType eventType, final int partitions)
@@ -89,18 +99,44 @@ public class RepartitioningService {
         }
 
         LOG.info("Start repartitioning for {} to {} partitions", eventType.getName(), partitions);
-        timelineService.updateTimeLineForRepartition(eventType, partitions);
 
-        updateSubscriptionsForRepartitioning(eventType, partitions);
-
-        // it is clear that the operation has to be done under the lock with other related work for changing event type,
-        // but it is skipped, because it is quite rare operation to change event type and repartition at the same time
+        Closeable closeable = null;
         try {
-            defaultStatistic.setReadParallelism(partitions);
-            defaultStatistic.setWriteParallelism(partitions);
-            eventTypeRepository.update(eventType);
-        } catch (Exception e) {
-            throw new NakadiBaseException(e.getMessage(), e);
+            closeable = timelineSync.workWithEventType(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
+            timelineService.updateTimeLineForRepartition(eventType, partitions);
+
+            updateSubscriptionsForRepartitioning(eventType, partitions);
+
+            // it is clear that the operation has to be done under the lock with other related work for changing event
+            // type, but it is skipped, because it is quite rare operation to change event type and repartition at the
+            // same time
+            try {
+                defaultStatistic.setReadParallelism(partitions);
+                defaultStatistic.setWriteParallelism(partitions);
+                eventTypeRepository.update(eventType);
+            } catch (Exception e) {
+                throw new NakadiBaseException(e.getMessage(), e);
+            }
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventTypeUnavailableException("Event type " + eventType.getName()
+                    + " is currently in maintenance, please repeat request");
+        } catch (final TimeoutException e) {
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventTypeUnavailableException("Event type " + eventType.getName()
+                    + " is currently in maintenance, please repeat request");
+        } catch (final InternalNakadiException | ServiceTemporarilyUnavailableException e) {
+            LOG.error("Error deleting event type " + eventType.getName(), e);
+            throw new EventTypeDeletionException("Failed to repartition event type " + eventType.getName());
+        } finally {
+            try {
+                if (closeable != null) {
+                    closeable.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
     }
 

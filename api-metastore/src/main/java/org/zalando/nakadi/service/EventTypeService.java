@@ -17,7 +17,6 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -440,7 +439,7 @@ public class EventTypeService {
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic());
+            validateStatisticsUpdate(original, eventType);
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -561,9 +560,11 @@ public class EventTypeService {
     }
 
     private void validateStatisticsUpdate(
-            final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
-        if (!Objects.equals(existing, newStatistics)) {
+            final EventType originalEventType,
+            final EventTypeBase newEventType) throws InvalidEventTypeException {
+        if (newEventType.getDefaultStatistic() == null) {
+            newEventType.setDefaultStatistic(originalEventType.getDefaultStatistic());
+        } else if (!Objects.equals(originalEventType.getDefaultStatistic(), newEventType.getDefaultStatistic())) {
             throw new InvalidEventTypeException("default statistics must not be changed");
         }
     }
