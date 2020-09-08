@@ -95,7 +95,6 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
-    private final RepartitioningService repartitioningService;
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
@@ -118,7 +117,6 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
-            final RepartitioningService repartitioningService,
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService) {
@@ -139,7 +137,6 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-        this.repartitioningService = repartitioningService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
     }
