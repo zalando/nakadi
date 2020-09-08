@@ -578,7 +578,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         when(mockSubscription.getOwningApplication()).thenReturn("asdf");
         when(subscriptionRepository
                 .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt(), any()))
+                        eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
                 .thenReturn(ImmutableList.of(mockSubscription));
 
         final Problem expectedProblem = Problem.valueOf(CONFLICT,

@@ -138,7 +138,7 @@ public class RepartitioningService {
     private void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
             throws NakadiBaseException {
         final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit, null);
+                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit);
         for (final Subscription subscription : subscriptions) {
             // update subscription if it was created from cursors
             if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {

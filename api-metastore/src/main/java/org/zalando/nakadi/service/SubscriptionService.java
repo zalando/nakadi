@@ -43,6 +43,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
@@ -65,6 +66,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.service.SubscriptionsUriHelper.createSubscriptionListLink;
+
 @Component
 public class SubscriptionService {
 
@@ -83,6 +86,7 @@ public class SubscriptionService {
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeCache eventTypeCache;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -97,7 +101,8 @@ public class SubscriptionService {
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
-                               final EventTypeCache eventTypeCache) {
+                               final EventTypeCache eventTypeCache,
+                               final SubscriptionTokenLister subscriptionTokenLister) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -111,6 +116,7 @@ public class SubscriptionService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
+        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -200,7 +206,7 @@ public class SubscriptionService {
 
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-        SubscriptionDbRepository.Token tokenObj = null;
+        SubscriptionTokenLister.Token tokenObj = null;
         // Here we are basically trying to support 3 situations
         // - In case if feature is not enabled, but token is provided - use token
         // - In case if feature is enabled but service is handcrafting offset - use offset instead of token
@@ -210,21 +216,37 @@ public class SubscriptionService {
                 (0 == offset && featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))) {
             if ("new".equalsIgnoreCase(token)) { // in order to test without feature toggle
                 // TODO: remove handling of "new"
-                tokenObj = SubscriptionDbRepository.Token.createEmpty();
+                tokenObj = SubscriptionTokenLister.Token.createEmpty();
             } else {
-                tokenObj = SubscriptionDbRepository.Token.parse(token);
+                tokenObj = SubscriptionTokenLister.Token.parse(token);
             }
         }
-        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                eventTypesFilter,
-                owningAppOption,
-                offset,
-                limit,
-                tokenObj);
-        final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions, tokenObj);
-        final PaginationWrapper<Subscription> paginationWrapper =
-                new PaginationWrapper<>(subscriptions, paginationLinks);
+        final PaginationWrapper<Subscription> paginationWrapper;
+        if (tokenObj == null) {
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                    eventTypesFilter,
+                    owningAppOption,
+                    offset,
+                    limit);
+            final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
+                    .map(o -> createSubscriptionListLink(
+                            owningAppOption, eventTypes, Math.max(0, o - limit), Optional.empty(), limit, showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
+                    .map(size -> createSubscriptionListLink(
+                            owningAppOption, eventTypes, offset + size, Optional.empty(), limit, showStatus));
+
+            paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
+        } else {
+            final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                    eventTypesFilter, owningAppOption, tokenObj, limit);
+            final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypes, 0, Optional.of(t), limit, showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypes, 0, Optional.of(t), limit, showStatus));
+            paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
+        }
         if (showStatus) {
             final List<Subscription> items = paginationWrapper.getItems();
             items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
