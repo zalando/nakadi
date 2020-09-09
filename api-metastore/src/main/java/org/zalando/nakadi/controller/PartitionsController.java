@@ -163,7 +163,7 @@ public class PartitionsController {
             throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, eventType.asResource());
         }
 
-        repartitioningService.repartition(eventType, partitionsNumberView.getPartitionCount());
+        repartitioningService.repartition(eventType.getName(), partitionsNumberView.getPartitionCount());
         return noContent().build();
     }
 
