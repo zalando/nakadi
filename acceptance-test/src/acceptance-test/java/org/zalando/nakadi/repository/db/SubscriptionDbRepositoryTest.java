@@ -36,7 +36,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
             (sub1, sub2) -> sub2.getCreatedAt().compareTo(sub1.getCreatedAt());
 
     private SubscriptionDbRepository repository;
-    private HashGenerator hashGenerator = new HashGenerator();
+    private final HashGenerator hashGenerator = new HashGenerator();
 
     @Before
     public void setUp() throws Exception {

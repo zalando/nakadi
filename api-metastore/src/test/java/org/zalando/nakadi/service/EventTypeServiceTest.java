@@ -38,7 +38,6 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
@@ -81,7 +80,7 @@ public class EventTypeServiceTest {
     private EventTypeService eventTypeService;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,

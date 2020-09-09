@@ -173,6 +173,25 @@ public class SubscriptionTokenLister extends AbstractDbRepository {
         public Token getPrev() {
             return prev;
         }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final ListResult that = (ListResult) o;
+            return Objects.equals(items, that.items) &&
+                    Objects.equals(next, that.next) &&
+                    Objects.equals(prev, that.prev);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(items, next, prev);
+        }
     }
 
     public enum TokenType {
