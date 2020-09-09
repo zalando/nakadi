@@ -34,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.EventOwnerSelector;
@@ -53,6 +54,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -576,10 +578,10 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final Subscription mockSubscription = mock(Subscription.class);
         when(mockSubscription.getConsumerGroup()).thenReturn("def");
         when(mockSubscription.getOwningApplication()).thenReturn("asdf");
-        when(subscriptionRepository
+        when(subscriptionTokenLister
                 .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
-                .thenReturn(ImmutableList.of(mockSubscription));
+                        eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), isNull(), anyInt()))
+                .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));
 
         final Problem expectedProblem = Problem.valueOf(CONFLICT,
                 "Can't remove event type " + eventType.getName() + ", as it has subscriptions");

@@ -28,6 +28,7 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -69,6 +70,7 @@ public class EventTypeServiceTest {
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final SchemaEvolutionService schemaEvolutionService = mock(SchemaEvolutionService.class);
     private final SubscriptionDbRepository subscriptionDbRepository = mock(SubscriptionDbRepository.class);
+    private final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
@@ -87,7 +89,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                eventTypeCache, schemaService, adminService);
+                eventTypeCache, schemaService, adminService, subscriptionTokenLister);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -122,12 +124,10 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
         doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
-        doReturn(Lists.emptyList())
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn(new SubscriptionTokenLister.ListResult(
+                ImmutableList.of(RandomSubscriptionBuilder.builder().build()), null, null))
+                .when(subscriptionTokenLister)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 20);
 
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(false);
@@ -140,9 +140,10 @@ public class EventTypeServiceTest {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
         doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+        doReturn(new SubscriptionTokenLister.ListResult(
+                ImmutableList.of(RandomSubscriptionBuilder.builder().build()), null, null))
+                .when(subscriptionTokenLister)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 100);
 
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(true);
@@ -157,15 +158,10 @@ public class EventTypeServiceTest {
         eventType.setAuthorization(TestUtils.buildResourceAuthorization());
 
         doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
-        doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
-        doReturn(Lists.emptyList())
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn(new SubscriptionTokenLister.ListResult(
+                ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")), null, null))
+                .when(subscriptionTokenLister)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 100);
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
@@ -205,12 +201,10 @@ public class EventTypeServiceTest {
 
         doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
 
-        doReturn(ImmutableList.of(TestUtils.createSubscription("someone", "something")))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
-        doReturn(Lists.emptyList())
-                .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+        doReturn(new SubscriptionTokenLister.ListResult(
+                ImmutableList.of(TestUtils.createSubscription("someone", "something")), null, null))
+                .when(subscriptionTokenLister)
+                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 20);
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 

@@ -24,6 +24,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
@@ -33,7 +34,6 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -91,7 +91,7 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    protected final TracingService tracingService = mock(TracingService.class);
+    protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
     protected MockMvc mockMvc;
 
@@ -123,7 +123,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
-                schemaService, adminService);
+                schemaService, adminService, subscriptionTokenLister);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
