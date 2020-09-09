@@ -1142,7 +1142,7 @@ paths:
           maximum: 1000
         - name: offset
           in: query
-          description: page offset. Should be deprecated as may generate a lot of load for database.
+          description: page offset; will be deprecated as it generates heavy load for the database.
           type: integer
           format: int64
           required: false
