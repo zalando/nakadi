@@ -230,10 +230,11 @@ public class SubscriptionService {
                     limit);
             final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
                     .map(o -> createSubscriptionListLink(
-                            owningAppOption, eventTypes, Math.max(0, o - limit), Optional.empty(), limit, showStatus));
+                            owningAppOption, eventTypesFilter, Math.max(0, o - limit), Optional.empty(), limit, 
+                            showStatus));
             final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
                     .map(size -> createSubscriptionListLink(
-                            owningAppOption, eventTypes, offset + size, Optional.empty(), limit, showStatus));
+                            owningAppOption, eventTypesFilter, offset + size, Optional.empty(), limit, showStatus));
 
             paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
         } else {
@@ -241,10 +242,10 @@ public class SubscriptionService {
                     eventTypesFilter, owningAppOption, tokenObj, limit);
             final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypes, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypes, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
             paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
         }
         if (showStatus) {
