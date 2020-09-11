@@ -22,7 +22,7 @@ public class SubscriptionsUriHelper {
             urlBuilder.queryParam("show_status", "true");
         }
         if (token.isPresent()) {
-            urlBuilder.queryParam("token", token.get());
+            urlBuilder.queryParam("token", token.get().encode());
         } else {
             urlBuilder.queryParam("offset", offset);
         }
