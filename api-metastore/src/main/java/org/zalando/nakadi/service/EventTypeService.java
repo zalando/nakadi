@@ -53,6 +53,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -95,10 +96,10 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
-    private final RepartitioningService repartitioningService;
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public EventTypeService(
@@ -118,10 +119,10 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
-            final RepartitioningService repartitioningService,
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
-            final AdminService adminService) {
+            final AdminService adminService,
+            final SubscriptionTokenLister subscriptionTokenLister) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -139,9 +140,9 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-        this.repartitioningService = repartitioningService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
+        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public List<EventType> list() {
@@ -363,16 +364,20 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
-                final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), 0, 100000);
-                subscriptions.forEach(s -> {
-                    try {
-                        subscriptionRepository.deleteSubscription(s.getId());
-                    } catch (final NoSuchSubscriptionException e) {
-                        // should not happen as we are inside transaction
-                        throw new InconsistentStateException("Subscription to be deleted is not found", e);
-                    }
-                });
+                SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                        ImmutableSet.of(eventType), Optional.empty(), null, 100);
+                while (null != listResult) {
+                    listResult.getItems().forEach(s -> {
+                        try {
+                            subscriptionRepository.deleteSubscription(s.getId());
+                        } catch (final NoSuchSubscriptionException e) {
+                            // should not happen as we are inside transaction
+                            throw new InconsistentStateException("Subscription to be deleted is not found", e);
+                        }
+                    });
+                    listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                            ImmutableSet.of(eventType), Optional.empty(), listResult.getNext(), 100);
+                }
                 return deleteEventType(eventType);
             });
         } catch (final TransactionException e) {
@@ -381,21 +386,21 @@ public class EventTypeService {
     }
 
 
+    // TODO: This method should be fixed by creating proper db query.
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
-        int offset = 0;
-        List<Subscription> subs = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
-        while (!subs.isEmpty()) {
-            for (final Subscription sub : subs) {
+
+        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), null, 20);
+        while (null != list) {
+            for (final Subscription sub : list.getItems()) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
                         || !sub.getOwningApplication()
                         .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
                     return true;
                 }
             }
-            offset += 20;
-            subs = subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), list.getNext(), 20);
         }
         return false;
     }

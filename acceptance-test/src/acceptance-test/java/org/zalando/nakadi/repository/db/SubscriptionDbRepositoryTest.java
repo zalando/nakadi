@@ -36,7 +36,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
             (sub1, sub2) -> sub2.getCreatedAt().compareTo(sub1.getCreatedAt());
 
     private SubscriptionDbRepository repository;
-    private HashGenerator hashGenerator = new HashGenerator();
+    private final HashGenerator hashGenerator = new HashGenerator();
 
     @Before
     public void setUp() throws Exception {
@@ -169,7 +169,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         testSubscriptions.subList(0, 2).clear();
         testSubscriptions.subList(3, testSubscriptions.size()).clear();
 
-        final List<Subscription> subscriptions = repository.listSubscriptions(emptySet(), Optional.of(owningApp), 2, 3);
+        final List<Subscription> subscriptions = repository.listSubscriptions(
+                emptySet(), Optional.of(owningApp), 2, 3);
         assertThat(subscriptions, equalTo(testSubscriptions));
     }
 

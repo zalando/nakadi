@@ -40,6 +40,7 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.SubscriptionService;
 import org.zalando.nakadi.service.SubscriptionValidationService;
+import org.zalando.nakadi.service.SubscriptionsUriHelper;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -80,7 +81,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
-import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.problem.Status.BAD_REQUEST;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
@@ -102,9 +102,11 @@ public class SubscriptionControllerTest {
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
 
-    public SubscriptionControllerTest() throws Exception {
+    public SubscriptionControllerTest() {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
+        when(featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))
+                .thenReturn(false);
         when(featureToggleService.isFeatureEnabled(Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(false);
         when(featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS))
@@ -128,7 +130,8 @@ public class SubscriptionControllerTest {
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache);
+                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
+                null);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
@@ -167,7 +170,8 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+                .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
@@ -181,7 +185,8 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+                .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
@@ -217,7 +222,8 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+                .thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
                 "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=0&limit=10");
@@ -305,7 +311,8 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit, false);
+        final String url = SubscriptionsUriHelper.createSubscriptionListLink(
+                Optional.of(owningApp), eventTypes, offset, Optional.empty(), limit, false).getHref();
         return mockMvc.perform(get(url));
     }
 

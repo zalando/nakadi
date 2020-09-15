@@ -17,7 +17,9 @@ public enum Feature {
     FORCE_SUBSCRIPTION_AUTHZ("force_subscription_authz"),
     REPARTITIONING("repartitioning"),
     EVENT_OWNER_SELECTOR_AUTHZ("event_owner_selector_authz"),
-    ACCESS_LOG_ENABLED("access_log_enabled");
+    ACCESS_LOG_ENABLED("access_log_enabled"),
+    TOKEN_SUBSCRIPTIONS_ITERATION("token_subscription_iteration"),
+    ;
 
     private final String id;
 

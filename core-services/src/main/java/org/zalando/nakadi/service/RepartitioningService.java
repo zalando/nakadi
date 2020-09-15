@@ -1,13 +1,10 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -21,6 +18,7 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -31,11 +29,11 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 @Service
 public class RepartitioningService {
@@ -46,12 +44,10 @@ public class RepartitioningService {
     private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
-    private final Integer repartitioningSubscriptionsLimit;
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
-    private final FeatureToggleService featureToggleService;
-    private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public RepartitioningService(
@@ -59,58 +55,53 @@ public class RepartitioningService {
             final TimelineService timelineService,
             final SubscriptionDbRepository subscriptionRepository,
             final SubscriptionClientFactory subscriptionClientFactory,
-            @Value("${nakadi.repartitioning.subscriptions.limit:1000}") final Integer repartitioningSubscriptionsLimit,
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
-            final FeatureToggleService featureToggleService,
-            final EventTypeCache eventTypeCache,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            final SubscriptionTokenLister subscriptionTokenLister) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
-        this.repartitioningSubscriptionsLimit = repartitioningSubscriptionsLimit;
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
-        this.featureToggleService = featureToggleService;
-        this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
+        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
-    public void repartition(final EventType eventType, final int partitions)
+    public void repartition(final String eventTypeName, final int partitions)
             throws InternalNakadiException, NakadiRuntimeException {
         if (partitions > nakadiSettings.getMaxTopicPartitionCount()) {
             throw new InvalidEventTypeException("Number of partitions should not be more than "
                     + nakadiSettings.getMaxTopicPartitionCount());
         }
+        LOG.info("Start repartitioning for {} to {} partitions", eventTypeName, partitions);
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-        EventTypeStatistics defaultStatistic = eventType.getDefaultStatistic();
-        if (defaultStatistic == null) {
-            defaultStatistic = new EventTypeStatistics(1, 1);
-            eventType.setDefaultStatistic(defaultStatistic);
-        }
-        final int currentPartitionsNumber = Math.max(defaultStatistic.getReadParallelism(),
-                defaultStatistic.getWriteParallelism());
+        eventType.setDefaultStatistic(Optional.ofNullable(eventType.getDefaultStatistic())
+                .orElse(new EventTypeStatistics(1, 1)));
+        final int currentPartitionsNumber =
+                timelineService.getTopicRepository(eventType).listPartitionNames(
+                        timelineService.getActiveTimeline(eventType).getTopic()).size();
         if (partitions < currentPartitionsNumber) {
-            throw new InvalidEventTypeException("Number of partitions should be greater " +
-                    "than existing values.");
+            // It is fine if user asks to set partition count to the same value several times,
+            // as it may happen that the first request was not really successful
+            throw new InvalidEventTypeException("Number of partitions can not decrease");
         }
-
-        LOG.info("Start repartitioning for {} to {} partitions", eventType.getName(), partitions);
-
         Closeable closeable = null;
         try {
             closeable = timelineSync.workWithEventType(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
+            // Increase kafka partitions count, increase partitions in database
             timelineService.updateTimeLineForRepartition(eventType, partitions);
 
-            updateSubscriptionsForRepartitioning(eventType, partitions);
+            updateSubscriptionsForRepartitioning(eventType.getName(), partitions);
 
             // it is clear that the operation has to be done under the lock with other related work for changing event
             // type, but it is skipped, because it is quite rare operation to change event type and repartition at the
             // same time
             try {
-                defaultStatistic.setReadParallelism(partitions);
-                defaultStatistic.setWriteParallelism(partitions);
+                eventType.getDefaultStatistic().setReadParallelism(partitions);
+                eventType.getDefaultStatistic().setWriteParallelism(partitions);
                 eventTypeRepository.update(eventType);
             } catch (Exception e) {
                 throw new NakadiBaseException(e.getMessage(), e);
@@ -135,39 +126,61 @@ public class RepartitioningService {
         }
     }
 
-    private void updateSubscriptionsForRepartitioning(final EventType eventType, final int partitions)
+    private void updateSubscriptionForRepartitioning(
+            final Subscription subscription, final String eventTypeName, final int partitions)
             throws NakadiBaseException {
-        final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventType.getName()), Optional.empty(), 0, repartitioningSubscriptionsLimit);
-        for (final Subscription subscription : subscriptions) {
-            // update subscription if it was created from cursors
-            if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
-                final List<SubscriptionCursorWithoutToken> initialCursors = subscription.getInitialCursors().stream()
-                        .filter(cursor -> cursor.getEventType().equals(eventType.getName()))
-                        .collect(Collectors.toList());
-                final List<SubscriptionCursorWithoutToken> newInitialCursors = Lists.newArrayList(initialCursors);
-                while (partitions - newInitialCursors.size() > 0) {
-                    newInitialCursors.add(new SubscriptionCursorWithoutToken(
-                            eventType.getName(),
-                            String.valueOf(newInitialCursors.size()),
-                            Cursor.BEFORE_OLDEST_OFFSET));
-                }
-                subscription.setInitialCursors(newInitialCursors);
-                subscriptionRepository.updateSubscription(subscription);
+        // update subscription if it was created from cursors
+        if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
+            // 1. Create a copy of initial cursors
+            final List<SubscriptionCursorWithoutToken> newInitialCursors =
+                    new ArrayList<>(subscription.getInitialCursors());
+            // 2. Select the ones that are related to event type that is being modified
+            final int currentCursorCount = (int) newInitialCursors.stream()
+                    .filter(v -> v.getEventType().equals(eventTypeName))
+                    .count();
+            // 3. Add as many cursors as needed.
+            for (int partitionIdx = partitions; partitionIdx < currentCursorCount; ++partitionIdx) {
+                newInitialCursors.add(new SubscriptionCursorWithoutToken(
+                        eventTypeName,
+                        String.valueOf(partitionIdx),
+                        Cursor.BEFORE_OLDEST_OFFSET));
             }
+            subscription.setInitialCursors(newInitialCursors);
+            subscriptionRepository.updateSubscription(subscription);
+        }
 
-            final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
-                    LogPathBuilder.build(subscription.getId(), "repartition"));
+        final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
+                LogPathBuilder.build(subscription.getId(), "repartition"));
+        try {
             // it could be that subscription was created, but never initialized
             SubscriptionInitializer.initializeSubscriptionLocked(
                     zkClient, subscription, timelineService, cursorConverter);
             // get begin offset with timeline, partition does not matter, it will be the same for all partitions
             final Cursor cursor = cursorConverter.convert(
-                    NakadiCursor.of(timelineService.getActiveTimeline(eventType.getName()), null, "-1"));
-            zkClient.repartitionTopology(eventType.getName(), partitions, cursor.getOffset());
+                    NakadiCursor.of(timelineService.getActiveTimeline(eventTypeName), null, "-1"));
+            zkClient.repartitionTopology(eventTypeName, partitions, cursor.getOffset());
             zkClient.closeSubscriptionStreams(
                     () -> LOG.info("subscription streams were closed, after repartitioning"),
                     TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
+        } finally {
+            try {
+                zkClient.close();
+            } catch (final IOException ex) {
+                LOG.warn("Failed to close zookeeper connection while updating subsciprtion {}",
+                        subscription.getId(), ex);
+            }
+        }
+    }
+
+    private void updateSubscriptionsForRepartitioning(final String eventTypeName, final int partitions)
+            throws NakadiBaseException {
+        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), null, 100);
+        while (list != null) {
+            list.getItems()
+                    .forEach(item -> updateSubscriptionForRepartitioning(item, eventTypeName, partitions));
+            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), list.getNext(), 100);
         }
     }
 }

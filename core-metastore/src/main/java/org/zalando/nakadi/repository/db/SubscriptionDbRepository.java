@@ -26,9 +26,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -43,7 +40,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionDbRepository.class);
 
-    private final SubscriptionMapper rowMapper = new SubscriptionMapper();
+    private final RowMapper<Subscription> rowMapper;
     private final UUIDGenerator uuidGenerator;
     private final HashGenerator hashGenerator;
 
@@ -53,6 +50,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         super(jdbcTemplate, jsonMapper);
         this.uuidGenerator = uuidGenerator;
         this.hashGenerator = hashGenerator;
+        this.rowMapper = new SubscriptionMapper(jsonMapper);
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -121,6 +119,10 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
+    /**
+     * Use {@code SubscriptionTokenLister} instead
+     */
+    @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
                                                 final int offset, final int limit)
             throws ServiceTemporarilyUnavailableException {
@@ -129,6 +131,29 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
 
+        applyFilter(eventTypes, owningApplication, clauses, params);
+
+        final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
+        params.add(limit);
+        params.add(offset);
+        if (!clauses.isEmpty()) {
+            queryBuilder.append(" WHERE ");
+            queryBuilder.append(StringUtils.join(clauses, " AND "));
+        }
+        queryBuilder.append(order);
+        try {
+            return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when listing subscriptions", e);
+            throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
+        }
+    }
+
+    static void applyFilter(
+            final Set<String> eventTypes,
+            final Optional<String> owningApplication,
+            final List<String> clauses,
+            final List<Object> params) {
         owningApplication.ifPresent(owningApp -> {
             clauses.add(" s_subscription_object->>'owning_application' = ? ");
             params.add(owningApp);
@@ -141,20 +166,6 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             eventTypes.stream()
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
-        }
-        if (!clauses.isEmpty()) {
-            queryBuilder.append(" WHERE ");
-            queryBuilder.append(StringUtils.join(clauses, " AND "));
-        }
-
-        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ");
-        params.add(limit);
-        params.add(offset);
-        try {
-            return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
-        } catch (final DataAccessException e) {
-            LOG.error("Database error when listing subscriptions", e);
-            throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
         }
     }
 
@@ -176,17 +187,6 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new NoSuchSubscriptionException("Subscription does not exist", e);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("Error occurred when reading subscription from DB", e);
-        }
-    }
-
-    private class SubscriptionMapper implements RowMapper<Subscription> {
-        @Override
-        public Subscription mapRow(final ResultSet rs, final int rowNum) throws SQLException {
-            try {
-                return jsonMapper.readValue(rs.getString("s_subscription_object"), Subscription.class);
-            } catch (final IOException e) {
-                throw new SQLException(e);
-            }
         }
     }
 

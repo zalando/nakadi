@@ -15,6 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -36,6 +37,7 @@ public class SubscriptionServiceTest {
     private FeatureToggleService featureToggleService;
     private AuthorizationValidator authorizationValidator;
     private SubscriptionValidationService subscriptionValidationService;
+    private SubscriptionTokenLister subscriptionTokenLister;
 
     @Before
     public void setUp() throws Exception {
@@ -52,11 +54,12 @@ public class SubscriptionServiceTest {
         subscriptionRepository = Mockito.mock(SubscriptionDbRepository.class);
         featureToggleService = Mockito.mock(FeatureToggleService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
+        subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                nakadiAuditLogPublisher, authorizationValidator, cache);
+                nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister);
     }
 
     @Test(expected = AuthorizationNotPresentException.class)

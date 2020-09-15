@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import io.opentracing.Span;
+import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +43,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
@@ -50,7 +52,6 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -64,6 +65,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.service.SubscriptionsUriHelper.createSubscriptionListLink;
 
 @Component
 public class SubscriptionService {
@@ -83,6 +86,7 @@ public class SubscriptionService {
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeCache eventTypeCache;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -97,7 +101,8 @@ public class SubscriptionService {
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
-                               final EventTypeCache eventTypeCache) {
+                               final EventTypeCache eventTypeCache,
+                               final SubscriptionTokenLister subscriptionTokenLister) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -111,6 +116,7 @@ public class SubscriptionService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
+        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -187,7 +193,8 @@ public class SubscriptionService {
                                                              @Nullable final Set<String> eventTypes,
                                                              final boolean showStatus,
                                                              final int limit,
-                                                             final int offset)
+                                                             final int offset,
+                                                             final String token)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         if (limit < 1 || limit > 1000) {
             throw new InvalidLimitException("'limit' parameter should have value between 1 and 1000");
@@ -199,12 +206,48 @@ public class SubscriptionService {
 
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-        final List<Subscription> subscriptions =
-                subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
-        final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
-        final PaginationWrapper<Subscription> paginationWrapper =
-                new PaginationWrapper<>(subscriptions, paginationLinks);
+        SubscriptionTokenLister.Token tokenObj = null;
+        // Here we are basically trying to support 3 situations
+        // - In case if feature is not enabled, but token is provided - use token
+        // - In case if feature is enabled but service is handcrafting offset - use offset instead of token
+        //   This behavior is actually buggy, because first and other pages will use different sorting criteria.
+        // - In case if feature is enabled and there is no handcraft - try to use token.
+        if (!StringUtils.isEmpty(token) ||
+                (0 == offset && featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))) {
+            if ("new".equalsIgnoreCase(token)) { // in order to test without feature toggle
+                // TODO: remove handling of "new"
+                tokenObj = SubscriptionTokenLister.Token.createEmpty();
+            } else {
+                tokenObj = SubscriptionTokenLister.Token.parse(token);
+            }
+        }
+        final PaginationWrapper<Subscription> paginationWrapper;
+        if (tokenObj == null) {
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                    eventTypesFilter,
+                    owningAppOption,
+                    offset,
+                    limit);
+            final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
+                    .map(o -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, Math.max(0, o - limit), Optional.empty(), limit, 
+                            showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
+                    .map(size -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, offset + size, Optional.empty(), limit, showStatus));
+
+            paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
+        } else {
+            final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                    eventTypesFilter, owningAppOption, tokenObj, limit);
+            final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+            paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
+        }
         if (showStatus) {
             final List<Subscription> items = paginationWrapper.getItems();
             items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
