@@ -38,6 +38,26 @@ public class KafkaTopicConfigFactory {
         this.compactedTopicCompactionLagMs = compactedTopicCompactionLagMs;
     }
 
+    public void configureCleanupPolicy(final KafkaTopicConfigBuilder builder, final CleanupPolicy cleanupPolicy) {
+        switch (cleanupPolicy) {
+            case COMPACT_AND_DELETE:
+                builder.withCleanupPolicy("compact,delete");
+                configureCompactionParameters(builder);
+                break;
+            case COMPACT:
+                builder.withCleanupPolicy("compact");
+                configureCompactionParameters(builder);
+                break;
+            case DELETE:
+                builder
+                        .withCleanupPolicy("delete")
+                        .withSegmentMs(defaultTopicRotationMs);
+                break;
+            default:
+                throw new RuntimeException("cleanup policy not implemented " + cleanupPolicy.toString());
+        }
+    }
+
     public KafkaTopicConfig createKafkaTopicConfig(final NakadiTopicConfig topicConfig) throws TopicConfigException {
 
         // set common values
@@ -46,21 +66,12 @@ public class KafkaTopicConfigFactory {
                 .withPartitionCount(topicConfig.getPartitionCount())
                 .withReplicaFactor(defaultTopicReplicaFactor);
 
-        if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
-            configBuilder
-                    .withCleanupPolicy("compact,delete");
-            configureCompactionParameters(configBuilder);
-            configureDeletionRetentionMs(topicConfig, configBuilder);
-        } else if (topicConfig.getCleanupPolicy() == CleanupPolicy.COMPACT) {
-            configBuilder
-                    .withCleanupPolicy("compact");
-            configureCompactionParameters(configBuilder);
-        } else if (topicConfig.getCleanupPolicy() == CleanupPolicy.DELETE) {
-            configBuilder
-                    .withCleanupPolicy("delete")
-                    .withSegmentMs(defaultTopicRotationMs);
+        configureCleanupPolicy(configBuilder, topicConfig.getCleanupPolicy());
+
+        if (topicConfig.getCleanupPolicy() != CleanupPolicy.COMPACT) {
             configureDeletionRetentionMs(topicConfig, configBuilder);
         }
+
         return configBuilder.build();
     }
 

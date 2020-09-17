@@ -32,7 +32,6 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
@@ -162,12 +161,6 @@ public class EventTypeService {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        if ((eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
-                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)
-                && featureToggleService.isFeatureEnabled(Feature.DISABLE_LOG_COMPACTION)) {
-            throw new FeatureNotAvailableException("log compaction is not available",
-                    Feature.DISABLE_LOG_COMPACTION);
-        }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
         try {
@@ -259,6 +252,10 @@ public class EventTypeService {
 
     private void validateCompactionUpdate(final EventType original, final EventTypeBase updatedET) {
         validateCompaction(updatedET);
+        if (updatedET.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE
+                && original.getCleanupPolicy() == CleanupPolicy.DELETE) {
+            return;
+        }
         if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
             throw new InvalidEventTypeException("cleanup_policy can not be changed");
         }
@@ -446,6 +443,7 @@ public class EventTypeService {
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             validateStatisticsUpdate(original, eventType);
             updateRetentionTime(original, eventType);
+            updateEventType(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException(
@@ -485,26 +483,18 @@ public class EventTypeService {
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) {
+        if (eventType.getOptions() == null || eventType.getOptions().getRetentionTime() == null) {
+            eventType.setOptions(original.getOptions());
+        }
+        setDefaultEventTypeOptions(original); // fixes a problem where the event type has no explicit retention time
+        setDefaultEventTypeOptions(eventType);
+    }
+
+    private void updateEventType(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
-        if (oldRetentionTime == null) {
-            // since we have some inconsistency in DB I will put here for a while
-            throw new InconsistentStateException("Empty value for retention time in existing EventType");
-        }
-        boolean retentionTimeUpdated = false;
-        try {
-            if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-                updateTopicRetentionTime(original.getName(), newRetentionTime);
-            } else {
-                eventType.setOptions(original.getOptions());
-            }
-            updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
-            retentionTimeUpdated = true;
-        } finally {
-            if (!retentionTimeUpdated) {
-                updateTopicRetentionTime(original.getName(), oldRetentionTime);
-            }
-        }
+        updateTopicConfig(original.getName(), newRetentionTime, eventType.getCleanupPolicy());
+        updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
@@ -535,11 +525,12 @@ public class EventTypeService {
         }
     }
 
-    private void updateTopicRetentionTime(final String eventTypeName, final Long retentionTime)
+    private void updateTopicConfig(final String eventTypeName, final Long retentionTime,
+                                   final CleanupPolicy cleanupPolicy)
             throws InternalNakadiException, NoSuchEventTypeException {
         timelineService.getActiveTimelinesOrdered(eventTypeName)
                 .forEach(timeline -> timelineService.getTopicRepository(timeline)
-                        .setRetentionTime(timeline.getTopic(), retentionTime));
+                        .updateTopicConfig(timeline.getTopic(), retentionTime, cleanupPolicy));
     }
 
     public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
