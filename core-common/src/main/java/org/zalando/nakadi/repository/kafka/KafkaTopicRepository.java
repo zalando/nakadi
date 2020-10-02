@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -693,15 +694,25 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
+    public void updateTopicConfig(final String topic, final Long retentionMs, final CleanupPolicy cleanupPolicy)
+            throws TopicConfigException {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
-            final AlterConfigOp op = new AlterConfigOp(
-                    new ConfigEntry("retention.ms", Long.toString(retentionMs)),
-                    AlterConfigOp.OpType.SET);
+            final KafkaTopicConfigBuilder builder = new KafkaTopicConfigBuilder();
+            kafkaTopicConfigFactory.configureCleanupPolicy(builder, cleanupPolicy);
+            builder.withRetentionMs(retentionMs);
+            final KafkaTopicConfig config = builder.build();
+            final Map<String, String> configMap = kafkaTopicConfigFactory.createKafkaTopicLevelProperties(config);
             final ConfigResource configResource = new ConfigResource(TOPIC, topic);
             final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>();
-            configs.put(configResource, Lists.newArrayList(op));
+            final List<AlterConfigOp> alterConfigOps = configMap
+                    .entrySet()
+                    .stream()
+                    .map(entry -> new AlterConfigOp(
+                        new ConfigEntry(entry.getKey(), entry.getValue()),
+                        AlterConfigOp.OpType.SET))
+                    .collect(Collectors.toList());
 
+            configs.put(configResource, alterConfigOps);
             adminClient.incrementalAlterConfigs(configs).all().get(30, TimeUnit.SECONDS);
         } catch (final Exception e) {
             if (e instanceof InterruptedException) {
