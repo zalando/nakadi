@@ -246,7 +246,8 @@ public class EventTypeService {
                 (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
                         eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)) {
             throw new InvalidEventTypeException(
-                    "cleanup_policy 'compact' is not available for 'undefined' event type category");
+                    "cleanup_policy 'compact' and 'compact_and_delete' is not available " +
+                            "for 'undefined' event type category");
         }
     }
 
@@ -257,7 +258,10 @@ public class EventTypeService {
             return;
         }
         if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
-            throw new InvalidEventTypeException("cleanup_policy can not be changed");
+            throw new InvalidEventTypeException(
+                    "Invalid cleanup_policy change: " + original.getCleanupPolicy().name() +
+                            " cannot be changed to " + updatedET.getCleanupPolicy().name()
+            );
         }
     }
 
@@ -493,8 +497,17 @@ public class EventTypeService {
     private void updateEventType(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
-        updateTopicConfig(original.getName(), newRetentionTime, eventType.getCleanupPolicy());
-        updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
+        boolean updatedDefinitions = false;
+        try {
+            updateTopicConfig(original.getName(), newRetentionTime, eventType.getCleanupPolicy());
+            updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
+            updatedDefinitions = true;
+        } finally {
+            if (!updatedDefinitions) {
+                LOG.warn("Error while updating topic configuration for {}, attempting to revert.", original.getName());
+                updateTopicConfig(original.getName(), oldRetentionTime, original.getCleanupPolicy());
+            }
+        }
     }
 
     private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,

@@ -49,13 +49,6 @@ These can also be turned off by disabling `audit_log_collection`, if they are no
 The `disable_db_write_operations` feature can be used to completely block all non-read access to the database. 
 This can be useful when you want to do maintenance of the database.
 
-### disable_log_compaction
-Nakadi supports compaction as a cleanup policy. 
-Events of event-types that have `compact` as cleanup policy are compacted using Kafka Log compaction. 
-While this can be useful in some cases, such event-types add extra operational complexity.
-The `disable_log_compaction` feature allows to disable creation of new event-types with `compact` as cleanup policy.
-Existing event-types are not changed. 
-
 ### force_event_type_authz
 Authorization section of an event-type can define who (or what) have which kind of access to an event-type.
 When the `force_event_type_authz` feature is enabled, all new event-types must have an authorization section.

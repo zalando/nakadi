@@ -54,7 +54,7 @@ public class KafkaTopicConfigFactory {
                         .withSegmentMs(defaultTopicRotationMs);
                 break;
             default:
-                throw new RuntimeException("cleanup policy not implemented " + cleanupPolicy.toString());
+                throw new IllegalStateException("Cleanup Policy not implemented " + cleanupPolicy.toString());
         }
     }
 
