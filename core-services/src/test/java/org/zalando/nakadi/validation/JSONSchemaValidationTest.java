@@ -151,6 +151,7 @@ public class JSONSchemaValidationTest {
         event.getJSONObject("metadata").put("published_by", "test-invalid-publisher");
 
         final Optional<ValidationError> noError = eventValidatorBuilder.build(et).validate(event);
+        Assert.assertThat(noError, IsOptional.isAbsent());
     }
 
     @Test
