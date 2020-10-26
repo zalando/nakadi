@@ -83,6 +83,9 @@
       "partition_compaction_key": {
         "minLength": 1,
         "type": "string"
+      },
+      "published_by": {
+        "type": "string"
       }
     },
     "required": [
@@ -129,6 +132,9 @@
       },
       "partition_compaction_key": {
         "minLength": 1,
+        "type": "string"
+      },
+      "published_by": {
         "type": "string"
       }
     },
