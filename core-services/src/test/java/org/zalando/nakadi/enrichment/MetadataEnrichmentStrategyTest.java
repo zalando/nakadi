@@ -157,6 +157,7 @@ public class MetadataEnrichmentStrategyTest {
         when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "test-user-123"));
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("published_by", "test-invalid-publisher");
         final String partition = randomString();
         final BatchItem batch = createBatchItem(event);
         batch.setPartition(partition);

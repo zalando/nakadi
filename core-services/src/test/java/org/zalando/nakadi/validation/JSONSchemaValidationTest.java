@@ -143,6 +143,17 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
+    public void allowsPublishedBy() {
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("published_by", "test-invalid-publisher");
+
+        final Optional<ValidationError> noError = eventValidatorBuilder.build(et).validate(event);
+    }
+
+    @Test
     public void requireEidToBeFormattedAsUUID() {
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
         et.setCategory(EventCategory.BUSINESS);
