@@ -4,22 +4,12 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
-
-    private final AuthorizationService authorizationService;
-
-    public MetadataEnrichmentStrategy(final AuthorizationService authorizationService) {
-        this.authorizationService = authorizationService;
-    }
-
     @Override
     public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
         try {
@@ -27,7 +17,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
                     .getEvent()
                     .getJSONObject(BatchItem.Injection.METADATA.name);
 
-            setPublisher(metadata);
             setReceivedAt(metadata);
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
@@ -37,12 +26,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
-    }
-
-    private void setPublisher(final JSONObject metadata) {
-        final String publisher = authorizationService.getSubject().map(Subject::getName)
-                .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
-        metadata.put("published_by", publisher);
     }
 
     private void setVersion(final JSONObject metadata, final EventType eventType) {
