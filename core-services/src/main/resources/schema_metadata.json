@@ -34,6 +34,9 @@
       },
       "flow_id": {
         "type": "string"
+      },
+      "published_by": {
+        "type": "string"
       }
     },
     "required": [
