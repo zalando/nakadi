@@ -2251,12 +2251,6 @@ definitions:
             Event identifier of the Event that caused the generation of this Event.
             Set by the producer.
           example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-      published_by:
-        description: |
-          ID of the subject that published this specific event to Nakadi.
-          NOTE: Enriched by Nakadi, should not be specified when publishing event.
-        type: string
-        example: 'jane'
       flow_id:
         description: |
           The flow-id of the producer of this Event. As this is usually a HTTP header, this is
