@@ -30,5 +30,8 @@ pipeline:
         cmd: |
           ./gradlew clean app:bootJar
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
+            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+          fi
           docker build -t ${IMAGE} .
           docker push ${IMAGE}
