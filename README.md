@@ -4,7 +4,7 @@
 [![codecov.io](https://codecov.io/github/zalando/nakadi/coverage.svg?branch=master)](https://codecov.io/github/zalando/nakadi?branch=master)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/785ccd4ab5e34867b760a8b07c3b62f1)](https://www.codacy.com/app/aruha/nakadi?utm_source=www.github.com&amp;utm_medium=referral&amp;utm_content=zalando/nakadi&amp;utm_campaign=Badge_Grade)
 
-Nakadi is a distributed event bus broker that implements a RESTful API abstraction on top of Kafka-like queues, which can be used to send, receive, and analyze streaming data in real time, in a reliable and highly available manner.
+Nakadi is a distributed event broker that implements a RESTful API abstraction on top of Kafka-like queues, which can be used to send, receive, and analyze streaming data in real time, in a reliable and highly available manner.
 
 One of the most prominent use cases of Nakadi is to decouple micro-services by building data streams between producers and consumers.
 
