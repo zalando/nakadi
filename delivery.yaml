@@ -17,7 +17,7 @@ pipeline:
       - desc: Install dependencies
         cmd: |
           apt-get update
-          apt-get install -y python3-pip python3-setuptools python3-wheel gcc python3-dev libffi-dev gcc libc-dev make
+          apt-get install -y python3.8-pip python3.8-setuptools python3.8-wheel gcc python3.8-dev libffi-dev gcc libc-dev make
           pip3 install docker-compose==1.27.4
       - desc: Acceptance Test
         cmd: |
