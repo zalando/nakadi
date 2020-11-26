@@ -1,4 +1,4 @@
-FROM registry.opensource.zalan.do/stups/openjdk:1.8.0-191-19
+FROM registry.opensource.zalan.do/library/openjdk-11-jre-slim:11-jre-slim-20201005
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 

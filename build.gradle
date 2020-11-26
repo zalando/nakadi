@@ -20,6 +20,12 @@ subprojects {
     apply plugin: 'checkstyle'
     apply plugin: 'jacoco'
 
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(11)
+        }
+    }
+
     checkstyle {
         configFile = new File(rootDir, "checkstyle.xml")
         toolVersion = "8.34"
