@@ -14,9 +14,10 @@ pipeline:
     overlay: ci/java
     type: script
     commands:
-      - desc: Add PPA
+      - desc: Install dependencies
         cmd: |
           sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          echo '04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d */usr/local/bin/docker-compose' | sha256sum -c
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
       - desc: Acceptance Test
