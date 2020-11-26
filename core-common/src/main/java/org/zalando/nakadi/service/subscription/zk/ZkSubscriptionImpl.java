@@ -68,7 +68,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
     @Override
     public void close() {
         listener = null;
-        curatorFramework.watches().remove(this);
+        //curatorFramework.watches().remove(this);
     }
 
     protected abstract ZkType query(boolean createListener) throws NakadiRuntimeException;
