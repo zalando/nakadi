@@ -36,7 +36,7 @@ services:
       POSTGRES_DB: local_nakadi_db
 
   zookeeper:
-    image: wurstmeister/zookeeper:3.6.1
+    image: zookeeper:3.6
     ports:
     - "2181:2181"
 
