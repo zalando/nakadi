@@ -240,6 +240,9 @@ public class StrictJsonParser {
         boolean finished = false;
         while (!finished) {
             char c = tokenizer.next();
+            if (isControlCharacter(c)) {
+                throw syntaxError("Illegal escape.", tokenizer);
+            }
             switch (c) {
                 case 0:
                 case '\n':
@@ -289,6 +292,10 @@ public class StrictJsonParser {
             }
         }
         return sb.toString();
+    }
+
+    private static boolean isControlCharacter(final char c) {
+        return c >= '\u0000' && c <= '\u001F';
     }
 
 }

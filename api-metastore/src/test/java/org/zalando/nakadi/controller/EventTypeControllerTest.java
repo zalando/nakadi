@@ -865,7 +865,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doThrow(TopicConfigException.class).when(topicRepository).setRetentionTime(anyString(), anyLong());
+        doThrow(TopicConfigException.class).when(topicRepository).updateTopicConfig(anyString(), anyLong(), any());
         when(timelineService.getActiveTimelinesOrdered(any()))
                 .thenReturn(Collections.singletonList(
                         Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date())));
@@ -877,7 +877,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
                 .andExpect(status().isInternalServerError());
-        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository, times(0)).update(any());
     }
 
@@ -900,7 +900,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
                 .andExpect(status().isInternalServerError());
-        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository).update(any());
     }
 

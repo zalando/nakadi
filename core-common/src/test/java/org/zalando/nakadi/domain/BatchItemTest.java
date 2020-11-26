@@ -3,6 +3,7 @@ package org.zalando.nakadi.domain;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -165,5 +166,23 @@ public class BatchItemTest {
         final BatchItem bi = BatchFactory.from("[{\n\n\n\n\n\n\n\n}]").get(0);
         final JSONObject result = restoreJsonObject(bi);
         Assert.assertFalse(result.keys().hasNext());
+    }
+
+    @Test(expected = JSONException.class)
+    public void testFailOnUnEscapedControlCharacter() {
+        // StartOfEnrls=tgy[9}m}Wo%5}qd~u%&Qq4a
+                                   // ^
+        // Unicode Character 'START OF TEXT' (U+0002)
+        BatchFactory.from("[{\"StartOfEnrls=tgy[9}m}Wo%5}qd~u%&Qq4a\": \"broker_key_value\"}]").get(0);
+    }
+
+    @Test
+    public void testEscapedControlCharacterAccepted() {
+        final BatchItem bi = BatchFactory.from(
+                "[{\"StartOfEnrls=tgy[9}m}Wo%5}q\\u0002d~u%&Qq4a\": \"broker_key_value\"}]").get(0);
+
+        Assert.assertEquals(//
+                "{\"StartOfEnrls=tgy[9}m}Wo%5}q\\u0002d~u%&Qq4a\":\"broker_key_value\"}",
+                bi.dumpEventToString());
     }
 }

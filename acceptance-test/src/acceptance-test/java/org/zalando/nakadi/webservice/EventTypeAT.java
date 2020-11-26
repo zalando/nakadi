@@ -285,6 +285,70 @@ public class EventTypeAT extends BaseAT {
         assertRetentionTime(newRetentionTime, eventType.getName());
     }
 
+    @Test
+    public void whenUpdateCleanupPolicyDeleteToDeleteCompactJourney() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.DELETE)
+                .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .build();
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        final CleanupPolicy initialCleanupPolicy = CleanupPolicy.DELETE;
+        assertEquals(initialCleanupPolicy, eventType.getCleanupPolicy());
+
+        // publish an event to the event type (without partition compaction key)
+        given().body("[{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+
+        // update event type with compact and delete
+        final CleanupPolicy updatedPolicy = CleanupPolicy.COMPACT_AND_DELETE;
+        eventType.setCleanupPolicy(updatedPolicy);
+        final String updateBody = MAPPER.writer().writeValueAsString(eventType);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        // get event type and check that properties are set correctly (database)
+        given().body(body)
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("cleanup_policy", equalTo("compact_and_delete"));
+
+        // assert topic changes
+        final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic);
+        assertThat(cleanupPolicy, equalTo("compact,delete"));
+
+        final Long retentionMs = KafkaTestHelper.getTopicRetentionTime(topic);
+        assertEquals(retentionMs, eventType.getOptions().getRetentionTime());
+
+        // publish event with missing compaction key and expect 422
+        given().body("[{\"metadata\":{" +
+                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
     @Test(timeout = 10000)
     public void compactedEventTypeJourney() throws IOException, ExecutionException, InterruptedException {
         // create event type with 'compact' cleanup_policy

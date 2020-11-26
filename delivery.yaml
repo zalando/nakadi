@@ -16,9 +16,10 @@ pipeline:
     commands:
       - desc: Install dependencies
         cmd: |
-          apt-get update
-          apt-get install -y python3-pip python3-setuptools python3-wheel gcc python3-dev libffi-dev gcc libc-dev make
-          pip3 install docker-compose==1.26.2
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          echo '04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d */usr/local/bin/docker-compose' | sha256sum -c
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
       - desc: Acceptance Test
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
@@ -30,5 +31,8 @@ pipeline:
         cmd: |
           ./gradlew clean app:bootJar
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
+            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+          fi
           docker build -t ${IMAGE} .
           docker push ${IMAGE}
