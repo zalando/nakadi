@@ -68,7 +68,7 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
     @Override
     public void close() {
         listener = null;
-        if (null != curatorFramework && !curatorFramework.isZk34CompatibilityMode()) {
+        if (!curatorFramework.isZk34CompatibilityMode()) {
             curatorFramework.watches().remove(this);
         }
     }
