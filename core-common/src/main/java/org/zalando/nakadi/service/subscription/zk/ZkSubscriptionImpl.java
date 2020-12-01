@@ -67,10 +67,15 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
 
     @Override
     public void close() {
-        listener = null;
-        if (!curatorFramework.isZk34CompatibilityMode()) {
-            curatorFramework.watches().remove(this);
+        if (listener != null && !curatorFramework.isZk34CompatibilityMode()) {
+            try {
+                curatorFramework.watches().remove(this).forPath(key);
+            } catch (final Exception ex) {
+                // The exception is silently ignored, as it is usual situation to have it triggered on zk side
+                // (and hence removed) while client still thinks that it's alive
+            }
         }
+        listener = null;
     }
 
     protected abstract ZkType query(boolean createListener) throws NakadiRuntimeException;
