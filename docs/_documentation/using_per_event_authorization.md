@@ -35,7 +35,7 @@ Nakadi provides per-event filtering, allowing event type publishers to specify w
 ```
 
  The events that were published to the event type above could be read only by a set of readers, that has matching 
- `retailer_id` provided by authorization plugin. In case if consumer do not have this value - the events are silently 
+ `retailer_id` provided by authorization plugin. In case if consumer does not have this value - the events are silently 
  omitted from the output.   
 
  Also, once a `event_owner_selector` is specified for an event type, it cannot be removed or updated.
