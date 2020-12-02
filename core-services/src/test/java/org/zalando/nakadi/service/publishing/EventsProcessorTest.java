@@ -16,7 +16,7 @@ public class EventsProcessorTest {
 
     @Test
     public void shouldSendEventWhenSubmitted() {
-        final EventsProcessor eventsProcessor = new EventsProcessor(eventPublisher, uuidGenerator, 100, 1, 1, 100, 10);
+        final EventsProcessor eventsProcessor = new EventsProcessor(eventPublisher, uuidGenerator, 100, 1, 1, 10);
         final JSONObject event = new JSONObject().put("path", "/path/to/event").put("user", "adyachkov");
 
         eventsProcessor.enrichAndSubmit("test_et_name", event);
