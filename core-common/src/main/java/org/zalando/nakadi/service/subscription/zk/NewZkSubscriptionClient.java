@@ -134,7 +134,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     @Override
     public final ZkSubscription<Topology> subscribeForTopologyChanges(final Runnable onTopologyChanged)
             throws NakadiRuntimeException {
-        getLog().info("subscribeForTopologyChanges");
         return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 onTopologyChanged,

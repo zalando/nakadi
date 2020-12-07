@@ -2,7 +2,7 @@
 
 function waitForNakadi() {
   echo "Waiting for Nakadi to start up"
-  while True; do
+  while :; do
     res=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:8080/health)
     if ((res == 200)); then
       echo "Nakadi is fully started"

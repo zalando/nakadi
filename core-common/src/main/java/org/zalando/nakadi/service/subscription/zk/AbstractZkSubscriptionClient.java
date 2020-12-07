@@ -313,7 +313,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
             final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
-        getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
         return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 commitListener,
@@ -383,7 +382,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener)
             throws NakadiRuntimeException {
-        getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
         return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
                 getCurator(), listener, getSubscriptionPath("/sessions"));
     }
