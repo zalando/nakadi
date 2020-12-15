@@ -90,7 +90,7 @@ public class StorageServiceTest {
         storage.setType(Storage.Type.KAFKA);
         storage.setId("123-abc");
         final KafkaConfiguration configuration =
-                new KafkaConfiguration(ZookeeperConnection.valueOf("exhibitor://localhost:8181/path/to/kafka"));
+                new KafkaConfiguration(ZookeeperConnection.valueOf("zookeeper://localhost:8181/path/to/kafka"));
         storage.setConfiguration(configuration);
         return storage;
     }

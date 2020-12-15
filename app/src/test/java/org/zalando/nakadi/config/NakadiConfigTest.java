@@ -29,7 +29,7 @@ public class NakadiConfigTest {
         Mockito.when(zooKeeperHolder.get()).thenReturn(curatorFramework);
         Mockito.when(curatorFramework.getData()).thenReturn(dataBuilder);
         Mockito.when(environment.getProperty("nakadi.zookeeper.connection-string"))
-                .thenReturn("exhibitor://localhost:8181/path");
+                .thenReturn("zookeeper://localhost:8181/path");
     }
 
     @Test

@@ -106,8 +106,6 @@ public class ZooKeeperHolder {
 
     private EnsembleProvider createEnsembleProvider() throws Exception {
         switch (conn.getType()) {
-            case EXHIBITOR:
-                throw new RuntimeException("Exhibitor support is removed on 2020-12-15; use zookeeper connection");
             case ZOOKEEPER:
                 final String addressesJoined = conn.getAddresses().stream()
                         .map(AddressPort::asAddressPort)
