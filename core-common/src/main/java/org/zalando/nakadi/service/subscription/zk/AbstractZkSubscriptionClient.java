@@ -301,7 +301,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
         return () -> {
             try {
-                cursorResetCache.getListenable().clear();
                 cursorResetCache.close();
             } catch (final IOException e) {
                 throw new NakadiRuntimeException(e);
