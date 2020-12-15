@@ -18,7 +18,8 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -40,7 +41,7 @@ public class EventsProcessor {
         private final String eventType;
         private final JSONObject object;
 
-        public EventToPublish(final String eventType, final JSONObject object) {
+        private EventToPublish(final String eventType, final JSONObject object) {
             this.eventType = eventType;
             this.object = object;
         }
@@ -52,13 +53,28 @@ public class EventsProcessor {
                            @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
                            @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
                            @Value("${nakadi.kpi.config.workers}") final int workers,
+                           @Value("${nakadi.kpi.config.batch-queue:100}") final int maxBatchQueue,
                            @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
         this.eventPublisher = eventPublisher;
         this.uuidGenerator = uuidGenerator;
         this.batchCollectionTimeout = batchCollectionTimeout;
         this.maxBatchSize = maxBatchSize;
 
-        this.executorService = Executors.newFixedThreadPool(workers);
+        // The following lines will create executor service of {@code workers} threads with burst up to workers * 2
+        // threads, unused thread death timeout of 10 seconds,
+        // maximum batch publishers in queue of {@code maxBatchQueue} and only logging rejection policy in case of
+        // queue overflow.
+        this.executorService = new ThreadPoolExecutor(
+                workers,
+                workers * 2,
+                10, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(maxBatchQueue),
+                new NamedThreadFactory("internal-event-batch-sender-"),
+                (runnable, threadPoolExecutor) -> {
+                    LOG.warn("Failed publish batch {}, as batch publishing queue of size {} is full",
+                            runnable, maxBatchQueue);
+                }
+        );
         this.eventsQueue = new ArrayBlockingQueue<>(eventsQueueSize);
         this.dispatcherThread = new Thread(this::dispatch, "processor-dispatch");
     }
@@ -81,7 +97,7 @@ public class EventsProcessor {
         private final JSONArray data;
         private int size = 0;
 
-        public BatchedRequest(final String eventType, final long finishCollectionAt) {
+        private BatchedRequest(final String eventType, final long finishCollectionAt) {
             this.eventType = eventType;
             this.finishCollectionAt = finishCollectionAt;
             this.data = new JSONArray();
@@ -99,13 +115,22 @@ public class EventsProcessor {
     }
 
     private void scheduleSendBatchedRequest(final BatchedRequest req) {
-        executorService.submit(() -> {
-            try {
-                eventPublisher.processInternal(req.data.toString(), req.eventType, false, null, false);
-            } catch (final RuntimeException ex) {
-                LOG.info("Failed to send single batch for unknown reason", ex);
+        final Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    eventPublisher.processInternal(req.data.toString(), req.eventType, false, null, false);
+                } catch (final RuntimeException ex) {
+                    LOG.info("Failed to send single batch for unknown reason", ex);
+                }
             }
-        });
+
+            @Override
+            public String toString() {
+                return "Batch to " + req.eventType + " of size " + req.data.length();
+            }
+        };
+        executorService.submit(r);
     }
 
     private void dispatch() {
@@ -133,7 +158,7 @@ public class EventsProcessor {
                 }
                 if (batchWasSent || currentTime > nextTimeCheck) {
                     nextTimeCheck = currentTime + batchCollectionTimeout;
-                    for (Map.Entry<String, BatchedRequest> entry : batchesBeingAssembled.entrySet()) {
+                    for (final Map.Entry<String, BatchedRequest> entry : batchesBeingAssembled.entrySet()) {
                         if (entry.getValue().finishCollectionAt < currentTime) {
                             scheduleSendBatchedRequest(entry.getValue());
                             batchesBeingAssembled.remove(entry.getKey());
