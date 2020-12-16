@@ -133,9 +133,17 @@ public class EventsProcessor {
         executorService.submit(r);
     }
 
+    /**
+     * Generates batches from {@link #eventsQueue} single events with the following constraints:
+     * <ul>
+     *     <li>Batch size is not more than {@link #maxBatchSize} events each</li>
+     *     <li>Eatch batch is assembled for at most {@link #batchCollectionTimeout} ms (or close to it)</li>
+     * </ul>
+     */
     private void dispatch() {
         final Map<String, BatchedRequest> batchesBeingAssembled = new HashMap<>();
         try {
+            // The time here is a moment in time at which batches should be evaluated - if they should be sent or not
             long nextTimeCheck = System.currentTimeMillis() + batchCollectionTimeout;
             while (true) {
                 long currentTime = System.currentTimeMillis();
@@ -143,12 +151,14 @@ public class EventsProcessor {
                         Math.max(nextTimeCheck - currentTime, 1), TimeUnit.MILLISECONDS);
                 currentTime = System.currentTimeMillis();
                 boolean batchWasSent = false;
+                // In case if data was taken - add it.
                 if (data != null) {
                     BatchedRequest batch = batchesBeingAssembled.get(data.eventType);
                     if (null == batch) {
                         batch = new BatchedRequest(data.eventType, currentTime + batchCollectionTimeout);
                         batchesBeingAssembled.put(data.eventType, batch);
                     }
+                    // In case if batch size is crossing maxBatchSize - send batch
                     if (batch.add(data.object) >= maxBatchSize) {
                         scheduleSendBatchedRequest(batch);
                         batchesBeingAssembled.remove(batch.eventType);
@@ -157,12 +167,18 @@ public class EventsProcessor {
                     }
                 }
                 if (batchWasSent || currentTime > nextTimeCheck) {
+                    // In order to figure out when the batches should be sent - we are selecting the nearest time
+                    // of batch expiration (finishCollectionAt) and use it in eventsQueue.poll(). Threr are only 2
+                    // possible moments when this time is changing - a set of batches to send is changing or the time
+                    // to send has come.
                     nextTimeCheck = currentTime + batchCollectionTimeout;
                     for (final Map.Entry<String, BatchedRequest> entry : batchesBeingAssembled.entrySet()) {
                         if (entry.getValue().finishCollectionAt < currentTime) {
+                            // If batch is to be sent
                             scheduleSendBatchedRequest(entry.getValue());
                             batchesBeingAssembled.remove(entry.getKey());
                         } else if (nextTimeCheck > entry.getValue().finishCollectionAt) {
+                            // finishCollectionAt for the batch is closer then previous one
                             nextTimeCheck = entry.getValue().finishCollectionAt;
                         }
                     }
@@ -172,6 +188,10 @@ public class EventsProcessor {
             LOG.info("Was interrupted while dispatching batches");
         }
         // now we have a lot of stuff to send
+        sendLeftovesOnShutdown(batchesBeingAssembled);
+    }
+
+    private void sendLeftovesOnShutdown(final Map<String, BatchedRequest> batchesBeingAssembled) {
         EventToPublish taken;
         while (null != (taken = eventsQueue.poll())) {
             BatchedRequest batchedRequest = batchesBeingAssembled.get(taken.eventType);
