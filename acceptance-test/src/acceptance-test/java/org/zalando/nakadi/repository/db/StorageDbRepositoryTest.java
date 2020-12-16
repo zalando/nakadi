@@ -49,7 +49,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void testStorageCreated() {
         final String name = randomUUID();
-        final Storage storage = createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path"));
+        final Storage storage = createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path"));
 
         repository.createStorage(storage);
 
@@ -65,11 +65,11 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         final String namePrefix = randomValidStringOfLength(31);
 
         final Storage storage2 = repository.createStorage(
-                createStorage(namePrefix + "2", ZookeeperConnection.valueOf("exhibitor://exaddress1:8181/path3")));
+                createStorage(namePrefix + "2", ZookeeperConnection.valueOf("zookeeper://exaddress1:8181/path3")));
         final Storage storage1 = repository.createStorage(
-                createStorage(namePrefix + "1", ZookeeperConnection.valueOf("exhibitor://exaddress2:8181/path2")));
+                createStorage(namePrefix + "1", ZookeeperConnection.valueOf("zookeeper://exaddress2:8181/path2")));
         final Storage storage3 = repository.createStorage(
-                createStorage(namePrefix + "3", ZookeeperConnection.valueOf("exhibitor://exaddress3:8181/path1")));
+                createStorage(namePrefix + "3", ZookeeperConnection.valueOf("zookeeper://exaddress3:8181/path1")));
 
         final List<Storage> storages = repository.listStorages().stream()
                 .filter(st -> st.getId() != null)
@@ -86,7 +86,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     public void testStorageDeleted() {
         final String name = randomUUID();
         final Storage storage = repository.createStorage(
-                createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path")));
+                createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path")));
         assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());
         assertFalse(repository.getStorage(storage.getId()).isPresent());
@@ -101,7 +101,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     public void testDeleteUsedStorage() {
         final String name = randomUUID();
         final Storage storage = repository.createStorage(
-                createStorage(name, ZookeeperConnection.valueOf("exhibitor://exaddress:8181/path")));
+                createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path")));
 
         final EventType eventType = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
         final Timeline timeline = TimelineDbRepositoryTest.createTimeline(storage, UUID.randomUUID(), 0, "topic",

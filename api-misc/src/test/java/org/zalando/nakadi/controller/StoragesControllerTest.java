@@ -124,7 +124,7 @@ public class StoragesControllerTest {
         storage.setId(id);
         storage.setType(Storage.Type.KAFKA);
         final KafkaConfiguration config = new KafkaConfiguration(
-                ZookeeperConnection.valueOf("exhibitor://localhost:8181/path/to/kafka"));
+                ZookeeperConnection.valueOf("zookeeper://localhost:8181/path/to/kafka"));
         storage.setConfiguration(config);
 
         return storage;
@@ -135,7 +135,7 @@ public class StoragesControllerTest {
         json.put("id", id);
         json.put("storage_type", "kafka");
         final JSONObject config = new JSONObject();
-        config.put("zoookeeper_connection", "exhibitor://localhost:8181/path/to/kafka");
+        config.put("zoookeeper_connection", "zookeeper://localhost:8181/path/to/kafka");
         json.put("kafka_configuration", config);
 
         return json;
