@@ -14,7 +14,9 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -172,11 +174,14 @@ public class EventsProcessor {
                     // possible moments when this time is changing - a set of batches to send is changing or the time
                     // to send has come.
                     nextTimeCheck = currentTime + batchCollectionTimeout;
-                    for (final Map.Entry<String, BatchedRequest> entry : batchesBeingAssembled.entrySet()) {
+                    final Set<Map.Entry<String, BatchedRequest>> entries = batchesBeingAssembled.entrySet();
+                    final Iterator<Map.Entry<String, BatchedRequest>> iterator = entries.iterator();
+                    while (iterator.hasNext()){
+                        final Map.Entry<String, BatchedRequest> entry = iterator.next();
                         if (entry.getValue().finishCollectionAt < currentTime) {
                             // If batch is to be sent
                             scheduleSendBatchedRequest(entry.getValue());
-                            batchesBeingAssembled.remove(entry.getKey());
+                            iterator.remove();
                         } else if (nextTimeCheck > entry.getValue().finishCollectionAt) {
                             // finishCollectionAt for the batch is closer then previous one
                             nextTimeCheck = entry.getValue().finishCollectionAt;
@@ -206,8 +211,8 @@ public class EventsProcessor {
         }
         for (final BatchedRequest req : batchesBeingAssembled.values()) {
             scheduleSendBatchedRequest(req);
-            batchesBeingAssembled.remove(req.eventType);
         }
+        batchesBeingAssembled.clear();
     }
 
     public void enrichAndSubmit(final String etName, final JSONObject event) {
