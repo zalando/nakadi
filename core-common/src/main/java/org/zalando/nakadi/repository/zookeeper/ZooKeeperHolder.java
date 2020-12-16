@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 public class ZooKeeperHolder {
 
-    private static final int EXHIBITOR_RETRY_TIME = 1000;
-    private static final int EXHIBITOR_RETRY_MAX = 3;
+    private static final int CURATOR_RETRY_TIME = 1000;
+    private static final int CURATOR_RETRY_MAX = 3;
 
     private final Integer connectionTimeoutMs;
     private final long maxCommitTimeoutMs;
@@ -96,7 +96,7 @@ public class ZooKeeperHolder {
                                                     final int connectionTimeoutMs) throws Exception {
         final CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
                 .ensembleProvider(createEnsembleProvider())
-                .retryPolicy(new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX))
+                .retryPolicy(new ExponentialBackoffRetry(CURATOR_RETRY_TIME, CURATOR_RETRY_MAX))
                 .sessionTimeoutMs(sessionTimeoutMs)
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();

@@ -77,8 +77,6 @@ public class StorageServiceTest {
         json.put("id", id);
         json.put("storage_type", "kafka");
         final JSONObject configuration = new JSONObject();
-        configuration.put("exhibitor_address", "https://localhost");
-        configuration.put("exhibitor_port", 8181);
         configuration.put("zk_address", "https://localhost");
         configuration.put("zk_path", "/path/to/kafka");
         json.put("kafka_configuration", configuration);
