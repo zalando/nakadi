@@ -2,8 +2,8 @@ package org.zalando.nakadi.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.curator.shaded.com.google.common.base.Charsets;
+import org.apache.zookeeper.Watcher;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -28,9 +28,13 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 @Service
@@ -44,6 +48,7 @@ public class StorageService {
     private final CuratorFramework curator;
     private final FeatureToggleService featureToggleService;
     private final NakadiAuditLogPublisher auditLogPublisher;
+    private final ScheduledExecutorService zkNotificationThread;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
@@ -58,22 +63,35 @@ public class StorageService {
         this.curator = zooKeeperHolder.get();
         this.featureToggleService = featureToggleService;
         this.auditLogPublisher = auditLogPublisher;
+        this.zkNotificationThread = Executors.newSingleThreadScheduledExecutor();
+    }
+
+    private void refreshDefaultStorageAndCreateWatcher() {
+        final byte[] defaultStorageId;
+        try {
+            defaultStorageId = curator.getData()
+                    .usingWatcher(
+                            (Watcher) evt -> zkNotificationThread.submit(this::refreshDefaultStorageAndCreateWatcher))
+                    .forPath(ZK_TIMELINES_DEFAULT_STORAGE);
+        } catch (Exception ex) {
+            LOG.error("Failed to refresh default storage id, updates may be blocked", ex);
+            zkNotificationThread.schedule(this::refreshDefaultStorageAndCreateWatcher, 10, TimeUnit.SECONDS);
+            return;
+        }
+        if (defaultStorageId != null) {
+            final Storage storage = getStorage(new String(defaultStorageId));
+            defaultStorage.setStorage(storage);
+        }
     }
 
     @PostConstruct
-    private void watchDefaultStorage() {
-        try {
-            curator.getData().usingWatcher((CuratorWatcher) event -> {
-                final byte[] defaultStorageId = curator.getData().forPath(ZK_TIMELINES_DEFAULT_STORAGE);
-                if (defaultStorageId != null) {
-                    final Storage storage = getStorage(new String(defaultStorageId));
-                    defaultStorage.setStorage(storage);
-                }
-                watchDefaultStorage();
-            }).forPath(ZK_TIMELINES_DEFAULT_STORAGE);
-        } catch (final Exception e) {
-            LOG.warn("Error while creating watcher for default storage updates {}", e.getMessage(), e);
-        }
+    public void watchDefaultStorage() {
+        this.zkNotificationThread.submit(this::refreshDefaultStorageAndCreateWatcher);
+    }
+
+    @PreDestroy
+    public void stopThreads() {
+        this.zkNotificationThread.shutdown();
     }
 
     public List<Storage> listStorages() throws InternalNakadiException {
