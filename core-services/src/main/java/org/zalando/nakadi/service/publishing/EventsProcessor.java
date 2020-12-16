@@ -137,7 +137,7 @@ public class EventsProcessor {
      * Generates batches from {@link #eventsQueue} single events with the following constraints:
      * <ul>
      *     <li>Batch size is not more than {@link #maxBatchSize} events each</li>
-     *     <li>Eatch batch is assembled for at most {@link #batchCollectionTimeout} ms (or close to it)</li>
+     *     <li>Each batch is assembled for at most {@link #batchCollectionTimeout} ms (or close to it)</li>
      * </ul>
      */
     private void dispatch() {
