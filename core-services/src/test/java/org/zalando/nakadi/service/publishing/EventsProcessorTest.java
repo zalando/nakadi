@@ -15,18 +15,23 @@ public class EventsProcessorTest {
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
 
     @Test
-    public void shouldSendEventWhenSubmitted() {
-        final EventsProcessor eventsProcessor = new EventsProcessor(eventPublisher, uuidGenerator, 100, 1, 1, 100, 10);
-        final JSONObject event = new JSONObject().put("path", "/path/to/event").put("user", "adyachkov");
+    public void shouldSendEventWhenSubmitted() throws InterruptedException {
+        final EventsProcessor eventsProcessor = new EventsProcessor(eventPublisher, uuidGenerator, 100, 1, 1, 10, 10);
+        eventsProcessor.start();
+        try {
+            final JSONObject event = new JSONObject().put("path", "/path/to/event").put("user", "adyachkov");
 
-        eventsProcessor.enrichAndSubmit("test_et_name", event);
-        TestUtils.waitFor(() -> {
-            try {
-                Mockito.verify(eventPublisher).processInternal(any(), any(), eq(false), any(), eq(false));
-            } catch (final Exception e) {
-                throw new AssertionError(e);
-            }
-        }, 500);
+            eventsProcessor.enrichAndSubmit("test_et_name", event);
+            TestUtils.waitFor(() -> {
+                try {
+                    Mockito.verify(eventPublisher).processInternal(any(), any(), eq(false), any(), eq(false));
+                } catch (final Exception e) {
+                    throw new AssertionError(e);
+                }
+            }, 500);
+        } finally {
+            eventsProcessor.stop();
+        }
     }
 
 }
