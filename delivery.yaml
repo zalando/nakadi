@@ -1,7 +1,7 @@
 version: "2017-09-20"
 pipeline:
   - id: test
-    overlay: ci/java
+    overlay: ci/java11
     type: script
     commands:
       - desc: Checkstyle
@@ -11,7 +11,7 @@ pipeline:
         cmd: |
           ./gradlew test --stacktrace
   - id: acceptance-test
-    overlay: ci/java
+    overlay: ci/java11
     type: script
     commands:
       - desc: Install dependencies
@@ -24,7 +24,7 @@ pipeline:
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
   - id: build-push
-    overlay: ci/java
+    overlay: ci/java11
     type: script
     commands:
       - desc: Build and push to repo

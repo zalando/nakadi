@@ -15,8 +15,6 @@ apply plugin: 'io.spring.dependency-management'
 apply plugin: 'org.owasp.dependencycheck'
 
 group 'org.zalando'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
@@ -38,6 +36,8 @@ dependencies {
     compile project(':api-metastore')
     compile project(':api-cursors')
     compile project(':api-misc')
+
+    compile "org.glassfish.jaxb:jaxb-runtime"
 
     compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
 

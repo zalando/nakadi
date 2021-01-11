@@ -14,8 +14,6 @@ apply plugin: 'io.spring.dependency-management'
 apply plugin: 'org.owasp.dependencycheck'
 
 group 'org.zalando'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
