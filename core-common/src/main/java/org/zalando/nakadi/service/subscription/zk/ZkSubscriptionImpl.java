@@ -67,6 +67,14 @@ public abstract class ZkSubscriptionImpl<ReturnType, ZkType> implements ZkSubscr
 
     @Override
     public void close() {
+        if (listener != null) {
+            try {
+                curatorFramework.watches().remove(this).forPath(key);
+            } catch (final Exception ex) {
+                // The exception is silently ignored, as it is usual situation to have it triggered on zk side
+                // (and hence removed) while client still thinks that it's alive
+            }
+        }
         listener = null;
     }
 
