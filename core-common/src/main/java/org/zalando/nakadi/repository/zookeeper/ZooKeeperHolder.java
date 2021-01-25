@@ -28,7 +28,7 @@ public class ZooKeeperHolder {
     private CuratorFramework subscriptionCurator;
     private CuratorFramework locksCurator;
 
-    private long lastTimeAccessed;
+    private long locksCuratorCreatedAt;
     private final Object curatorLocksLock;
 
     public ZooKeeperHolder(final ZookeeperConnection conn,
@@ -40,11 +40,9 @@ public class ZooKeeperHolder {
         this.sessionTimeoutMs = sessionTimeoutMs;
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
         this.curatorLocksLock = new Object();
-        this.lastTimeAccessed = System.currentTimeMillis();
 
         zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
         subscriptionCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
-        locksCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
     }
 
     public CuratorFramework get() {
@@ -61,11 +59,23 @@ public class ZooKeeperHolder {
      */
     public CuratorFramework getLocksCurator() throws ZookeeperException {
         synchronized (curatorLocksLock) {
+            if (locksCurator == null) {
+                try {
+                    locksCurator = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
+                } catch (Exception e) {
+                    throw new ZookeeperException(
+                            "Failed to create curator framework", e);
+                }
+
+                locksCuratorCreatedAt = System.currentTimeMillis();
+                return locksCurator;
+            }
+
             if (System.currentTimeMillis() >
-                    lastTimeAccessed +
+                    locksCuratorCreatedAt +
                             CURATOR_LOCKS_INSTANCE_LIVE_PERIOD) {
-                lastTimeAccessed = System.currentTimeMillis();
                 locksCurator.close();
+                locksCurator = null;
                 try {
                     locksCurator = createCuratorFramework(
                             sessionTimeoutMs,
@@ -74,6 +84,8 @@ public class ZooKeeperHolder {
                     throw new ZookeeperException(
                             "Failed to create curator framework", e);
                 }
+
+                locksCuratorCreatedAt = System.currentTimeMillis();
             }
         }
 
