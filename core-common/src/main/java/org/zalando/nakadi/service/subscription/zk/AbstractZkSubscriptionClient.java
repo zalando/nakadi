@@ -66,7 +66,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final String loggingPath,
             final long zkSessionTimeout) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.defaultCurator = zooKeeperHolder.get();
+        this.defaultCurator = zooKeeperHolder.getLocksCurator();
         this.closeableCuratorFramework = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
