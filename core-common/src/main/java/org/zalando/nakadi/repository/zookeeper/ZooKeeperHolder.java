@@ -15,15 +15,21 @@ import java.util.stream.Collectors;
 
 public class ZooKeeperHolder {
 
+    private static final int CURATOR_LOCKS_INSTANCE_LIVE_PERIOD = 1000 * 60 * 5; // 5 minutes
     private static final int CURATOR_RETRY_TIME = 1000;
     private static final int CURATOR_RETRY_MAX = 3;
 
     private final Integer connectionTimeoutMs;
     private final long maxCommitTimeoutMs;
+    private final Integer sessionTimeoutMs;
     private final ZookeeperConnection conn;
 
     private CuratorFramework zooKeeper;
     private CuratorFramework subscriptionCurator;
+    private CuratorFramework locksCurator;
+
+    private long lastTimeAccessed;
+    private final Object curatorLocksLock;
 
     public ZooKeeperHolder(final ZookeeperConnection conn,
                            final Integer sessionTimeoutMs,
@@ -31,14 +37,47 @@ public class ZooKeeperHolder {
                            final NakadiSettings nakadiSettings) throws Exception {
         this.conn = conn;
         this.connectionTimeoutMs = connectionTimeoutMs;
+        this.sessionTimeoutMs = sessionTimeoutMs;
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
+        this.curatorLocksLock = new Object();
+        this.lastTimeAccessed = System.currentTimeMillis();
 
         zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
         subscriptionCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
+        locksCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
     }
 
     public CuratorFramework get() {
         return zooKeeper;
+    }
+
+    /**
+     * During ConnectionLoss event under certain conditions (unknown yet)
+     * Curator does not clean acquired leases, which makes it impossible
+     * for clients to acquire a lease.
+     * New curator lock instance is intended to avoid such issue by
+     * closing Zookeeper session, which will closure of associated
+     * ephemeral znodes like leases.
+     */
+    public CuratorFramework getLocksCurator() throws ZookeeperException {
+        synchronized (curatorLocksLock) {
+            if (System.currentTimeMillis() >
+                    lastTimeAccessed +
+                            CURATOR_LOCKS_INSTANCE_LIVE_PERIOD) {
+                lastTimeAccessed = System.currentTimeMillis();
+                locksCurator.close();
+                try {
+                    locksCurator = createCuratorFramework(
+                            sessionTimeoutMs,
+                            connectionTimeoutMs);
+                } catch (Exception e) {
+                    throw new ZookeeperException(
+                            "Failed to create curator framework", e);
+                }
+            }
+        }
+
+        return locksCurator;
     }
 
     public CloseableCuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) throws ZookeeperException {
