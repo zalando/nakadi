@@ -1,9 +1,14 @@
 package org.zalando.nakadi.repository.zookeeper;
 
+import org.apache.curator.drivers.AdvancedTracerDriver;
+import org.apache.curator.drivers.EventTrace;
+import org.apache.curator.drivers.OperationTrace;
 import org.apache.curator.ensemble.EnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.storage.AddressPort;
 import org.zalando.nakadi.domain.storage.ZookeeperConnection;
@@ -138,6 +143,7 @@ public class ZooKeeperHolder {
                 .connectionTimeoutMs(connectionTimeoutMs)
                 .build();
         curatorFramework.start();
+        curatorFramework.getZookeeperClient().setTracerDriver(new NakadiTracerDriver());
         return curatorFramework;
     }
 
@@ -150,6 +156,28 @@ public class ZooKeeperHolder {
                 return new ChrootedFixedEnsembleProvider(addressesJoined, conn.getPathPrepared());
             default:
                 throw new RuntimeException("Connection type " + conn.getType() + " is not supported");
+        }
+    }
+
+    private static class NakadiTracerDriver extends AdvancedTracerDriver {
+
+        private static final Logger LOG =
+                LoggerFactory.getLogger(NakadiTracerDriver.class);
+
+        @Override
+        public void addTrace(final OperationTrace trace) {
+            LOG.trace("curator trace: name:{} path:{} session:{} watch:{}",
+                    trace.getName(),
+                    trace.getPath(),
+                    trace.getSessionId(),
+                    trace.isWithWatcher());
+        }
+
+        @Override
+        public void addEvent(final EventTrace trace) {
+            LOG.trace("curator event trace: name:{} session:{}",
+                    trace.getName(),
+                    trace.getSessionId());
         }
     }
 }
