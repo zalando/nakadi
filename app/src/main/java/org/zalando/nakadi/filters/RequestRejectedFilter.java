@@ -1,23 +1,30 @@
 package org.zalando.nakadi.filters;
 
-import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.Around;
-import org.aspectj.lang.annotation.Aspect;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.web.firewall.RequestRejectedException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.GenericFilterBean;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
-@Aspect
+
 @Component
-public class RequestRejectedFilter {
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class RequestRejectedFilter extends GenericFilterBean {
 
-    @Around("execution(public void org.springframework.security.web.FilterChainProxy.doFilter(..))")
-    public void handleRequestRejectedException(ProceedingJoinPoint pjp) throws Throwable {
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         try {
-            pjp.proceed();
-        } catch (RequestRejectedException exception) {
-            HttpServletResponse response = (HttpServletResponse) pjp.getArgs()[1];
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            chain.doFilter(req, res);
+        } catch (RequestRejectedException e) {
+            HttpServletResponse response = (HttpServletResponse) res;
+
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 }
