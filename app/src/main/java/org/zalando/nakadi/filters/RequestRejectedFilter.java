@@ -24,7 +24,7 @@ public class RequestRejectedFilter extends GenericFilterBean {
         } catch (RequestRejectedException e) {
             HttpServletResponse response = (HttpServletResponse) res;
 
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
         }
     }
 }
