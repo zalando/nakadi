@@ -4,7 +4,6 @@ import org.apache.http.HttpStatus;
 import org.junit.Test;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.notNullValue;
 
 public class InvalidRequestAT {
     @Test(timeout = 10000)
