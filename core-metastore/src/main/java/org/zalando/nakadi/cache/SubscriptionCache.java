@@ -27,9 +27,9 @@ public class SubscriptionCache {
     @Autowired
     public SubscriptionCache(
             final SubscriptionDbRepository subscriptionRepository,
-            @Value("${nakadi.cache.subscription.expireAfterAccessMs:300000}") final long expireAfterAccessMs) {
+            @Value("${nakadi.cache.subscription.expireAfterWriteMs:300000}") final long expireAfterWriteMs) {
         this.subscriptionsCache = CacheBuilder.newBuilder()
-                .expireAfterAccess(expireAfterAccessMs, TimeUnit.MILLISECONDS)
+                .expireAfterWrite(expireAfterWriteMs, TimeUnit.MILLISECONDS)
                 .build(new CacheLoader<String, Subscription>() {
                     @Override
                     public Subscription load(final String subscriptionId)
