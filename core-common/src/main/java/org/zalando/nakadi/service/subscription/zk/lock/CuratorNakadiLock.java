@@ -20,8 +20,9 @@ public class CuratorNakadiLock implements NakadiLock {
     private final RotatingCuratorFramework rotatingCuratorFramework;
     private final String lockPath;
 
-    private CuratorFramework currentCuratorFramework;
-    private InterProcessSemaphoreMutex lock;
+    private CuratorFramework curatorToRelease;
+    private CuratorFramework curatorLastUsed;
+    private InterProcessSemaphoreMutex semaphore;
 
     public static String getSubscriptionLockPath(final String subscriptionId) {
         return "/nakadi/locks/subscription_" + subscriptionId;
@@ -32,21 +33,21 @@ public class CuratorNakadiLock implements NakadiLock {
             final String subscriptionId) {
         this.rotatingCuratorFramework = rotatingCuratorFramework;
         this.lockPath = getSubscriptionLockPath(subscriptionId);
-        this.currentCuratorFramework = null;
     }
 
     @Override
     public boolean lock() {
         try {
-            final CuratorFramework curatorFramework =
-                    rotatingCuratorFramework.takeCuratorFramework();
-            if (currentCuratorFramework != curatorFramework) {
-                lock = new InterProcessSemaphoreMutex(
-                        curatorFramework, lockPath);
-                currentCuratorFramework = curatorFramework;
+            curatorToRelease = rotatingCuratorFramework
+                    .takeCuratorFramework();
+            // the check is to not recreate semaphore every time
+            if (curatorToRelease != curatorLastUsed) {
+                curatorLastUsed = curatorToRelease;
+                semaphore = new InterProcessSemaphoreMutex(
+                        curatorLastUsed, lockPath);
             }
 
-            final boolean acquired = lock.acquire(
+            final boolean acquired = semaphore.acquire(
                     SECONDS_TO_WAIT_FOR_LOCK,
                     TimeUnit.SECONDS);
             if (!acquired) {
@@ -56,6 +57,13 @@ public class CuratorNakadiLock implements NakadiLock {
             return acquired;
         } catch (final Exception e) {
             LOG.error("error while acquiring semaphore mutex lock", e);
+            try {
+                rotatingCuratorFramework.returnCuratorFramework(
+                        curatorToRelease);
+                curatorToRelease = null;
+            } catch (final RuntimeException re) {
+                LOG.error("error while returning curator framework", e);
+            }
             return false;
         }
     }
@@ -63,11 +71,17 @@ public class CuratorNakadiLock implements NakadiLock {
     @Override
     public void unlock() {
         try {
-            lock.release();
-            rotatingCuratorFramework.returnCuratorFramework(
-                    currentCuratorFramework);
+            semaphore.release();
         } catch (final Exception e) {
             LOG.error("error while releasing curator lock", e);
+        } finally {
+            try {
+                rotatingCuratorFramework.returnCuratorFramework(
+                        curatorToRelease);
+                curatorToRelease = null;
+            } catch (final RuntimeException re) {
+                LOG.error("error while returning curator framework", re);
+            }
         }
     }
 }

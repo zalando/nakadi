@@ -106,6 +106,9 @@ public class RotatingCuratorFramework {
             activeCuratorRotatedAt = System.currentTimeMillis();
             LOG.info("curator client rotated, current usage {}",
                     retiringCurator.counter);
+        } else {
+            LOG.debug("waiting for retired client recycling, " +
+                    "current usage {}", retiringCurator.counter);
         }
     }
 

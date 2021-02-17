@@ -15,13 +15,13 @@ public class RotatingCuratorFrameworkTest {
 
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf1);
 
-        final RotatingCuratorFramework rotatingCuratorFramework = new RotatingCuratorFramework(zkh, 1000);
+        final RotatingCuratorFramework rotatingCuratorFramework = new RotatingCuratorFramework(zkh, 10);
 
         CuratorFramework cfTmp = rotatingCuratorFramework.takeCuratorFramework();
         Assert.assertEquals(cf1, cfTmp);
         rotatingCuratorFramework.returnCuratorFramework(cfTmp);
 
-        Thread.sleep(1000);
+        Thread.sleep(10);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf2);
         rotatingCuratorFramework.scheduleRotationCheck();
 

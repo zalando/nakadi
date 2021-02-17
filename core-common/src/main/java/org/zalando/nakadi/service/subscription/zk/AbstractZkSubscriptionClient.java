@@ -54,7 +54,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
-    private final NakadiLock curatorCountingLock;
+    private final NakadiLock nakadiLock;
     private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String closeSubscriptionStream;
     private final Logger log;
@@ -65,7 +65,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             final NakadiLock nakadiLock,
             final String loggingPath) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.curatorCountingLock = nakadiLock;
+        this.nakadiLock = nakadiLock;
         this.closeableCuratorFramework = closeableCuratorFramework;
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
@@ -93,7 +93,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     @Override
     public final <T> T runLocked(final Callable<T> function) {
-        final boolean acquired = curatorCountingLock.lock();
+        final boolean acquired = nakadiLock.lock();
         if (!acquired) {
             throw new ServiceTemporarilyUnavailableException(
                     "failed to acquire subscription lock");
@@ -106,7 +106,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         } finally {
-            curatorCountingLock.unlock();
+            nakadiLock.unlock();
         }
     }
 
