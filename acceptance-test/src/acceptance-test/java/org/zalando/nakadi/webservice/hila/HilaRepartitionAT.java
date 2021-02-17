@@ -15,6 +15,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.NewZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.subscription.zk.lock.NakadiLock;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -25,8 +26,6 @@ import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.mockito.ArgumentMatchers.anyLong;
 
 public class HilaRepartitionAT extends BaseAT {
     private static final Logger LOG = LoggerFactory.getLogger(HilaRepartitionAT.class);
@@ -39,17 +38,12 @@ public class HilaRepartitionAT extends BaseAT {
 
     @Test
     public void testSubscriptionRepartitioningWithSingleEventType() throws Exception {
-        zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
-        Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
-
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
-                zooKeeperHolder,
+                new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
+                Mockito.mock(NakadiLock.class),
                 String.format("%s.%s", subscriptionId, sid),
-                MAPPER,
-                30000
+                MAPPER
         );
 
         final Partition[] eventTypePartitions = {new Partition(
@@ -68,17 +62,12 @@ public class HilaRepartitionAT extends BaseAT {
 
     @Test
     public void testSubscriptionRepartitioningWithMultipleEventTypes() throws Exception {
-        zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
-        Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
-
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
-                zooKeeperHolder,
+                new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
+                Mockito.mock(NakadiLock.class),
                 String.format("%s.%s", subscriptionId, sid),
-                MAPPER,
-                30000
+                MAPPER
         );
 
         final Partition[] eventTypePartitions = {

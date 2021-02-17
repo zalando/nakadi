@@ -12,6 +12,7 @@ import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.service.subscription.zk.lock.NakadiLock;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
@@ -68,11 +69,14 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     public NewZkSubscriptionClient(
             final String subscriptionId,
-            final ZooKeeperHolder zooKeeperHolder,
+            final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
+            final NakadiLock curatorNakadiLock,
             final String loggingPath,
-            final ObjectMapper objectMapper,
-            final long zkSessionTimeout) throws ZookeeperException {
-        super(subscriptionId, zooKeeperHolder, loggingPath, zkSessionTimeout);
+            final ObjectMapper objectMapper) throws ZookeeperException {
+        super(subscriptionId,
+                closeableCuratorFramework,
+                curatorNakadiLock,
+                loggingPath);
         this.objectMapper = objectMapper;
     }
 

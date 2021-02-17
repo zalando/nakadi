@@ -19,6 +19,7 @@ public class ZooKeeperHolder {
     private static final int CURATOR_RETRY_MAX = 3;
 
     private final Integer connectionTimeoutMs;
+    private final Integer sessionTimeoutMs;
     private final long maxCommitTimeoutMs;
     private final ZookeeperConnection conn;
 
@@ -31,6 +32,7 @@ public class ZooKeeperHolder {
                            final NakadiSettings nakadiSettings) throws Exception {
         this.conn = conn;
         this.connectionTimeoutMs = connectionTimeoutMs;
+        this.sessionTimeoutMs = sessionTimeoutMs;
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
 
         zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
@@ -39,6 +41,14 @@ public class ZooKeeperHolder {
 
     public CuratorFramework get() {
         return zooKeeper;
+    }
+
+    CuratorFramework newCuratorFramework() throws ZookeeperException {
+        try {
+            return createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
+        } catch (final Exception e) {
+            throw new ZookeeperException("Failed to create curator framework", e);
+        }
     }
 
     public CloseableCuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) throws ZookeeperException {

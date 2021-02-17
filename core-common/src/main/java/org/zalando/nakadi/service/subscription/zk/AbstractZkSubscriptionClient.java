@@ -4,7 +4,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.NodeCache;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
@@ -22,6 +21,8 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.service.subscription.zk.lock.CuratorNakadiLock;
+import org.zalando.nakadi.service.subscription.zk.lock.NakadiLock;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -47,27 +48,25 @@ import static com.google.common.base.Charsets.UTF_8;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
-    private static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
     protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
-    private final CuratorFramework defaultCurator;
+    private final NakadiLock curatorCountingLock;
     private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String closeSubscriptionStream;
     private final Logger log;
-    private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
-            final ZooKeeperHolder zooKeeperHolder,
-            final String loggingPath,
-            final long zkSessionTimeout) throws ZookeeperException {
+            final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
+            final NakadiLock nakadiLock,
+            final String loggingPath) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.defaultCurator = zooKeeperHolder.get();
-        this.closeableCuratorFramework = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
+        this.curatorCountingLock = nakadiLock;
+        this.closeableCuratorFramework = closeableCuratorFramework;
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
@@ -88,54 +87,39 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return "/nakadi/subscriptions/" + subscriptionId + value;
     }
 
-    protected String getSubscriptionLockPath() {
-        return "/nakadi/locks/subscription_" + subscriptionId;
-    }
-
     protected Logger getLog() {
         return log;
     }
 
     @Override
     public final <T> T runLocked(final Callable<T> function) {
-        try {
-            Exception releaseException = null;
-            if (null == lock) {
-                lock = new InterProcessSemaphoreMutex(defaultCurator, getSubscriptionLockPath());
-            }
+        final boolean acquired = curatorCountingLock.lock();
+        if (!acquired) {
+            throw new ServiceTemporarilyUnavailableException(
+                    "failed to acquire subscription lock");
+        }
 
-            final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
-            if (!acquired) {
-                throw new ServiceTemporarilyUnavailableException("Failed to acquire subscription lock within " +
-                        SECONDS_TO_WAIT_FOR_LOCK + " seconds");
-            }
-            final T result;
-            try {
-                result = function.call();
-            } finally {
-                try {
-                    lock.release();
-                } catch (final Exception e) {
-                    log.error("Failed to release lock", e);
-                    releaseException = e;
-                }
-            }
-            if (releaseException != null) {
-                throw releaseException;
-            }
-            return result;
+        try {
+            return function.call();
         } catch (final NakadiRuntimeException | NakadiBaseException e) {
             throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
+        } finally {
+            curatorCountingLock.unlock();
         }
     }
 
     @Override
     public final void deleteSubscription() {
         try {
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionPath(""));
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionLockPath());
+            getCurator().delete().guaranteed()
+                    .deletingChildrenIfNeeded()
+                    .forPath(getSubscriptionPath(""));
+            getCurator().delete().guaranteed()
+                    .deletingChildrenIfNeeded()
+                    .forPath(CuratorNakadiLock
+                            .getSubscriptionLockPath(subscriptionId));
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
