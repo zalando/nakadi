@@ -57,12 +57,15 @@ public class CuratorNakadiLock implements NakadiLock {
             return acquired;
         } catch (final Exception e) {
             LOG.error("error while acquiring semaphore mutex lock", e);
+            if (curatorToRelease == null) {
+                return false;
+            }
             try {
                 rotatingCuratorFramework.returnCuratorFramework(
                         curatorToRelease);
                 curatorToRelease = null;
             } catch (final RuntimeException re) {
-                LOG.error("error while returning curator framework", e);
+                LOG.error("error while returning curator framework", re);
             }
             return false;
         }
@@ -71,10 +74,17 @@ public class CuratorNakadiLock implements NakadiLock {
     @Override
     public void unlock() {
         try {
+            if (semaphore == null) {
+                return;
+            }
             semaphore.release();
         } catch (final Exception e) {
             LOG.error("error while releasing curator lock", e);
         } finally {
+            if (curatorToRelease == null) {
+                return;
+            }
+
             try {
                 rotatingCuratorFramework.returnCuratorFramework(
                         curatorToRelease);
