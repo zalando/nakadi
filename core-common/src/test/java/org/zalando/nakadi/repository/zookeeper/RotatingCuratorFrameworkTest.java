@@ -45,13 +45,13 @@ public class RotatingCuratorFrameworkTest {
         Assert.assertEquals(cf1, cfTmp);
         // do not return curator
 
-        Thread.sleep(10);
+        Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf2);
         rotatingCuratorFramework.scheduleRotationCheck();
         cfTmp = rotatingCuratorFramework.takeCuratorFramework();
         Assert.assertEquals(cf2, cfTmp);
 
-        Thread.sleep(10);
+        Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf3);
         rotatingCuratorFramework.scheduleRotationCheck();
         cfTmp = rotatingCuratorFramework.takeCuratorFramework();
@@ -60,7 +60,7 @@ public class RotatingCuratorFrameworkTest {
         // finally return client and expect new client will be created
         rotatingCuratorFramework.returnCuratorFramework(cf1);
 
-        Thread.sleep(10);
+        Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf3);
         // it will nullify retired client
         rotatingCuratorFramework.scheduleRotationCheck();
