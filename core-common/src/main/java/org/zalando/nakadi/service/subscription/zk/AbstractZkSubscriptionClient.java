@@ -94,12 +94,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final <T> T runLocked(final Callable<T> function) {
         final boolean acquired = nakadiLock.lock();
-        if (!acquired) {
-            throw new ServiceTemporarilyUnavailableException(
-                    "failed to acquire subscription lock");
-        }
-
         try {
+            if (!acquired) {
+                throw new ServiceTemporarilyUnavailableException(
+                        "failed to acquire subscription lock");
+            }
             return function.call();
         } catch (final NakadiRuntimeException | NakadiBaseException e) {
             throw e;
