@@ -42,7 +42,7 @@ public class TimelineSyncAT extends BaseAT {
             zookeeperHolder = Mockito.mock(ZooKeeperHolder.class);
             Mockito.when(zookeeperHolder.get()).thenReturn(CURATOR);
         }
-        final TimelineSyncImpl result = new TimelineSyncImpl(zookeeperHolder, uuidGenerator);
+        final TimelineSyncImpl result = new TimelineSyncImpl(zookeeperHolder, uuidGenerator, objectMapper);
         synchronized (DELAYED_RUNS) {
             DELAYED_RUNS.add(() -> {
                 try {
