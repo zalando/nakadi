@@ -53,13 +53,20 @@ public class CuratorNakadiLock implements NakadiLock {
             if (!acquired) {
                 LOG.warn("failed to acquire semaphore mutex within {} seconds",
                         SECONDS_TO_WAIT_FOR_LOCK);
-            }
-            return acquired;
-        } catch (final Exception e) {
-            LOG.error("error while acquiring semaphore mutex lock", e);
-            if (curatorToRelease == null) {
+                tryReturnCuratorFamework();
                 return false;
             }
+
+            return true;
+        } catch (final Exception e) {
+            LOG.error("error while acquiring semaphore mutex lock", e);
+            tryReturnCuratorFamework();
+            return false;
+        }
+    }
+
+    private void tryReturnCuratorFamework() {
+        if (curatorToRelease != null) {
             try {
                 rotatingCuratorFramework.returnCuratorFramework(
                         curatorToRelease);
@@ -67,7 +74,6 @@ public class CuratorNakadiLock implements NakadiLock {
             } catch (final RuntimeException re) {
                 LOG.error("error while returning curator framework", re);
             }
-            return false;
         }
     }
 
@@ -81,17 +87,7 @@ public class CuratorNakadiLock implements NakadiLock {
         } catch (final Exception e) {
             LOG.error("error while releasing curator lock", e);
         } finally {
-            if (curatorToRelease == null) {
-                return;
-            }
-
-            try {
-                rotatingCuratorFramework.returnCuratorFramework(
-                        curatorToRelease);
-                curatorToRelease = null;
-            } catch (final RuntimeException re) {
-                LOG.error("error while returning curator framework", re);
-            }
+            tryReturnCuratorFamework();
         }
     }
 }
