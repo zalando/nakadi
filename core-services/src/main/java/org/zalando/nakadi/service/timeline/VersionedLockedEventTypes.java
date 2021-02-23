@@ -18,7 +18,7 @@ public class VersionedLockedEventTypes {
     private final Long version;
     private final Set<String> lockedEts;
 
-    public static VersionedLockedEventTypes EMPTY = new VersionedLockedEventTypes(0L, Collections.emptySet());
+    public static final VersionedLockedEventTypes EMPTY = new VersionedLockedEventTypes(0L, Collections.emptySet());
 
     @JsonCreator
     public VersionedLockedEventTypes(

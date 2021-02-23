@@ -1,17 +1,12 @@
 package org.zalando.nakadi.service.timeline;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.io.Closeable;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,18 +22,15 @@ import java.util.stream.Collectors;
 @Profile("!test")
 public class TimelineSyncImpl implements TimelineSync {
     private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
-    private final ZooKeeperHolder zookeeperHolder;
+    private final TimelinesZookeeper timelinesZookeeper;
     private final LocalLockManager localLockManager;
-    private final ObjectMapper objectMapper;
 
     @Autowired
     public TimelineSyncImpl(
-            final ZooKeeperHolder zooKeeperHolder,
-            final LocalLockManager localLockManager,
-            final ObjectMapper objectMapper) {
-        this.zookeeperHolder = zooKeeperHolder;
+            final TimelinesZookeeper timelinesZookeeper,
+            final LocalLockManager localLockManager) {
+        this.timelinesZookeeper = timelinesZookeeper;
         this.localLockManager = localLockManager;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -66,43 +58,24 @@ public class TimelineSyncImpl implements TimelineSync {
      * @param timeoutMs       timeout to perform update.
      * @return Version, that was generated within this particular mutation.
      */
-    private Long applyChangeToState(final Function<Set<String>, Set<String>> lockedEtMutator, final long timeoutMs) {
+    private Long applyChangeToState(final Function<Set<String>, Set<String>> lockedEtMutator, final long timeoutMs)
+            throws InterruptedException {
         final long finishTime = System.currentTimeMillis() + timeoutMs;
         while (timeoutMs == -1 || System.currentTimeMillis() <= finishTime) {
             // First step - read value and remember version it has.
-            final Stat stat = new Stat();
-            final VersionedLockedEventTypes oldLocked;
-            try {
-                final byte[] data = zookeeperHolder.get()
-                        .getData()
-                        .storingStatIn(stat)
-                        .forPath(TimelinesConfig.VERSION_PATH);
-                oldLocked = VersionedLockedEventTypes.deserialize(objectMapper, data);
-            } catch (final Exception ex) {
-                if (ex instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                }
-                throw new RuntimeException(ex);
-            }
+            final TimelinesZookeeper.ZkVersionedLockedEventTypes oldVersion =
+                    timelinesZookeeper.getCurrentVersion(null);
 
             // Second step - save updated value if version is the same
             final VersionedLockedEventTypes newLocked = new VersionedLockedEventTypes(
-                    oldLocked.getVersion() + 1L,
-                    lockedEtMutator.apply(oldLocked.getLockedEts())
+                    oldVersion.data.getVersion() + 1L,
+                    lockedEtMutator.apply(oldVersion.data.getLockedEts())
             );
-            try {
-                zookeeperHolder.get()
-                        .setData()
-                        .withVersion(stat.getVersion())
-                        .forPath(TimelinesConfig.VERSION_PATH, newLocked.serialize(objectMapper));
+            final boolean updateSucceeded = timelinesZookeeper.setCurrentVersion(newLocked, oldVersion.zkVersion);
+            LOG.info("Set current version to {} and update succeeded: {}", newLocked.getVersion(), updateSucceeded);
+            if (updateSucceeded) {
                 return newLocked.getVersion();
-            } catch (final KeeperException.BadVersionException ex) {
-                LOG.warn("While running timelines action {} it turned out that node is outdated." +
-                        " Will immediately rerun action", lockedEtMutator);
-            } catch (final Exception e) {
-                throw new RuntimeException(e);
             }
-
         }
         throw new RuntimeException("Failed to apply " + lockedEtMutator + " within " + timeoutMs + " ms");
     }
@@ -184,37 +157,24 @@ public class TimelineSyncImpl implements TimelineSync {
         LOG.info("Finishing timeline update for event type {}", eventType);
         final Long version = applyChangeToState(new LockedEtMutator(eventType, false), -1);
         waitForAllNodesVersion(version, TimeUnit.MINUTES.toMillis(1));
+        LOG.info("Timeline update for event type {} finished", eventType);
     }
 
     private void waitForAllNodesVersion(final Long version, final long toMillis)
             throws InterruptedException, RuntimeException {
         final long finishAt = System.currentTimeMillis() + toMillis;
-        final Map<String, Long> nodesVersions = new HashMap<>();
+        Map<String, Long> nodesVersions = new HashMap<>();
+        LOG.info("Waiting for all nodes to have the same version within {} ms", toMillis);
         while (finishAt > System.currentTimeMillis()) {
-            nodesVersions.clear();
-            try {
-                final List<String> nodes = zookeeperHolder.get().getChildren().forPath(TimelinesConfig.NODES_PATH);
-                for (final String node : nodes) {
-                    final Long nodeVersion = Long.parseLong(
-                            new String(
-                                    zookeeperHolder.get().getData().forPath(TimelinesConfig.getNodePath(node)),
-                                    StandardCharsets.UTF_8));
-                    nodesVersions.put(node, nodeVersion);
-                }
-            } catch (Exception ex) {
-                if (ex instanceof InterruptedException) {
-                    throw (InterruptedException) ex;
-                }
-                throw new RuntimeException(ex);
-            }
+            nodesVersions = timelinesZookeeper.getNodesVersions();
             final List<Map.Entry<String, Long>> outdated = nodesVersions.entrySet().stream()
                     .filter(e -> e.getValue() < version)
                     .collect(Collectors.toList());
             if (outdated.isEmpty()) {
-                // done waiting
+                LOG.info("Finished waiting for all {} nodes to have version {}", nodesVersions.size(), version);
                 return;
             }
-            LOG.warn("Not all the nodes has registered version {}. Outdated nodes: {}",
+            LOG.warn("Not all the nodes have registered version {}. Outdated nodes: {}",
                     version,
                     outdated.stream().map(n -> n.getKey() + ": " + n.getValue()).collect(Collectors.joining(",")));
             Thread.sleep(100);

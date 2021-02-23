@@ -1,26 +1,17 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.service.publishing.NamedThreadFactory;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -30,21 +21,19 @@ import java.util.concurrent.TimeUnit;
  * The class is acting as a blind follower to zookeeper notifications in regards to locked event types and proposed
  * configuration version.
  * <p>
- * In order to achieve this, this class is reading {@link TimelinesConfig#VERSION_PATH} of type
+ * In order to achieve this, this class is reading {@link TimelinesZookeeper#VERSION_PATH} of type
  * {@link VersionedLockedEventTypes} that is used to notify about changes in locked event types and refreshes the
- * version that this class is compliant with in {@link TimelinesConfig#NODES_PATH}/{this_node_id}.
+ * version that this class is compliant with in {@link TimelinesZookeeper#NODES_PATH}/{this_node_id}.
  */
-@Service
+@Component
 @Profile("!test")
 public class TimelinesFollowerNode {
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
             new NamedThreadFactory("timelines-refresh"));
 
-    private final String nodePath;
     private final Logger log;
-    private final ZooKeeperHolder zookeeperHolder;
+    private final TimelinesZookeeper timelinesZookeeper;
     private final LocalLockManager localLockManager;
-    private final ObjectMapper objectMapper;
 
     // The variable is accessible from one thread only, therefore no locking required.
     private VersionedLockedEventTypes currentVersion = VersionedLockedEventTypes.EMPTY;
@@ -52,25 +41,23 @@ public class TimelinesFollowerNode {
 
     @Autowired
     public TimelinesFollowerNode(
-            final ZooKeeperHolder zookeeperHolder, final LocalLockManager localLockManager, final UUIDGenerator uuidGenerator, final ObjectMapper objectMapper) {
-        final String nodeId = uuidGenerator.randomUUID().toString();
-        this.zookeeperHolder = zookeeperHolder;
+            final TimelinesZookeeper timelinesZookeeper,
+            final LocalLockManager localLockManager) {
+        this.timelinesZookeeper = timelinesZookeeper;
         this.localLockManager = localLockManager;
-        this.nodePath = TimelinesConfig.getNodePath(nodeId);
-        this.objectMapper = objectMapper;
-        this.log = LoggerFactory.getLogger("timelines.node." + nodeId);
+        this.log = LoggerFactory.getLogger("timelines.node." + timelinesZookeeper.getNodeId());
     }
 
     @PostConstruct
-    public void initializeNode() throws RuntimeException, JsonProcessingException {
+    public void initializeNode() throws RuntimeException, JsonProcessingException, InterruptedException {
         log.info("Starting initialization");
 
-        checkAndCreateZkNode(TimelinesConfig.VERSION_PATH,
-                objectMapper.writeValueAsString(VersionedLockedEventTypes.EMPTY));
-        checkAndCreateZkNode(TimelinesConfig.NODES_PATH, "");
+        timelinesZookeeper.prepareZookeeperStructure();
 
-        exposeSelfVersion(currentVersion);
-        executorService.schedule(this::periodicRefreshVersionSafe, 1000, TimeUnit.MILLISECONDS);
+        timelinesZookeeper.exposeSelfVersion(VersionedLockedEventTypes.EMPTY.getVersion());
+
+        executorService.schedule(this::refreshVersionSafe, 1, TimeUnit.SECONDS);
+        executorService.schedule(this::periodicExposeSelfVersionSafe, 1, TimeUnit.MINUTES);
     }
 
     @PreDestroy
@@ -79,23 +66,35 @@ public class TimelinesFollowerNode {
         executorService.shutdownNow();
     }
 
-    private void checkAndCreateZkNode(final String fullPath, final String data) throws RuntimeException {
+    /**
+     * There may be a situation, when session was terminated, but we don't know about that/ignored this problem.
+     * In order to avoid this problem, every now and then follower node exposes it's version (in order to ensure that
+     * it's own node is still there).
+     * Unfortunately, in case if there are many nodes running, it may create additional pressure on zookeeper. In order
+     * to avoid this - exposure should not run too frequent (in case if zookeeper connection is not lost - this method
+     * is not needed at all)
+     */
+    private void periodicExposeSelfVersionSafe() {
         try {
-            zookeeperHolder.get().create()
-                    .creatingParentsIfNeeded()
-                    .withMode(CreateMode.PERSISTENT)
-                    .forPath(fullPath, data.getBytes(Charsets.UTF_8));
-        } catch (final KeeperException.NodeExistsException ignore) {
-            // skip it, node was already created
-        } catch (final Exception e) {
-            log.error("failed to create zookeeper node {}", fullPath, e);
-            throw new RuntimeException(e);
+            log.debug("Exposing self version {} to ensure that node is still there", currentVersion.getVersion());
+            timelinesZookeeper.exposeSelfVersion(currentVersion.getVersion());
+        } catch (final RuntimeException ex) {
+            log.warn("Failed to periodically expose self version", ex);
+        } catch (final InterruptedException ex) {
+            log.warn("Was interrupted while periodically exposing self version");
+            Thread.currentThread().interrupt();
         }
     }
 
-    private void periodicRefreshVersionSafe() {
+    /**
+     * Periodically or by zookeeper event checks the version of timelines state in zookeeper. In case if it is changed
+     * applies some actions. Most of the time (when timelines are not created) method acts in read-only mode, not
+     * adding write pressure on zookeeper.
+     */
+    private void refreshVersionSafe() {
         try {
-            periodicRefreshVersion();
+            log.debug("Running periodic refresh version");
+            refreshVersion();
         } catch (final RuntimeException ex) {
             // During the refresh something bad has happened. Usually that means that there are 2 possible problems:
             // 1. Zookeeper communication problem.
@@ -111,74 +110,48 @@ public class TimelinesFollowerNode {
         }
     }
 
-    private static <T> T unwrapInterruptedException(Callable<T> method) throws InterruptedException {
-        try {
-            return method.call();
-        } catch (Exception e) {
-            if (e instanceof InterruptedException) {
-                throw (InterruptedException) e;
-            }
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    private void periodicRefreshVersion() throws RuntimeException, InterruptedException {
-        final Stat stat = new Stat();
-
-        final byte[] data = unwrapInterruptedException(
-                () -> zookeeperHolder.get().getData()
-                        .storingStatIn(stat)
-                        .forPath(TimelinesConfig.VERSION_PATH));
+    private void refreshVersion() throws RuntimeException, InterruptedException {
+        final TimelinesZookeeper.ZkVersionedLockedEventTypes zkData = timelinesZookeeper.getCurrentVersion(null);
 
         final boolean needCreateListener =
                 null == this.listenerCreationVersion || // either listener was never created
-                        !this.listenerCreationVersion.equals(stat.getVersion()); // or change in node happened
-
-        final VersionedLockedEventTypes versionedData = VersionedLockedEventTypes.deserialize(objectMapper, data);
-
-        if (!Objects.equals(versionedData.getVersion(), currentVersion.getVersion())) {
+                        !this.listenerCreationVersion.equals(zkData.zkVersion); // or change in node happened
+        if (!Objects.equals(zkData.data.getVersion(), currentVersion.getVersion())) {
+            log.info("Upgrading version from {} to {}", currentVersion.getVersion(), zkData.data.getVersion());
             // It must be safe to apply same version several times.
-            localLockManager.setLockedEventTypes(versionedData.getLockedEts());
-            exposeSelfVersion(versionedData);
-            currentVersion = versionedData;
+            log.info("Setting locked event types to {}", zkData.data.getLockedEts());
+            localLockManager.setLockedEventTypes(zkData.data.getLockedEts());
+            log.info("Exposing self version {}", zkData.data.getVersion());
+            timelinesZookeeper.exposeSelfVersion(zkData.data.getVersion());
+            currentVersion = zkData.data;
+            log.info("Version upgrade finished");
         }
 
         if (needCreateListener) {
-            final Stat newStats = new Stat();
-            unwrapInterruptedException(() -> zookeeperHolder.get().getData()
-                    .storingStatIn(newStats)
-                    .usingWatcher((Watcher) this::zookeeperWatcherCalled)
-                    .forPath(TimelinesConfig.VERSION_PATH));
-            if (newStats.getVersion() != stat.getVersion()) {
+            log.info("Have to recreate listener. Previous zk version: {}, New zk version: {}",
+                    listenerCreationVersion, zkData.zkVersion);
+            final TimelinesZookeeper.ZkVersionedLockedEventTypes newZkData =
+                    timelinesZookeeper.getCurrentVersion(this::zookeeperWatcherCalled);
+            if (!Objects.equals(newZkData.zkVersion, zkData.zkVersion)) {
                 // while setting up listener it was found that data has changed, we need to immediately reschedule
                 // the check
-                this.executorService.submit(this::periodicRefreshVersionSafe);
+                log.warn("While processing notification zookeeper state changed, will retrigger");
+                this.executorService.submit(this::refreshVersionSafe);
             }
-            this.listenerCreationVersion = newStats.getVersion();
+            this.listenerCreationVersion = newZkData.zkVersion;
         }
     }
 
-    private void zookeeperWatcherCalled(WatchedEvent event) {
+    private void zookeeperWatcherCalled(final WatchedEvent event) {
         log.info("Received notification from zookeeper about change in active version: {}, {}",
                 event.getType(), event.getState());
         switch (event.getType()) {
             case NodeDataChanged:
             case NodeCreated:
-                executorService.submit(this::periodicRefreshVersionSafe);
-        }
-    }
-
-    private void exposeSelfVersion(final VersionedLockedEventTypes data) throws RuntimeException {
-        final byte[] versionBytes = String.valueOf(data.getVersion()).getBytes(Charsets.UTF_8);
-        try {
-            try {
-                zookeeperHolder.get().setData().forPath(nodePath, versionBytes);
-            } catch (final KeeperException.NoNodeException ex) {
-                zookeeperHolder.get().create().withMode(CreateMode.EPHEMERAL).forPath(nodePath, versionBytes);
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed to expose self version for timelines management", ex);
+                executorService.submit(this::refreshVersionSafe);
+                break;
+            default:
+                log.debug("Ignoring notification {} {}", event.getType(), event.getState());
         }
     }
 }
