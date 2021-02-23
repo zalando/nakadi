@@ -71,7 +71,7 @@ public class VersionedLockedEventTypes {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        VersionedLockedEventTypes that = (VersionedLockedEventTypes) o;
+        final VersionedLockedEventTypes that = (VersionedLockedEventTypes) o;
         return Objects.equals(version, that.version) && Objects.equals(lockedEts, that.lockedEts);
     }
 

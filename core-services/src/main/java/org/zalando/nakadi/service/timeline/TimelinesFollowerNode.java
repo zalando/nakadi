@@ -56,8 +56,8 @@ public class TimelinesFollowerNode {
 
         timelinesZookeeper.exposeSelfVersion(VersionedLockedEventTypes.EMPTY.getVersion());
 
-        executorService.schedule(this::refreshVersionSafe, 1, TimeUnit.SECONDS);
-        executorService.schedule(this::periodicExposeSelfVersionSafe, 1, TimeUnit.MINUTES);
+        executorService.scheduleWithFixedDelay(this::refreshVersionSafe, 0, 1, TimeUnit.SECONDS);
+        executorService.scheduleWithFixedDelay(this::periodicExposeSelfVersionSafe, 1, 1, TimeUnit.MINUTES);
     }
 
     @PreDestroy
