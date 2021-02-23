@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -52,5 +53,30 @@ public class VersionedLockedEventTypes {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "VersionedLockedEventTypes{" +
+                "version=" + version +
+                ", lockedEts=" + lockedEts +
+                '}';
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        VersionedLockedEventTypes that = (VersionedLockedEventTypes) o;
+        return Objects.equals(version, that.version) && Objects.equals(lockedEts, that.lockedEts);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(version, lockedEts);
     }
 }

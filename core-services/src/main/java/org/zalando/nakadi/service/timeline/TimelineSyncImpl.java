@@ -154,6 +154,8 @@ public class TimelineSyncImpl implements TimelineSync {
 
     @Override
     public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException {
+        // In case if this method is not called (or fails) - the only way to roll back - go manually to zk and update
+        // version in the verion node (and probably remove event type from locked event types).
         LOG.info("Finishing timeline update for event type {}", eventType);
         final Long version = applyChangeToState(new LockedEtMutator(eventType, false), -1);
         waitForAllNodesVersion(version, TimeUnit.MINUTES.toMillis(1));
