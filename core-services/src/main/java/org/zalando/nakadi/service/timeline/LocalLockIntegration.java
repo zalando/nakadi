@@ -14,8 +14,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 @Service
-public class LocalLockManager {
-    private static final Logger LOG = LoggerFactory.getLogger(LocalLockManager.class);
+public class LocalLockIntegration {
+    private static final Logger LOG = LoggerFactory.getLogger(LocalLockIntegration.class);
 
     private final LocalLocking localLocking = new LocalLocking();
     private final List<Consumer<String>> headlessConsumerListeners = new ArrayList<>();

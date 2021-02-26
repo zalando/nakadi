@@ -29,7 +29,7 @@ import java.util.concurrent.Callable;
 @Service
 public class TimelinesZookeeper {
     private static final String ROOT_PATH = "/nakadi/timelines";
-    private static final String VERSION_PATH = ROOT_PATH + "/state";
+    public static final String STATE_PATH = ROOT_PATH + "/state";
     private static final String NODES_PATH = ROOT_PATH + "/nodes";
 
     private final ZooKeeperHolder zkHolder;
@@ -64,21 +64,21 @@ public class TimelinesZookeeper {
     }
 
     public void prepareZookeeperStructure() throws JsonProcessingException, InterruptedException {
-        checkAndCreateZkNode(VERSION_PATH, objectMapper.writeValueAsBytes(new VersionedLockedEventTypes(
+        checkAndCreateZkNode(STATE_PATH, objectMapper.writeValueAsBytes(new VersionedLockedEventTypes(
                 1000L, Collections.emptySet()
         )));
         checkAndCreateZkNode(NODES_PATH, new byte[]{});
     }
 
-    public ZkVersionedLockedEventTypes getCurrentVersion(@Nullable final Watcher watcher) throws InterruptedException {
+    public ZkVersionedLockedEventTypes getCurrentState(@Nullable final Watcher watcher) throws InterruptedException {
         final Stat stat = new Stat();
         final byte[] data = unwrapInterruptedException(
                 () -> {
                     final WatchPathable<byte[]> tmp = zkHolder.get().getData().storingStatIn(stat);
                     if (null != watcher) {
-                        return tmp.usingWatcher(watcher).forPath(VERSION_PATH);
+                        return tmp.usingWatcher(watcher).forPath(STATE_PATH);
                     } else {
-                        return tmp.forPath(VERSION_PATH);
+                        return tmp.forPath(STATE_PATH);
                     }
                 }
         );
@@ -88,7 +88,7 @@ public class TimelinesZookeeper {
                 stat.getVersion());
     }
 
-    public boolean setCurrentVersion(final VersionedLockedEventTypes data, final Integer oldVersion)
+    public boolean setCurrentState(final VersionedLockedEventTypes data, final Integer oldVersion)
             throws InterruptedException {
         final byte[] bytes = data.serialize(objectMapper);
 
@@ -97,7 +97,7 @@ public class TimelinesZookeeper {
                 zkHolder.get()
                         .setData()
                         .withVersion(oldVersion)
-                        .forPath(VERSION_PATH, bytes);
+                        .forPath(STATE_PATH, bytes);
                 return true;
             } catch (final KeeperException.BadVersionException ex) {
                 return false;

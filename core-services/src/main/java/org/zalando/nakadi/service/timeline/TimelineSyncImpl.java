@@ -23,31 +23,31 @@ import java.util.stream.Collectors;
 public class TimelineSyncImpl implements TimelineSync {
     private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
     private final TimelinesZookeeper timelinesZookeeper;
-    private final LocalLockManager localLockManager;
+    private final LocalLockIntegration localLockIntegration;
 
     @Autowired
     public TimelineSyncImpl(
             final TimelinesZookeeper timelinesZookeeper,
-            final LocalLockManager localLockManager) {
+            final LocalLockIntegration localLockIntegration) {
         this.timelinesZookeeper = timelinesZookeeper;
-        this.localLockManager = localLockManager;
+        this.localLockIntegration = localLockIntegration;
     }
 
     @Override
     public Closeable workWithEventType(final String eventType, final long timeoutMs)
             throws InterruptedException, TimeoutException {
-        return localLockManager.workWithEventType(eventType, timeoutMs);
+        return localLockIntegration.workWithEventType(eventType, timeoutMs);
     }
 
     @Override
     public ListenerRegistration registerTimelineChangeListener(
             final String eventType, final Consumer<String> listener) {
-        return localLockManager.registerTimelineChangeListener(eventType, listener);
+        return localLockIntegration.registerTimelineChangeListener(eventType, listener);
     }
 
     @Override
     public ListenerRegistration registerTimelineChangeListener(final Consumer<String> listener) {
-        return localLockManager.registerTimelineChangeListener(listener);
+        return localLockIntegration.registerTimelineChangeListener(listener);
     }
 
     /**
@@ -61,17 +61,17 @@ public class TimelineSyncImpl implements TimelineSync {
     private Long applyChangeToState(final Function<Set<String>, Set<String>> lockedEtMutator, final long timeoutMs)
             throws InterruptedException {
         final long finishTime = System.currentTimeMillis() + timeoutMs;
-        while (timeoutMs == -1 || System.currentTimeMillis() <= finishTime) {
+        while (System.currentTimeMillis() <= finishTime) {
             // First step - read value and remember version it has.
             final TimelinesZookeeper.ZkVersionedLockedEventTypes oldVersion =
-                    timelinesZookeeper.getCurrentVersion(null);
+                    timelinesZookeeper.getCurrentState(null);
 
             // Second step - save updated value if version is the same
             final VersionedLockedEventTypes newLocked = new VersionedLockedEventTypes(
                     oldVersion.data.getVersion() + 1L,
                     lockedEtMutator.apply(oldVersion.data.getLockedEts())
             );
-            final boolean updateSucceeded = timelinesZookeeper.setCurrentVersion(newLocked, oldVersion.zkVersion);
+            final boolean updateSucceeded = timelinesZookeeper.setCurrentState(newLocked, oldVersion.zkVersion);
             LOG.info("Set current version to {} and update succeeded: {}", newLocked.getVersion(), updateSucceeded);
             if (updateSucceeded) {
                 return newLocked.getVersion();
@@ -139,10 +139,11 @@ public class TimelineSyncImpl implements TimelineSync {
             // We need to rollback the change, and it doesn't matter how long it will take, or et will be locked
             // forever.
             try {
-                applyChangeToState(new LockedEtMutator(eventType, false), -1);
+                applyChangeToState(new LockedEtMutator(eventType, false), TimeUnit.MINUTES.toMillis(1));
             } catch (final RuntimeException ex) {
-                LOG.error("Failed to roll back event type {} timeline update. Manual intervention needed.",
-                        eventType, ex);
+                LOG.error("Failed to roll back event type {} timeline update. Please, go to zookeeper {} node and " +
+                                "remove locked event types you think are wrongly locked, after that - increase version",
+                        eventType, TimelinesZookeeper.STATE_PATH, ex);
             }
             if (exceptionCaught instanceof InterruptedException) {
                 throw (InterruptedException) exceptionCaught;
@@ -157,7 +158,8 @@ public class TimelineSyncImpl implements TimelineSync {
         // In case if this method is not called (or fails) - the only way to roll back - go manually to zk and update
         // version in the verion node (and probably remove event type from locked event types).
         LOG.info("Finishing timeline update for event type {}", eventType);
-        final Long version = applyChangeToState(new LockedEtMutator(eventType, false), -1);
+        final Long version = applyChangeToState(
+                new LockedEtMutator(eventType, false), TimeUnit.MINUTES.toMillis(1));
         waitForAllNodesVersion(version, TimeUnit.MINUTES.toMillis(1));
         LOG.info("Timeline update for event type {} finished", eventType);
     }

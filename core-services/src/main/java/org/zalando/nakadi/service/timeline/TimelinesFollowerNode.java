@@ -21,19 +21,17 @@ import java.util.concurrent.TimeUnit;
  * The class is acting as a blind follower to zookeeper notifications in regards to locked event types and proposed
  * configuration version.
  * <p>
- * In order to achieve this, this class is reading {@link TimelinesZookeeper#VERSION_PATH} of type
+ * In order to achieve this, this class is reading {@link TimelinesZookeeper#STATE_PATH} of type
  * {@link VersionedLockedEventTypes} that is used to notify about changes in locked event types and refreshes the
  * version that this class is compliant with in {@link TimelinesZookeeper#NODES_PATH}/{this_node_id}.
  */
 @Component
 @Profile("!test")
 public class TimelinesFollowerNode {
-    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
-            new NamedThreadFactory("timelines-refresh"));
-
+    private final ScheduledExecutorService executorService;
     private final Logger log;
     private final TimelinesZookeeper timelinesZookeeper;
-    private final LocalLockManager localLockManager;
+    private final LocalLockIntegration localLockIntegration;
 
     // The variable is accessible from one thread only, therefore no locking required.
     private VersionedLockedEventTypes currentVersion = VersionedLockedEventTypes.EMPTY;
@@ -42,9 +40,11 @@ public class TimelinesFollowerNode {
     @Autowired
     public TimelinesFollowerNode(
             final TimelinesZookeeper timelinesZookeeper,
-            final LocalLockManager localLockManager) {
+            final LocalLockIntegration localLockIntegration) {
         this.timelinesZookeeper = timelinesZookeeper;
-        this.localLockManager = localLockManager;
+        this.localLockIntegration = localLockIntegration;
+        this.executorService = Executors.newSingleThreadScheduledExecutor(
+                new NamedThreadFactory("timelines-refresh-"));
         this.log = LoggerFactory.getLogger("timelines.node." + timelinesZookeeper.getNodeId());
     }
 
@@ -111,7 +111,7 @@ public class TimelinesFollowerNode {
     }
 
     private void refreshVersion() throws RuntimeException, InterruptedException {
-        final TimelinesZookeeper.ZkVersionedLockedEventTypes zkData = timelinesZookeeper.getCurrentVersion(null);
+        final TimelinesZookeeper.ZkVersionedLockedEventTypes zkData = timelinesZookeeper.getCurrentState(null);
 
         final boolean needCreateListener =
                 null == this.listenerCreationVersion || // either listener was never created
@@ -120,7 +120,7 @@ public class TimelinesFollowerNode {
             log.info("Upgrading version from {} to {}", currentVersion.getVersion(), zkData.data.getVersion());
             // It must be safe to apply same version several times.
             log.info("Setting locked event types to {}", zkData.data.getLockedEts());
-            localLockManager.setLockedEventTypes(zkData.data.getLockedEts());
+            localLockIntegration.setLockedEventTypes(zkData.data.getLockedEts());
             log.info("Exposing self version {}", zkData.data.getVersion());
             timelinesZookeeper.exposeSelfVersion(zkData.data.getVersion());
             currentVersion = zkData.data;
@@ -131,7 +131,7 @@ public class TimelinesFollowerNode {
             log.info("Have to recreate listener. Previous zk version: {}, New zk version: {}",
                     listenerCreationVersion, zkData.zkVersion);
             final TimelinesZookeeper.ZkVersionedLockedEventTypes newZkData =
-                    timelinesZookeeper.getCurrentVersion(this::zookeeperWatcherCalled);
+                    timelinesZookeeper.getCurrentState(this::zookeeperWatcherCalled);
             if (!Objects.equals(newZkData.zkVersion, zkData.zkVersion)) {
                 // while setting up listener it was found that data has changed, we need to immediately reschedule
                 // the check

@@ -23,16 +23,16 @@ public class TimelineSyncImplTest {
     public void beforeTest() {
         timelinesZookeeper = Mockito.mock(TimelinesZookeeper.class);
 
-        timelineSync = new TimelineSyncImpl(timelinesZookeeper, Mockito.mock(LocalLockManager.class));
+        timelineSync = new TimelineSyncImpl(timelinesZookeeper, Mockito.mock(LocalLockIntegration.class));
     }
 
     @Test(timeout = 2_000)
     public void whenStartTimelineUpdateThenVersionUpdated() throws InterruptedException {
-        when(timelinesZookeeper.getCurrentVersion(any())).thenReturn(
+        when(timelinesZookeeper.getCurrentState(any())).thenReturn(
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(VersionedLockedEventTypes.EMPTY, 123));
         final VersionedLockedEventTypes expectedVersion = new VersionedLockedEventTypes(
                 VersionedLockedEventTypes.EMPTY.getVersion() + 1, Collections.singleton("test"));
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedVersion), eq(123)))
+        when(timelinesZookeeper.setCurrentState(eq(expectedVersion), eq(123)))
                 .thenReturn(true);
 
         timelineSync.startTimelineUpdate("test", 1000);
@@ -40,30 +40,30 @@ public class TimelineSyncImplTest {
 
     @Test(timeout = 2_000)
     public void whenStartTimelineUpdateThenSeveralAttemptsMade() throws InterruptedException {
-        when(timelinesZookeeper.getCurrentVersion(any())).thenReturn(
+        when(timelinesZookeeper.getCurrentState(any())).thenReturn(
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(VersionedLockedEventTypes.EMPTY, 123),
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(VersionedLockedEventTypes.EMPTY, 124));
 
         final VersionedLockedEventTypes expectedVersion = new VersionedLockedEventTypes(
                 VersionedLockedEventTypes.EMPTY.getVersion() + 1, Collections.singleton("test"));
 
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedVersion), eq(123))).thenReturn(false);
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedVersion), eq(124))).thenReturn(true);
+        when(timelinesZookeeper.setCurrentState(eq(expectedVersion), eq(123))).thenReturn(false);
+        when(timelinesZookeeper.setCurrentState(eq(expectedVersion), eq(124))).thenReturn(true);
 
         timelineSync.startTimelineUpdate("test", 1000);
 
-        verify(timelinesZookeeper, times(1)).setCurrentVersion(eq(expectedVersion), eq(123));
-        verify(timelinesZookeeper, times(1)).setCurrentVersion(eq(expectedVersion), eq(124));
+        verify(timelinesZookeeper, times(1)).setCurrentState(eq(expectedVersion), eq(123));
+        verify(timelinesZookeeper, times(1)).setCurrentState(eq(expectedVersion), eq(124));
     }
 
     @Test(timeout = 2_000)
     public void whenStartTimelineUpdateThenWaitForAllNodes() throws InterruptedException {
-        when(timelinesZookeeper.getCurrentVersion(any())).thenReturn(
+        when(timelinesZookeeper.getCurrentState(any())).thenReturn(
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(VersionedLockedEventTypes.EMPTY, 123));
 
         final VersionedLockedEventTypes expectedVersion = new VersionedLockedEventTypes(
                 VersionedLockedEventTypes.EMPTY.getVersion() + 1, Collections.singleton("test"));
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedVersion), eq(123))).thenReturn(true);
+        when(timelinesZookeeper.setCurrentState(eq(expectedVersion), eq(123))).thenReturn(true);
 
         final Map<String, Long> outdated = Collections.singletonMap(
                 "xxx", VersionedLockedEventTypes.EMPTY.getVersion());
@@ -83,20 +83,20 @@ public class TimelineSyncImplTest {
                 VersionedLockedEventTypes.EMPTY.getVersion() + 1, Collections.singleton("test"));
         final VersionedLockedEventTypes expectedRollback = new VersionedLockedEventTypes(
                 expectedVersion.getVersion() + 1, Collections.emptySet());
-        when(timelinesZookeeper.getCurrentVersion(any())).thenReturn(
+        when(timelinesZookeeper.getCurrentState(any())).thenReturn(
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(VersionedLockedEventTypes.EMPTY, 123),
                 new TimelinesZookeeper.ZkVersionedLockedEventTypes(expectedVersion, 124));
 
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedVersion), eq(123))).thenReturn(true);
-        when(timelinesZookeeper.setCurrentVersion(eq(expectedRollback), eq(124))).thenReturn(true);
+        when(timelinesZookeeper.setCurrentState(eq(expectedVersion), eq(123))).thenReturn(true);
+        when(timelinesZookeeper.setCurrentState(eq(expectedRollback), eq(124))).thenReturn(true);
         when(timelinesZookeeper.getNodesVersions()).thenThrow(new RuntimeException("timeout or some exception"));
 
         try {
             timelineSync.startTimelineUpdate("test", 1000);
             Assert.fail("Expected exception to be thrown");
         } catch (RuntimeException ex) {
-            verify(timelinesZookeeper, times(1)).setCurrentVersion(eq(expectedVersion), eq(123));
-            verify(timelinesZookeeper, times(1)).setCurrentVersion(eq(expectedRollback), eq(124));
+            verify(timelinesZookeeper, times(1)).setCurrentState(eq(expectedVersion), eq(123));
+            verify(timelinesZookeeper, times(1)).setCurrentState(eq(expectedRollback), eq(124));
         }
     }
 }
