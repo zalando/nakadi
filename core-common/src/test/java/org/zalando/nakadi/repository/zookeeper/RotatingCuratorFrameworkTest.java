@@ -21,7 +21,7 @@ public class RotatingCuratorFrameworkTest {
         Assert.assertEquals(cf1, cfTmp);
         rotatingCuratorFramework.returnCuratorFramework(cfTmp);
 
-        Thread.sleep(10);
+        Thread.sleep(15);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf2);
         rotatingCuratorFramework.scheduleRotationCheck();
 
