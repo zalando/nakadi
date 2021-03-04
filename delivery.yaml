@@ -3,6 +3,7 @@ pipeline:
   - id: test
     overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Checkstyle
         cmd: |
@@ -13,6 +14,7 @@ pipeline:
   - id: acceptance-test
     overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Install dependencies
         cmd: |
@@ -26,6 +28,7 @@ pipeline:
   - id: build-push
     overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Build and push to repo
         cmd: |
