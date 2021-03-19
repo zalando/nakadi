@@ -11,7 +11,6 @@ public class StrictJsonParser {
     private static final Logger LOG = LoggerFactory.getLogger(StrictJsonParser.class);
 
     private static final String POSSIBLE_NUMBER_DIGITS = "0123456789-+.Ee";
-    private static final String POSSIBLE_INTEGER_DIGITS = "0123456789-";
 
     private static class StringTokenizer {
 
@@ -114,8 +113,20 @@ public class StrictJsonParser {
                 return readTrueTillTheEnd(tokenizer);
             case 'f':
                 return readFalseTillTheEnd(tokenizer);
-            default:
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+            case '-':
                 return readNumberTillTheEnd(value, tokenizer);
+            default:
+                throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
         }
     }
 
@@ -136,9 +147,6 @@ public class StrictJsonParser {
     }
 
     private static Object readNumberTillTheEnd(final char value, final StringTokenizer tokenizer) {
-        if (POSSIBLE_INTEGER_DIGITS.indexOf(value) < 0) {
-            throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
-        }
         final int start = tokenizer.getCurrentPosition() - 1;
         while (tokenizer.hasNext()) {
             if (POSSIBLE_NUMBER_DIGITS.indexOf(tokenizer.next()) < 0) {
