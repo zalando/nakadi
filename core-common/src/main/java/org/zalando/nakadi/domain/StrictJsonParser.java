@@ -139,6 +139,9 @@ public class StrictJsonParser {
             throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
         }
         final int start = tokenizer.getCurrentPosition() - 1;
+        if (!Character.toString(tokenizer.value.charAt(start)).matches("\\d|-")) {
+            throw syntaxError("Numbers cannot start with:'" + value + "'", tokenizer);
+        }
         while (tokenizer.hasNext()) {
             if (POSSIBLE_NUMBER_DIGITS.indexOf(tokenizer.next()) < 0) {
                 tokenizer.back();

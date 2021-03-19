@@ -1,9 +1,12 @@
 package org.zalando.nakadi.domain;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.util.StreamUtils;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,6 +17,7 @@ public class StrictJsonParserTest {
     private void testSingleString(final String value) {
         final JSONObject orthodoxJson = new JSONObject(value);
         final JSONObject anarchyJson = StrictJsonParser.parseObject(value);
+        System.out.println(anarchyJson);
         Assert.assertEquals("Checking json " + value, orthodoxJson.toString(), anarchyJson.toString());
     }
 
@@ -39,5 +43,13 @@ public class StrictJsonParserTest {
         testSingleString("{\"test\":1e-2}");
         testSingleString("{\"test\":1e+2}");
         testSingleString("{\"test\":-1e+4}");
+    }
+
+    @Test
+    public void testItShouldValidateNumbersFormat() {
+        final JSONException jsonException = assertThrows(JSONException.class, () -> {
+            StrictJsonParser.parseObject("{\"test\":.1234}");
+        });
+        Assert.assertEquals("Numbers cannot start with:'.' at pos 9", jsonException.getMessage());
     }
 }
