@@ -51,6 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class PartitionsControllerTest {
 
@@ -269,6 +270,19 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
+    }
+
+    @Test
+    public void whenGetPartitionsFromIncorrectConsumedOffsetThenUnprocessable() throws Exception {
+        final String argUnderTest = "xer";
+        final ThrowableProblem expectedProblem =
+                Problem.valueOf(
+                        UNPROCESSABLE_ENTITY,
+                        String.format("invalid offset %s for partition 0", argUnderTest));
+        mockMvc.perform(
+                get("/event-types/{0}/partitions/0?consumed_offset={1}", TEST_EVENT_TYPE, argUnderTest))
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
