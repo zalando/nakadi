@@ -49,6 +49,6 @@ public class StrictJsonParserTest {
         final JSONException jsonException = assertThrows(JSONException.class, () -> {
             StrictJsonParser.parseObject("{\"test\":.1234}");
         });
-        Assert.assertEquals("Numbers cannot start with:'.' at pos 9", jsonException.getMessage());
+        Assert.assertEquals("Unexpected symbol '.' at pos 9", jsonException.getMessage());
     }
 }
