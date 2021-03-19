@@ -175,17 +175,6 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
-    public void testExperimenting() {
-        final JSONObject schema = new JSONObject("{\"properties\":{\"order_number\":{\"type\":\"number\"}}}");
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
-        et.setCategory(EventCategory.UNDEFINED);
-
-        final JSONObject event = new JSONObject("{\"order_number\": .1234}");
-        final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(event);
-        System.out.println(error);
-    }
-
-    @Test
     public void acceptsDefinitionsOnDataChangeEvents() throws Exception {
         final JSONObject schema = new JSONObject(TestUtils.readFile("product-json-schema.json"));
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
@@ -215,7 +204,7 @@ public class JSONSchemaValidationTest {
     private JSONObject patternSchema() {
         final JSONObject schema = new JSONObject();
         final JSONObject string = new JSONObject();
-        string.put("type", "number");
+        string.put("type", "string");
         string.put("pattern", "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         final JSONObject properties = new JSONObject();
