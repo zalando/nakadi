@@ -159,11 +159,15 @@ public class StrictJsonParser {
 
         if (stringNumber.indexOf('.') > -1 || stringNumber.indexOf('e') > -1
                 || stringNumber.indexOf('E') > -1 || "-0".equals(stringNumber)) {
-            final Double d = Double.valueOf(stringNumber);
-            if (!d.isInfinite() && !d.isNaN()) {
-                return d;
-            } else {
-                throw syntaxError(stringNumber + " can not be used", tokenizer);
+            try {
+                final Double d = Double.valueOf(stringNumber);
+                if (!d.isInfinite() && !d.isNaN()) {
+                    return d;
+                } else {
+                    throw syntaxError(stringNumber + " can not be used", tokenizer);
+                }
+            } catch (NumberFormatException e) {
+                throw syntaxError("The provided value '" + stringNumber + "' cannot be parsed to float", tokenizer);
             }
         } else {
             try {

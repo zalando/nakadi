@@ -46,9 +46,14 @@ public class StrictJsonParserTest {
 
     @Test
     public void testItShouldValidateNumbersFormat() {
-        final JSONException jsonException = assertThrows(JSONException.class, () -> {
+        JSONException jsonException = assertThrows(JSONException.class, () -> {
             StrictJsonParser.parseObject("{\"test\":.1234}");
         });
         Assert.assertEquals("Unexpected symbol '.' at pos 9", jsonException.getMessage());
+
+        jsonException = assertThrows(JSONException.class, () -> {
+            StrictJsonParser.parseObject("{\"test\":12.3.4E}");
+        });
+        Assert.assertEquals("The provided value '12.3.4E' cannot be parsed to float at pos 15", jsonException.getMessage());
     }
 }
