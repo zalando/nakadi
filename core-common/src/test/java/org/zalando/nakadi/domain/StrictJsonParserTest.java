@@ -54,6 +54,7 @@ public class StrictJsonParserTest {
         jsonException = assertThrows(JSONException.class, () -> {
             StrictJsonParser.parseObject("{\"test\":12.3.4E}");
         });
-        Assert.assertEquals("The provided value '12.3.4E' cannot be parsed to float at pos 15", jsonException.getMessage());
+        Assert.assertEquals("The provided value '12.3.4E' " +
+                "cannot be parsed to float at pos 15", jsonException.getMessage());
     }
 }
