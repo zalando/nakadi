@@ -13,7 +13,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
@@ -67,8 +66,6 @@ public class PostSubscriptionController {
             try {
                 final Subscription subscription = subscriptionService.createSubscription(subscriptionBase);
                 return prepareLocationResponse(subscription);
-            } catch (final DuplicatedSubscriptionException ex) {
-                throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
             } catch (final NoSuchEventTypeException ex) {
                 throw new UnprocessableSubscriptionException(ex.getMessage());
             }

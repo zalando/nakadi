@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.PostSubscriptionController;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionCreationDisabledException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
@@ -14,6 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.problem.Problem;
+import org.zalando.problem.Status;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
 import javax.annotation.Priority;
@@ -51,4 +53,13 @@ public class PostSubscriptionExceptionHandler implements AdviceTrait {
         AdviceTrait.LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
+
+    @ExceptionHandler(DuplicatedSubscriptionException.class)
+    public ResponseEntity<Problem> handleDuplicatedSubscriptionException(
+            final DuplicatedSubscriptionException exception,
+            final NativeWebRequest request) {
+        AdviceTrait.LOG.warn(exception.getMessage());
+        return create(Problem.valueOf(Status.CONFLICT, exception.getMessage()), request);
+    }
+
 }

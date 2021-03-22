@@ -19,6 +19,7 @@ import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
@@ -29,6 +30,7 @@ import org.zalando.nakadi.service.SubscriptionService;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
+import org.zalando.problem.Status;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -208,6 +210,19 @@ public class PostSubscriptionControllerTest {
                         SameJSONAs.sameJSONAs(TestUtils.JSON_TEST_HELPER.asJsonString(existingSubscription))))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().doesNotExist("Content-Location"));
+    }
+
+    @Test
+    public void whenSubscriptionCreatedInParallelThenConflict() throws Exception {
+        when(subscriptionService.getExistingSubscription(any()))
+                .thenThrow(new NoSuchSubscriptionException("", null));
+        when(subscriptionService.createSubscription(any()))
+                .thenThrow(new DuplicatedSubscriptionException("xer", null));
+
+        postSubscription(RandomSubscriptionBuilder.builder().buildSubscriptionBase())
+                .andExpect(status().isConflict())
+                .andExpect(content().string(
+                        TestUtils.JSON_TEST_HELPER.asJsonString(Problem.valueOf(Status.CONFLICT, "xer"))));
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {
