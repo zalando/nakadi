@@ -183,6 +183,8 @@ paths:
       responses:
         '201':
           description: Created
+          schema:
+            $ref: '#/definitions/EventType'
         '401':
           description: Client is not authenticated
           schema:
