@@ -90,7 +90,9 @@ public class EventTypeController {
 
         eventTypeService.create(eventType, true);
 
-        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .headers(generateWarningHeaders(eventType))
+                .body(eventTypeService.get(eventType.getName()));
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
