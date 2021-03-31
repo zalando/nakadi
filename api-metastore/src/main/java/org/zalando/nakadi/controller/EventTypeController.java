@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.domain.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.domain.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.zalando.nakadi.domain.Feature.RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -90,7 +91,13 @@ public class EventTypeController {
 
         eventTypeService.create(eventType, true);
 
-        return ResponseEntity.status(HttpStatus.CREATED).headers(generateWarningHeaders(eventType)).build();
+        final ResponseEntity.BodyBuilder bodyBuilder = status(HttpStatus.CREATED)
+                .headers(generateWarningHeaders(eventType));
+        if (featureToggleService.isFeatureEnabled(RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE)) {
+            return bodyBuilder.body(eventTypeService.get(eventType.getName()));
+        } else {
+            return bodyBuilder.build();
+        }
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
@@ -129,12 +136,18 @@ public class EventTypeController {
 
         eventTypeService.update(name, eventType);
 
-        return status(HttpStatus.OK).headers(generateWarningHeaders(eventType)).build();
+        final ResponseEntity.BodyBuilder bodyBuilder = status(HttpStatus.OK)
+                .headers(generateWarningHeaders(eventType));
+        if (featureToggleService.isFeatureEnabled(RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE)) {
+            return bodyBuilder.body(eventTypeService.get(eventType.getName()));
+        } else {
+            return bodyBuilder.build();
+        }
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request)
-            throws NoSuchEventTypeException, InternalNakadiException{
+            throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeService.get(name);
         return status(HttpStatus.OK).body(eventType);
     }
