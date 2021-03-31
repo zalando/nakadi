@@ -18,7 +18,7 @@ public enum Feature {
     EVENT_OWNER_SELECTOR_AUTHZ("event_owner_selector_authz"),
     ACCESS_LOG_ENABLED("access_log_enabled"),
     TOKEN_SUBSCRIPTIONS_ITERATION("token_subscription_iteration"),
-    RETURN_BODY_ON_CREATE_EVENT_TYPE("return_body_on_create_event_type"),
+    RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE("return_body_on_create_update_event_type"),
     ;
 
     private final String id;
