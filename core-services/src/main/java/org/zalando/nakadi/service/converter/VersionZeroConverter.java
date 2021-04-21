@@ -50,7 +50,7 @@ public class VersionZeroConverter implements VersionedConverter {
                 continue;
             }
             if (!CursorConversionUtils.NUMBERS_ONLY_PATTERN.matcher(cursor.getOffset()).matches()) {
-                throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor);
+                throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor, cursor.getEventType());
             }
         }
         // now it is time for massive convert.
@@ -80,10 +80,12 @@ public class VersionZeroConverter implements VersionedConverter {
             );
             for (int idx = 0; idx < entry.getValue().size(); ++idx) {
                 // Reinsert doesn't change the order
+                final SubscriptionCursorWithoutToken val = entry.getValue().get(idx);
                 beginsToConvert.put(
-                        entry.getValue().get(idx),
+                        val,
                         stats.get(idx)
-                                .orElseThrow(() -> new InvalidCursorException(CursorError.PARTITION_NOT_FOUND))
+                                .orElseThrow(() -> new InvalidCursorException(
+                                        CursorError.PARTITION_NOT_FOUND, val.getEventType()))
                                 .getBeforeFirst());
             }
         }
@@ -103,10 +105,10 @@ public class VersionZeroConverter implements VersionedConverter {
             final Timeline timeline = timelineService.getActiveTimelinesOrdered(eventTypeStr).get(0);
             return timelineService.getTopicRepository(timeline)
                     .loadPartitionStatistics(timeline, cursor.getPartition())
-                    .orElseThrow(() -> new InvalidCursorException(CursorError.PARTITION_NOT_FOUND))
+                    .orElseThrow(() -> new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, eventTypeStr))
                     .getBeforeFirst();
         } else if (!CursorConversionUtils.NUMBERS_ONLY_PATTERN.matcher(offset).matches()) {
-            throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor);
+            throw new InvalidCursorException(CursorError.INVALID_OFFSET, cursor, eventTypeStr);
         }
 
         final Timeline timeline = timelineService.getAllTimelinesOrdered(eventTypeStr).get(0);

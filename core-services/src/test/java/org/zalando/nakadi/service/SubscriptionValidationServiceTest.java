@@ -178,7 +178,7 @@ public class SubscriptionValidationServiceTest {
         ));
         final NakadiCursor cursor = mockCursorWithTimeline();
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(cursor);
-        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT))
+        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT, ET1))
                 .when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase);
     }
