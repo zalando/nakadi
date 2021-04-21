@@ -9,27 +9,41 @@ public class InvalidCursorException extends NakadiBaseException {
     private final CursorError error;
     private final Cursor cursor;
     private final NakadiCursor position;
+    private final String eventType;
 
-    public InvalidCursorException(final CursorError error, final Cursor cursor) {
+    public InvalidCursorException(final CursorError error, final Cursor cursor, final String eventType) {
         this.error = error;
         this.cursor = cursor;
         this.position = null;
+        this.eventType = eventType;
     }
 
     public InvalidCursorException(final CursorError error, final NakadiCursor position) {
         this.error = error;
         this.cursor = null;
+        this.eventType = null;
         this.position = position;
     }
 
-    public InvalidCursorException(final CursorError error) {
+    public InvalidCursorException(final CursorError error, final String eventType) {
         this.error = error;
         this.cursor = null;
         this.position = null;
+        this.eventType = eventType;
     }
 
     public CursorError getError() {
         return error;
+    }
+
+    private String getEventType() {
+        if (null != position) {
+            return position.getEventType();
+        } else if (null != eventType) {
+            return eventType;
+        } else {
+            return null;
+        }
     }
 
     private String getPartition() {
@@ -58,8 +72,9 @@ public class InvalidCursorException extends NakadiBaseException {
             case PARTITION_NOT_FOUND:
                 return "non existing partition " + getPartition();
             case UNAVAILABLE:
-                return "offset " + getOffset() + " for partition " + getPartition() + " is unavailable as " +
-                        "retention time of data elapsed. PATCH partition offset with valid and available offset";
+                return "offset " + getOffset() + " for partition " + getPartition() + " event type " +
+                        getEventType() + " is unavailable as retention time of data elapsed. " +
+                        "PATCH partition offset with valid and available offset";
             case NULL_OFFSET:
                 return "offset must not be null";
             case NULL_PARTITION:

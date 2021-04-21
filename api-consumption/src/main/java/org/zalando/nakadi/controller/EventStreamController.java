@@ -137,16 +137,16 @@ public class EventStreamController {
             // Unfortunately, In order to have consistent exception checking, one can not just call validator
             for (final Cursor cursor : cursors) {
                 if (null == cursor.getPartition()) {
-                    throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
+                    throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor, eventType.getName());
                 } else if (null == cursor.getOffset()) {
-                    throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
+                    throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor, eventType.getName());
                 }
             }
         }
         final Timeline latestTimeline = timelineService.getActiveTimeline(eventType);
         if (null != cursors) {
             if (cursors.isEmpty()) {
-                throw new InvalidCursorException(CursorError.INVALID_FORMAT);
+                throw new InvalidCursorException(CursorError.INVALID_FORMAT, eventType.getName());
             }
             final List<NakadiCursor> result = new ArrayList<>();
             for (final Cursor c : cursors) {

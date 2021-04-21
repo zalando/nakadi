@@ -56,6 +56,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -83,7 +84,7 @@ import static org.zalando.nakadi.utils.TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTE
 import static org.zalando.nakadi.utils.TestUtils.JSON_TEST_HELPER;
 import static org.zalando.nakadi.utils.TestUtils.OBJECT_MAPPER;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.buildTimelineWithTopic;
+import static org.zalando.nakadi.utils.TestUtils.buildTimeline;
 import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.problem.Status.BAD_REQUEST;
@@ -125,7 +126,7 @@ public class EventStreamControllerTest {
     @Before
     public void setup() throws UnknownHostException, InvalidCursorException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
-        timeline = buildTimelineWithTopic(TEST_TOPIC);
+        timeline = buildTimeline(TEST_EVENT_TYPE_NAME, TEST_TOPIC, new Date());
 
         topicRepositoryMock = mock(TopicRepository.class);
         adminService = mock(AdminService.class);
@@ -293,8 +294,9 @@ public class EventStreamControllerTest {
                 "[{\"partition\":\"0\",\"offset\":\"00000000000000000\"}]");
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED,
-                "offset 000000000000000000 for partition 0 is unavailable as retention time " +
-                        "of data elapsed. PATCH partition offset with valid and available offset");
+                "offset 000000000000000000 for partition 0 event type " + TEST_EVENT_TYPE_NAME +
+                        " is unavailable as retention time of data elapsed. " +
+                        "PATCH partition offset with valid and available offset");
         MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 

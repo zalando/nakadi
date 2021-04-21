@@ -171,7 +171,7 @@ public class CursorsControllerTest {
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
         when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION,
-                        new SubscriptionCursor(null, null, null, null))));
+                        new SubscriptionCursor(null, null, null, null), "")));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "partition must not be null");
 
