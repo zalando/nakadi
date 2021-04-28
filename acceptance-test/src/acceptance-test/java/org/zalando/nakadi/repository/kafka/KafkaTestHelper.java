@@ -3,16 +3,17 @@ package org.zalando.nakadi.repository.kafka;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.assertj.core.util.Lists;
-import org.springframework.kafka.config.TopicBuilder;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -101,7 +102,7 @@ public class KafkaTestHelper {
     public void createTopic(final String topic) {
         try (AdminClient adminClient = AdminClient.create(createKafkaProperties())) {
             adminClient.createTopics(Lists.newArrayList(
-                    TopicBuilder.name(topic).partitions(1).replicas(1).build()
+                    new NewTopic(topic, Optional.of(1), Optional.of((short) 1))
             ));
         }
     }

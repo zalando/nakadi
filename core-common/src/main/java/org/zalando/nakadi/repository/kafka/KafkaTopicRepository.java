@@ -26,7 +26,6 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.config.TopicBuilder;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -275,12 +274,11 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final KafkaTopicConfig kafkaTopicConfig = kafkaTopicConfigFactory.createKafkaTopicConfig(nakadiTopicConfig);
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
-            final NewTopic newTopic = TopicBuilder
-                    .name(kafkaTopicConfig.getTopicName())
-                    .partitions(kafkaTopicConfig.getPartitionCount())
-                    .replicas(kafkaTopicConfig.getReplicaFactor())
-                    .configs(kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig))
-                    .build();
+            final NewTopic newTopic = new NewTopic(
+                    kafkaTopicConfig.getTopicName(),
+                    Optional.of(kafkaTopicConfig.getPartitionCount()),
+                    Optional.of((short)kafkaTopicConfig.getReplicaFactor()));
+            newTopic.configs(kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig));
 
             adminClient.createTopics(Lists.newArrayList(newTopic)).all().get(30, TimeUnit.SECONDS);
         } catch (final TopicExistsException e) {
