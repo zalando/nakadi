@@ -123,12 +123,10 @@ public class JsonSchemaEnrichment {
             }
         });
 
-        NESTED_SCHEMA_KEYWORDS.forEach(keyword -> {
-            Optional.ofNullable(schema.optJSONObject(keyword))
-                    .ifPresent(object ->
-                            object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
-                    );
-        });
+        NESTED_SCHEMA_KEYWORDS.forEach(keyword -> Optional.ofNullable(schema.optJSONObject(keyword))
+                .ifPresent(object ->
+                        object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
+                ));
     }
 
     private boolean isEmptySchema(final JSONObject schema) {

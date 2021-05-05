@@ -40,7 +40,7 @@ public class EventTypeChangeListener {
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
             if (closed) {
                 LOG.warn("Second attempt to close event type authorization listener " + authorizationChangeListener);
                 return;

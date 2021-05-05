@@ -24,13 +24,13 @@ public class MetricsConfig {
         return new ServletRegistrationBean(new NakadiMetricsServlet(metricRegistry), "/metrics/*");
     }
 
-    class SubscriptionMetricsServlet extends MetricsServlet {
+    static class SubscriptionMetricsServlet extends MetricsServlet {
         SubscriptionMetricsServlet(final MetricRegistry metricRegistry) {
             super(metricRegistry);
         }
     }
 
-    class StreamMetricsServlet extends MetricsServlet {
+    static class StreamMetricsServlet extends MetricsServlet {
         StreamMetricsServlet(final MetricRegistry metricRegistry) {
             super(metricRegistry);
         }
@@ -61,17 +61,13 @@ public class MetricsConfig {
     @Bean
     @Qualifier("perPathMetricRegistry")
     public MetricRegistry perPathMetricRegistry() {
-        final MetricRegistry metricRegistry = new MetricRegistry();
-
-        return metricRegistry;
+        return new MetricRegistry();
     }
 
     @Bean
     @Qualifier("streamMetricsRegistry")
     public MetricRegistry streamMetricRegistry() {
-        final MetricRegistry metricRegistry = new MetricRegistry();
-
-        return metricRegistry;
+        return new MetricRegistry();
     }
 
     @Bean

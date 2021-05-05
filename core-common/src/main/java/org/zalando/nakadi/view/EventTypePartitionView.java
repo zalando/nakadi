@@ -3,6 +3,8 @@ package org.zalando.nakadi.view;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Objects;
+
 public class EventTypePartitionView {
     @JsonIgnore
     private String eventType;
@@ -66,21 +68,19 @@ public class EventTypePartitionView {
 
         final EventTypePartitionView that = (EventTypePartitionView) o;
 
-        if (eventType != null ? !eventType.equals(that.eventType) : that.eventType != null) {
+        if (!Objects.equals(eventType, that.eventType)) {
             return false;
         }
 
-        if (partitionId != null ? !partitionId.equals(that.partitionId) : that.partitionId != null) {
+        if (!Objects.equals(partitionId, that.partitionId)) {
             return false;
         }
 
-        if (oldestAvailableOffset != null ? !oldestAvailableOffset.equals(that.oldestAvailableOffset)
-                                          : that.oldestAvailableOffset != null) {
+        if (!Objects.equals(oldestAvailableOffset, that.oldestAvailableOffset)) {
             return false;
         }
 
-        return newestAvailableOffset != null ? newestAvailableOffset.equals(that.newestAvailableOffset)
-                                             : that.newestAvailableOffset == null;
+        return Objects.equals(newestAvailableOffset, that.newestAvailableOffset);
 
     }
 

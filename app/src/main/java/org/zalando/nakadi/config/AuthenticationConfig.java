@@ -80,23 +80,21 @@ public class AuthenticationConfig {
             @Value("${nakadi.http.pool.connection.request.timeout}") final int requestTimeout,
             @Value("${nakadi.http.pool.connection.connect.timeout}") final int connectTimeout,
             @Value("${nakadi.http.pool.connection.socket.timeout}") final int socketTimeout) {
-        final RequestConfig result = RequestConfig.custom()
+        return RequestConfig.custom()
                 .setConnectionRequestTimeout(requestTimeout)
                 .setConnectTimeout(connectTimeout)
                 .setSocketTimeout(socketTimeout)
                 .build();
-        return result;
     }
 
     @Bean
     public CloseableHttpClient httpClient(final PoolingHttpClientConnectionManager poolingHttpClientConnectionManager,
                                           final RequestConfig requestConfig) {
-        final CloseableHttpClient result = HttpClientBuilder
+        return HttpClientBuilder
                 .create()
                 .setConnectionManager(poolingHttpClientConnectionManager)
                 .setDefaultRequestConfig(requestConfig)
                 .build();
-        return result;
     }
 
     @Bean

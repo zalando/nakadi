@@ -120,7 +120,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     }
 
     @Override
-    public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
+    public void configure(final ResourceServerSecurityConfigurer resources) {
         final OAuth2AuthenticationEntryPoint oAuth2AuthenticationEntryPoint = new OAuth2AuthenticationEntryPoint();
         oAuth2AuthenticationEntryPoint.setExceptionRenderer(new ProblemOauthExceptionRenderer());
         resources.authenticationEntryPoint(oAuth2AuthenticationEntryPoint);
@@ -209,7 +209,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @EnableWebSecurity
     public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         @Override
-        public void configure(final WebSecurity web) throws Exception {
+        public void configure(final WebSecurity web) {
             if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
                 web.ignoring().anyRequest();
             }

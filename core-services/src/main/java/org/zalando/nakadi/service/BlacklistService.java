@@ -160,8 +160,8 @@ public class BlacklistService {
     }
 
     public static class BlacklistEntry {
-        private Type type;
-        private String name;
+        private final Type type;
+        private final String name;
 
         public BlacklistEntry(final Type type, final String name) {
             this.type = type;

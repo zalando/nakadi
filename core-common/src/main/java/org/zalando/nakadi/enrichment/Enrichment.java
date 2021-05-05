@@ -16,10 +16,10 @@ import java.util.Set;
 @Component
 public class Enrichment {
 
-    private final EnrichmentsRegistry registry;
+    private final EnrichmentRegistry registry;
 
     @Autowired
-    public Enrichment(final EnrichmentsRegistry registry) {
+    public Enrichment(final EnrichmentRegistry registry) {
         this.registry = registry;
     }
 
