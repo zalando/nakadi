@@ -687,7 +687,7 @@ class StreamingState extends State {
             try {
                 keysToRelease.forEach(this::removeFromStreaming);
             } finally {
-                getZk().runLocked(() -> getZk().transfer(getSessionId(), keysToRelease));
+                getZk().transfer(getSessionId(), keysToRelease);
             }
         }
     }
