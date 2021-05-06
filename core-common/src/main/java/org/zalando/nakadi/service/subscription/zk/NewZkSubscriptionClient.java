@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -199,27 +202,55 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
             throws NakadiRuntimeException, SubscriptionNotInitializedException {
         getLog().info("session " + sessionId + " releases partitions " + partitions);
-        final Topology topology = getTopology();
+        Retryer.executeWithRetry(() -> {
+                    final Stat stats = new Stat();
+                    final Topology topology;
+                    try {
+                        topology = parseTopology(getCurator().getData()
+                                .storingStatIn(stats)
+                                .forPath(getSubscriptionPath(NODE_TOPOLOGY)));
+                    } catch (KeeperException.NoNodeException ex) {
+                        throw new SubscriptionNotInitializedException(getSubscriptionId());
+                    } catch (final Exception ex) {
+                        throw new NakadiRuntimeException(ex);
+                    }
 
-        final List<Partition> changeSet = new ArrayList<>();
-        for (final EventTypePartition etp : partitions) {
-            final Partition candidate = Stream.of(topology.getPartitions())
-                    .filter(p -> p.getKey().equals(etp))
-                    .findAny().get();
-            if (sessionId.equals(candidate.getSession())
-                    && candidate.getState() == Partition.State.REASSIGNING) {
-                changeSet.add(candidate.toState(
-                        Partition.State.ASSIGNED,
-                        candidate.getNextSession(),
-                        null));
-            }
-        }
-        if (!changeSet.isEmpty()) {
-            // The list of sessions didn't change, therefore one should not update sessionsHash.
-            updatePartitionsConfiguration(
-                    topology.getSessionsHash(),
-                    changeSet.toArray(new Partition[changeSet.size()]));
-        }
+                    final List<Partition> changeSet = new ArrayList<>();
+                    for (final EventTypePartition etp : partitions) {
+                        final Partition candidate = Stream.of(topology.getPartitions())
+                                .filter(p -> p.getKey().equals(etp))
+                                .findAny().get();
+                        if (sessionId.equals(candidate.getSession())
+                                && candidate.getState() == Partition.State.REASSIGNING) {
+                            changeSet.add(candidate.toState(
+                                    Partition.State.ASSIGNED,
+                                    candidate.getNextSession(),
+                                    null));
+                        }
+                    }
+
+                    if (!changeSet.isEmpty()) {
+                        // The list of sessions didn't change, therefore one should not update sessionsHash.
+                        final Topology newTopology = getTopology()
+                                .withUpdatedPartitions(topology.getSessionsHash(),
+                                        changeSet.toArray(new Partition[changeSet.size()]));
+                        getLog().info("Updating topology to {}", newTopology);
+                        try {
+                            getCurator().setData().withVersion(stats.getVersion())
+                                    .forPath(getSubscriptionPath(NODE_TOPOLOGY),
+                                            objectMapper.writeValueAsBytes(newTopology));
+                        } catch (final KeeperException.BadVersionException ex) {
+                            throw ex;
+                        } catch (final Exception ex) {
+                            throw new NakadiRuntimeException(ex);
+                        }
+                    }
+
+                    return null; // to use Callable
+                },
+                new RetryForSpecifiedCountStrategy()
+                        .withMaxNumberOfRetries(10)
+                        .withExceptionsThatForceRetry(KeeperException.BadVersionException.class));
     }
 
     @Override
