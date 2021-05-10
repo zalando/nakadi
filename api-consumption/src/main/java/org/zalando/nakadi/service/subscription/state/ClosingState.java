@@ -159,7 +159,7 @@ class ClosingState extends State {
                 }
             }
         }
-        getZk().transfer(getSessionId(), keys);
+        getZk().runLocked(() -> getZk().transfer(getSessionId(), keys));
         if (null != exceptionCaught) {
             throw exceptionCaught;
         }

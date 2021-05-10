@@ -231,7 +231,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
                     if (!changeSet.isEmpty()) {
                         // The list of sessions didn't change, therefore one should not update sessionsHash.
-                        final Topology newTopology = getTopology()
+                        final Topology newTopology = topology
                                 .withUpdatedPartitions(topology.getSessionsHash(),
                                         changeSet.toArray(new Partition[changeSet.size()]));
                         getLog().info("Updating topology to {}", newTopology);
