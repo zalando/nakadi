@@ -313,25 +313,15 @@ public class StreamingContext implements SubscriptionStreamer {
     private void rebalance() {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
-            final List<String> newSessions = sessionListSubscription.getData();
-            final String sessionsHash = ZkSubscriptionClient.Topology.calculateSessionsHash(newSessions);
+            sessionListSubscription.getData();
             zkClient.runLocked(() -> {
-                final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
-
-                if (!topology.isSameHash(sessionsHash)) {
-                    log.info("Performing rebalance, hash changed: {}", sessionsHash);
-                    final Collection<Session> newSessionsUnderLock = zkClient.listSessions();
-
-                    // after taking the lock list of sessions may change, so we need to update hash to correct value.
-                    final Partition[] changeset = rebalancer.apply(newSessionsUnderLock, topology.getPartitions());
-                    if (changeset.length > 0) {
-                        final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
-                                newSessionsUnderLock.stream().map(Session::getId).collect(Collectors.toList()));
-                        zkClient.updatePartitionsConfiguration(actualHash, changeset);
-                    }
-                } else {
-                    log.info("Skipping rebalance, because hash is the same: {}", sessionsHash);
-                }
+                log.info("Performing rebalance");
+                final Collection<Session> sessions = zkClient.listSessions();
+                final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
+                        sessions.stream().map(Session::getId).collect(Collectors.toList()));
+                zkClient.updateTopology(actualHash, topology ->
+                        rebalancer.apply(sessions, topology.getPartitions())
+                );
             });
         }
     }

@@ -43,7 +43,8 @@ public class NewZkSubscriptionClientTest {
         topology = objectMapper.writeValueAsBytes(new ZkSubscriptionClient.Topology(
                 new Partition[]{new Partition(
                         "test-event-type", "0", "session-id-xxx", null, Partition.State.REASSIGNING)},
-                null, null
+                null,
+                null
         ));
     }
 

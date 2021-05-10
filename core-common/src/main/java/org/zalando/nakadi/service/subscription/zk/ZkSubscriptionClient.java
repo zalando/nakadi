@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.function.Function;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
@@ -67,10 +68,13 @@ public interface ZkSubscriptionClient extends Closeable {
     void fillEmptySubscription(Collection<SubscriptionCursorWithoutToken> cursors);
 
     /**
-     * Updates specified partitions in zk.
+     * Updates topologies partitions by reading topology first and
+     * then writing the change back with usage of zookeeper node version.
+     * If zookeeper node version was changed in between it will retry
+     * by reading new zookeeper node version.
      */
-    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
-            SubscriptionNotInitializedException;
+    void updateTopology(String newSessionsHash, Function<Topology, Partition[]> partitioner)
+            throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
      * Returns session list in zk related to this subscription.
@@ -83,9 +87,11 @@ public interface ZkSubscriptionClient extends Closeable {
     boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
     /**
-     * List partitions
+     * Returns subscription {@link Topology} object from Zookeeper
      *
-     * @return list of partitions related to this subscription.
+     * @return topology {@link Topology}
+     * @throws SubscriptionNotInitializedException
+     * @throws NakadiRuntimeException
      */
     Topology getTopology() throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
