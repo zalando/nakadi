@@ -81,13 +81,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    protected byte[] createTopologyAndOffsets(final Collection<SubscriptionCursorWithoutToken> cursors)
+    protected byte[] generateTopology(final Collection<SubscriptionCursorWithoutToken> cursors)
             throws Exception {
-        for (final SubscriptionCursorWithoutToken cursor : cursors) {
-            getCurator().create().creatingParentsIfNeeded().forPath(
-                    getOffsetPath(cursor.getEventTypePartition()),
-                    cursor.getOffset().getBytes(UTF_8));
-        }
         final Partition[] partitions = cursors.stream().map(cursor -> new Partition(
                 cursor.getEventType(),
                 cursor.getPartition(),
