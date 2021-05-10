@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -81,8 +82,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    protected byte[] generateTopology(final Collection<SubscriptionCursorWithoutToken> cursors)
-            throws Exception {
+    protected void createTopologyZNode(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
         final Partition[] partitions = cursors.stream().map(cursor -> new Partition(
                 cursor.getEventType(),
                 cursor.getPartition(),
@@ -91,8 +91,15 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
         final Topology topology = new Topology(partitions, "", 0);
-        getLog().info("Generating topology {}", topology);
-        return objectMapper.writeValueAsBytes(topology);
+        getLog().info("Creating topology ZNode for {}", topology);
+        final byte[] topologyData = objectMapper.writeValueAsBytes(topology);
+        try {
+            getCurator().create()
+                    .withMode(CreateMode.PERSISTENT)
+                    .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
+        } catch (final KeeperException.NodeExistsException ex) {
+            getLog().info("ZNode exist for topology, not creating a new one");
+        }
     }
 
     @Override

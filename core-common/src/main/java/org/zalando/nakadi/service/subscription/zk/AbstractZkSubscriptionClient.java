@@ -145,7 +145,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         try {
             createSessionsZNode();
             createOffsetZNodes(cursors);
-            createTopologyZNode(generateTopology(cursors));
+            createTopologyZNode(cursors);
             createStateZNodeAsInitialized();
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
@@ -175,16 +175,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 getLog().info("Offset ZNode {}/{} exists, not creating a new one",
                         cursor.getEventType(), cursor.getPartition());
             }
-        }
-    }
-
-    private void createTopologyZNode(final byte[] topologyData) throws Exception {
-        try {
-            getCurator().create()
-                    .withMode(CreateMode.PERSISTENT)
-                    .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
-        } catch (final KeeperException.NodeExistsException ex) {
-            getLog().info("ZNode exist for topology, not creating a new one");
         }
     }
 
@@ -482,8 +472,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         }
     }
 
-    protected abstract byte[] generateTopology(Collection<SubscriptionCursorWithoutToken> cursors)
-            throws Exception;
+    protected abstract void createTopologyZNode(Collection<SubscriptionCursorWithoutToken> cursors) throws Exception;
 
     protected abstract String getOffsetPath(EventTypePartition etp);
 
