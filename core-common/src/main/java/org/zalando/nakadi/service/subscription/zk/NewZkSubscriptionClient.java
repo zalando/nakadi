@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
@@ -84,13 +85,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    protected byte[] createTopologyAndOffsets(final Collection<SubscriptionCursorWithoutToken> cursors)
-            throws Exception {
-        for (final SubscriptionCursorWithoutToken cursor : cursors) {
-            getCurator().create().creatingParentsIfNeeded().forPath(
-                    getOffsetPath(cursor.getEventTypePartition()),
-                    cursor.getOffset().getBytes(UTF_8));
-        }
+    protected void createTopologyZNode(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
         final Partition[] partitions = cursors.stream().map(cursor -> new Partition(
                 cursor.getEventType(),
                 cursor.getPartition(),
@@ -99,8 +94,15 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
         final Topology topology = new Topology(partitions, "", 0);
-        getLog().info("Generating topology {}", topology);
-        return objectMapper.writeValueAsBytes(topology);
+        getLog().info("Creating topology ZNode for {}", topology);
+        final byte[] topologyData = objectMapper.writeValueAsBytes(topology);
+        try {
+            getCurator().create()
+                    .withMode(CreateMode.PERSISTENT)
+                    .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
+        } catch (final KeeperException.NodeExistsException ex) {
+            getLog().info("ZNode exist for topology, not creating a new one");
+        }
     }
 
     @Override
