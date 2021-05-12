@@ -193,8 +193,8 @@ public class CursorsService {
                 subscription, LogPathBuilder.build(subscriptionId, "reset_cursors"));
 
         // In case if subscription was never initialized - initialize it
-        zkClient.runLocked(() -> SubscriptionInitializer.initializeSubscriptionLocked(
-                zkClient, subscription, timelineService, cursorConverter));
+        SubscriptionInitializer.initialize(
+                zkClient, subscription, timelineService, cursorConverter);
         // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
         if (!cursors.isEmpty()) {
             final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);

@@ -153,7 +153,7 @@ public class RepartitioningService {
                 LogPathBuilder.build(subscription.getId(), "repartition"));
         try {
             // it could be that subscription was created, but never initialized
-            SubscriptionInitializer.initializeSubscriptionLocked(
+            SubscriptionInitializer.initialize(
                     zkClient, subscription, timelineService, cursorConverter);
             // get begin offset with timeline, partition does not matter, it will be the same for all partitions
             final Cursor cursor = cursorConverter.convert(

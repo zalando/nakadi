@@ -23,26 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 
 public interface ZkSubscriptionClient extends Closeable {
-
-    /**
-     * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi goes down. After obtaining runLocked,
-     * provided function will be called under subscription runLocked
-     *
-     * @param function Function to call in context of runLocked.
-     */
-    <T> T runLocked(Callable<T> function);
-
-    default void runLocked(final Runnable function) {
-        runLocked((Callable<Void>) () -> {
-            function.run();
-            return null;
-        });
-    }
-
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
@@ -73,7 +55,7 @@ public interface ZkSubscriptionClient extends Closeable {
      * If zookeeper node version was changed in between it will retry
      * by reading new zookeeper node version.
      */
-    void updateTopology(String newSessionsHash, Function<Topology, Partition[]> partitioner)
+    void updateTopology(Function<Topology, Partition[]> partitioner)
             throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
