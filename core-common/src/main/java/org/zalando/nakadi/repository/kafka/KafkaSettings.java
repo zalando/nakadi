@@ -21,6 +21,7 @@ public class KafkaSettings {
     private final int maxRequestSize;
     private final int deliveryTimeoutMs;
     private final int maxBlockMs;
+    private final String clientRack;
 
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
@@ -30,7 +31,8 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.enable.auto.commit}") final boolean enableAutoCommit,
                          @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize,
                          @Value("${nakadi.kafka.delivery.timeout.ms}") final int deliveryTimeoutMs,
-                         @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs) {
+                         @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs,
+                         @Value("${nakadi.kafka.client.rack:}") final String clientRack) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
@@ -39,6 +41,7 @@ public class KafkaSettings {
         this.maxRequestSize = maxRequestSize;
         this.deliveryTimeoutMs = deliveryTimeoutMs;
         this.maxBlockMs = maxBlockMs;
+        this.clientRack = clientRack;
     }
 
     public int getRequestTimeoutMs() {
@@ -71,5 +74,9 @@ public class KafkaSettings {
 
     public int getMaxBlockMs() {
         return maxBlockMs;
+    }
+
+    public String getClientRack() {
+        return clientRack;
     }
 }
