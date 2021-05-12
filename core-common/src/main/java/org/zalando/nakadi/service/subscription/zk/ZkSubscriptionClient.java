@@ -55,7 +55,7 @@ public interface ZkSubscriptionClient extends Closeable {
      * If zookeeper node version was changed in between it will retry
      * by reading new zookeeper node version.
      */
-    void updateTopology(String newSessionsHash, Function<Topology, Partition[]> partitioner)
+    void updateTopology(Function<Topology, Partition[]> partitioner)
             throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**

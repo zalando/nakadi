@@ -42,7 +42,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -314,12 +313,10 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-            log.info("Performing rebalance");
-            final Collection<Session> sessions = zkClient.listSessions();
-            final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
-                    sessions.stream().map(Session::getId).collect(Collectors.toList()));
-            zkClient.updateTopology(actualHash, topology ->
-                    rebalancer.apply(sessions, topology.getPartitions())
+            zkClient.updateTopology(topology ->
+                    rebalancer.apply(
+                            zkClient.listSessions(),
+                            topology.getPartitions())
             );
         }
     }
