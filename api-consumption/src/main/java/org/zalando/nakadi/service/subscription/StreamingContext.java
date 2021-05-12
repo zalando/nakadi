@@ -314,15 +314,13 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-            zkClient.runLocked(() -> {
-                log.info("Performing rebalance");
-                final Collection<Session> sessions = zkClient.listSessions();
-                final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
-                        sessions.stream().map(Session::getId).collect(Collectors.toList()));
-                zkClient.updateTopology(actualHash, topology ->
-                        rebalancer.apply(sessions, topology.getPartitions())
-                );
-            });
+            log.info("Performing rebalance");
+            final Collection<Session> sessions = zkClient.listSessions();
+            final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
+                    sessions.stream().map(Session::getId).collect(Collectors.toList()));
+            zkClient.updateTopology(actualHash, topology ->
+                    rebalancer.apply(sessions, topology.getPartitions())
+            );
         }
     }
 

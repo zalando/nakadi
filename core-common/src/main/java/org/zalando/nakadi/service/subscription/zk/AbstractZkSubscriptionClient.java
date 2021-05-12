@@ -11,7 +11,6 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -36,7 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -89,25 +87,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
     protected Logger getLog() {
         return log;
-    }
-
-    @Override
-    public final <T> T runLocked(final Callable<T> function) {
-        final boolean acquired = nakadiLock.lock();
-        if (!acquired) {
-            throw new ServiceTemporarilyUnavailableException(
-                    "failed to acquire subscription lock");
-        }
-
-        try {
-            return function.call();
-        } catch (final NakadiRuntimeException | NakadiBaseException e) {
-            throw e;
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        } finally {
-            nakadiLock.unlock();
-        }
     }
 
     @Override

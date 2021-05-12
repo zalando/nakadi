@@ -25,7 +25,7 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
             return;
         }
-        getZk().runLocked(this::registerSessionAndStartStreaming);
+        registerSessionAndStartStreaming();
     }
 
     /**
@@ -38,7 +38,7 @@ public class StartingState extends State {
      * 4. Switches to streaming state.
      */
     private void registerSessionAndStartStreaming() {
-        final boolean subscriptionJustInitialized = SubscriptionInitializer.initializeSubscriptionLocked(getZk(),
+        final boolean subscriptionJustInitialized = SubscriptionInitializer.initialize(getZk(),
                 getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
         getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
         if (!subscriptionJustInitialized) {

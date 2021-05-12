@@ -21,7 +21,7 @@ import static java.util.stream.Collectors.groupingBy;
 
 public class SubscriptionInitializer {
     
-    public static boolean initializeSubscriptionLocked(
+    public static boolean initialize(
             final ZkSubscriptionClient zkClient,
             final Subscription subscription,
             final TimelineService timelineService,
