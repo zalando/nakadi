@@ -234,7 +234,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
-        getLog().info("fetching sessions information");
         for (int i = 0; i < 5; i++) {
             try {
                 final List<String> sessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
