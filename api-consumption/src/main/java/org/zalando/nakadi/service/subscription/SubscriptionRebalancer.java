@@ -1,9 +1,8 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -12,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -20,10 +18,9 @@ import java.util.stream.Stream;
 
 class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partition[], Partition[]> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionRebalancer.class);
-
     @Override
-    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions) {
+    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions)
+            throws RebalanceConflictException, IllegalArgumentException{
 
         final List<String> activeSessions = sessions.stream()
                 .map(Session::getId)
@@ -40,15 +37,11 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
             for (final EventTypePartition requestedPartition : session.getRequestedPartitions()) {
 
                 // find a partition that is requested and assign it to a session that requests it
-                final Optional<Partition> partitionOpt = partitionsLeft.stream()
+                final Partition partition = partitionsLeft.stream()
                         .filter(p -> p.getKey().equals(requestedPartition))
-                        .findFirst();
-                if (!partitionOpt.isPresent()) {
-                    LOG.warn("Two existing sessions request the same partition: " + requestedPartition);
-                    return new Partition[0];
-                }
-
-                final Partition partition = partitionOpt.get();
+                        .findFirst()
+                        .orElseThrow(() -> new RebalanceConflictException(
+                                "Two existing sessions request the same partition: " + requestedPartition));
                 partitionsLeft.remove(partition);
 
                 // if this partition is not assigned to this session - move it
@@ -73,7 +66,8 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
         return changedPartitions.toArray(new Partition[changedPartitions.size()]);
     }
 
-    private Partition[] rebalanceByWeight(final Collection<Session> sessions, final Partition[] currentPartitions) {
+    private Partition[] rebalanceByWeight(final Collection<Session> sessions, final Partition[] currentPartitions)
+            throws RebalanceConflictException, IllegalArgumentException {
         final Map<String, Integer> activeSessionWeights = sessions.stream()
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
@@ -131,9 +125,10 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
         }
     }
 
-    static int[] splitByWeight(final int itemCount, final int[] weigths) {
+    static int[] splitByWeight(final int itemCount, final int[] weigths)
+            throws RebalanceConflictException, IllegalArgumentException {
         if (itemCount < weigths.length) {
-            throw new IllegalArgumentException("Can not rebalance " + itemCount + " onto " + weigths.length);
+            throw new RebalanceConflictException("Can not rebalance " + itemCount + " onto " + weigths.length);
         }
         if (IntStream.of(weigths).filter(w -> w <= 0).findAny().isPresent()) {
             throw new IllegalArgumentException("Weight can not be below zero: " + Arrays.toString(weigths));

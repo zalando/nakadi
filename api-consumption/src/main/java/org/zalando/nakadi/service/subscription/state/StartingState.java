@@ -38,11 +38,12 @@ public class StartingState extends State {
      * 4. Switches to streaming state.
      */
     private void registerSessionAndStartStreaming() {
-        final boolean subscriptionJustInitialized = SubscriptionInitializer.initialize(getZk(),
-                getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
+        SubscriptionInitializer.initialize(getZk(),
+                getContext().getSubscription(),
+                getContext().getTimelineService(),
+                getContext().getCursorConverter());
         getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
-        if (!subscriptionJustInitialized &&
-                !areStreamingSlotsAvailable(getZk().listSessions(), null)) {
+        if (!areStreamingSlotsAvailable(getZk().listSessions())) {
             return;
         }
 
@@ -57,7 +58,9 @@ public class StartingState extends State {
         try {
             getContext().registerSession();
             if (!areStreamingSlotsAvailable(
-                    getZk().listSessions(), getSessionId())) {
+                    getZk().listSessions().stream()
+                            .filter(s -> !s.getId().equals(getSessionId()))
+                            .collect(Collectors.toList()))) {
                 return;
             }
         } catch (Exception ex) {
@@ -68,20 +71,17 @@ public class StartingState extends State {
         switchState(new StreamingState());
     }
 
-    private boolean areStreamingSlotsAvailable(final Collection<Session> sessions,
-                                               final String excludeSessionId) {
+    private boolean areStreamingSlotsAvailable(final Collection<Session> sessions) {
         // check if there are streaming slots available
         final Partition[] partitions = getZk().getTopology().getPartitions();
         final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
         if (requestedPartitions.isEmpty()) {
             final long directlyRequestedPartitionsCount = sessions.stream()
-                    .filter(s -> !s.getId().equals(excludeSessionId))
                     .flatMap(s -> s.getRequestedPartitions().stream())
                     .distinct()
                     .count();
             final long autoSlotsCount = partitions.length - directlyRequestedPartitionsCount;
             final long autoBalanceSessionsCount = sessions.stream()
-                    .filter(s -> !s.getId().equals(excludeSessionId))
                     .filter(s -> s.getRequestedPartitions().isEmpty())
                     .count();
 
@@ -94,7 +94,6 @@ public class StartingState extends State {
 
         // check if the requested partitions are not directly requested by another stream(s)
         final List<EventTypePartition> conflictPartitions = sessions.stream()
-                .filter(s -> !s.getId().equals(excludeSessionId))
                 .flatMap(s -> s.getRequestedPartitions().stream())
                 .filter(requestedPartitions::contains)
                 .collect(Collectors.toList());
