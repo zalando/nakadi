@@ -314,7 +314,7 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-                zkClient.updateTopology(topology -> {
+            zkClient.updateTopology(topology -> {
                 try {
                     return rebalancer.apply(
                             zkClient.listSessions(),

@@ -341,9 +341,9 @@ public class HilaRebalanceAT extends BaseAT {
         client1.start();
         client2.start();
 
-        waitFor(() -> assertThat("at least once client should get 409 conflict",
-                        client1.getResponseCode() != HttpStatus.CONFLICT.value() ||
-                        client1.getResponseCode() != HttpStatus.CONFLICT.value()));
+        waitFor(() -> assertThat("at least one client should get 409 conflict",
+                        client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
+                        client1.getResponseCode() == HttpStatus.CONFLICT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
