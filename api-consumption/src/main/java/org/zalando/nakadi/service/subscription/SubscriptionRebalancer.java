@@ -19,7 +19,8 @@ import java.util.stream.Stream;
 class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partition[], Partition[]> {
 
     @Override
-    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions) {
+    public Partition[] apply(final Collection<Session> sessions, final Partition[] currentPartitions)
+            throws RebalanceConflictException, IllegalArgumentException{
 
         final List<String> activeSessions = sessions.stream()
                 .map(Session::getId)
@@ -65,7 +66,8 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
         return changedPartitions.toArray(new Partition[changedPartitions.size()]);
     }
 
-    private Partition[] rebalanceByWeight(final Collection<Session> sessions, final Partition[] currentPartitions) {
+    private Partition[] rebalanceByWeight(final Collection<Session> sessions, final Partition[] currentPartitions)
+            throws RebalanceConflictException, IllegalArgumentException {
         final Map<String, Integer> activeSessionWeights = sessions.stream()
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
@@ -123,9 +125,10 @@ class SubscriptionRebalancer implements BiFunction<Collection<Session>, Partitio
         }
     }
 
-    static int[] splitByWeight(final int itemCount, final int[] weigths) {
+    static int[] splitByWeight(final int itemCount, final int[] weigths)
+            throws RebalanceConflictException, IllegalArgumentException {
         if (itemCount < weigths.length) {
-            throw new IllegalArgumentException("Can not rebalance " + itemCount + " onto " + weigths.length);
+            throw new RebalanceConflictException("Can not rebalance " + itemCount + " onto " + weigths.length);
         }
         if (IntStream.of(weigths).filter(w -> w <= 0).findAny().isPresent()) {
             throw new IllegalArgumentException("Weight can not be below zero: " + Arrays.toString(weigths));

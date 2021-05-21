@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice.hila;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -323,6 +324,26 @@ public class HilaRebalanceAT extends BaseAT {
 
         // check that we get 204
         assertThat(commitStatusCode, Matchers.is(HttpStatus.NO_CONTENT.value()));
+    }
+
+    @Test(timeout = 10000)
+    public void testAtLeastOneClientGets409OnTheSamePartitionRequest() throws Exception {
+        final TestStreamingClient client1 = new TestStreamingClient(
+                URL, subscription.getId(), "batch_flush_timeout=1",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        final TestStreamingClient client2 = new TestStreamingClient(
+                URL, subscription.getId(), "batch_flush_timeout=1",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        client1.start();
+        client2.start();
+
+        waitFor(() -> assertThat("at least one client should get 409 conflict",
+                        client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
+                        client1.getResponseCode() == HttpStatus.CONFLICT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,

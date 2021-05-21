@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -313,11 +314,16 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-            zkClient.updateTopology(topology ->
-                    rebalancer.apply(
+            zkClient.updateTopology(topology -> {
+                try {
+                    return rebalancer.apply(
                             zkClient.listSessions(),
-                            topology.getPartitions())
-            );
+                            topology.getPartitions());
+                } catch (final RebalanceConflictException e) {
+                    log.warn("failed to rebalance partitions: {}", e.getMessage(), e);
+                    return new Partition[0];
+                }
+            });
         }
     }
 
