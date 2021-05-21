@@ -314,15 +314,16 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-            try {
-                zkClient.updateTopology(topology ->
-                        rebalancer.apply(
-                                zkClient.listSessions(),
-                                topology.getPartitions())
-                );
-            } catch (final RebalanceConflictException e) {
-                log.warn("failed to rebalance partitions: {}", e.getMessage(), e);
-            }
+                zkClient.updateTopology(topology -> {
+                try {
+                    return rebalancer.apply(
+                            zkClient.listSessions(),
+                            topology.getPartitions());
+                } catch (final RebalanceConflictException e) {
+                    log.warn("failed to rebalance partitions: {}", e.getMessage(), e);
+                    return new Partition[0];
+                }
+            });
         }
     }
 

@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -22,7 +23,7 @@ import static org.zalando.nakadi.service.subscription.model.Partition.State.UNAS
 
 public class SubscriptionRebalancerTest {
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = RebalanceConflictException.class)
     public void splitByWeightShouldAcceptOnlyCorrectData1() {
         SubscriptionRebalancer.splitByWeight(1, new int[]{1, 1});
     }

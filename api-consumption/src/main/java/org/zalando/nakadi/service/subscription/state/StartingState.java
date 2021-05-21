@@ -43,7 +43,10 @@ public class StartingState extends State {
                 getContext().getTimelineService(),
                 getContext().getCursorConverter());
         getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
-        if (!areStreamingSlotsAvailable(getZk().listSessions())) {
+        try {
+            checkStreamingSlotsAvailable(getZk().listSessions());
+        } catch (Exception ex) {
+            switchState(new CleanupState(ex));
             return;
         }
 
@@ -57,12 +60,9 @@ public class StartingState extends State {
 
         try {
             getContext().registerSession();
-            if (!areStreamingSlotsAvailable(
-                    getZk().listSessions().stream()
-                            .filter(s -> !s.getId().equals(getSessionId()))
-                            .collect(Collectors.toList()))) {
-                return;
-            }
+            checkStreamingSlotsAvailable(getZk().listSessions().stream()
+                    .filter(s -> !s.getId().equals(getSessionId()))
+                    .collect(Collectors.toList()));
         } catch (Exception ex) {
             switchState(new CleanupState(ex));
             return;
@@ -71,7 +71,8 @@ public class StartingState extends State {
         switchState(new StreamingState());
     }
 
-    private boolean areStreamingSlotsAvailable(final Collection<Session> sessions) {
+    private void checkStreamingSlotsAvailable(final Collection<Session> sessions)
+            throws NoStreamingSlotsAvailable, SubscriptionPartitionConflictException {
         // check if there are streaming slots available
         final Partition[] partitions = getZk().getTopology().getPartitions();
         final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
@@ -87,8 +88,7 @@ public class StartingState extends State {
 
             if (autoBalanceSessionsCount >= autoSlotsCount) {
                 TracingService.logStreamCloseReason(getContext().getCurrentSpan(), "No streaming slots available");
-                switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
-                return false;
+                throw new NoStreamingSlotsAvailable(partitions.length);
             }
         }
 
@@ -100,9 +100,7 @@ public class StartingState extends State {
         if (!conflictPartitions.isEmpty()) {
             TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
                     "Partition already taken by other stream of the subscription");
-            switchState(new CleanupState(SubscriptionPartitionConflictException.of(conflictPartitions)));
-            return false;
+            throw SubscriptionPartitionConflictException.of(conflictPartitions);
         }
-        return true;
     }
 }

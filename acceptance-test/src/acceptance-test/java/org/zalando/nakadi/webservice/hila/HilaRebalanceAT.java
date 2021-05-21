@@ -327,7 +327,7 @@ public class HilaRebalanceAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void testNoConflictOnTheSamePartitionRequest() throws Exception {
+    public void testAtLeastOneClientGets409OnTheSamePartitionRequest() throws Exception {
         final TestStreamingClient client1 = new TestStreamingClient(
                 URL, subscription.getId(), "batch_flush_timeout=1",
                 Optional.empty(),
@@ -341,8 +341,9 @@ public class HilaRebalanceAT extends BaseAT {
         client1.start();
         client2.start();
 
-        waitFor(() -> assertThat(client1.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value())));
-        waitFor(() -> assertThat(client2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value())));
+        waitFor(() -> assertThat("at least once client should get 409 conflict",
+                        client1.getResponseCode() != HttpStatus.CONFLICT.value() ||
+                        client1.getResponseCode() != HttpStatus.CONFLICT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
