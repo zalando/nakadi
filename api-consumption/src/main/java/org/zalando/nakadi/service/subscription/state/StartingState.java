@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.state;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.SubscriptionInitializer;
@@ -45,7 +46,7 @@ public class StartingState extends State {
         getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
         try {
             checkStreamingSlotsAvailable(getZk().listSessions());
-        } catch (Exception ex) {
+        } catch (NoStreamingSlotsAvailable | SubscriptionPartitionConflictException ex) {
             switchState(new CleanupState(ex));
             return;
         }
@@ -63,7 +64,7 @@ public class StartingState extends State {
             checkStreamingSlotsAvailable(getZk().listSessions().stream()
                     .filter(s -> !s.getId().equals(getSessionId()))
                     .collect(Collectors.toList()));
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             switchState(new CleanupState(ex));
             return;
         }
