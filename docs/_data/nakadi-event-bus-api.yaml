@@ -2834,7 +2834,7 @@ definitions:
           structure is not enforced. For example a team name and data type can be used such as
           'acme-team.price-change'.
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*'
-        example: order.order_cancelled, acme-platform.users
+        example: order.order_cancelled
       owning_application:
         type: string
         description: |
