@@ -59,7 +59,7 @@ public class ZooKeeperHolder {
     public CloseableCuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) throws ZookeeperException {
         // most of the clients use default max timeout, subscriptionCurator client saves zookeeper resource
         if (sessionTimeoutMs == maxCommitTimeoutMs) {
-            return new StaticCuratorFramework(rotatingCuratorFramework);
+            return new RotatingCuratorHolder(rotatingCuratorFramework);
         }
 
         try {
@@ -83,10 +83,10 @@ public class ZooKeeperHolder {
         }
     }
 
-    public static class StaticCuratorFramework extends CloseableCuratorFramework {
+    public static class RotatingCuratorHolder extends CloseableCuratorFramework {
 
         private final RotatingCuratorFramework rotatingCuratorFramework;
-        public StaticCuratorFramework(final RotatingCuratorFramework rotatingCuratorFramework) {
+        public RotatingCuratorHolder(final RotatingCuratorFramework rotatingCuratorFramework) {
             super(rotatingCuratorFramework.takeCuratorFramework());
             this.rotatingCuratorFramework = rotatingCuratorFramework;
         }
