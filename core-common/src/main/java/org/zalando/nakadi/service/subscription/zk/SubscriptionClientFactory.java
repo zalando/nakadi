@@ -11,7 +11,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.RotatingCuratorFramework;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.service.subscription.zk.lock.CuratorNakadiLock;
 
 import java.util.concurrent.TimeUnit;
 
@@ -48,9 +47,6 @@ public class SubscriptionClientFactory {
         return new NewZkSubscriptionClient(
                 subscription.getId(),
                 zkHolder.getSubscriptionCurator(commitTimeoutMillis),
-                new CuratorNakadiLock(
-                        rotatingCuratorFramework,
-                        subscription.getId()),
                 loggingPath,
                 objectMapper
         );

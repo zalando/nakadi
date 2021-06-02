@@ -15,7 +15,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.NewZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
-import org.zalando.nakadi.service.subscription.zk.lock.NakadiLock;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -41,7 +40,6 @@ public class HilaRepartitionAT extends BaseAT {
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
                 new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
-                Mockito.mock(NakadiLock.class),
                 String.format("%s.%s", subscriptionId, sid),
                 MAPPER
         );
@@ -65,7 +63,6 @@ public class HilaRepartitionAT extends BaseAT {
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
                 new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
-                Mockito.mock(NakadiLock.class),
                 String.format("%s.%s", subscriptionId, sid),
                 MAPPER
         );

@@ -20,8 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
-import org.zalando.nakadi.service.subscription.zk.lock.CuratorNakadiLock;
-import org.zalando.nakadi.service.subscription.zk.lock.NakadiLock;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -52,7 +50,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
-    private final NakadiLock nakadiLock;
     private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String closeSubscriptionStream;
     private final Logger log;
@@ -60,10 +57,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
             final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
-            final NakadiLock nakadiLock,
             final String loggingPath) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.nakadiLock = nakadiLock;
         this.closeableCuratorFramework = closeableCuratorFramework;
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
@@ -95,10 +90,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             getCurator().delete().guaranteed()
                     .deletingChildrenIfNeeded()
                     .forPath(getSubscriptionPath(""));
-            getCurator().delete().guaranteed()
-                    .deletingChildrenIfNeeded()
-                    .forPath(CuratorNakadiLock
-                            .getSubscriptionLockPath(subscriptionId));
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {

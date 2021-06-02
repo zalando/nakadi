@@ -28,7 +28,6 @@ public class NewZkSubscriptionClientTest {
     private final NewZkSubscriptionClient client = new NewZkSubscriptionClient(
             "subscription-id-xxx",
             new ZooKeeperHolder.StaticCuratorFramework(curator),
-            null,
             "loggin.path",
             objectMapper
     );
