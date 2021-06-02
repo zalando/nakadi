@@ -9,7 +9,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
-import org.zalando.nakadi.repository.zookeeper.RotatingCuratorFramework;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.util.concurrent.TimeUnit;
@@ -20,17 +19,14 @@ public class SubscriptionClientFactory {
     private final ZooKeeperHolder zkHolder;
     private final ObjectMapper objectMapper;
     private final long maxCommitTimeoutMs;
-    private final RotatingCuratorFramework rotatingCuratorFramework;
 
     @Autowired
     public SubscriptionClientFactory(
             final ZooKeeperHolder zkHolder,
             final ObjectMapper objectMapper,
-            final RotatingCuratorFramework rotatingCuratorFramework,
             final NakadiSettings nakadiSettings) {
         this.zkHolder = zkHolder;
         this.objectMapper = objectMapper;
-        this.rotatingCuratorFramework = rotatingCuratorFramework;
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
     }
 

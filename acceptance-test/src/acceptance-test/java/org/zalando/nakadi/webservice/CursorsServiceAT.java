@@ -115,7 +115,7 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionCache subscriptionCache = mock(SubscriptionCache.class);
         when(subscriptionCache.getSubscription(sid)).thenReturn(subscription);
         final SubscriptionClientFactory zkSubscriptionFactory = new SubscriptionClientFactory(
-                zkHolder, MAPPER, mock(RotatingCuratorFramework.class), mock(NakadiSettings.class));
+                zkHolder, MAPPER, mock(NakadiSettings.class));
         uuidGenerator = mock(UUIDGenerator.class);
         when(uuidGenerator.isUUID(any())).thenReturn(true);
         cursorsService = new CursorsService(subscriptionRepo, subscriptionCache, mock(NakadiSettings.class),
