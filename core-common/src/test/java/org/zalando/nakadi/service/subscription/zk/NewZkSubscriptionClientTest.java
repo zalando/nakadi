@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.repository.zookeeper.RotatingCuratorFramework;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 
@@ -20,22 +21,18 @@ import java.util.Collections;
 public class NewZkSubscriptionClientTest {
 
     private final CuratorFramework curator = Mockito.mock(CuratorFramework.class);
+    private final RotatingCuratorFramework rotatingCuratorFramework = Mockito.mock(RotatingCuratorFramework.class);
     private final GetDataBuilder getDataBuilder = Mockito.mock(GetDataBuilder.class);
     private final SetDataBuilder setDataBuilder = Mockito.mock(SetDataBuilder.class);
     private final BackgroundPathAndBytesable bytesable = Mockito.mock(BackgroundPathAndBytesable.class);
     private final WatchPathable watchPathable = Mockito.mock(WatchPathable.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final NewZkSubscriptionClient client = new NewZkSubscriptionClient(
-            "subscription-id-xxx",
-            new ZooKeeperHolder.StaticCuratorFramework(curator),
-            null,
-            "loggin.path",
-            objectMapper
-    );
+    private NewZkSubscriptionClient client;
     private byte[] topology;
 
     @Before
     public void setUp() throws JsonProcessingException {
+        Mockito.when(rotatingCuratorFramework.takeCuratorFramework()).thenReturn(curator);
         Mockito.when(curator.getData()).thenReturn(getDataBuilder);
         Mockito.when(curator.setData()).thenReturn(setDataBuilder);
         Mockito.when(setDataBuilder.withVersion(Mockito.anyInt())).thenReturn(bytesable);
@@ -46,6 +43,12 @@ public class NewZkSubscriptionClientTest {
                 null,
                 null
         ));
+        client = new NewZkSubscriptionClient(
+                "subscription-id-xxx",
+                new ZooKeeperHolder.RotatingCuratorHolder(rotatingCuratorFramework),
+                "loggin.path",
+                objectMapper
+        );
     }
 
     @Test(expected = SubscriptionNotInitializedException.class)

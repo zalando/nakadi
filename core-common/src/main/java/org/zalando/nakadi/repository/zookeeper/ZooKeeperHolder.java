@@ -28,8 +28,8 @@ public class ZooKeeperHolder {
     private final long maxCommitTimeoutMs;
     private final ZookeeperConnection conn;
 
-    private CuratorFramework zooKeeper;
-    private CuratorFramework subscriptionCurator;
+    private final CuratorFramework zooKeeper;
+    private final RotatingCuratorFramework rotatingCuratorFramework;
 
     public ZooKeeperHolder(final ZookeeperConnection conn,
                            final Integer sessionTimeoutMs,
@@ -41,7 +41,7 @@ public class ZooKeeperHolder {
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
 
         zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
-        subscriptionCurator = createCuratorFramework((int) maxCommitTimeoutMs, connectionTimeoutMs);
+        rotatingCuratorFramework = new RotatingCuratorFramework(this, 300000);
     }
 
     public CuratorFramework get() {
@@ -59,7 +59,7 @@ public class ZooKeeperHolder {
     public CloseableCuratorFramework getSubscriptionCurator(final long sessionTimeoutMs) throws ZookeeperException {
         // most of the clients use default max timeout, subscriptionCurator client saves zookeeper resource
         if (sessionTimeoutMs == maxCommitTimeoutMs) {
-            return new StaticCuratorFramework(subscriptionCurator);
+            return new RotatingCuratorHolder(rotatingCuratorFramework);
         }
 
         try {
@@ -83,15 +83,17 @@ public class ZooKeeperHolder {
         }
     }
 
-    public static class StaticCuratorFramework extends CloseableCuratorFramework {
+    public static class RotatingCuratorHolder extends CloseableCuratorFramework {
 
-        public StaticCuratorFramework(final CuratorFramework curatorFramework) {
-            super(curatorFramework);
+        private final RotatingCuratorFramework rotatingCuratorFramework;
+        public RotatingCuratorHolder(final RotatingCuratorFramework rotatingCuratorFramework) {
+            super(rotatingCuratorFramework.takeCuratorFramework());
+            this.rotatingCuratorFramework = rotatingCuratorFramework;
         }
 
         @Override
         public void close() {
-            // do not ever close this particular instance of curator
+            rotatingCuratorFramework.returnCuratorFramework(getCuratorFramework());
         }
     }
 
