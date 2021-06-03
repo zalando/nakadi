@@ -81,7 +81,7 @@ public class EventPublisherTest {
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
-            "nakadi_archiver", "nakadi_to_s3");
+            "nakadi_archiver", "nakadi_to_s3", 100, 10000);
     private EventOwnerExtractorFactory eventOwnerExtractorFactory;
     private EventPublisher publisher;
 

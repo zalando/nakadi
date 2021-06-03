@@ -5,7 +5,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-public class RotatingCuratorFrameworkTest {
+public class CuratorFrameworkRotatorTest {
 
     @Test
     public void testShouldReplaceCurator() throws InterruptedException {
@@ -15,19 +15,19 @@ public class RotatingCuratorFrameworkTest {
 
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf1);
 
-        final RotatingCuratorFramework rotatingCuratorFramework = new RotatingCuratorFramework(zkh, 10);
+        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(zkh, 10, 10000);
 
-        CuratorFramework cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        CuratorFramework cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf1, cfTmp);
-        rotatingCuratorFramework.returnCuratorFramework(cfTmp);
+        curatorFrameworkRotator.returnCuratorFramework(cfTmp);
 
         Thread.sleep(15);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf2);
-        rotatingCuratorFramework.scheduleRotationCheck();
+        curatorFrameworkRotator.scheduleRotationCheck();
 
-        cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf2, cfTmp);
-        rotatingCuratorFramework.returnCuratorFramework(cfTmp);
+        curatorFrameworkRotator.returnCuratorFramework(cfTmp);
     }
 
     @Test
@@ -39,34 +39,34 @@ public class RotatingCuratorFrameworkTest {
 
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf1);
 
-        final RotatingCuratorFramework rotatingCuratorFramework = new RotatingCuratorFramework(zkh, 10);
+        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(zkh, 10, 10000);
 
-        CuratorFramework cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        CuratorFramework cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf1, cfTmp);
         // do not return curator
 
         Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf2);
-        rotatingCuratorFramework.scheduleRotationCheck();
-        cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        curatorFrameworkRotator.scheduleRotationCheck();
+        cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf2, cfTmp);
 
         Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf3);
-        rotatingCuratorFramework.scheduleRotationCheck();
-        cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        curatorFrameworkRotator.scheduleRotationCheck();
+        cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf2, cfTmp);
 
         // finally return client and expect new client will be created
-        rotatingCuratorFramework.returnCuratorFramework(cf1);
+        curatorFrameworkRotator.returnCuratorFramework(cf1);
 
         Thread.sleep(20);
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf3);
         // it will nullify retired client
-        rotatingCuratorFramework.scheduleRotationCheck();
+        curatorFrameworkRotator.scheduleRotationCheck();
         //need second call to rotate the client
-        rotatingCuratorFramework.scheduleRotationCheck();
-        cfTmp = rotatingCuratorFramework.takeCuratorFramework();
+        curatorFrameworkRotator.scheduleRotationCheck();
+        cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf3, cfTmp);
     }
 

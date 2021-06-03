@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.repository.zookeeper.RotatingCuratorFramework;
+import org.zalando.nakadi.repository.zookeeper.CuratorFrameworkRotator;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 
@@ -21,7 +21,7 @@ import java.util.Collections;
 public class NewZkSubscriptionClientTest {
 
     private final CuratorFramework curator = Mockito.mock(CuratorFramework.class);
-    private final RotatingCuratorFramework rotatingCuratorFramework = Mockito.mock(RotatingCuratorFramework.class);
+    private final CuratorFrameworkRotator curatorFrameworkRotator = Mockito.mock(CuratorFrameworkRotator.class);
     private final GetDataBuilder getDataBuilder = Mockito.mock(GetDataBuilder.class);
     private final SetDataBuilder setDataBuilder = Mockito.mock(SetDataBuilder.class);
     private final BackgroundPathAndBytesable bytesable = Mockito.mock(BackgroundPathAndBytesable.class);
@@ -32,7 +32,7 @@ public class NewZkSubscriptionClientTest {
 
     @Before
     public void setUp() throws JsonProcessingException {
-        Mockito.when(rotatingCuratorFramework.takeCuratorFramework()).thenReturn(curator);
+        Mockito.when(curatorFrameworkRotator.takeCuratorFramework()).thenReturn(curator);
         Mockito.when(curator.getData()).thenReturn(getDataBuilder);
         Mockito.when(curator.setData()).thenReturn(setDataBuilder);
         Mockito.when(setDataBuilder.withVersion(Mockito.anyInt())).thenReturn(bytesable);
@@ -45,7 +45,7 @@ public class NewZkSubscriptionClientTest {
         ));
         client = new NewZkSubscriptionClient(
                 "subscription-id-xxx",
-                new ZooKeeperHolder.RotatingCuratorHolder(rotatingCuratorFramework),
+                new ZooKeeperHolder.RotatingCuratorFramework(curatorFrameworkRotator),
                 "loggin.path",
                 objectMapper
         );

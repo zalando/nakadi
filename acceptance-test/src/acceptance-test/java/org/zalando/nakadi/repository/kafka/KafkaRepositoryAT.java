@@ -71,6 +71,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final String DEFAULT_WARN_LOG_COMPACTION_MESSAGE = "";
     private static final String DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION = "nakadi_archiver";
     private static final String DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP = "nakadi_to_s3";
+    private static final long DEFAULT_CURATOR_MAX_LIFETIME_MS = 1000;
+    private static final long DEFAULT_CURATOR_ROTATION_MS = 10000;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -99,7 +101,9 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
                 DEFAULT_WARN_LOG_COMPACTION_MESSAGE,
                 DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION,
-                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP);
+                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP,
+                DEFAULT_CURATOR_MAX_LIFETIME_MS,
+                DEFAULT_CURATOR_ROTATION_MS);
 
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,

@@ -3,30 +3,33 @@ package org.zalando.nakadi.repository.zookeeper;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class RotatingCuratorFramework {
+public class CuratorFrameworkRotator {
 
     private static final Logger LOG =
-            LoggerFactory.getLogger(RotatingCuratorFramework.class);
+            LoggerFactory.getLogger(CuratorFrameworkRotator.class);
 
     private final ZooKeeperHolder zooKeeperHolder;
     private final long curatorMaxLifetimeMs;
     private final ReadWriteLock lock;
+    private ScheduledExecutorService executor;
 
     private final CuratorUsage activeCurator;
     private final CuratorUsage retiringCurator;
 
     private long activeCuratorRotatedAt;
 
-    public RotatingCuratorFramework(
+    public CuratorFrameworkRotator(
             final ZooKeeperHolder zooKeeperHolder,
-            @Value("${nakadi.rotating.curator.max.lifetime.ms:300000}") final long curatorMaxLifetimeMs) {
+            final long curatorMaxLifetimeMs,
+            final long curatorRotationCheckMs) {
         this.zooKeeperHolder = zooKeeperHolder;
         this.curatorMaxLifetimeMs = curatorMaxLifetimeMs;
         this.lock = new ReentrantReadWriteLock();
@@ -35,6 +38,9 @@ public class RotatingCuratorFramework {
                         new AtomicLong());
         this.retiringCurator = new CuratorUsage(null, null);
         this.activeCuratorRotatedAt = System.currentTimeMillis();
+        this.executor = Executors.newSingleThreadScheduledExecutor();
+        this.executor.scheduleAtFixedRate(this::scheduleRotationCheck,
+                curatorRotationCheckMs, curatorRotationCheckMs, TimeUnit.MILLISECONDS);
     }
 
     public CuratorFramework takeCuratorFramework() {
@@ -72,8 +78,6 @@ public class RotatingCuratorFramework {
         }
     }
 
-    @Scheduled(fixedRateString =
-            "${nakadi.rotating.curator.rotation.check.ms:10000}")
     public void scheduleRotationCheck() {
         try {
             if (System.currentTimeMillis() >
