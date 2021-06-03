@@ -25,6 +25,8 @@ public class NakadiSettings {
     private final String logCompactionWarnMessage;
     private final String deletableSubscriptionOwningApplication;
     private final String deletableSubscriptionConsumerGroup;
+    private final long curatorMaxLifetimeMs;
+    private final long curatorRotationCheckMs;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -45,7 +47,11 @@ public class NakadiSettings {
                           @Value("${nakadi.eventType.deletableSubscription.owningApplication}")
                               final String deletableSubscriptionOwningApplication,
                           @Value("${nakadi.eventType.deletableSubscription.consumerGroup}")
-                              final String deletableSubscriptionConsumerGroup) {
+                              final String deletableSubscriptionConsumerGroup,
+                          @Value("${nakadi.rotating.curator.max.lifetime.ms:300000}")
+                              final long curatorMaxLifetimeMs,
+                          @Value("${nakadi.rotating.curator.rotation.check.ms:10000}")
+                              final long curatorRotationCheckMs) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -62,6 +68,8 @@ public class NakadiSettings {
         this.logCompactionWarnMessage = logCompactionWarnMessage;
         this.deletableSubscriptionOwningApplication = deletableSubscriptionOwningApplication;
         this.deletableSubscriptionConsumerGroup = deletableSubscriptionConsumerGroup;
+        this.curatorMaxLifetimeMs = curatorMaxLifetimeMs;
+        this.curatorRotationCheckMs = curatorRotationCheckMs;
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -126,5 +134,13 @@ public class NakadiSettings {
 
     public String getDeletableSubscriptionConsumerGroup() {
         return deletableSubscriptionConsumerGroup;
+    }
+
+    public long getCuratorMaxLifetimeMs() {
+        return curatorMaxLifetimeMs;
+    }
+
+    public long getCuratorRotationCheckMs() {
+        return curatorRotationCheckMs;
     }
 }
