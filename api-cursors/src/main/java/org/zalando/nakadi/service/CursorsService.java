@@ -33,6 +33,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -88,11 +89,14 @@ public class CursorsService {
             authorizationValidator.authorizeSubscriptionView(subscription);
             authorizationValidator.authorizeSubscriptionCommit(subscription);
             validateSubscriptionCommitCursors(subscription, cursors, parentSpan);
-            final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
-                    subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
-            validateStreamId(cursors, streamId, zkClient, subscriptionId, parentSpan);
-            return zkClient.commitOffsets(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()));
+            try (ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
+                    subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"))) {
+                validateStreamId(cursors, streamId, zkClient, subscriptionId, parentSpan);
+                return zkClient.commitOffsets(
+                        cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()));
+            }
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         } catch (Exception e) {
             TracingService.logErrorInSpan(parentSpan, e.getMessage());
             throw e;
@@ -149,21 +153,29 @@ public class CursorsService {
         authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
-        final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
-
-        Partition[] partitions;
         try {
-            partitions = zkSubscriptionClient.getTopology().getPartitions();
-        } catch (final SubscriptionNotInitializedException ex) {
-            partitions = new Partition[]{};
-        }
-        final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
-                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+            final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
 
-        for (final Partition p : partitions) {
-            cursorsListBuilder.add(positions.get(p.getKey()));
+            Partition[] partitions;
+            try {
+                partitions = zkSubscriptionClient.getTopology().getPartitions();
+            } catch (final SubscriptionNotInitializedException ex) {
+                partitions = new Partition[]{};
+            }
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
+                    Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+
+            for (final Partition p : partitions) {
+                cursorsListBuilder.add(positions.get(p.getKey()));
+            }
+            return cursorsListBuilder.build();
+        } finally {
+            try {
+                zkSubscriptionClient.close();
+            } catch (IOException io) {
+                throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+            }
         }
-        return cursorsListBuilder.build();
     }
 
     public void resetCursors(final String subscriptionId,
@@ -191,28 +203,35 @@ public class CursorsService {
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "reset_cursors"));
+        try {
+            // In case if subscription was never initialized - initialize it
+            SubscriptionInitializer.initialize(
+                    zkClient, subscription, timelineService, cursorConverter);
+            // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
+            if (!cursors.isEmpty()) {
+                final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
 
-        // In case if subscription was never initialized - initialize it
-        SubscriptionInitializer.initialize(
-                zkClient, subscription, timelineService, cursorConverter);
-        // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
-        if (!cursors.isEmpty()) {
-            final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
+                final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
+                        TimeUnit.SECONDS.toMillis(1);
+                final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
+                        .map(cursorConverter::convertToNoToken)
+                        .collect(Collectors.toList());
 
-            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
-                    TimeUnit.SECONDS.toMillis(1);
-            final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
-                    .map(cursorConverter::convertToNoToken)
-                    .collect(Collectors.toList());
+                zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
 
-            zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
-
-            auditLogPublisher.publish(
-                    Optional.of(new ItemsWrapper<>(oldCursors)),
-                    Optional.of(new ItemsWrapper<>(newCursors)),
-                    NakadiAuditLogPublisher.ResourceType.CURSORS,
-                    NakadiAuditLogPublisher.ActionType.UPDATED,
-                    subscriptionId);
+                auditLogPublisher.publish(
+                        Optional.of(new ItemsWrapper<>(oldCursors)),
+                        Optional.of(new ItemsWrapper<>(newCursors)),
+                        NakadiAuditLogPublisher.ResourceType.CURSORS,
+                        NakadiAuditLogPublisher.ActionType.UPDATED,
+                        subscriptionId);
+            }
+        } finally {
+            try {
+                zkClient.close();
+            } catch (IOException io) {
+                throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+            }
         }
     }
 
