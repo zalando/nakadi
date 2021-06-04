@@ -15,7 +15,8 @@ public class CuratorFrameworkRotatorTest {
 
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf1);
 
-        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(zkh, 10, 10000);
+        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(
+                () -> zkh.newCuratorFramework(), 10, 10000);
 
         CuratorFramework cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf1, cfTmp);
@@ -39,7 +40,8 @@ public class CuratorFrameworkRotatorTest {
 
         Mockito.when(zkh.newCuratorFramework()).thenReturn(cf1);
 
-        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(zkh, 10, 10000);
+        final CuratorFrameworkRotator curatorFrameworkRotator = new CuratorFrameworkRotator(
+                () -> zkh.newCuratorFramework(), 10, 10000);
 
         CuratorFramework cfTmp = curatorFrameworkRotator.takeCuratorFramework();
         Assert.assertEquals(cf1, cfTmp);
