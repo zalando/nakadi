@@ -10,13 +10,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 
 public class CuratorFrameworkRotator {
 
     private static final Logger LOG =
             LoggerFactory.getLogger(CuratorFrameworkRotator.class);
 
-    private final ZooKeeperHolder zooKeeperHolder;
+    private final Supplier<CuratorFramework> curatorSupplier;
     private final long curatorMaxLifetimeMs;
     private final ReadWriteLock lock;
     private ScheduledExecutorService executor;
@@ -27,14 +28,14 @@ public class CuratorFrameworkRotator {
     private long activeCuratorRotatedAt;
 
     public CuratorFrameworkRotator(
-            final ZooKeeperHolder zooKeeperHolder,
+            final Supplier<CuratorFramework> curatorSupplier,
             final long curatorMaxLifetimeMs,
             final long curatorRotationCheckMs) {
-        this.zooKeeperHolder = zooKeeperHolder;
+        this.curatorSupplier = curatorSupplier;
         this.curatorMaxLifetimeMs = curatorMaxLifetimeMs;
         this.lock = new ReentrantReadWriteLock();
         this.activeCurator = new CuratorUsage
-                (zooKeeperHolder.newCuratorFramework(),
+                (curatorSupplier.get(),
                         new AtomicLong());
         this.retiringCurator = new CuratorUsage(null, null);
         this.activeCuratorRotatedAt = System.currentTimeMillis();
@@ -97,8 +98,7 @@ public class CuratorFrameworkRotator {
             final AtomicLong tmpCounter = activeCurator.counter;
             lock.writeLock().lock();
             try {
-                activeCurator.curator = zooKeeperHolder
-                        .newCuratorFramework();
+                activeCurator.curator = curatorSupplier.get();
                 activeCurator.counter = new AtomicLong();
                 retiringCurator.curator = tmpCurator;
                 retiringCurator.counter = tmpCounter;

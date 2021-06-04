@@ -41,7 +41,8 @@ public class ZooKeeperHolder {
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
 
         zooKeeper = createCuratorFramework(sessionTimeoutMs, connectionTimeoutMs);
-        curatorFrameworkRotator = new CuratorFrameworkRotator(this,
+        curatorFrameworkRotator = new CuratorFrameworkRotator(
+                () -> newCuratorFramework(),
                 nakadiSettings.getCuratorMaxLifetimeMs(),
                 nakadiSettings.getCuratorRotationCheckMs());
     }

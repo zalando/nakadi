@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.zookeeper.CuratorFrameworkRotator;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
@@ -97,8 +98,10 @@ public class CursorsServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
+        final CuratorFrameworkRotator curatorRotator = new CuratorFrameworkRotator(
+                () -> ZookeeperTestUtils.createCurator(ZOOKEEPER_URL), 300_000, 10_000);
         when(zkHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
+                .thenReturn(new ZooKeeperHolder.RotatingCuratorFramework(curatorRotator));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         final TimelineService timelineService = mock(TimelineService.class);

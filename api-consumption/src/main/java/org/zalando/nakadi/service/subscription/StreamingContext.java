@@ -82,6 +82,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
     private boolean sessionRegistered;
+    private boolean zkClientClosed;
 
     private final Logger log;
 
@@ -252,6 +253,13 @@ public class StreamingContext implements SubscriptionStreamer {
         log.info("Registering session {}", session);
         zkClient.registerSession(session);
         sessionRegistered = true;
+    }
+
+    public void closeZkClient() throws IOException {
+        if (!zkClientClosed) {
+            zkClient.close();
+            zkClientClosed = true;
+        }
     }
 
     public void subscribeToSessionListChangeAndRebalance() throws NakadiRuntimeException {

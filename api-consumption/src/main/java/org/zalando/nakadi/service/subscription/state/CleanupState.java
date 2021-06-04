@@ -36,7 +36,7 @@ public class CleanupState extends State {
             }
 
             try {
-                getContext().getZkClient().close();
+                getContext().closeZkClient();
             } catch (final IOException e) {
                 getLog().error("Unexpected fail to release zk connection", e);
             }

@@ -55,6 +55,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -275,9 +276,12 @@ public class SubscriptionService {
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         subscriptionRepository.deleteSubscription(subscriptionId);
-        final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
-                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"));
-        zkSubscriptionClient.deleteSubscription();
+        try (ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
+                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"))) {
+            zkSubscriptionClient.deleteSubscription();
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+        }
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
                 .put("subscription_id", subscriptionId)
@@ -310,25 +314,20 @@ public class SubscriptionService {
             throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         subscriptionValidationService.verifyViewAccessOnEventTypes(eventTypes);
-        final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
-        final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
+        try (ZkSubscriptionClient subscriptionClient = subscriptionClientFactory.createClient(subscription,
+                LogPathBuilder.build(subscription.getId(), "stats"))) {
+            final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-        if (statsMode == StatsMode.LIGHT) {
-            return loadLightStats(eventTypes, zkSubscriptionNode);
-        } else {
-            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
+            if (statsMode == StatsMode.LIGHT) {
+                return loadLightStats(eventTypes, zkSubscriptionNode);
+            } else {
+                return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
+            }
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         }
     }
 
-    private ZkSubscriptionClient createZkSubscriptionClient(final Subscription subscription)
-            throws ServiceTemporarilyUnavailableException {
-        try {
-            return subscriptionClientFactory.createClient(subscription,
-                    LogPathBuilder.build(subscription.getId(), "stats"));
-        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
-            throw new ServiceTemporarilyUnavailableException(e);
-        }
-    }
 
     private List<EventType> getEventTypesForSubscription(final Subscription subscription)
             throws NoSuchEventTypeException {
