@@ -91,7 +91,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 null,
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
-        final Topology topology = new Topology(partitions, "", 0);
+        final Topology topology = new Topology(partitions, 0);
         getLog().info("Creating topology ZNode for {}", topology);
         final byte[] topologyData = objectMapper.writeValueAsBytes(topology);
         try {
@@ -121,8 +121,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
                     final Partition[] partitions = partitioner.apply(topology);
                     if (partitions.length > 0) {
-                        final Topology newTopology = topology.withUpdatedPartitions(
-                                null, partitions);
+                        final Topology newTopology =
+                                topology.withUpdatedPartitions(partitions);
                         getLog().info("Updating topology to {}", newTopology);
                         try {
                             getCurator().setData().withVersion(stats.getVersion())
@@ -273,7 +273,6 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
         final Topology partitionedTopology = new Topology(
                 partitionsList.toArray(new Partition[0]),
-                currentTopology.getSessionsHash(),
                 Optional.ofNullable(currentTopology.getVersion()).map(v -> v + 1).orElse(0)
         );
 
