@@ -120,7 +120,7 @@ public class StreamingStateTest {
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
         final ZkSubscription topologySubscription = mock(ZkSubscription.class);
         Mockito.when(topologySubscription.getData())
-                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, null, 1));
+                .thenReturn(new ZkSubscriptionClient.Topology(new Partition[]{}, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();
@@ -149,7 +149,7 @@ public class StreamingStateTest {
         // mock topology
         final ZkSubscription topologySubscription = mock(ZkSubscription.class);
         Mockito.when(topologySubscription.getData())
-                .thenReturn(new ZkSubscriptionClient.Topology(partitions, null, 1));
+                .thenReturn(new ZkSubscriptionClient.Topology(partitions, 1));
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         // prepare mocks for assigned partitions

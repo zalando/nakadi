@@ -92,7 +92,7 @@ public class HilaRepartitionAT extends BaseAT {
     private void setInitialTopology(final Partition[] partitions) throws Exception {
         final String topologyPath = subscriptionPath() + "/topology";
         final byte[] topologyData = MAPPER.writeValueAsBytes(
-                new NewZkSubscriptionClient.Topology(partitions, null, 0));
+                new NewZkSubscriptionClient.Topology(partitions, 0));
         if (null == CURATOR.checkExists().forPath(topologyPath)) {
             CURATOR.create().creatingParentsIfNeeded().forPath(topologyPath, topologyData);
         } else {
