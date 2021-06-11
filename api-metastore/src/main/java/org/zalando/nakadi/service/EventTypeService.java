@@ -148,6 +148,10 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
+    public List<EventType> list(final String[] writers) {
+        return eventTypeRepository.list(writers);
+    }
+
     public void create(final EventTypeBase eventType, final boolean checkAuth)
             throws AuthorizationSectionException,
             TopicCreationException,
@@ -366,7 +370,7 @@ public class EventTypeService {
         try {
             return transactionTemplate.execute(action -> {
                 SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), null, 100);
+                        ImmutableSet.of(eventType), Optional.empty(), ImmutableSet.of(), null, 100);
                 while (null != listResult) {
                     listResult.getItems().forEach(s -> {
                         try {
@@ -377,7 +381,7 @@ public class EventTypeService {
                         }
                     });
                     listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                            ImmutableSet.of(eventType), Optional.empty(), listResult.getNext(), 100);
+                            ImmutableSet.of(eventType), Optional.empty(), ImmutableSet.of(), listResult.getNext(), 100);
                 }
                 return deleteEventType(eventType);
             });
@@ -391,7 +395,7 @@ public class EventTypeService {
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
 
         SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), null, 20);
+                ImmutableSet.of(eventTypeName), Optional.empty(), ImmutableSet.of(), null, 20);
         while (null != list) {
             for (final Subscription sub : list.getItems()) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
@@ -401,7 +405,7 @@ public class EventTypeService {
                 }
             }
             list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), list.getNext(), 20);
+                    ImmutableSet.of(eventTypeName), Optional.empty(), ImmutableSet.of(), list.getNext(), 20);
         }
         return false;
     }

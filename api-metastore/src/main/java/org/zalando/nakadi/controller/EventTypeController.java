@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -40,6 +41,7 @@ import org.zalando.nakadi.service.FeatureToggleService;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -68,10 +70,10 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> list() {
-        final List<EventType> eventTypes = eventTypeService.list();
+    public ResponseEntity<?> list(@RequestParam final Optional<String[]> writers) {
 
-        return status(HttpStatus.OK).body(eventTypes);
+        return writers.map(strings -> status(HttpStatus.OK).body(eventTypeService.list(strings)))
+                .orElseGet(() -> status(HttpStatus.OK).body(eventTypeService.list()));
     }
 
     @RequestMapping(method = RequestMethod.POST)

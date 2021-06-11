@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 
 @DB
@@ -99,6 +100,18 @@ public class EventTypeRepository extends AbstractDbRepository {
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type",
+                new EventTypeMapper());
+    }
+
+    public List<EventType> list(final String[] writers){
+        return jdbcTemplate.query(
+                String.format("SELECT et_event_type_object\n" +
+                        "FROM zn_data.event_type," +
+                        "jsonb_to_recordset(et_event_type_object->'authorization'->'writers')" +
+                        "as writers(value text)\n" +
+                        "WHERE writers.value IN (%s)", String.join(",",
+                        Collections.nCopies(writers.length, "?"))),
+                writers,
                 new EventTypeMapper());
     }
 
