@@ -104,7 +104,13 @@ public class EventTypeServiceTest {
         final Multimap<TopicRepository, String> topicsToDelete = mock(Multimap.class);
         doReturn(new ArrayList<Subscription>())
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        0,
+                        1
+                );
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
             eventTypeService.delete(eventType.getName());
@@ -125,7 +131,13 @@ public class EventTypeServiceTest {
         doReturn(new SubscriptionTokenLister.ListResult(
                 ImmutableList.of(RandomSubscriptionBuilder.builder().build()), null, null))
                 .when(subscriptionTokenLister)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 20);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        null,
+                        20
+                );
 
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(false);
@@ -141,7 +153,13 @@ public class EventTypeServiceTest {
         doReturn(new SubscriptionTokenLister.ListResult(
                 ImmutableList.of(RandomSubscriptionBuilder.builder().build()), null, null))
                 .when(subscriptionTokenLister)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 100);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        null,
+                        100
+                );
 
         when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
                 .thenReturn(true);
@@ -159,7 +177,13 @@ public class EventTypeServiceTest {
         doReturn(new SubscriptionTokenLister.ListResult(
                 ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")), null, null))
                 .when(subscriptionTokenLister)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 100);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        null,
+                        100
+                );
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
@@ -174,10 +198,22 @@ public class EventTypeServiceTest {
         doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
         doReturn(ImmutableList.of(TestUtils.createSubscription("nakadi_archiver", "nakadi_to_s3")))
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 20);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        0,
+                        20
+                );
         doReturn(Lists.emptyList())
                 .when(subscriptionDbRepository)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 20, 20);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        20,
+                        20
+                );
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 
@@ -202,7 +238,13 @@ public class EventTypeServiceTest {
         doReturn(new SubscriptionTokenLister.ListResult(
                 ImmutableList.of(TestUtils.createSubscription("someone", "something")), null, null))
                 .when(subscriptionTokenLister)
-                .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), null, 20);
+                .listSubscriptions(
+                        ImmutableSet.of(eventType.getName()),
+                        Optional.empty(),
+                        Collections.emptySet(),
+                        null,
+                        20
+                );
         doReturn("nakadi_archiver").when(nakadiSettings).getDeletableSubscriptionOwningApplication();
         doReturn("nakadi_to_s3").when(nakadiSettings).getDeletableSubscriptionConsumerGroup();
 

@@ -10,12 +10,16 @@ import java.util.Set;
 public class SubscriptionsUriHelper {
 
     public static PaginationLinks.Link createSubscriptionListLink(
-            final Optional<String> owningApplication, final Set<String> eventTypes, final int offset,
+            final Optional<String> owningApplication, final Set<String> eventTypes,
+            final Set<String> readers, final int offset,
             final Optional<SubscriptionTokenLister.Token> token, final int limit, final boolean showStatus) {
 
         final UriComponentsBuilder urlBuilder = UriComponentsBuilder.fromPath("/subscriptions");
         if (!eventTypes.isEmpty()) {
             urlBuilder.queryParam("event_type", eventTypes.toArray());
+        }
+        if(!readers.isEmpty()) {
+            urlBuilder.queryParam("readers", readers.toArray());
         }
         owningApplication.ifPresent(owningApp -> urlBuilder.queryParam("owning_application", owningApp));
         if (showStatus) {

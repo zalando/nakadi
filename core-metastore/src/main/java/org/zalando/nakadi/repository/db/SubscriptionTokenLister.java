@@ -41,6 +41,7 @@ public class SubscriptionTokenLister extends AbstractDbRepository {
     public ListResult listSubscriptions(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
+            final Set<String> readers,
             @Nullable final Token token,
             final int limit) {
         if (limit < 1) {
@@ -48,7 +49,7 @@ public class SubscriptionTokenLister extends AbstractDbRepository {
         }
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
-        SubscriptionDbRepository.applyFilter(eventTypes, owningApplication, clauses, params);
+        SubscriptionDbRepository.applyFilter(eventTypes, owningApplication, readers, clauses, params);
 
         if (null == token || !token.hasSubscriptionId()) {
             return listNoToken(clauses, params, limit);

@@ -191,6 +191,7 @@ public class SubscriptionService {
 
     public PaginationWrapper<Subscription> listSubscriptions(@Nullable final String owningApplication,
                                                              @Nullable final Set<String> eventTypes,
+                                                             @Nullable final Set<String> readers,
                                                              final boolean showStatus,
                                                              final int limit,
                                                              final int offset,
@@ -205,6 +206,7 @@ public class SubscriptionService {
         }
 
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
+        final Set<String> readersFilter = readers == null ? ImmutableSet.of() : readers;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
         SubscriptionTokenLister.Token tokenObj = null;
         // Here we are basically trying to support 3 situations
@@ -226,26 +228,30 @@ public class SubscriptionService {
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     eventTypesFilter,
                     owningAppOption,
+                    readersFilter,
                     offset,
                     limit);
             final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
                     .map(o -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Math.max(0, o - limit), Optional.empty(), limit, 
-                            showStatus));
+                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            Math.max(0, o - limit), Optional.empty(), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
                     .map(size -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, offset + size, Optional.empty(), limit, showStatus));
+                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            offset + size, Optional.empty(), limit, showStatus));
 
             paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
         } else {
             final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                    eventTypesFilter, owningAppOption, tokenObj, limit);
+                    eventTypesFilter, owningAppOption, readersFilter, tokenObj, limit);
             final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            0, Optional.of(t), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            0, Optional.of(t), limit, showStatus));
             paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
         }
         if (showStatus) {

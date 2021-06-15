@@ -26,6 +26,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -124,14 +125,18 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
      */
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
-                                                final int offset, final int limit)
+                                                final Set<String> readers, final int offset, final int limit)
             throws ServiceTemporarilyUnavailableException {
 
-        final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription ");
+        final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
+        if (!readers.isEmpty()) {
+            queryBuilder.append(",jsonb_to_recordset(s_subscription_object->'authorization'->'readers')" +
+                    "as readers(value text)");
+        }
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
 
-        applyFilter(eventTypes, owningApplication, clauses, params);
+        applyFilter(eventTypes, owningApplication, readers, clauses, params);
 
         final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
         params.add(limit);
@@ -152,6 +157,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     static void applyFilter(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
+            final Set<String> readers,
             final List<String> clauses,
             final List<Object> params) {
         owningApplication.ifPresent(owningApp -> {
@@ -165,6 +171,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             clauses.add(clause);
             eventTypes.stream()
                     .map(et -> format("\"{0}\"", et))
+                    .forEach(params::add);
+        }
+        if (!readers.isEmpty()) {
+            final String clause = String.format("readers.value IN (%s)",
+                    String.join(",", Collections.nCopies(readers.size(), "?")));
+            clauses.add(clause);
+            readers.stream()
                     .forEach(params::add);
         }
     }

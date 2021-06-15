@@ -52,10 +52,11 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "token", required = false) final String token,
+            @RequestParam(value = "readers", required = false) final Set<String> readers,
             final NativeWebRequest request)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return subscriptionService
-                .listSubscriptions(owningApplication, eventTypes, showStatus, limit, offset, token);
+                .listSubscriptions(owningApplication, eventTypes, readers, showStatus, limit, offset, token);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
