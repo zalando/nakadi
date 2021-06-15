@@ -122,6 +122,11 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: writers
+          in: query
+          description: |
+            The username or service name that has explicit write authorization rights.
+          type: string
       responses:
         '200':
           description: Ok
@@ -1168,6 +1173,11 @@ paths:
           description: show subscription status
           type: boolean
           default: false
+        - name: readers
+          in: query
+          description: |
+            The username or service name that has explicit read authorization rights.
+          type: string
       responses:
         '200':
           description: OK
