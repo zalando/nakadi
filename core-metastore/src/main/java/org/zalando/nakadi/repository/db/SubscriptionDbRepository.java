@@ -138,7 +138,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, readers, clauses, params);
 
-        final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
+        final String order = " GROUP BY et_event_type_object\n" +
+                "ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
         params.add(limit);
         params.add(offset);
         if (!clauses.isEmpty()) {
