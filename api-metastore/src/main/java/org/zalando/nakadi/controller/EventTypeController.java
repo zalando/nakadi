@@ -39,9 +39,10 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import javax.annotation.Nullable;
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -70,10 +71,12 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> list(@RequestParam final Optional<String[]> writers) {
+    public ResponseEntity<?> list(@Nullable @RequestParam final Set<String[]> writers) {
+        if (writers != null && writers.isEmpty()) {
+            return status(HttpStatus.OK).body(eventTypeService.list(writers));
+        }
 
-        return writers.map(strings -> status(HttpStatus.OK).body(eventTypeService.list(strings)))
-                .orElseGet(() -> status(HttpStatus.OK).body(eventTypeService.list()));
+        return status(HttpStatus.OK).body(eventTypeService.list());
     }
 
     @RequestMapping(method = RequestMethod.POST)

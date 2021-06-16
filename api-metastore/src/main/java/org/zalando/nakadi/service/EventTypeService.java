@@ -61,10 +61,12 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -148,7 +150,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public List<EventType> list(final String[] writers) {
+    public List<EventType> list(@Nullable final Set<String[]> writers) {
         return eventTypeRepository.list(writers);
     }
 

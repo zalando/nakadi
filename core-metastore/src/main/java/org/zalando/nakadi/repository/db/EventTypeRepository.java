@@ -18,11 +18,13 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @DB
 @Component
@@ -103,15 +105,18 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> list(final String[] writers){
+    public List<EventType> list(@Nullable final Set<String[]> writers) {
+        if (writers.isEmpty()) {
+            return this.list();
+        }
         return jdbcTemplate.query(
                 String.format("SELECT et_event_type_object\n" +
                         "FROM zn_data.event_type," +
                         "jsonb_to_recordset(et_event_type_object->'authorization'->'writers')" +
                         "as writers(value text)\n" +
                         "WHERE writers.value IN (%s)", String.join(",",
-                        Collections.nCopies(writers.length, "?"))),
-                writers,
+                        Collections.nCopies(writers.size(), "?"))),
+                writers.toArray(),
                 new EventTypeMapper());
     }
 
