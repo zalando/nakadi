@@ -125,8 +125,12 @@ paths:
         - name: writers
           in: query
           description: |
-            The username or service name that has explicit write authorization rights.
-          type: string
+            The username or service name that has explicit write authorization rights. When provided it returns all event types that contains at least
+            one of the writers.
+          type: array
+          items:
+            type: string
+          example: ["bshala", "stups_nakadi-ui"]
       responses:
         '200':
           description: Ok
@@ -1176,8 +1180,12 @@ paths:
         - name: readers
           in: query
           description: |
-            The username or service name that has explicit read authorization rights.
-          type: string
+            The username or service name that has explicit read authorization rights. When provided it
+            returns all subscriptions that contains at least one of the readers.
+          type: array
+          items:
+            type: string
+          example: ["bshala", "stups_nakadi-ui"]
       responses:
         '200':
           description: OK
