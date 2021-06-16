@@ -233,11 +233,11 @@ public class SubscriptionService {
                     limit);
             final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
                     .map(o -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            owningAppOption, eventTypesFilter, readersFilter,
                             Math.max(0, o - limit), Optional.empty(), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
                     .map(size -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            owningAppOption, eventTypesFilter, readersFilter,
                             offset + size, Optional.empty(), limit, showStatus));
 
             paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
@@ -246,11 +246,11 @@ public class SubscriptionService {
                     eventTypesFilter, owningAppOption, readersFilter, tokenObj, limit);
             final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            owningAppOption, eventTypesFilter, readersFilter,
                             0, Optional.of(t), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Collections.emptySet(),
+                            owningAppOption, eventTypesFilter, readersFilter,
                             0, Optional.of(t), limit, showStatus));
             paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
         }
