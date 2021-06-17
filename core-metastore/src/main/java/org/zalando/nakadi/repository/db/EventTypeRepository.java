@@ -105,7 +105,7 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> list(@Nullable final Set<String[]> writers) {
+    public List<EventType> list(@Nullable final Set<String> writers) {
         if (writers.isEmpty()) {
             return this.list();
         }

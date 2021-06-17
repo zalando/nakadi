@@ -71,7 +71,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> list(@Nullable @RequestParam final Set<String[]> writers) {
+    public ResponseEntity<?> list(@Nullable @RequestParam final Set<String> writers) {
         if (writers != null && writers.isEmpty()) {
             return status(HttpStatus.OK).body(eventTypeService.list(writers));
         }

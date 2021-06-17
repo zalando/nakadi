@@ -150,7 +150,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public List<EventType> list(@Nullable final Set<String[]> writers) {
+    public List<EventType> list(@Nullable final Set<String> writers) {
         return eventTypeRepository.list(writers);
     }
 
