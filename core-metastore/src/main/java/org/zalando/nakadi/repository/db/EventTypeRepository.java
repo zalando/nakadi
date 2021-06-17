@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -105,19 +106,15 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> list(@Nullable final Set<String> writers) {
-        if (writers.isEmpty()) {
-            return this.list();
-        }
+    public List<EventType> list(final AuthorizationAttribute writers) {
         return jdbcTemplate.query(
-                String.format("SELECT et_event_type_object\n" +
+                "SELECT et_event_type_object\n" +
                         "FROM zn_data.event_type," +
                         "jsonb_to_recordset(et_event_type_object->'authorization'->'writers')" +
-                        "as writers(value text)\n" +
-                        "WHERE writers.value IN (%s)", String.join(",",
-                        Collections.nCopies(writers.size(), "?")) + "\n" +
-                        "GROUP BY et_event_type_object"),
-                writers.toArray(),
+                        "AS writers(data_type text, value text)\n" +
+                        "WHERE writers.data_type = ? AND writers.value = ?\n" +
+                        "GROUP BY et_event_type_object",
+                Set.of(writers.getDataType(), writers.getValue()).toArray(),
                 new EventTypeMapper());
     }
 

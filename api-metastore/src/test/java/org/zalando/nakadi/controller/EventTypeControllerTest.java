@@ -31,7 +31,9 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
@@ -42,11 +44,7 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.core.StringContains.containsString;
@@ -916,5 +914,13 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, eventType.asResource()))
                 .when(authorizationValidator).authorizeEventTypeView(eventType);
         getEventType(eventTypeName).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testWhenFilteringEventTypes() throws Exception {
+        final String writer = "user:bshala";
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        doReturn(List.of(eventType)).when(eventTypeRepository).list(new ResourceAuthorizationAttribute("user", "bshala"));
+        getEventTypes(writer).andExpect(status().is2xxSuccessful());
     }
 }

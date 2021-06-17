@@ -48,6 +48,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
@@ -150,7 +151,7 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public List<EventType> list(@Nullable final Set<String> writers) {
+    public List<EventType> list(final AuthorizationAttribute writers) {
         return eventTypeRepository.list(writers);
     }
 

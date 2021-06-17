@@ -46,6 +46,7 @@ import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -189,6 +190,11 @@ public class EventTypeControllerTestCase {
 
     protected ResultActions getEventType(final String eventTypeName) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName);
+        return mockMvc.perform(requestBuilder);
+    }
+
+    protected ResultActions getEventTypes(final String writer) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
         return mockMvc.perform(requestBuilder);
     }
 
