@@ -82,7 +82,6 @@ public class EventTypeController {
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> list(@Nullable @RequestParam final AuthorizationAttribute writer) {
         if (writer != null) {
-            System.out.println("ET: " + eventTypeService.list(writer).get(0).getName());
             return status(HttpStatus.OK).body(eventTypeService.list(writer));
         }
 
