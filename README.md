@@ -1,16 +1,15 @@
 ## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
 
 [![Build Status](https://travis-ci.org/zalando/nakadi.svg?branch=master)](https://travis-ci.org/zalando/nakadi)
-[![codecov.io](https://codecov.io/github/zalando/nakadi/coverage.svg?branch=master)](https://codecov.io/github/zalando/nakadi?branch=master)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/785ccd4ab5e34867b760a8b07c3b62f1)](https://www.codacy.com/app/aruha/nakadi?utm_source=www.github.com&amp;utm_medium=referral&amp;utm_content=zalando/nakadi&amp;utm_campaign=Badge_Grade)
 
-Nakadi is a distributed event bus broker that implements a RESTful API abstraction on top of Kafka-like queues, which can be used to send, receive, and analyze streaming data in real time, reliable and highly available manner. 
+Nakadi is a distributed event bus broker that implements a RESTful API abstraction on top of Kafka-like queues, which can be used to send, receive, and analyze streaming data in real time, in a reliable and highly available manner.
 
-One of the most prominent use case of Nakadi is to enable decoupling of micro-services by building data streams between producers and consumers. 
+One of the most prominent use cases of Nakadi is to decouple micro-services by building data streams between producers and consumers.
 
 Main users of nakadi are developers and analysts. Nakadi provides features like REST based integration, multi consumer, ordered delivery, interactive UI, fully managed, security, ensuring data quality, abstraction of big data technology, and push model based consumption.
 
-Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
+Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
@@ -21,30 +20,30 @@ More detailed information can be found on our [website](http://zalando.github.io
 The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to provide an event broker infrastructure to:
 
 - Abstract event delivery via a secured [RESTful API](https://zalando.github.io/nakadi/manual.html#nakadi-event-bus-api).
- 
+
     This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology.
     Access can be managed individually for every queue and secured using *OAuth* and custom authorization plugins.
 
-- Enable convenient development of event-driven applications and asynchronous microservices. 
+- Enable convenient development of event-driven applications and asynchronous microservices.
 
-    Event types can be defined with [Event type schemas](https://zalando.github.io/nakadi/manual.html#using_event-types) 
-    and managed via a registry. All events will be validated against the schema before publishing. 
+    Event types can be defined with [Event type schemas](https://zalando.github.io/nakadi/manual.html#using_event-types)
+    and managed via a registry. All events will be validated against the schema before publishing.
     This guarantees data quality and consistency for consumers.    
-     
-- Efficient low latency event delivery. 
-    
-    Once a publisher sends an event using a simple [HTTP POST](https://zalando.github.io/nakadi/manual.html#using_producing-events), 
+
+- Efficient low latency event delivery.
+
+    Once a publisher sends an event using a simple [HTTP POST](https://zalando.github.io/nakadi/manual.html#using_producing-events),
     consumers can be pushed to via a [streaming](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola)
-    HTTP connection, allowing near real-time event processing. 
+    HTTP connection, allowing near real-time event processing.
     The consumer connection has keepalive controls and support for managing stream offsets using
-    [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila). 
+    [subscriptions](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila).
 
 ### Development status
 
-- Nakadi is high-load production ready. 
-- Zalando uses Nakadi as its central Event Bus Service. 
+- Nakadi is high-load production ready.
+- Zalando uses Nakadi as its central Event Bus Service.
 - Nakadi reliably handles the traffic from thousands event types with the throughput of more than hundreds gigabytes per second.
-- The project is in active development. See the [CHANGELOG.md](CHANGELOG.md)    
+- The project is in active development.  
 
 ### Presentations
 
@@ -78,20 +77,20 @@ The goal of Nakadi (**ნაკადი** means *stream* in Georgian) is to pro
     * [STUPS](https://stups.io/) platform compatible.    
     * [ZMON](https://zmon.io/) monitoring compatible.
     * SLO monitoring.
-    * Timelines. 
-        * This allows transparently switch production and consumption to different cluster (tier, region, AZ) without
+    * Timelines:
+        * this allows transparently switch production and consumption to different cluster (tier, region, AZ) without
         moving actual data and any service degradation.
-        * Opens possibility for implementation of other streaming technologies and engines besides Kafka 
-        (like AWS Kinesis, Google pub/sub etc.)
-    
-Read more about latest development in our [CHANGELOG.md](CHANGELOG.md) 
+        * opens the possibility for implementation of other streaming technologies and engines besides Kafka
+        (like Amazon Kinesis or Google Cloud Pub/Sub)
+
+Read more about latest development on the [releases page](https://github.com/zalando/nakadi/releases).
 
 #### Additional features that we plan to cover in the future are:
 
-* Support for different streaming technologies and engines. Nakadi currently uses [Apache Kafka](http://kafka.apache.org/) 
+* Support for different streaming technologies and engines. Nakadi currently uses [Apache Kafka](http://kafka.apache.org/)
     as its broker, but other providers (such as Kinesis) will be possible.     
 * Filtering of events for subscribing consumers.
-* Store old published events forever using transparent fall back backup shortages like AWS S3. 
+* Store old published events forever using transparent fall back backup shortages like AWS S3.
 * Separate the internal schema register to standalone service.
 * Use additional schema formats and protocols like Avro, protobuf and [others](https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats).
 
@@ -100,10 +99,10 @@ Read more about latest development in our [CHANGELOG.md](CHANGELOG.md)
 The [zalando-nakadi](https://github.com/zalando-nakadi/) organisation contains many useful related projects
 like
 
-* [Use Nakadi with a client in your language of choice](https://nakadi.io/manual.html#using_clients)
-* SDK
-* [GUI](https://github.com/zalando-incubator/nakadi-ui)
-* DevOps tools and more
+* [Use Nakadi with a client in your language of choice](https://nakadi.io/manual.html#using_clients),
+* SDK,
+* [Web UI](https://github.com/zalando-incubator/nakadi-ui),
+* DevOps tools, and more.
 
 
 
@@ -113,7 +112,7 @@ Read our [contribution guidelines](CONTRIBUTING.md) on how to submit issues and 
 
 ### Dependencies
 
-The Nakadi server is a Java 8 [Spring Boot](https://projects.spring.io/spring-boot/) application. 
+The Nakadi server is a Java 8 [Spring Boot](https://projects.spring.io/spring-boot/) application.
 It uses [Kafka 1.1.1](https://kafka.apache.org/11/documentation.html) as its broker and
  [PostgreSQL 9.5](https://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
@@ -122,11 +121,9 @@ particular, docker-compose >= v1.7.0 is required. See [Install Docker
 Compose](https://docs.docker.com/compose/install/) for information on
 installing the most recent docker-compose version.
 
-The project is built with [Gradle](http://gradle.org). 
+The project is built with [Gradle](http://gradle.org).
 The `./gradlew` [wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap
-the right Gradle version if it's not already installed. 
-
-[Mac OS specific configuration](https://zalando.github.io/nakadi/manual.html#macos)
+the right Gradle version if it's not already installed.
 
 ### Install
 
@@ -143,12 +140,11 @@ The gradle setup is fairly standard, the main tasks are:
 
 Some other useful tasks are:
 
-- `./gradlew acceptanceTest`: run the ATs
-- `./gradlew fullAcceptanceTest`: run the ATs in the context of Docker
 - `./gradlew startNakadi`: build Nakadi and start docker-compose services: nakadi, postgresql, zookeeper and kafka
 - `./gradlew stopNakadi`: shutdown docker-compose services
 - `./gradlew startStorages`: start docker-compose services: postgres, zookeeper and kafka (useful for development purposes)
 - `./gradlew stopStorages`: shutdown docker-compose services
+- `./gradlew fullAcceptanceTest`: start Nakadi configured for acceptance tests and run acceptance tests
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
 
@@ -180,34 +176,34 @@ Please read the [manual](https://zalando.github.io/nakadi/manual.html) for the f
 
 ### Creating Event Types
 
-The Nakadi API allows the publishing and consuming of _events_ over HTTP. 
-To do this the producer must register an _event type_ with the Nakadi schema 
-registry. 
+The Nakadi API allows the publishing and consuming of _events_ over HTTP.
+To do this the producer must register an _event type_ with the Nakadi schema
+registry.
 
-This example shows minimal `undefined` category event type with a wilcard schema -
+This example shows a minimalistic `undefined` category event type with a wildcard schema:
 
 ```sh
 curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/json" -d '{
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
-  "category": "undefined", 
+  "category": "undefined",
   "schema": {
     "type": "json_schema",
     "schema": "{ \"additionalProperties\": true }"
   }
 }'
 ```
-**Note:** This is not recommended category and schema. It should be used only for the testing.
+**Note:** This is not a recommended category and schema. It should be used only for testing.
 
-Read mode in the [manual](https://zalando.github.io/nakadi/manual.html#using_event-types) 
+You can read more about this in the [manual](https://zalando.github.io/nakadi/manual.html#using_event-types).
 
 ### Consuming Events
 
-You can open a stream for an Event Type via the `events` sub-resource:
+You can open a stream for an event type via the `events` sub-resource:
 
 ```sh
-curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events 
-    
+curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+
 
 HTTP/1.1 200 OK
 
@@ -218,10 +214,10 @@ HTTP/1.1 200 OK
 ```
 You will see the events when you publish them from another console for example.
 The records without `events` field are `Keep Alive` messages.
- 
-**Note:** This is the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
-used only for debugging. It is not recommended for production systems. 
-For production systems please use [Subscriptions API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila)
+
+**Note:** the [low-level API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-lola) should be
+used only for debugging. It is not recommended for production systems.
+For production systems, please use the [Subscriptions API](https://zalando.github.io/nakadi/manual.html#using_consuming-events-hila).
 
 ### Publishing Events
 
@@ -240,15 +236,15 @@ curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
 HTTP/1.1 200 OK  
 ```
 
-Read more in the [manual](https://zalando.github.io/nakadi/manual.html#using_producing-events)
+Read more in the [manual](https://zalando.github.io/nakadi/manual.html#using_producing-events).
 
 ## Contributing
 
 Nakadi accepts contributions from the open-source community.
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md).
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-Please also note our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Please also note our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Contact
 
@@ -259,12 +255,12 @@ if posted as [issues](https://github.com/zalando/nakadi/issues) here on GitHub.
 
 ## License
 
-Please read the full [LICENSE](LICENSE)
+Please read the full [`LICENSE`](LICENSE)
 
 The MIT License (MIT) Copyright © 2015 Zalando SE, https://tech.zalando.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-documentation files (the “Software”), to deal in the Software without restriction, including without limitation 
+documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
 to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -275,4 +271,3 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-

@@ -1,0 +1,659 @@
+[
+  {
+    "description": "Do not allow changes to id",
+    "original_schema": {
+      "id": "something"
+    },
+    "update_schema": {
+      "id": "something_else"
+    },
+    "errors": ["ID_CHANGED #/"]
+  },
+  {
+    "description": "Capture changes to title",
+    "original_schema": {
+      "title": "something"
+    },
+    "update_schema": {
+      "title": "something_else"
+    },
+    "errors": ["TITLE_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to description",
+    "original_schema": {
+      "description": "something"
+    },
+    "update_schema": {
+      "description": "something_else"
+    },
+    "errors": ["DESCRIPTION_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to simple schema type",
+    "original_schema": {
+      "type": "object"
+    },
+    "update_schema": {
+      "type": "array"
+    },
+    "errors": ["TYPE_CHANGED #/"]
+  },
+  {
+    "description": "Narrowing type definition",
+    "original_schema": {
+    },
+    "update_schema": {
+      "type": "string"
+    },
+    "errors": ["TYPE_NARROWED #/"]
+  },
+  {
+    "description": "Do not allow changes to minLength string schema",
+    "original_schema": {
+      "type": "string",
+      "minLength": 10
+    },
+    "update_schema": {
+      "type": "string",
+      "minLength": 11
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minLength"]
+  },
+  {
+    "description": "Do not allow changes to maxLength string schema",
+    "original_schema": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "update_schema": {
+      "type": "string",
+      "maxLength": 12
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxLength"]
+  },
+  {
+    "description": "Do not allow changes to pattern string schema",
+    "original_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "update_schema": {
+      "type": "string",
+      "pattern": "uuid"
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/pattern"]
+  },
+  {
+    "description": "Correctly identifies changes to pattern",
+    "original_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "update_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "errors": []
+  },
+  {
+    "description": "Do not allow changes to maximum number schema",
+    "original_schema": {
+      "type": "number",
+      "maximum": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "maximum": 11
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maximum"]
+  },
+  {
+    "description": "Do not allow changes to minimum number schema",
+    "original_schema": {
+      "type": "number",
+      "minimum": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "minimum": 11
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minimum"]
+  },
+  {
+    "description": "Do not allow changes to multipleOf number schema",
+    "original_schema": {
+      "type": "number",
+      "multipleOf": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "multipleOf": 11
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/multipleOf"]
+  },
+  {
+    "description": "Do not allow changes to enum schema",
+    "original_schema": {
+      "type": "string",
+      "enum": ["red"]
+    },
+    "update_schema": {
+      "type": "string",
+      "enum": ["blue"]
+    },
+    "errors": ["ENUM_ARRAY_CHANGED #/enum"]
+  },
+  {
+    "description": "Do not allow changes to type array",
+    "original_schema": {
+      "type": ["object"]
+    },
+    "update_schema": {
+      "type": ["object", "array"]
+    },
+    "errors": ["SUB_SCHEMA_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to sub schemas",
+    "original_schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "anyOf": [
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "errors": ["TYPE_CHANGED #/anyOf/0"]
+  },
+  {
+    "description": "Do not allow changes to number of sub schemas",
+    "original_schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "errors": ["SUB_SCHEMA_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow to remove properties",
+    "original_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "bar" : {
+          "type": "string"
+        }
+      }
+    },
+    "errors": ["PROPERTY_REMOVED #/properties/foo"]
+  },
+  {
+    "description": "Do not allow to change type of properties",
+    "original_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "foo" : {
+          "type": "number"
+        }
+      }
+    },
+    "errors": ["TYPE_CHANGED #/properties/foo"]
+  },
+  {
+    "description": "Do not allow to change type of properties",
+    "original_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        },
+        "bar": {
+          "type": "number"
+        }
+      }
+    },
+    "errors": ["PROPERTIES_ADDED #/properties"]
+  },
+  {
+    "description": "Do not allow changes to composed schema type",
+    "original_schema": {
+      "anyOf": [
+        {
+          "properties": {
+            "foo" : {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "update_schema": {
+      "anyOf": [
+        {
+          "properties": {
+            "foo" : {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    },
+    "errors": ["TYPE_CHANGED #/anyOf/0/properties/foo"]
+  },
+  {
+    "description": "Do not allow changes to validation criteria in composed schema type",
+    "original_schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "allOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "errors": ["COMPOSITION_METHOD_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to dependencies as array",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "number"
+        },
+        "bar": {
+          "type": "string"
+        }
+      },
+      "dependencies": {
+        "foo": ["bar"]
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "foo": {
+          "type": "number"
+        },
+        "bar": {
+          "type": "string"
+        }
+      },
+      "dependencies": {
+        "bar": ["foo"]
+      }
+    },
+    "errors": ["DEPENDENCY_ARRAY_CHANGED #/dependencies/foo"]
+  },
+  {
+    "description": "Do not allow incompatible changes to dependencies schemas",
+    "original_schema": {
+      "dependencies": {
+         "foo": {
+            "type": "string"
+         }
+      }
+    },
+    "update_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "number"
+        }
+      }
+    },
+    "errors": ["TYPE_CHANGED #/dependencies/foo"]
+  },
+  {
+    "description": "Do not allow changes to dependencies properties",
+    "original_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "dependencies": {
+        "bar": {
+          "type": "string"
+        }
+      }
+    },
+    "errors": ["DEPENDENCY_SCHEMA_CHANGED #/dependencies"]
+  },
+  {
+    "description": "Do not allow required array to be removed",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "required": ["foo"]
+    },
+    "update_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
+  },
+  {
+    "description": "Do not allow required array to be added",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "required": ["foo"]
+    },
+    "errors": ["REQUIRED_ARRAY_EXTENDED #/required"]
+  },
+  {
+    "description": "Do not allow required array to be changed",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "required": ["foo"]
+    },
+    "update_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "required": ["bar"]
+    },
+    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
+  },
+  {
+    "description": "Do not allow changes to maxProperties",
+    "original_schema": {
+      "maxProperties": 2
+    },
+    "update_schema": {
+      "maxProperties": 1
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxProperties"]
+  },
+  {
+    "description": "Do not allow changes to minProperties",
+    "original_schema": {
+      "minProperties": 2
+    },
+    "update_schema": {
+      "minProperties": 1
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minProperties"]
+  },
+  {
+    "description": "Do not allow changes to minProperties",
+    "original_schema": {
+      "minProperties": 2
+    },
+    "update_schema": {
+      "minProperties": 1
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minProperties"]
+  },
+  {
+    "description": "Do not allow changes to all items schema",
+    "original_schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "type": "array"
+    },
+    "errors": ["SCHEMA_REMOVED #/items"]
+  },
+  {
+    "description": "Do not allow changes to items schema list",
+    "original_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "update_schema": {
+      "type": "array"
+    },
+    "errors": ["NUMBER_OF_ITEMS_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to items in the schema list",
+    "original_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "errors": ["TYPE_CHANGED #/items/0"]
+  },
+  {
+    "description": "Do not allow changes to maxItems",
+    "original_schema": {
+      "type": "array",
+      "maxItems": 2
+    },
+    "update_schema": {
+      "type": "array",
+      "maxItems": 1
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxItems"]
+  },
+  {
+    "description": "Do not allow changes to minItems",
+    "original_schema": {
+      "type": "array",
+      "minItems": 2
+    },
+    "update_schema": {
+      "type": "array",
+      "minItems": 1
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minItems"]
+  },
+  {
+    "description": "Do not allow changes to minItems",
+    "original_schema": {
+      "type": "array",
+      "uniqueItems": true
+    },
+    "update_schema": {
+      "type": "array"
+    },
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/uniqueItems"]
+  },
+  {
+    "description": "Do not allow incompatible changes to reference schemas",
+    "original_schema": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/someRef"
+      },
+      "definitions": {
+        "someRef": {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/someRef"
+      },
+      "definitions": {
+        "someRef": {
+          "type": "number"
+        }
+      }
+    },
+    "errors": ["TYPE_CHANGED #/items/$ref"]
+  },
+  {
+    "description": "Detect changes to boolean additional properties",
+    "original_schema": {
+      "additionalProperties": true
+    },
+    "update_schema": {
+      "additionalProperties": false
+    },
+    "errors": ["ADDITIONAL_PROPERTIES_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect narrowing changes to additional properties schema",
+    "original_schema": {
+      "additionalProperties": true
+    },
+    "update_schema": {
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "errors": ["ADDITIONAL_PROPERTIES_NARROWED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to additional properties schema",
+    "original_schema": {
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to boolean additional items",
+    "original_schema": {
+      "additionalItems": true
+    },
+    "update_schema": {
+      "additionalItems": false
+    },
+    "errors": ["ADDITIONAL_ITEMS_CHANGED #/additionalItems"]
+  },
+  {
+    "description": "Detect changes to additional items schema",
+    "original_schema": {
+      "additionalItems": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalItems": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalItems"]
+  },
+  {
+    "description": "Detect changes from schema per item to all items",
+    "original_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": ["SCHEMA_REMOVED #/items", "NUMBER_OF_ITEMS_CHANGED #/"]
+  },
+  {
+    "description": "Detect changes from all items schema to per item",
+    "original_schema": {
+      "type": "array",
+      "items": {
+          "type": "string"
+        }
+    },
+    "update_schema": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "errors": ["SCHEMA_REMOVED #/items", "NUMBER_OF_ITEMS_CHANGED #/"]
+  }
+]

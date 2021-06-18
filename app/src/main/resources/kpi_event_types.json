@@ -1,0 +1,172 @@
+[
+  {
+    "name": "nakadi.batch.published",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi KPI: batch published. Used to calculate the number of producers, production throughput per app and number of events produced per app\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\"token_realm\": {\n      \"type\":\"string\"\n    },\n        \"number_of_events\": {\n            \"type\": \"number\"\n        },\n        \"batch_size\": {\n            \"description\": \"Size of the batch in bytes\",\n            \"type\": \"number\"\n        },\n        \"ms_spent\": {\n            \"description\": \"Milliseconds spent processing the batch\",\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"app\",\n        \"app_hashed\",\n        \"number_of_events\",\n        \"batch_size\"\n    ]\n}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 10,
+      "write_parallelism": 10
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "compatibility_mode": "compatible",
+    "audience": "component-internal"
+  },
+  {
+    "name": "nakadi.data.streamed",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi KPI: data streamed. Used to calculate the number of consumers and consumer throughput per app and number of events consumed per app\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"api\": {\n            \"description\": \"This field indicates if data was streamed through low level api or high level api\",\n            \"type\": \"string\"\n        },\n        \"subscription\": {\n            \"description\": \"this is optional and is only present when streaming from a subscription\",\n            \"type\": \"string\"\n        },\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\n        \"token_realm\": {\n            \"type\": \"string\"\n        },\n        \"number_of_events\": {\n            \"type\": \"number\"\n        },\n        \"bytes_streamed\": {\n            \"description\": \"amount of bytes streamed since last event\",\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"api\",\n        \"app\",\n        \"app_hashed\",\n        \"number_of_events\",\n        \"bytes_streamed\"\n    ]\n}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 8,
+      "write_parallelism": 8
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "authorization": {
+      "admins": [
+      ],
+      "readers": [
+      ],
+      "writers": [
+      ]
+    },
+    "compatibility_mode": "compatible",
+    "audience": "component-internal"
+  },
+  {
+    "name": "nakadi.access.log",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi access log\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"method\": {\n            \"type\": \"string\"\n        },\n        \"path\": {\n            \"type\": \"string\"\n        },\n        \"query\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\n        \"status_code\": {\n            \"type\": \"number\"\n        },\n        \"response_time_ms\": {\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"method\",\n        \"path\",\n        \"query\",\n        \"app\",\n        \"app_hashed\",\n        \"status_code\",\n        \"response_time_ms\"\n    ]\n}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 8,
+      "write_parallelism": 8
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "authorization": {
+      "admins": [
+      ],
+      "readers": [
+      ],
+      "writers": [
+      ]
+    },
+    "compatibility_mode": "forward"
+  },
+  {
+    "name": "nakadi.event.type.log",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi Event Type log.\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"status\": {\n            \"type\": \"string\"\n        },\n        \"category\": {\n            \"type\": \"string\"\n        },\n        \"authz\": {\n            \"type\": \"string\"\n        },\n        \"compatibility_mode\": {\n            \"type\": \"string\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"status\",\n        \"category\",\n        \"authz\",\n        \"compatibility_mode\"\n    ]\n}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 1,
+      "write_parallelism": 1
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "authorization": {
+      "admins": [
+      ],
+      "readers": [
+      ],
+      "writers": [
+      ]
+    },
+    "compatibility_mode": "forward",
+    "audience": "component-internal"
+  },
+  {
+    "name": "nakadi.subscription.log",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "partition_key_fields": [],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\n    \"description\": \"Nakadi Subscription log.\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"subscription_id\": {\n            \"type\": \"string\"\n        },\n        \"status\": {\n            \"type\": \"string\"\n        }\n    },\n    \"required\": [\n        \"subscription_id\",\n        \"status\"\n    ]\n}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 1,
+      "write_parallelism": 1
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "authorization": {
+      "admins": [
+      ],
+      "readers": [
+      ],
+      "writers": [
+      ]
+    },
+    "compatibility_mode": "compatible"
+  }
+]

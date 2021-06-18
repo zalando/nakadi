@@ -1,11 +1,13 @@
-FROM registry.opensource.zalan.do/stups/openjdk:8-54
+FROM registry.opensource.zalan.do/library/openjdk-11-jre-slim:latest
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 
 WORKDIR /
-ADD build/libs/nakadi.jar nakadi.jar
-ADD api/nakadi-event-bus-api.yaml nakadi-event-bus-api.yaml
+ADD app/build/libs/app.jar nakadi.jar
+COPY app/api/nakadi-event-bus-api.yaml api/nakadi-event-bus-api.yaml
+COPY app/api/nakadi-event-bus-api.yaml /zalando-apis/nakadi-event-bus-api.yaml
+
 
 EXPOSE 8080
 
-ENTRYPOINT exec java -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar
+ENTRYPOINT exec java -Djava.security.egd=file:/dev/./urandom -Dspring.jdbc.getParameterType.ignore=true -jar nakadi.jar

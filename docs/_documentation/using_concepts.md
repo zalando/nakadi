@@ -46,7 +46,7 @@ The header value is a JSON array of _cursors_. Each cursor in the array
 describes its partition for the stream and an offset to stream from. Note that 
 events within the same partition maintain their overall order.
 
-The `offset` value of the cursor allows you select where the in the stream you 
+The `offset` value of the cursor allows you to select where in the stream you 
 want to consume from. This can be any known offset value, or the dedicated value 
 `BEGIN` which will start the stream from the beginning. For example, to read 
 from partition `0` from the beginning:

@@ -1,5 +1,5 @@
 title: Nakadi
-baseurl: "."
+baseurl: ""
 url: ""
 
 collections:
@@ -9,7 +9,7 @@ collections:
 
 # Build settings
 markdown: kramdown
-gems:
+plugins:
   - jekyll-feed
 exclude:
   - Gemfile

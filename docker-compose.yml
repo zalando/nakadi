@@ -1,62 +1,60 @@
-version: '2'
+version: '3'
 services:
 
   nakadi:
     build: .
     ports:
-     - "8080:8080"
+    - "8080:8080"
     depends_on:
-     - postgres
-     - zookeeper
-     - kafka
+    - postgres
+    - zookeeper
+    - kafka
     environment:
-      - SPRING_PROFILES_ACTIVE
-      - NAKADI_OAUTH2_MODE=OFF
-      - NAKADI_FEATURES_DEFAULT_FEATURES_CONNECTION_CLOSE_CRUTCH
-      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_EVENT_TYPE_CREATION
-      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_EVENT_TYPE_DELETION
-      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_SUBSCRIPTION_CREATION
-      - NAKADI_FEATURES_DEFAULT_FEATURES_REMOTE_TOKENINFO
-      - NAKADI_FEATURES_DEFAULT_FEATURES_KPI_COLLECTION
-      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_DB_WRITE_OPERATIONS
-      - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_LOG_COMPACTION
-      - NAKADI_ZOOKEEPER_BROKERS=localhost:2181
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/local_nakadi_db
-      - SPRING_DATASOURCE_USERNAME=nakadi
-      - SPRING_DATASOURCE_PASSWORD=nakadi
-    network_mode: "host"
+    - SPRING_PROFILES_ACTIVE
+    - NAKADI_OAUTH2_MODE=OFF
+    - NAKADI_FEATURES_DEFAULT_FEATURES_CONNECTION_CLOSE_CRUTCH
+    - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_EVENT_TYPE_CREATION
+    - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_EVENT_TYPE_DELETION
+    - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_SUBSCRIPTION_CREATION
+    - NAKADI_FEATURES_DEFAULT_FEATURES_REMOTE_TOKENINFO
+    - NAKADI_FEATURES_DEFAULT_FEATURES_KPI_COLLECTION
+    - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_DB_WRITE_OPERATIONS
+    - NAKADI_ZOOKEEPER_CONNECTIONSTRING=zookeeper://zookeeper:2181
+    - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db?preferQueryMode=simple
+    - SPRING_DATASOURCE_USERNAME=nakadi
+    - SPRING_DATASOURCE_PASSWORD=nakadi
 
   postgres:
-    image: postgres:9.5
+    image: postgres:9.6.16
     ports:
-      - "5432:5432"
+    - "5432:5432"
     volumes:
-      - "./database/nakadi:/docker-entrypoint-initdb.d"
+    - "./database/nakadi:/docker-entrypoint-initdb.d"
     environment:
       POSTGRES_USER: nakadi
       POSTGRES_PASSWORD: nakadi
       POSTGRES_DB: local_nakadi_db
-    network_mode: "host"
 
   zookeeper:
-    image: wurstmeister/zookeeper:3.4.6
-    network_mode: "host"
+    image: zookeeper:3.6
     ports:
-      - "2181:2181"
+    - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka:2.11-1.1.1
-    network_mode: "host"
+    image: registry.opensource.zalan.do/aruha/nakadi-kafka:2.6.0
     ports:
-      - "9092:9092"
+    - "29092:29092"
+    - "9092:9092"
     depends_on:
-      - zookeeper
+    - zookeeper
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
-      KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      KAFKA_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
       KAFKA_BROKER_ID: 0
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    - /var/run/docker.sock:/var/run/docker.sock

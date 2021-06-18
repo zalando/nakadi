@@ -47,38 +47,11 @@ Some ports need to be available to run the service:
 
 -  8080 for the API server
 -  5432 for PostgreSQL
--  9092 for Kafka
+-  9092 and 29092 for Kafka
 -  2181 for Zookeeper
 
-They allow the services to communicate with each other and should not be used
-by other applications.
+Even though users of the API interact with port 8080, the other ports are exposed
+in order to run integration tests.
 
-<a name="macos"></a>
-### Mac OS Docker Settings
-
-Since Docker for Mac OS runs inside Virtual Box, you will  want to expose
-some ports first to allow Nakadi to access its dependencies:
-
-```sh
-docker-machine ssh default \
--L 9092:localhost:9092 \
--L 8080:localhost:8080 \
--L 5432:localhost:5432 \
--L 2181:localhost:2181
-```
-
-Alternatively you can set up port forwarding on the "default" machine through
-its network settings in the VirtualBox UI. 
-
-![vbox](./img/vbox.png)
-
-If you get the message "Is the
-docker daemon running on this host?" but you know Docker and VirtualBox are
-running, you might want to run this command:
-
-```sh
-eval "$(docker-machine env default)"
-```
-
-**Note:** Docker for Mac OS (previously in beta) version 1.12 (1.12.0 or 1.12.1) currently is not supported due to the [bug](https://github.com/docker/docker/issues/22753#issuecomment-242711639) in networking host configuration.
-
+If you are not running the tests, it's safe to modify docker-compose.yaml by removing
+the port forwarding from dependencies.

@@ -1,317 +1,96 @@
-import java.util.concurrent.TimeUnit
-
-buildscript {
-    ext {
-        springBootVersion = '1.5.15.RELEASE'
+subprojects {
+    buildscript {
+        ext {
+            springBootVersion = '2.3.1.RELEASE'
+        }
+        repositories {
+            mavenCentral()
+            maven {
+                url "https://plugins.gradle.org/m2/"
+            }
+        }
     }
 
     repositories {
         mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
+        maven { url 'https://jitpack.io' }
+    }
+
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(11)
         }
     }
 
+    checkstyle {
+        configFile = new File(rootDir, "checkstyle.xml")
+        toolVersion = "8.34"
+    }
+
+    jacoco {
+        toolVersion = "0.8.2"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled = true
+            html.enabled = true
+        }
+    }
+    test {
+        testLogging {
+            events "passed", "skipped", "failed"
+        }
+        testLogging.exceptionFormat = 'full'
+        maxParallelForks = Runtime.runtime.availableProcessors()
+    }
+
+    task testWithReport() {
+        dependsOn test
+        finalizedBy jacocoTestReport
+    }
     dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
-        classpath 'org.yaml:snakeyaml:1.21'
-    }
-}
-
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'eclipse'
-apply plugin: 'application'
-apply plugin: 'jacoco'
-apply plugin: 'findbugs'
-apply plugin: 'checkstyle'
-apply plugin: 'project-report'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'io.spring.dependency-management'
-
-group 'org.zalando'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
-mainClassName = 'org.zalando.nakadi.Application'
-springBoot {
-    layout = "ZIP"
-}
-
-repositories {
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
-}
-
-sourceSets {
-    acceptanceTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/acceptance-test/java')
-        }
-        resources.srcDir file('src/acceptance-test/resources')
-    }
-    dbMigration {
-        java {
-            compileClasspath += main.output
-            runtimeClasspath += main.output
-            srcDir file('src/db-migration/java')
+        ext {
+            kafkaClientVersion = '2.7.0'
+            dropwizardVersion = '3.1.3'
+            curatorVersion = '5.1.0'
+            zookeeperVersion = '3.6.1'
+            jacksonVersion = '2.9.8'
         }
     }
 }
 
-jar {
-    baseName = 'nakadi'
+task startNakadi(type: Exec) {
+    commandLine "bash", "-c", "./nakadi.sh start-nakadi"
 }
 
-configurations {
-    all*.exclude module: 'spring-boot-starter-logging'
-    acceptanceTestCompile.extendsFrom testCompile
-    acceptanceTestRuntime.extendsFrom testRuntime
-    dbMigrationCompile.extendsFrom compile
-    dbMigrationRuntime.extendsFrom runtime
-    pgsql
-}
-
-findbugs {
-    reportLevel = "high"
-    sourceSets = []
-}
-
-dependencies {
-    ext {
-        dropwizardVersion = '3.1.3'
-        curatorVersion = '4.0.1'
-        zookeeperVersion = '3.4.10'
-    }
-    // Override spring-boot BOM versions
-    ext['json.version'] = '20180130'
-    ext['json-path'] = '2.4.0'
-    ext['jsonassert'] = '1.5.0'
-    ext['postgresql.version'] = '42.2.2'
-
-    // spring
-    compile("org.springframework.boot:spring-boot-starter-web") {
-        exclude module: 'logback-classic'
-        exclude module: 'log4j-over-slf4j'
-        exclude module: 'spring-boot-starter-tomcat'
-    }
-    compile "org.springframework:spring-context"
-    compile "org.springframework:spring-web"
-    compile "org.springframework:spring-webmvc"
-    compile "org.springframework.boot:spring-boot-starter-jetty"
-
-    // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2') {
-        exclude module: 'spring-beans'
-        exclude module: 'spring-core'
-        exclude module: 'spring-context'
-    }
-    compile('org.springframework.boot:spring-boot-starter-security') {
-        exclude module: "logback-classic"
-    }
-
-    // actuator
-    compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile 'org.zalando.zmon:zmon-actuator:0.9.8'
-
-    // storage
-    compile "org.springframework.boot:spring-boot-starter-jdbc"
-    compile 'org.postgresql:postgresql'
-
-    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
-
-    // misc
-    compile 'org.apache.httpcomponents:httpclient'
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.22') {
-        exclude module: "httpclient"
-    }
-    compile 'org.zalando:jackson-datatype-problem:0.5.0'
-    compile 'org.zalando:problem:0.5.0'
-    compile 'org.zalando:problem-spring-web:0.5.0'
-    compile 'com.google.guava:guava:25.1-jre'
-    compile 'org.slf4j:slf4j-log4j12'
-    compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile "com.ryantenney.metrics:metrics-spring:$dropwizardVersion"
-    compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
-    compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
-    compile 'org.apache.commons:commons-lang3:3.7'
-    compile 'org.zalando:nakadi-plugin-api:2.0.0'
-    compile 'org.echocat.jomon:runtime:1.6.3'
-
-    // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:1.1.1'
-    compile('org.apache.kafka:kafka_2.12:1.1.1') {
-        exclude module: "zookeeper"
-    }
-    compile("org.apache.curator:curator-recipes:$curatorVersion") {
-        exclude module: "zookeeper"
-    }
-    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
-
-    // json
-    compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
-        exclude module: "json"
-    }
-    compile("com.fasterxml.jackson.datatype:jackson-datatype-json-org") {
-        exclude module: "json"
-    }
-    compile "com.fasterxml.jackson.core:jackson-annotations"
-    compile "com.fasterxml.jackson.core:jackson-core"
-    compile "com.fasterxml.jackson.core:jackson-databind"
-    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda"
-    compile "com.fasterxml.jackson.module:jackson-module-afterburner"
-    compile 'org.zalando:twintip-spring-web:1.1.0'
-    compile 'org.json:json:20180130'
-
-    // tests
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('junit:junit:4.12') {
-        exclude module: "hamcrest-core"
-    }
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile 'org.skyscreamer:jsonassert'
-    testCompile 'uk.co.datumedge:hamcrest-json:0.2'
-    testCompile 'org.mockito:mockito-all:1.10.19'
-    testCompile('com.jayway.restassured:rest-assured:2.9.0') {
-        exclude module: "hamcrest-core"
-        exclude module: "hamcrest-library"
-    }
-    testCompile 'com.jayway.jsonpath:json-path'
-    testRuntime 'org.pegdown:pegdown:1.6.0'
-}
-// end::dependencies[]
-
-// tag::wrapper[]
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.3'
-}
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
-
-task testInitNakadi(type: Exec) {
-    environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
-    commandLine "bash", "-c", "docker-compose up -d --build"
-    doLast {
-        println "Waiting for Nakadi to start up"
-        long start = System.currentTimeMillis()
-        waitForNakadi()
-        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
-    }
-}
-
-task initNakadi(type: Exec) {
-    environment "SPRING_PROFILES_ACTIVE", "local"
-    commandLine "bash", "-c", "docker-compose up -d --build"
-    doLast {
-        println "Waiting for Nakadi to start up"
-        long start = System.currentTimeMillis()
-        waitForNakadi()
-        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
-    }
-}
-
-task startNakadi(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi']
+task fullAcceptanceTest(type: Exec) {
+    commandLine "bash", "-c", "./nakadi.sh acceptance-tests"
 }
 
 task stopNakadi(type: Exec) {
-    commandLine "bash", "-c", "docker-compose down"
-}
-
-def waitForNakadi() {
-    // wait till application is up (health check is successful)
-    int result = 1
-    while (result != 0) {
-        result = execAndWait('curl http://localhost:8080/health')
-        sleep(1000L)
-    }
-}
-
-def execAndWait(command, timeoutInSeconds = 15) {
-    println "Running command: " + command
-    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO()
-    Process proc = pb.start()
-    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS)
-    return proc.exitValue()
+    commandLine "bash", "-c", "./nakadi.sh stop-nakadi"
 }
 
 task startStorages(type: Exec) {
-    commandLine "bash", "-c", "docker-compose up -d postgres zookeeper kafka"
+    commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
 task stopStorages(type: Exec) {
-    commandLine "bash", "-c", "docker-compose down"
-}
-
-task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'test', 'acceptanceTest']
-    finalizedBy stopNakadi
-}
-
-task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'acceptanceTest']
-    finalizedBy stopNakadi
-}
-
-task acceptanceTest(type: Test) {
-    testClassesDir = sourceSets.acceptanceTest.output.classesDir
-    classpath = sourceSets.acceptanceTest.runtimeClasspath
-    maxParallelForks = Runtime.runtime.availableProcessors()
-}
-
-test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-}
-
-acceptanceTest {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    testLogging.exceptionFormat = 'full'
-}
-
-bootRun {
-    addResources = false
-    main = 'org.zalando.nakadi.Application'
-    environment 'NAKADI_OAUTH2_MODE', 'OFF'
-    environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
-}
-
-run {
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
-task testWithReport() {
-    dependsOn test
-    finalizedBy jacocoTestReport
-}
-
-checkstyle {
-    configFile = new File(rootDir, "checkstyle.xml")
-    toolVersion = "7.6"
+    commandLine "bash", "-c", "./nakadi.sh stop-storages"
 }
 
 task checkstyle {
-    dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
+    subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
+    subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
+    dependsOn(":acceptance-test:checkstyleMain")
+    dependsOn(":acceptance-test:checkstyleTest")
 }
 
+task test {
+    subprojects.each { dependsOn(":${it.name}:testWithReport") }
+}

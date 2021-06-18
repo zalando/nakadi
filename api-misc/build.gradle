@@ -1,0 +1,88 @@
+buildscript {
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+        classpath 'org.yaml:snakeyaml:1.21'
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
+    }
+}
+
+apply plugin: 'groovy'
+apply plugin: 'eclipse'
+apply plugin: 'project-report'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'org.owasp.dependencycheck'
+
+group 'org.zalando'
+
+configurations {
+    all*.exclude module: 'spring-boot-starter-logging'
+}
+
+dependencies {
+    // Override spring-boot BOM versions
+    ext['json.version'] = '20180130'
+    ext['json-path'] = '2.4.0'
+    ext['jsonassert'] = '1.5.0'
+
+    implementation project(':core-common')
+    implementation project(':core-services')
+
+    // spring
+    compile("org.springframework.boot:spring-boot-starter-web") {
+        exclude module: 'logback-classic'
+        exclude module: 'log4j-over-slf4j'
+        exclude module: 'spring-boot-starter-tomcat'
+    }
+
+    // oauth
+    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
+        exclude module: 'spring-webmvc'
+        exclude module: 'spring-security-config'
+        exclude module: 'spring-beans'
+        exclude module: 'spring-core'
+        exclude module: 'spring-context'
+    }
+    compile('org.springframework.boot:spring-boot-starter-security') {
+        exclude module: "logback-classic"
+    }
+
+    compile 'org.zalando:nakadi-plugin-api:3.2.1'
+    compile 'com.google.guava:guava:29.0-jre'
+    compile 'org.apache.commons:commons-lang3:3.8.1'
+
+    compile "org.springframework.boot:spring-boot-starter-json"
+    compile 'org.zalando:jackson-datatype-problem:0.22.0'
+    compile 'org.zalando:problem:0.22.0'
+    compile 'org.json:json:20180130'
+
+    compile 'org.slf4j:slf4j-log4j12'
+
+    // open tracing
+    compile 'io.opentracing:opentracing-api:0.31.0'
+    compile 'io.opentracing:opentracing-util:0.31.0'
+
+    compile("org.apache.curator:curator-recipes:$curatorVersion") {
+        exclude module: "zookeeper"
+    }
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+        exclude module: "log4j"
+    }
+
+    // tests
+    testCompile 'org.hamcrest:hamcrest-all:1.3'
+    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
+        exclude module: "hamcrest-core"
+    }
+    testCompile "org.springframework:spring-test"
+    testCompile 'org.springframework.boot:spring-boot-test'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile project(path: ':core-common', configuration: 'testOutput')
+}
+
+bootJar {
+    enabled = false
+}
+jar {
+    enabled = true
+}

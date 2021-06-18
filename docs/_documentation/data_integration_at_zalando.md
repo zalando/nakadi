@@ -5,7 +5,7 @@ position: 200
 
 ## Introduction
 
-Teams running platform microservices encapsulate their datastores and data models in accordance with our [API Guidelines](http://zalando.github.io/restful-api-guidelines). The result is business intelligence and analysis, which are also teams running their own services, don’t have direct access to raw data. This demands a different approach to data integration compared to traditional techniques such as extra transform load (ETL) from application databases.
+Teams running platform microservices encapsulate their datastores and data models in accordance with our [API Guidelines](http://zalando.github.io/restful-api-guidelines). The result is business intelligence and analysis, which are also teams running their own services, don’t have direct access to raw data. This demands a different approach to data integration compared to traditional techniques such as extract-transform-load (ETL) from application databases.
 
 ### Event Based Integration
 
@@ -19,7 +19,7 @@ While we mostly focus on data _integation_ in this section, we should mention th
 
 ## Architectural Elements
 
-In the platform architecture, there are two foundational services used for event based integration. First, an _Event Broker_, which a managed deployment of the [Nakadi](https://nakadi.io) project. Second, the _Data Lake_, which captures and stores events from the broker, and is used by the data warehouse and other downstream systems.
+In the platform architecture, there are two foundational services used for event based integration. First, an _Event Broker_, which is a managed deployment of the [Nakadi](https://nakadi.io) project. Second, the _Data Lake_, which captures and stores events from the broker, and is used by the data warehouse and other downstream systems.
 
 
 ![Event Based Integration - Architecture](./img/event_based_data_integration.svg)

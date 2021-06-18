@@ -35,7 +35,7 @@ examples of Subscription API creation and usage:
   - [Deleting a Subscription](#deleting-a-subscription): How to remove a Subscription.
   - [Getting and Listing Subscriptions](#getting-and-listing-subscriptions): How to view individual an subscription and list existing susbcriptions.
 
-For a more detailed description and advanced configuration options please take a look at Nakadi [swagger](api/nakadi-event-bus-api.yaml) file.
+For a more detailed description and advanced configuration options please take a look at Nakadi [swagger](https://github.com/zalando/nakadi/blob/master/docs/_data/nakadi-event-bus-api.yaml) file.
 
 ### Creating Subscriptions
 

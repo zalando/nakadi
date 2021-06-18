@@ -1,0 +1,52 @@
+[
+  {
+    "name": "event_type_name_placeholder",
+    "owning_application": "owning_application_placeholder",
+    "category": "data",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "hash",
+    "partition_key_fields": [
+      "resource_id"
+    ],
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\"properties\": {\"previous_object\": {  \"type\": \"object\",  \"description\": \"When modifying an already existent entity, its value is captured in this field as a JSON object. So, for example, when changing an Event Type attribute, this field contains the entire state before the changes are applied\"},\"previous_text\": { \"type\": \"string\",  \"description\": \"Contains the same information as the field `previous_object` but as text, since the data lake stores a flat map of all the fields in the object, destroying information about its structure. Storing the text makes sure that the original data is not lost by any transformation that the data lake may apply on the data\"},\"new_object\": { \"type\": \"object\",  \"description\": \"New value submitted by the user\"},\"new_text\": {  \"type\": \"string\", \"description\": \"New value submitted by the user as text, in order to preserve the structure, if needed\"},\"resource_type\": { \"x-extensible-enum\": [ \"event_type\", \"subscription\", \"timeline\", \"storage\", \"feature\", \"admins\", \"cursors\", \"blacklist_entry\" ],  \"type\":\"string\" },\"resource_id\": { \"description\": \"Resource identifier. Together with `resource_type` allows for the selection of a resource\", \"type\": \"string\"},\"user\": {  \"description\": \"User or service that requested the changes\",  \"type\": \"string\"},\"user_hash\": {  \"description\": \"User hashed\",  \"type\": \"string\"}},\"required\": [\"user\", \"user_hash\", \"resource_id\", \"resource_type\"]}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 100,
+      "message_size": 100,
+      "read_parallelism": 10,
+      "write_parallelism": 10
+    },
+    "options": {
+      "retention_time": 345600000
+    },
+    "compatibility_mode": "forward",
+    "audience": "company-internal",
+    "authorization": {
+      "admins": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "readers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "writers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ]
+    }
+  }
+]
