@@ -107,7 +107,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         0,
                         1
                 );
@@ -134,7 +134,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         null,
                         20
                 );
@@ -156,7 +156,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         null,
                         100
                 );
@@ -180,7 +180,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         null,
                         100
                 );
@@ -201,7 +201,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         0,
                         20
                 );
@@ -210,7 +210,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         20,
                         20
                 );
@@ -241,7 +241,7 @@ public class EventTypeServiceTest {
                 .listSubscriptions(
                         ImmutableSet.of(eventType.getName()),
                         Optional.empty(),
-                        Collections.emptySet(),
+                        null,
                         null,
                         20
                 );

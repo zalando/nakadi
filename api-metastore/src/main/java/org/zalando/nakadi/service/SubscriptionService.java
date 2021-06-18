@@ -41,6 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
@@ -191,7 +192,7 @@ public class SubscriptionService {
 
     public PaginationWrapper<Subscription> listSubscriptions(@Nullable final String owningApplication,
                                                              @Nullable final Set<String> eventTypes,
-                                                             @Nullable final Set<String> readers,
+                                                             @Nullable final AuthorizationAttribute reader,
                                                              final boolean showStatus,
                                                              final int limit,
                                                              final int offset,
@@ -204,9 +205,8 @@ public class SubscriptionService {
         if (offset < 0) {
             throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
-
+        final Optional<AuthorizationAttribute> readersFilter = Optional.ofNullable(reader);
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
-        final Set<String> readersFilter = readers == null ? ImmutableSet.of() : readers;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
         SubscriptionTokenLister.Token tokenObj = null;
         // Here we are basically trying to support 3 situations

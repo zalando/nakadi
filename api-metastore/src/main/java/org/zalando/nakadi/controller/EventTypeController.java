@@ -7,7 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -67,8 +73,9 @@ public class EventTypeController {
         this.nakadiSettings = nakadiSettings;
     }
 
+
     @InitBinder
-    public void initBinder(WebDataBinder binder) {
+    public void initBinder(final WebDataBinder binder) {
         binder.registerCustomEditor(AuthorizationAttribute.class, new AuthorizationAttributeQueryParser());
     }
 

@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class SubscriptionTokenLister extends AbstractDbRepository {
     public ListResult listSubscriptions(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
-            final Set<String> readers,
+            final Optional<AuthorizationAttribute> reader,
             @Nullable final Token token,
             final int limit) {
         if (limit < 1) {
@@ -49,7 +50,7 @@ public class SubscriptionTokenLister extends AbstractDbRepository {
         }
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
-        SubscriptionDbRepository.applyFilter(eventTypes, owningApplication, readers, clauses, params);
+        SubscriptionDbRepository.applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
         if (null == token || !token.hasSubscriptionId()) {
             return listNoToken(clauses, params, limit);

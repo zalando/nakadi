@@ -46,7 +46,6 @@ import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;

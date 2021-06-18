@@ -3,6 +3,8 @@ package org.zalando.nakadi.controller;
 import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -20,6 +22,8 @@ import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.service.SubscriptionService;
 import org.zalando.nakadi.service.SubscriptionService.StatsMode;
 import org.zalando.nakadi.service.TracingService;
@@ -44,6 +48,11 @@ public class SubscriptionController {
         this.subscriptionService = subscriptionService;
     }
 
+    @InitBinder
+    public void initBinder(final WebDataBinder binder) {
+        binder.registerCustomEditor(AuthorizationAttribute.class, new AuthorizationAttributeQueryParser());
+    }
+
     @RequestMapping(method = RequestMethod.GET)
     public PaginationWrapper<Subscription> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
@@ -52,11 +61,11 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "token", required = false) final String token,
-            @RequestParam(value = "readers", required = false) final Set<String> readers,
+            @RequestParam(value = "reader", required = false) final AuthorizationAttribute reader,
             final NativeWebRequest request)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return subscriptionService
-                .listSubscriptions(owningApplication, eventTypes, readers, showStatus, limit, offset, token);
+                .listSubscriptions(owningApplication, eventTypes, reader, showStatus, limit, offset, token);
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)

@@ -31,9 +31,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
@@ -44,7 +42,11 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.core.StringContains.containsString;
@@ -580,7 +582,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .listSubscriptions(
                         eq(ImmutableSet.of(eventType.getName())),
                         eq(Optional.empty()),
-                        eq(Collections.emptySet()),
+                        eq(null),
                         isNull(),
                         anyInt()))
                 .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));
@@ -920,7 +922,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     public void testWhenFilteringEventTypes() throws Exception {
         final String writer = "user:bshala";
         final EventType eventType = TestUtils.buildDefaultEventType();
-        doReturn(List.of(eventType)).when(eventTypeRepository).list(new ResourceAuthorizationAttribute("user", "bshala"));
+        doReturn(List.of(eventType)).when(eventTypeRepository)
+                .list(new ResourceAuthorizationAttribute("user", "bshala"));
         getEventTypes(writer).andExpect(status().is2xxSuccessful());
     }
 }

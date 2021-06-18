@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
@@ -180,7 +181,7 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Collections.emptySet(), 0, 20);
+                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null), 0, 20);
     }
 
     @Test
@@ -191,13 +192,13 @@ public class SubscriptionControllerTest {
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", ImmutableSet.of("service1", "user1"), 0, 30)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 0, 30)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"),
-                        ImmutableSet.of("service1", "user1"), 0, 30);
+                        Optional.ofNullable(null), 0, 30);
     }
 
     @Test
@@ -212,7 +213,7 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
-                Collections.emptySet(), -5, 10), expectedProblem);
+                Optional.ofNullable(null), -5, 10), expectedProblem);
     }
 
     @Test
@@ -220,7 +221,7 @@ public class SubscriptionControllerTest {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
                 "'limit' parameter should have value between 1 and 1000");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
-                Collections.emptySet(), 0, -5), expectedProblem);
+                Optional.ofNullable(null), 0, -5), expectedProblem);
     }
 
     @Test
@@ -236,7 +237,7 @@ public class SubscriptionControllerTest {
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
         final PaginationWrapper expectedResult = new PaginationWrapper(subscriptions, links);
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Collections.emptySet(), 5, 10)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 5, 10)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedResult)));
     }
@@ -314,7 +315,8 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp,
-                                           final Set<String> readers, final int offset, final int limit
+                                           final Optional<AuthorizationAttribute> readers,
+                                           final int offset, final int limit
     ) throws Exception {
         final String url = SubscriptionsUriHelper.createSubscriptionListLink(
                 Optional.of(owningApp), eventTypes, readers, offset, Optional.empty(), limit, false).getHref();

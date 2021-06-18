@@ -23,10 +23,10 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -125,7 +125,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
      */
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
-                                                final Set<String> readers, final int offset, final int limit)
+                                                final Optional<AuthorizationAttribute> readers,
+                                                final int offset, final int limit)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
@@ -158,7 +159,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     static void applyFilter(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
-            final Set<String> readers,
+            final Optional<AuthorizationAttribute> reader,
             final List<String> clauses,
             final List<Object> params) {
         owningApplication.ifPresent(owningApp -> {
@@ -174,13 +175,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
         }
-        if (!readers.isEmpty()) {
-            final String clause = String.format("readers.value IN (%s)",
-                    String.join(",", Collections.nCopies(readers.size(), "?")));
-            clauses.add(clause);
-            readers.stream()
-                    .forEach(params::add);
-        }
+        reader.ifPresent(_reader -> {
+            clauses.add(String.format("reader.data_type = ? AND readers.value = ?",
+                            _reader.getDataType(),
+                            _reader.getValue()));
+            params.add(_reader.getDataType());
+            params.add(_reader.getValue());
+        });
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
