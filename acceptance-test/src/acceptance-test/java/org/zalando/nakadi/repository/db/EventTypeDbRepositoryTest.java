@@ -8,17 +8,22 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -95,6 +100,25 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         final EventType persistedEventType = repository.findByName(eventType2.getName());
 
         assertThat(persistedEventType, notNullValue());
+    }
+
+    @Test
+    public void whenEventExistsFindByAuthorizationReturnsSomething() throws Exception {
+        final EventType eventType1 = buildDefaultEventType();
+        final AuthorizationAttributeQueryParser auth = new AuthorizationAttributeQueryParser();
+        auth.setAsText("service:stups_test-app");
+
+        eventType1.setAuthorization(new ResourceAuthorization(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                List.of((AuthorizationAttribute) auth.getValue())
+        ));
+
+        insertEventType(eventType1);
+
+        final List<EventType> persistedEventType = repository.list((AuthorizationAttribute) auth.getValue());
+
+        assertThat(persistedEventType, hasItem(hasProperty("name", is(eventType1.getName()))));
     }
 
     @Test(expected = NoSuchEventTypeException.class)

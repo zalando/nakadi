@@ -125,21 +125,21 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
      */
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
-                                                final Optional<AuthorizationAttribute> readers,
+                                                final Optional<AuthorizationAttribute> reader,
                                                 final int offset, final int limit)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
-        if (!readers.isEmpty()) {
+        if (reader.isPresent()) {
             queryBuilder.append(",jsonb_to_recordset(s_subscription_object->'authorization'->'readers')" +
-                    "as readers(value text)");
+                    " as readers(data_type text, value text) ");
         }
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
 
-        applyFilter(eventTypes, owningApplication, readers, clauses, params);
+        applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
-        final String order = "ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
+        final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
         params.add(limit);
         params.add(offset);
         if (!clauses.isEmpty()) {
@@ -174,13 +174,11 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
         }
-        reader.ifPresent(_reader -> {
-            clauses.add(String.format("reader.data_type = ? AND readers.value = ?",
-                            _reader.getDataType(),
-                            _reader.getValue()));
-            params.add(_reader.getDataType());
-            params.add(_reader.getValue());
-        });
+        if(reader.isPresent()){
+            clauses.add(" readers.data_type = ? AND readers.value = ? ");
+            params.add(reader.get().getDataType());
+            params.add(reader.get().getValue());
+        }
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,

@@ -6,11 +6,14 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.AuthorizationAttributeProxy;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -129,7 +132,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1"),
-                Optional.of(owningApp), null, 0, 10);
+                Optional.of(owningApp), Optional.empty(), 0, 10);
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -155,7 +158,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
-                Optional.empty(), null, 0, 10);
+                Optional.empty(), Optional.empty(), 0, 10);
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -170,7 +173,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         testSubscriptions.subList(3, testSubscriptions.size()).clear();
 
         final List<Subscription> subscriptions = repository.listSubscriptions(
-                emptySet(), Optional.of(owningApp), null, 2, 3);
+                emptySet(), Optional.of(owningApp), Optional.empty(), 2, 3);
         assertThat(subscriptions, equalTo(testSubscriptions));
     }
 

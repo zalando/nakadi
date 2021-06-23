@@ -42,12 +42,12 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
         // 1. Check that there are no paging links if requested more or equal to current count
         SubscriptionTokenLister.ListResult result;
 
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, null, 2);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 2);
         assertThat(result.getPrev(), nullValue());
         assertThat(result.getNext(), nullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions));
 
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, null, 3);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 3);
         assertThat(result.getPrev(), nullValue());
         assertThat(result.getNext(), nullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions));
@@ -59,7 +59,7 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
                 subscriptionTokenLister.listSubscriptions(
                         emptySet(),
                         Optional.of(TestUtils.randomUUID()),
-                        null,
+                        Optional.empty(),
                         null,
                         2
                 );
@@ -77,44 +77,44 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
         SubscriptionTokenLister.ListResult result;
 
         // 1. Check that there are no paging links if requested more or equal to current count
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, null, 7);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 7);
         assertThat(result.getPrev(), nullValue());
         assertThat(result.getNext(), nullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions));
 
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, null, 8);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 8);
         assertThat(result.getPrev(), nullValue());
         assertThat(result.getNext(), nullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions));
 
         // 2. Check actual iteration
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, null, 3);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 3);
         assertThat(result.getPrev(), nullValue());
         assertThat(result.getNext(), notNullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions.subList(0, 3)));
 
         // 2.1 Second page
         final SubscriptionTokenLister.Token secondPage = result.getNext();
-        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, secondPage, 3);
+        result = subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), secondPage, 3);
         assertThat(result.getPrev(), notNullValue());
         assertThat(result.getNext(), notNullValue());
         assertThat(result.getItems(), equalTo(testSubscriptions.subList(3, 6)));
 
         // 2.2 Second page backwards
         final SubscriptionTokenLister.ListResult backResult =
-                subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, null, result.getPrev(), 3);
+                subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), result.getPrev(), 3);
         assertThat(backResult.getPrev(), nullValue());
         assertThat(backResult.getNext(), equalTo(secondPage));
         assertThat(backResult.getItems(), equalTo(testSubscriptions.subList(0, 3)));
         // 2.3
         final SubscriptionTokenLister.Token lastPageToken = result.getNext();
         final SubscriptionTokenLister.ListResult lastPage1 = subscriptionTokenLister.listSubscriptions(
-                emptySet(), owiningApp, null, lastPageToken, 3);
+                emptySet(), owiningApp, Optional.empty(), lastPageToken, 3);
         assertThat(lastPage1.getNext(), nullValue());
         assertThat(lastPage1.getPrev(), notNullValue());
         assertThat(lastPage1.getItems(), equalTo(testSubscriptions.subList(6, 7)));
         final SubscriptionTokenLister.ListResult lastPage2 = subscriptionTokenLister.listSubscriptions(
-                emptySet(), owiningApp, null, lastPageToken, 1);
+                emptySet(), owiningApp, Optional.empty(), lastPageToken, 1);
         assertThat(lastPage2, equalTo(lastPage1));
     }
 
@@ -152,9 +152,8 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of("et1"), Optional.of(owningApp), null, null, 10).getItems();
+                ImmutableSet.of("et1"), Optional.of(owningApp), Optional.empty(), null, 10).getItems();
         assertThat(subscriptions, equalTo(expectedSubscriptions));
-
     }
 
 
