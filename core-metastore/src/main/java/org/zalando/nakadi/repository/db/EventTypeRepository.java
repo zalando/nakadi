@@ -105,7 +105,6 @@ public class EventTypeRepository extends AbstractDbRepository {
     }
 
     public List<EventType> list(final AuthorizationAttribute writers) {
-        System.out.println("Authattributes:" + writers.getDataType() + ":" + writers.getValue());
         return jdbcTemplate.query(
                 "SELECT et_event_type_object " +
                         "FROM zn_data.event_type," +

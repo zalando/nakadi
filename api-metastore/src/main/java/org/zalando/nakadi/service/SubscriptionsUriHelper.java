@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 
@@ -20,7 +21,7 @@ public class SubscriptionsUriHelper {
             urlBuilder.queryParam("event_type", eventTypes.toArray());
         }
         reader.ifPresent(_reader -> {
-            urlBuilder.queryParam("reader", String.format("%s:%s", _reader.getDataType(), _reader.getValue()));
+            urlBuilder.queryParam("reader", AuthorizationAttributeQueryParser.getQuery(_reader));
         });
         owningApplication.ifPresent(owningApp -> urlBuilder.queryParam("owning_application", owningApp));
         if (showStatus) {

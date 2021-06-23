@@ -122,10 +122,10 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: writers
+        - name: writer
           in: query
           description: |
-            Will query all subscriptions that provided user or service can write to based on authorization section. Service or user
+            Will query all subscriptions that the given user or service can write to based on authorization section. Service or user
             should be listed explicitly on authorization section.
           type: string
           required: false
@@ -1176,10 +1176,10 @@ paths:
           description: show subscription status
           type: boolean
           default: false
-        - name: readers
+        - name: reader
           in: query
           description: |
-            Will query all subscriptions that provided user or service can read from, based on authorization section. Service or user
+            Will query all subscriptions that the given user or service can read from, based on authorization section. Service or user
             should be listed explicitly on authorization section.
           type: string
           required: false

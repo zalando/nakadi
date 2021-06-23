@@ -2,6 +2,7 @@ package org.zalando.nakadi.model;
 
 import org.apache.commons.lang.StringUtils;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 import java.beans.PropertyEditorSupport;
 
@@ -20,5 +21,9 @@ public class AuthorizationAttributeQueryParser extends PropertyEditorSupport {
                     new ResourceAuthorizationAttribute(authorizationQuery[0], authorizationQuery[1]);
             setValue(authorizationAttribute);
         }
+    }
+
+    public static String getQuery(final AuthorizationAttribute auth){
+        return String.format("%s:%s", auth.getDataType(), auth.getValue());
     }
 }

@@ -61,7 +61,7 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "token", required = false) final String token,
-            @RequestParam(value = "reader", required = false) final AuthorizationAttribute reader,
+            @Nullable @RequestParam(value = "reader", required = false) final AuthorizationAttribute reader,
             final NativeWebRequest request)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return subscriptionService
