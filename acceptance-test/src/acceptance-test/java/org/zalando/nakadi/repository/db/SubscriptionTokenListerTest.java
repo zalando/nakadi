@@ -180,7 +180,7 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = subscriptionTokenLister.listSubscriptions(ImmutableSet.of(et1, et2),
-                Optional.empty(), null, null, 10).getItems();
+                Optional.empty(), Optional.empty(), null, 10).getItems();
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 

@@ -116,9 +116,9 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         insertEventType(eventType1);
 
-        final List<EventType> persistedEventType = repository.list((AuthorizationAttribute) auth.getValue());
+        final List<EventType> persistedEventTypes = repository.list((AuthorizationAttribute) auth.getValue());
 
-        assertThat(persistedEventType, hasItem(hasProperty("name", is(eventType1.getName()))));
+        assertThat(persistedEventTypes, hasItem(hasProperty("name", is(eventType1.getName()))));
     }
 
     @Test(expected = NoSuchEventTypeException.class)

@@ -582,7 +582,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 .listSubscriptions(
                         eq(ImmutableSet.of(eventType.getName())),
                         eq(Optional.empty()),
-                        eq(null),
+                        eq(Optional.empty()),
                         isNull(),
                         anyInt()))
                 .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));

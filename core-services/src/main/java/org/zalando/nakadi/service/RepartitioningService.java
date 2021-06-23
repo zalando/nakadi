@@ -175,12 +175,12 @@ public class RepartitioningService {
     private void updateSubscriptionsForRepartitioning(final String eventTypeName, final int partitions)
             throws NakadiBaseException {
         SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), null,null, 100);
+                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(),null, 100);
         while (list != null) {
             list.getItems()
                     .forEach(item -> updateSubscriptionForRepartitioning(item, eventTypeName, partitions));
             list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), null, list.getNext(), 100);
+                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 100);
         }
     }
 }
