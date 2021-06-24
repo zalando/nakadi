@@ -104,10 +104,10 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenEventExistsFindByAuthorizationReturnsSomething() throws Exception {
+    public void whenEventTypeExistsFindByAuthorizationReturnsSomething() throws Exception {
         final EventType eventType1 = buildDefaultEventType();
         final AuthorizationAttributeQueryParser auth = new AuthorizationAttributeQueryParser();
-        auth.setAsText("service:stups_test-app-2");
+        auth.setAsText("service:stups_test-app");
 
         eventType1.setAuthorization(new ResourceAuthorization(
                 Collections.emptyList(),

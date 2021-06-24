@@ -174,7 +174,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
         }
-        if(reader.isPresent()){
+        if (reader.isPresent()) {
             clauses.add(" readers.data_type = ? AND readers.value = ? ");
             params.add(reader.get().getDataType());
             params.add(reader.get().getValue());

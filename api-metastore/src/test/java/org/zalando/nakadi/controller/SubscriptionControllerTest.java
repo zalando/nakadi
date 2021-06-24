@@ -315,11 +315,11 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp,
-                                           final Optional<AuthorizationAttribute> readers,
+                                           final Optional<AuthorizationAttribute> reader,
                                            final int offset, final int limit
     ) throws Exception {
         final String url = SubscriptionsUriHelper.createSubscriptionListLink(
-                Optional.of(owningApp), eventTypes, readers, offset, Optional.empty(), limit, false).getHref();
+                Optional.of(owningApp), eventTypes, reader, offset, Optional.empty(), limit, false).getHref();
         return mockMvc.perform(get(url));
     }
 

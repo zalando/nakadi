@@ -15,7 +15,7 @@ public class AuthorizationAttributeQueryParser extends PropertyEditorSupport {
         } else {
             final String[] authorizationQuery = text.split(":");
             if (authorizationQuery.length != 2) {
-                throw new IllegalArgumentException("Authorization format is incorrect. Should be data_type:data_value");
+                throw new IllegalArgumentException("Authorization format is incorrect. Should be data_type:value");
             }
             final ResourceAuthorizationAttribute authorizationAttribute =
                     new ResourceAuthorizationAttribute(authorizationQuery[0], authorizationQuery[1]);
