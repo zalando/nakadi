@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.ResourceAuthorization;
+import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -106,18 +107,17 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenEventTypeExistsFindByAuthorizationReturnsSomething() throws Exception {
         final EventType eventType1 = buildDefaultEventType();
-        final AuthorizationAttributeQueryParser auth = new AuthorizationAttributeQueryParser();
-        auth.setAsText("service:stups_test-app");
+        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test-app");
 
         eventType1.setAuthorization(new ResourceAuthorization(
                 Collections.emptyList(),
                 Collections.emptyList(),
-                List.of((AuthorizationAttribute) auth.getValue())
+                List.of(auth)
         ));
 
         insertEventType(eventType1);
 
-        final List<EventType> persistedEventTypes = repository.list((AuthorizationAttribute) auth.getValue());
+        final List<EventType> persistedEventTypes = repository.list(auth);
 
         assertThat(persistedEventTypes, hasItem(hasProperty("name", is(eventType1.getName()))));
     }
