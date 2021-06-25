@@ -122,6 +122,14 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: writer
+          in: query
+          description: |
+            Will query all event types that the given user or service can write to based on authorization section. Service or user
+            should be listed explicitly on authorization section.
+          type: string
+          required: false
+          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: Ok
@@ -1168,6 +1176,14 @@ paths:
           description: show subscription status
           type: boolean
           default: false
+        - name: reader
+          in: query
+          description: |
+            Will query all subscriptions that the given user or service can read from, based on authorization section. Service or user
+            should be listed explicitly on authorization section.
+          type: string
+          required: false
+          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: OK

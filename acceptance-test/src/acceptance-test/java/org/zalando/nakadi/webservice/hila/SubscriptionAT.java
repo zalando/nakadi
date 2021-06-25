@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -42,21 +43,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.jayway.restassured.RestAssured.get;
-import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.RestAssured.when;
+import static com.jayway.restassured.RestAssured.*;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.randomUUID;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.utils.TestUtils.*;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
@@ -161,6 +154,36 @@ public class SubscriptionAT extends BaseAT {
         response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
         final Subscription updatedSub = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(updatedSub.getUpdatedAt(), not(equalTo(subFirst.getUpdatedAt())));
+    }
+
+    @Test
+    public void testQuerySubscriptionByAuthReturnsOk() throws JsonProcessingException {
+        final String serviceName = "stups_test-app" + randomTextString();
+        final EventType eventType = createEventType();
+        final String authAttr = "{\"data_type\":\"service\",\"value\": \"" + serviceName + "\"}";
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\""
+                + eventType.getName() + "\"], \"read_from\": \"end\", \"consumer_group\":\"test-%s\"," +
+                "\"authorization\": {\"admins\": [" + authAttr + "], \"readers\": [" + authAttr + "]}}";
+
+        final Subscription firstSub = MAPPER.readValue(given()
+                .body(String.format(subscription, "first-group"))
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL).print(), Subscription.class);
+        final Subscription secondSub = MAPPER.readValue(given()
+                .body(String.format(subscription, "second-group"))
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL).print(), Subscription.class);
+
+        final PaginationWrapper<Subscription> expectedList = new PaginationWrapper<>(ImmutableList.of(secondSub, firstSub),
+                new PaginationLinks(Optional.empty(), Optional.of(new PaginationLinks.Link(String.format("%s?reader=service:%s&offset=2&limit=2", SUBSCRIPTIONS_URL, serviceName)))));
+
+        given()
+                .param("reader", "service:" + serviceName)
+                .param("limit", 2)
+                .get("/subscriptions")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body(JSON_HELPER.matchesObject(expectedList));
     }
 
     @Test

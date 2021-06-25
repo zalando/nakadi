@@ -48,6 +48,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
@@ -63,8 +64,8 @@ import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -146,6 +147,10 @@ public class EventTypeService {
 
     public List<EventType> list() {
         return eventTypeRepository.list();
+    }
+
+    public List<EventType> list(final AuthorizationAttribute writers) {
+        return eventTypeRepository.list(writers);
     }
 
     public void create(final EventTypeBase eventType, final boolean checkAuth)
@@ -366,7 +371,7 @@ public class EventTypeService {
         try {
             return transactionTemplate.execute(action -> {
                 SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), null, 100);
+                        ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
                 while (null != listResult) {
                     listResult.getItems().forEach(s -> {
                         try {
@@ -377,7 +382,7 @@ public class EventTypeService {
                         }
                     });
                     listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                            ImmutableSet.of(eventType), Optional.empty(), listResult.getNext(), 100);
+                            ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
                 }
                 return deleteEventType(eventType);
             });
@@ -391,7 +396,7 @@ public class EventTypeService {
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
 
         SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), null, 20);
+                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), null, 20);
         while (null != list) {
             for (final Subscription sub : list.getItems()) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
@@ -401,7 +406,7 @@ public class EventTypeService {
                 }
             }
             list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), list.getNext(), 20);
+                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 20);
         }
         return false;
     }

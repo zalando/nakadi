@@ -580,7 +580,11 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         when(mockSubscription.getOwningApplication()).thenReturn("asdf");
         when(subscriptionTokenLister
                 .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), isNull(), anyInt()))
+                        eq(ImmutableSet.of(eventType.getName())),
+                        eq(Optional.empty()),
+                        eq(Optional.empty()),
+                        isNull(),
+                        anyInt()))
                 .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));
 
         final Problem expectedProblem = Problem.valueOf(CONFLICT,
@@ -912,5 +916,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, eventType.asResource()))
                 .when(authorizationValidator).authorizeEventTypeView(eventType);
         getEventType(eventTypeName).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testWhenFilteringEventTypes() throws Exception {
+        final String writer = "user:bshala";
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        doReturn(List.of(eventType)).when(eventTypeRepository)
+                .list(new ResourceAuthorizationAttribute("user", "bshala"));
+        getEventTypes(writer).andExpect(status().is2xxSuccessful());
     }
 }

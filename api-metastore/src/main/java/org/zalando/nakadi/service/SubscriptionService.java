@@ -41,6 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
@@ -192,6 +193,7 @@ public class SubscriptionService {
 
     public PaginationWrapper<Subscription> listSubscriptions(@Nullable final String owningApplication,
                                                              @Nullable final Set<String> eventTypes,
+                                                             @Nullable final AuthorizationAttribute reader,
                                                              final boolean showStatus,
                                                              final int limit,
                                                              final int offset,
@@ -204,7 +206,7 @@ public class SubscriptionService {
         if (offset < 0) {
             throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
-
+        final Optional<AuthorizationAttribute> readersFilter = Optional.ofNullable(reader);
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
         SubscriptionTokenLister.Token tokenObj = null;
@@ -227,26 +229,30 @@ public class SubscriptionService {
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     eventTypesFilter,
                     owningAppOption,
+                    readersFilter,
                     offset,
                     limit);
             final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
                     .map(o -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, Math.max(0, o - limit), Optional.empty(), limit, 
-                            showStatus));
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            Math.max(0, o - limit), Optional.empty(), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
                     .map(size -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, offset + size, Optional.empty(), limit, showStatus));
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            offset + size, Optional.empty(), limit, showStatus));
 
             paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
         } else {
             final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                    eventTypesFilter, owningAppOption, tokenObj, limit);
+                    eventTypesFilter, owningAppOption, readersFilter, tokenObj, limit);
             final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            0, Optional.of(t), limit, showStatus));
             final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
                     .map(t -> createSubscriptionListLink(
-                            owningAppOption, eventTypesFilter, 0, Optional.of(t), limit, showStatus));
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            0, Optional.of(t), limit, showStatus));
             paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
         }
         if (showStatus) {

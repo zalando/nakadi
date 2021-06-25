@@ -6,11 +6,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -33,11 +36,14 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import javax.annotation.Nullable;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -67,11 +73,19 @@ public class EventTypeController {
         this.nakadiSettings = nakadiSettings;
     }
 
-    @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> list() {
-        final List<EventType> eventTypes = eventTypeService.list();
 
-        return status(HttpStatus.OK).body(eventTypes);
+    @InitBinder
+    public void initBinder(final WebDataBinder binder) {
+        binder.registerCustomEditor(AuthorizationAttribute.class, new AuthorizationAttributeQueryParser());
+    }
+
+    @RequestMapping(method = RequestMethod.GET)
+    public ResponseEntity<?> list(@Nullable @RequestParam final AuthorizationAttribute writer) {
+        if (writer != null) {
+            return status(HttpStatus.OK).body(eventTypeService.list(writer));
+        }
+
+        return status(HttpStatus.OK).body(eventTypeService.list());
     }
 
     @RequestMapping(method = RequestMethod.POST)

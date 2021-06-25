@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
@@ -170,7 +171,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
@@ -179,28 +180,30 @@ public class SubscriptionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
-        verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
+        verify(subscriptionRepository, times(1))
+                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null), 0, 20);
     }
 
     @Test
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 0, 30)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
+                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"),
+                        Optional.ofNullable(null), 0, 30);
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
@@ -209,20 +212,22 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
-        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", -5, 10), expectedProblem);
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
+                Optional.ofNullable(null), -5, 10), expectedProblem);
     }
 
     @Test
     public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
                 "'limit' parameter should have value between 1 and 1000");
-        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
+                Optional.ofNullable(null), 0, -5), expectedProblem);
     }
 
     @Test
     public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
@@ -232,7 +237,7 @@ public class SubscriptionControllerTest {
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
         final PaginationWrapper expectedResult = new PaginationWrapper(subscriptions, links);
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 5, 10)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedResult)));
     }
@@ -309,10 +314,12 @@ public class SubscriptionControllerTest {
         return mockMvc.perform(get("/subscriptions"));
     }
 
-    private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
-                                           final int limit) throws Exception {
+    private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp,
+                                           final Optional<AuthorizationAttribute> reader,
+                                           final int offset, final int limit
+    ) throws Exception {
         final String url = SubscriptionsUriHelper.createSubscriptionListLink(
-                Optional.of(owningApp), eventTypes, offset, Optional.empty(), limit, false).getHref();
+                Optional.of(owningApp), eventTypes, reader, offset, Optional.empty(), limit, false).getHref();
         return mockMvc.perform(get(url));
     }
 

@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -124,14 +125,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
      */
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
+                                                final Optional<AuthorizationAttribute> reader,
                                                 final int offset, final int limit)
             throws ServiceTemporarilyUnavailableException {
 
-        final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription ");
+        final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
+        if (reader.isPresent()) {
+            queryBuilder.append(",jsonb_to_recordset(s_subscription_object->'authorization'->'readers')" +
+                    " as readers(data_type text, value text) ");
+        }
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
 
-        applyFilter(eventTypes, owningApplication, clauses, params);
+        applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
         final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
         params.add(limit);
@@ -152,6 +158,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     static void applyFilter(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
+            final Optional<AuthorizationAttribute> reader,
             final List<String> clauses,
             final List<Object> params) {
         owningApplication.ifPresent(owningApp -> {
@@ -166,6 +173,11 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             eventTypes.stream()
                     .map(et -> format("\"{0}\"", et))
                     .forEach(params::add);
+        }
+        if (reader.isPresent()) {
+            clauses.add(" readers.data_type = ? AND readers.value = ? ");
+            params.add(reader.get().getDataType());
+            params.add(reader.get().getValue());
         }
     }
 

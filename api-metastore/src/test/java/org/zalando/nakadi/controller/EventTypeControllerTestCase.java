@@ -192,6 +192,11 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
+    protected ResultActions getEventTypes(final String writer) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
+        return mockMvc.perform(requestBuilder);
+    }
+
     protected SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
         return SameJSONAs.sameJSONAs(TestUtils.OBJECT_MAPPER.writeValueAsString(expectedProblem));
     }
