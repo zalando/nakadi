@@ -47,9 +47,7 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.utils.TestUtils.*;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
@@ -82,7 +80,7 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenGETWithQueryEThenListsEventTypes() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test-app");
+        ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test"+randomTextString());
         eventType.setAuthorization(new ResourceAuthorization(List.of(auth), List.of(auth), List.of(auth)));
 
         final String body = MAPPER.writer().writeValueAsString(eventType);

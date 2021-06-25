@@ -20,8 +20,8 @@ public class SubscriptionsUriHelper {
         if (!eventTypes.isEmpty()) {
             urlBuilder.queryParam("event_type", eventTypes.toArray());
         }
-        reader.ifPresent(_reader -> {
-            urlBuilder.queryParam("reader", AuthorizationAttributeQueryParser.getQuery(_reader));
+        reader.ifPresent(readerOpt -> {
+            urlBuilder.queryParam("reader", AuthorizationAttributeQueryParser.getQuery(readerOpt));
         });
         owningApplication.ifPresent(owningApp -> urlBuilder.queryParam("owning_application", owningApp));
         if (showStatus) {

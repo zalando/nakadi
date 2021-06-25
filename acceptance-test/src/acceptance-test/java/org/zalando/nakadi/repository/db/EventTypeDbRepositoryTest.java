@@ -27,8 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.randomString;
+import static org.zalando.nakadi.utils.TestUtils.*;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -107,7 +106,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenEventTypeExistsFindByAuthorizationReturnsSomething() throws Exception {
         final EventType eventType1 = buildDefaultEventType();
-        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test-app");
+        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test"+randomTextString());
 
         eventType1.setAuthorization(new ResourceAuthorization(
                 Collections.emptyList(),
