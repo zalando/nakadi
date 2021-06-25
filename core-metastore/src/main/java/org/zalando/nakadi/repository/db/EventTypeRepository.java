@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Set;
 
 @DB
 @Component
@@ -111,7 +110,7 @@ public class EventTypeRepository extends AbstractDbRepository {
                         "jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
                         "AS writers(data_type text, value text) " +
                         "WHERE writers.data_type = ? AND writers.value = ?",
-                Set.of(writer.getDataType(), writer.getValue()).toArray(),
+                new String[]{ writer.getDataType(), writer.getValue() },
                 new EventTypeMapper());
     }
 
