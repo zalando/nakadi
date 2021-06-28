@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice.hila;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.hamcrest.Matchers;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -342,7 +341,7 @@ public class HilaRebalanceAT extends BaseAT {
         client2.start();
 
         waitFor(() -> assertThat("at least one client should get 409 conflict",
-                        client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
+                client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
                         client1.getResponseCode() == HttpStatus.CONFLICT.value()));
     }
 
