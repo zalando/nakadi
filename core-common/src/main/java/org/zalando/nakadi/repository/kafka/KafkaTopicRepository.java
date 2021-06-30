@@ -351,8 +351,10 @@ public class KafkaTopicRepository implements TopicRepository {
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
                 if (item.getBrokerId() == null) {
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                    LOG.warn("Failed to publish. No leader fo partition [{}], topic [{topicId}].", item.getPartition(), topicId);
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED,
+                            String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
+                    LOG.warn("Failed to publish to kafka. No leader for partition [{}], topic [{topicId}].",
+                            item.getPartition(), topicId);
                     continue;
                 }
                 item.setStep(EventPublishingStep.PUBLISHING);
