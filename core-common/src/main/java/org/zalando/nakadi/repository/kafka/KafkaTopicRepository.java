@@ -277,7 +277,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final NewTopic newTopic = new NewTopic(
                     kafkaTopicConfig.getTopicName(),
                     Optional.of(kafkaTopicConfig.getPartitionCount()),
-                    Optional.of((short)kafkaTopicConfig.getReplicaFactor()));
+                    Optional.of((short) kafkaTopicConfig.getReplicaFactor()));
             newTopic.configs(kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig));
 
             adminClient.createTopics(Lists.newArrayList(newTopic)).all().get(30, TimeUnit.SECONDS);
@@ -335,10 +335,12 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
-                    Collectors.toMap(
-                            p -> String.valueOf(p.partition()),
-                            p -> p.leader().idString() + "_" + p.leader().host()));
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+                    .filter(partitionInfo -> partitionInfo.leader() != null)
+                    .collect(
+                            Collectors.toMap(
+                                    p -> String.valueOf(p.partition()),
+                                    p -> p.leader().idString() + "_" + p.leader().host()));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
                         item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
@@ -348,6 +350,10 @@ public class KafkaTopicRepository implements TopicRepository {
             int shortCircuited = 0;
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
+                if (item.getBrokerId() == null) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, String.format("No leader for partition."));
+                    continue;
+                }
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
                         item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
@@ -706,8 +712,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     .entrySet()
                     .stream()
                     .map(entry -> new AlterConfigOp(
-                        new ConfigEntry(entry.getKey(), entry.getValue()),
-                        AlterConfigOp.OpType.SET))
+                            new ConfigEntry(entry.getKey(), entry.getValue()),
+                            AlterConfigOp.OpType.SET))
                     .collect(Collectors.toList());
 
             configs.put(configResource, alterConfigOps);
