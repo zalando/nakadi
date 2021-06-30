@@ -50,9 +50,7 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyString;
@@ -341,7 +339,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
-        assertThat(firstItem.getResponse().getDetail(), equalTo("No leader for partition."));
+        assertThat(firstItem.getResponse().getDetail(), containsString("No leader for partition"));
 
         assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
     }
