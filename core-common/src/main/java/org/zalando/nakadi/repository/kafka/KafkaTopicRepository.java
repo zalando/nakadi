@@ -353,8 +353,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (item.getBrokerId() == null) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED,
                             String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                    LOG.warn("Failed to publish to kafka. No leader for partition [{}], topic [{topicId}].",
-                            item.getPartition(), topicId);
+                    LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
+                            topicId, item.getPartition());
                     continue;
                 }
                 item.setStep(EventPublishingStep.PUBLISHING);
