@@ -53,6 +53,7 @@ import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -305,6 +306,46 @@ public class KafkaTopicRepositoryTest {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("timed out"));
         }
+    }
+
+    @Test
+    public void whenPartitionLeaderNotFoundTheRestOfTheBatchOk() {
+        final BatchItem firstItem = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        firstItem.setPartition("1");
+
+        final BatchItem secondItem = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        secondItem.setPartition("2");
+
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(firstItem);
+        batch.add(secondItem);
+
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, null, null, null),
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, NODE, null, null)));
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            callback.onCompletion(null, null);
+            return null;
+        });
+
+        Assert.assertThrows(EventPublishingException.class, () -> {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+        });
+
+        assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(firstItem.getResponse().getDetail(), containsString("No leader for partition"));
+
+        assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
     }
 
     @Test
