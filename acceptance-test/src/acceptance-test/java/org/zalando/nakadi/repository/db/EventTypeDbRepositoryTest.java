@@ -13,8 +13,6 @@ import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
-import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
@@ -22,12 +20,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.TestUtils.*;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -106,7 +107,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenEventTypeExistsFindByAuthorizationReturnsSomething() throws Exception {
         final EventType eventType1 = buildDefaultEventType();
-        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute("service", "stups_test"+randomTextString());
+        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute(
+                "service", "stups_test" + randomTextString());
 
         eventType1.setAuthorization(new ResourceAuthorization(
                 Collections.emptyList(),

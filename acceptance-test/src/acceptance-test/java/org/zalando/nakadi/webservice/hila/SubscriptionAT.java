@@ -23,7 +23,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -43,13 +42,22 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.jayway.restassured.RestAssured.*;
+import static com.jayway.restassured.RestAssured.get;
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.TestUtils.*;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomTextString;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
@@ -174,8 +182,11 @@ public class SubscriptionAT extends BaseAT {
                 .contentType(JSON)
                 .post(SUBSCRIPTIONS_URL).print(), Subscription.class);
 
-        final PaginationWrapper<Subscription> expectedList = new PaginationWrapper<>(ImmutableList.of(secondSub, firstSub),
-                new PaginationLinks(Optional.empty(), Optional.of(new PaginationLinks.Link(String.format("%s?reader=service:%s&offset=2&limit=2", SUBSCRIPTIONS_URL, serviceName)))));
+        final PaginationLinks.Link paginationLink = new PaginationLinks.Link(
+                String.format("%s?reader=service:%s&offset=2&limit=2", SUBSCRIPTIONS_URL, serviceName));
+        final PaginationWrapper<Subscription> expectedList = new PaginationWrapper<>(
+                ImmutableList.of(secondSub, firstSub),
+                new PaginationLinks(Optional.empty(), Optional.of(paginationLink)));
 
         given()
                 .param("reader", "service:" + serviceName)

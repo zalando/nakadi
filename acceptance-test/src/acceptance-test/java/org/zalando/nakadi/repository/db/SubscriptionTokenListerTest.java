@@ -101,8 +101,8 @@ public class SubscriptionTokenListerTest extends AbstractDbRepositoryTest {
         assertThat(result.getItems(), equalTo(testSubscriptions.subList(3, 6)));
 
         // 2.2 Second page backwards
-        final SubscriptionTokenLister.ListResult backResult =
-                subscriptionTokenLister.listSubscriptions(emptySet(), owiningApp, Optional.empty(), result.getPrev(), 3);
+        final SubscriptionTokenLister.ListResult backResult = subscriptionTokenLister
+                .listSubscriptions(emptySet(), owiningApp, Optional.empty(), result.getPrev(), 3);
         assertThat(backResult.getPrev(), nullValue());
         assertThat(backResult.getNext(), equalTo(secondPage));
         assertThat(backResult.getItems(), equalTo(testSubscriptions.subList(0, 3)));
