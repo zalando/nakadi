@@ -127,9 +127,9 @@ paths:
           description: |
             Will query all event types that the given user or service can write to based on authorization section. Service or user
             should be listed explicitly on authorization section.
+            example: "service:stups_nakadi-ui"
           type: string
           required: false
-          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: Ok
@@ -557,7 +557,8 @@ paths:
         description: EventType name
         type: string
         required: true
-      - name:
+      - name: event-type-schema
+        in: body
         description: |
           New version of the event type's schema to be used for validating published events.
         schema:
@@ -848,6 +849,7 @@ paths:
           in: path
           description: EventType name
           type: string
+          required: true
         - name: X-Flow-Id
           in: header
           description: |
@@ -1181,9 +1183,9 @@ paths:
           description: |
             Will query all subscriptions that the given user or service can read from, based on authorization section. Service or user
             should be listed explicitly on authorization section.
+            example: "service:stups_nakadi-ui"
           type: string
           required: false
-          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: OK
@@ -3393,6 +3395,14 @@ definitions:
       - feature
       - enabled
 
+  PartitionCount:
+    properties:
+      partition_count:
+        type: integer
+        description: |
+          Desired number of partitions for an event type. Should always be more than or equal to existing number of
+          partitions.
+
 parameters:
   EventTypeName:
     name: name
@@ -3524,10 +3534,3 @@ parameters:
     type: string
     required: true
 
-  PartitionCount:
-    properties:
-      partition_count:
-        type: integer
-        description: |
-          Desired number of partitions for an event type. Should always be more than or equal to existing number of
-          partitions.
