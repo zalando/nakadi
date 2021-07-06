@@ -277,10 +277,9 @@ public class StreamingContext implements SubscriptionStreamer {
             }
         } finally {
             this.sessionListSubscription = null;
-            if (sessionRegistered) {
-                sessionRegistered = false;
-                zkClient.unregisterSession(session);
-            }
+            // It's safe to unregister session, even if the original call to register it has failed.
+            sessionRegistered = false;
+            zkClient.unregisterSession(session);
         }
     }
 
