@@ -7,6 +7,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
@@ -20,8 +21,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -174,7 +177,7 @@ public class StreamingContextTest {
     }
 
     @Test
-    public void testSessionAlwaysCleanedIfRegistered() throws Exception {
+    public void testSessionAlwaysCleaned() throws Exception {
 
         final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
         when(zkMock.isActiveSession(any())).thenReturn(true);
@@ -187,11 +190,12 @@ public class StreamingContextTest {
                 .setConnectionReady(new AtomicBoolean(true))
                 .build();
 
-        context.registerSession();
+        doThrow(new NakadiRuntimeException(new Exception("Failed!"))).when(zkMock).registerSession(any());
+        assertThrows(NakadiRuntimeException.class, () -> context.registerSession());
+
         // CleanupState calls context.unregisterSession() in finally block
         context.unregisterSession();
 
-        Mockito.verify(zkMock, Mockito.times(1)).registerSession(any());
         Mockito.verify(zkMock, Mockito.times(1)).unregisterSession(any());
     }
 }
