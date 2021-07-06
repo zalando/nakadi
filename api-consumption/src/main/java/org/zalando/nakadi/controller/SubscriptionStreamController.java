@@ -140,7 +140,7 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
+            LOG.warn("Exception occurred while streaming: {}", ex.toString());
             if (!headersSent) {
                 headersSent = true;
                 try {
