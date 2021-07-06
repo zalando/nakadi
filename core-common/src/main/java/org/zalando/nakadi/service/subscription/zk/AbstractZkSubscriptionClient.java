@@ -173,6 +173,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final void unregisterSession(final Session session) {
         try {
             getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+        } catch (final KeeperException.NoNodeException ke) {
+            // It's OK that the session node was not there: all we want is to make sure it's deleted.
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
