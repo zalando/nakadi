@@ -377,8 +377,7 @@ class StreamingState extends State {
 
             batchesSent++;
         } catch (final IOException e) {
-            getLog().warn("Failed to write data to output: {}", e.toString());
-            shutdownGracefully("Failed to write data to output");
+            shutdownGracefully("Failed to write data to output: " + e.toString());
         }
     }
 
