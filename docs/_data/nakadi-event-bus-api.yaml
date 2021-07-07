@@ -127,9 +127,10 @@ paths:
           description: |
             Will query all event types that the given user or service can write to based on authorization section. Service or user
             should be listed explicitly on authorization section.
+
+            Example: "service:stups_nakadi-ui"
           type: string
           required: false
-          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: Ok
@@ -557,7 +558,8 @@ paths:
         description: EventType name
         type: string
         required: true
-      - name:
+      - name: event-type-schema
+        in: body
         description: |
           New version of the event type's schema to be used for validating published events.
         schema:
@@ -848,6 +850,7 @@ paths:
           in: path
           description: EventType name
           type: string
+          required: true
         - name: X-Flow-Id
           in: header
           description: |
@@ -1181,9 +1184,10 @@ paths:
           description: |
             Will query all subscriptions that the given user or service can read from, based on authorization section. Service or user
             should be listed explicitly on authorization section.
+
+            Example: "service:stups_nakadi-ui"
           type: string
           required: false
-          example: "service:stups_nakadi-ui"
       responses:
         '200':
           description: OK
@@ -2688,6 +2692,10 @@ definitions:
           $ref: '#/definitions/SubscriptionEventTypeStatus'
       authorization:
         $ref: '#/definitions/SubscriptionAuthorization'
+      annotations:
+        $ref: '#/definitions/Annotations'
+      labels:
+        $ref: '#/definitions/Labels'
     required:
       - owning_application
       - event_types
@@ -2881,6 +2889,10 @@ definitions:
 
       authorization:
         $ref: '#/definitions/EventTypeAuthorization'
+      annotations:
+        $ref: '#/definitions/Annotations'
+      labels:
+        $ref: '#/definitions/Labels'
 
       ordering_key_fields:
         type: array
@@ -3109,6 +3121,52 @@ definitions:
           authorization.
         example: 'data.security.team'
 
+
+  Annotations:
+    type: object
+    description: >
+      # [Work in progress] Annotations of the Nakadi resource.
+
+      A Nakadi event-type or a subscription is considered as a Nakadi resource. A Nakadi resource can have a set of
+      annotations associated with it. The syntax of annotations is adopted from Kubernetes.
+
+        From the Kubernetes documentation about annotation keys:
+      > Annotations are key/value pairs. Valid annotation keys have two segments: an optional prefix and name, separated
+      by a slash (`/`). The name segment is required and must be 63 characters or less, beginning and ending with an
+      alphanumeric character (`[a-z0-9A-Z]`) with dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics
+      between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels
+      separated by dots (`.`), not longer than 253 characters in total, followed by a slash (`/`).
+
+        Values of the annotations are currently limited to 1000 bytes. This can be relaxed in the future.
+    example:
+      nakadi.io/internal-event-type: "true"
+      criticality: "low"
+    additionalProperties:
+      type: string
+
+  Labels:
+    type: object
+    description: >
+      # [Work in progress] Labels of the Nakadi resource.
+
+      A Nakadi event-type or a subscription is considered as a Nakadi resource. A Nakadi resource can have a set of
+      labels associated with it. The syntax of labels is adopted from Kubernetes.
+
+        From the Kubernetes documentation about label keys:
+      > Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a
+      slash (`/`). The name segment is required and must be 63 characters or less, beginning and ending with an
+      alphanumeric character (`[a-z0-9A-Z]`) with dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics
+      between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels
+      separated by dots (`.`), not longer than 253 characters in total, followed by a slash (`/`).
+
+        From the Kubernetes documentation about Label values:
+      > A valid value must be 63 characters or less (can be empty), unless empty, must begin and end with an alphanumeric
+      character ([a-z0-9A-Z]),could contain dashes (-), underscores (_), dots (.), and alphanumerics between.
+    example:
+      classification: production.tier-1
+      custom-label: custom-label-value
+    additionalProperties:
+      type: string
 
   EventTypeAuthorization:
     type: object
@@ -3393,6 +3451,14 @@ definitions:
       - feature
       - enabled
 
+  PartitionCount:
+    properties:
+      partition_count:
+        type: integer
+        description: |
+          Desired number of partitions for an event type. Should always be more than or equal to existing number of
+          partitions.
+
 parameters:
   EventTypeName:
     name: name
@@ -3524,10 +3590,3 @@ parameters:
     type: string
     required: true
 
-  PartitionCount:
-    properties:
-      partition_count:
-        type: integer
-        description: |
-          Desired number of partitions for an event type. Should always be more than or equal to existing number of
-          partitions.
