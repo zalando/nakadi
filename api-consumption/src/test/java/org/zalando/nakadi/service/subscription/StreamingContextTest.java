@@ -177,7 +177,7 @@ public class StreamingContextTest {
     }
 
     @Test
-    public void testSessionAlwaysCleaned() throws Exception {
+    public void testSessionAlwaysCleanedManyTimesOk() throws Exception {
 
         final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
         when(zkMock.isActiveSession(any())).thenReturn(true);
@@ -194,6 +194,9 @@ public class StreamingContextTest {
         assertThrows(NakadiRuntimeException.class, () -> context.registerSession());
 
         // CleanupState calls context.unregisterSession() in finally block
+        context.unregisterSession();
+
+        // It can also be called many times and should not result in exceptions
         context.unregisterSession();
 
         Mockito.verify(zkMock, Mockito.times(1)).unregisterSession(any());
