@@ -281,9 +281,9 @@ public class StreamingContext implements SubscriptionStreamer {
         } finally {
             this.sessionListSubscription = null;
             if (sessionRegistered) {
-                // This method can get called many times during cleanup, so we should avoid deleting the node again.
-                sessionRegistered = false;
                 zkClient.unregisterSession(session);
+                // It may get called more than one time during cleanup, so we should avoid deleting the node again.
+                sessionRegistered = false;
             }
         }
     }
