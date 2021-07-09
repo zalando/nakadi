@@ -41,6 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -125,11 +126,12 @@ public class SubscriptionService {
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
-            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException {
+            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException,
+            WrongOwningApplicationException {
 
         checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
-        subscriptionValidationService.validateSubscription(subscriptionBase);
+        subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
 
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
@@ -166,7 +168,7 @@ public class SubscriptionService {
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
-        subscriptionValidationService.validateSubscriptionChange(old, newValue);
+        subscriptionValidationService.validateSubscriptionOnChange(old, newValue);
         final Subscription updated = old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(updated);
 
