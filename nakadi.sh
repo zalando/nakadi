@@ -2,7 +2,8 @@
 
 function waitForNakadi() {
   echo "Waiting for Nakadi to start up"
-  while :; do
+  x=1
+  while [[ x -lt 10 ]]; do
     res=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:8080/health)
     if ((res == 200)); then
       echo "Nakadi is fully started"
@@ -10,6 +11,7 @@ function waitForNakadi() {
     fi
     echo "Nakadi boots up"
     sleep 10
+    x=$((x + 1))
   done
 }
 
@@ -38,6 +40,7 @@ function acceptanceTests() {
   set -e
   ./gradlew :acceptance-test:acceptanceTest
   set +e
+  docker-compose logs nakadi
   docker-compose down
 }
 

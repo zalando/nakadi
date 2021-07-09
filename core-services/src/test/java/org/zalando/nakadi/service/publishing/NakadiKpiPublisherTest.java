@@ -25,10 +25,11 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
                 .thenReturn(true);
         final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher)
+        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher,
+                new EventMetadataTestStub())
                 .publish("test_et_name", dataSupplier);
 
-        verify(eventsProcessor).enrichAndSubmit("test_et_name", dataSupplier.get());
+        verify(eventsProcessor).queueEvent("test_et_name", dataSupplier.get());
     }
 
     @Test
@@ -36,16 +37,17 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
                 .thenReturn(false);
         final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher)
+        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher,
+                new EventMetadataTestStub())
                 .publish("test_et_name", dataSupplier);
 
-        verify(eventsProcessor, Mockito.never()).enrichAndSubmit("test_et_name", dataSupplier.get());
+        verify(eventsProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
     }
 
     @Test
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService, eventsProcessor,
-                usernameHasher);
+                usernameHasher, new EventMetadataTestStub());
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }

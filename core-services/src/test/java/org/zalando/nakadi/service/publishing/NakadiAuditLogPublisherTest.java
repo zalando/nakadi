@@ -40,7 +40,7 @@ public class NakadiAuditLogPublisherTest {
 
     @Test
     public void testPublishAuditLog() {
-        final EventsProcessor processor = mock(EventsProcessor.class);
+        final EventsProcessor eventsProcessor = mock(EventsProcessor.class);
         final FeatureToggleService toggle = mock(FeatureToggleService.class);
         final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
@@ -48,7 +48,8 @@ public class NakadiAuditLogPublisherTest {
 
         final NakadiAuditLogPublisher publisher = new NakadiAuditLogPublisher(
                 toggle,
-                processor,
+                eventsProcessor,
+                new EventMetadataTestStub(),
                 new JsonConfig().jacksonObjectMapper(),
                 new UsernameHasher("salt"),
                 authorizationService,
@@ -64,9 +65,10 @@ public class NakadiAuditLogPublisherTest {
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name");
 
-        final ArgumentCaptor<JSONObject> supplierCaptor = ArgumentCaptor.forClass(JSONObject.class);
-        verify(processor, times(1)).enrichAndSubmit(eq("audit-event-type"),
-                supplierCaptor.capture());
+        final ArgumentCaptor<String> supplierCaptor = ArgumentCaptor.forClass(String.class);
+        verify(eventsProcessor, times(1)).sendEventsDisabledAuthz(
+                supplierCaptor.capture(),
+                eq("audit-event-type"));
         assertThat(new JSONObject("{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
                         "{\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\" " +
                         "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +

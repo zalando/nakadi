@@ -27,8 +27,11 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     private PathChildrenCache featuresCache;
     private final Map<Feature, String> featurePaths;
 
-    public FeatureToggleServiceZk(final ZooKeeperHolder zkHolder) {
+    public FeatureToggleServiceZk(
+            final ZooKeeperHolder zkHolder,
+            final NakadiAuditLogPublisher nakadiAuditLogPublisher) {
         this.zkHolder = zkHolder;
+        this.auditLogPublisher = nakadiAuditLogPublisher;
         try {
             this.featuresCache = new PathChildrenCache(zkHolder.get(), PREFIX, false);
             this.featuresCache.start();

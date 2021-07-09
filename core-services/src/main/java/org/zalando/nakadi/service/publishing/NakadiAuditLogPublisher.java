@@ -28,20 +28,22 @@ public class NakadiAuditLogPublisher {
     private final String auditEventType;
     private final ObjectMapper objectMapper;
     private final AuthorizationService authorizationService;
+    private final EventMetadata eventMetadata;
 
     @Autowired
     protected NakadiAuditLogPublisher(final FeatureToggleService featureToggleService,
                                       final EventsProcessor eventsProcessor,
+                                      final EventMetadata eventMetadata,
                                       final ObjectMapper objectMapper,
                                       final UsernameHasher usernameHasher,
                                       final AuthorizationService authorizationService,
                                       @Value("${nakadi.audit.eventType}") final String auditEventType) {
         this.eventsProcessor = eventsProcessor;
+        this.eventMetadata = eventMetadata;
         this.usernameHasher = usernameHasher;
         this.objectMapper = objectMapper;
         this.auditEventType = auditEventType;
         this.featureToggleService = featureToggleService;
-        this.featureToggleService.setAuditLogPublisher(this);
         this.authorizationService = authorizationService;
     }
 
@@ -79,8 +81,8 @@ public class NakadiAuditLogPublisher {
                     .put("data_op", actionType.getShortname())
                     .put("data", payload);
 
-
-            eventsProcessor.enrichAndSubmit(auditEventType, dataEvent);
+            eventsProcessor.sendEventsDisabledAuthz(
+                    eventMetadata.addTo(dataEvent).toString(), auditEventType);
         } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }
