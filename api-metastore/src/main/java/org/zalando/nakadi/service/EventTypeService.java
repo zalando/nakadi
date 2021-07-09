@@ -47,7 +47,9 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -62,10 +64,11 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -96,6 +99,7 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
+    private final ApplicationService applicationService;
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
@@ -122,7 +126,8 @@ public class EventTypeService {
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,
-            final SubscriptionTokenLister subscriptionTokenLister) {
+            final SubscriptionTokenLister subscriptionTokenLister,
+            final ApplicationService applicationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -143,6 +148,7 @@ public class EventTypeService {
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
         this.subscriptionTokenLister = subscriptionTokenLister;
+        this.applicationService = applicationService;
     }
 
     public List<EventType> list() {
@@ -161,7 +167,8 @@ public class EventTypeService {
             DuplicatedEventTypeNameException,
             InvalidEventTypeException,
             DbWriteOperationsBlockedException,
-            EventTypeOptionsValidationException {
+            EventTypeOptionsValidationException,
+            WrongOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -182,6 +189,8 @@ public class EventTypeService {
         if (checkAuth) {
             authorizationValidator.validateAuthorization(eventType.asBaseResource());
         }
+
+        validateOwningApplication(null, eventType.getOwningApplication());
 
         final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
         final AtomicReference<Timeline> createdTimeline = new AtomicReference<>(null);
@@ -225,6 +234,18 @@ public class EventTypeService {
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
                 eventType.getName());
+    }
+
+    private void validateOwningApplication(
+            @Nullable final String oldOwningApplication, final String newOwningApplication)
+            throws WrongOwningApplicationException {
+        if (featureToggleService.isFeatureEnabled(Feature.VALIDATE_EVENT_TYPE_OWNING_APPLICATION)) {
+            if (!Objects.equals(oldOwningApplication, newOwningApplication)) {
+                if (!applicationService.exists(newOwningApplication)) {
+                    throw new WrongOwningApplicationException(newOwningApplication);
+                }
+            }
+        }
     }
 
     public void createIfMissing(final EventTypeBase eventType, final boolean checkAuth)
@@ -420,7 +441,8 @@ public class EventTypeService {
             UnableProcessException,
             DbWriteOperationsBlockedException,
             CannotAddPartitionToTopicException,
-            EventTypeOptionsValidationException {
+            EventTypeOptionsValidationException,
+            WrongOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -449,6 +471,7 @@ public class EventTypeService {
             schemaService.validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
+            validateOwningApplication(original.getOwningApplication(), eventTypeBase.getOwningApplication());
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             validateStatisticsUpdate(original, eventType);
             updateRetentionTime(original, eventType);

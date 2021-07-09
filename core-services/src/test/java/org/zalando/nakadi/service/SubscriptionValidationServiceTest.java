@@ -2,11 +2,11 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.errorprone.annotations.DoNotMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
@@ -45,6 +45,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
+@RunWith(MockitoJUnitRunner.class)
 public class SubscriptionValidationServiceTest {
 
     public static final int MAX_SUBSCRIPTION_PARTITIONS = 10;
@@ -77,8 +78,6 @@ public class SubscriptionValidationServiceTest {
 
     @Before
     public void setUp() throws InternalNakadiException {
-        MockitoAnnotations.initMocks(this);
-
         when(nakadiSettings.getMaxSubscriptionPartitions()).thenReturn(MAX_SUBSCRIPTION_PARTITIONS);
         when(topicRepository.listPartitionNames(argThat(isOneOf(topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
                 .thenReturn(ImmutableList.of(P0));
@@ -99,7 +98,6 @@ public class SubscriptionValidationServiceTest {
             when(timelineService.getActiveTimeline(eq(et.getName()))).thenReturn(timeline);
         }
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
-        when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
 
         when(applicationService.exists(eq(OWNING_APP_WRONG))).thenReturn(false);
         when(applicationService.exists(eq(OWNING_APP_CORRECT))).thenReturn(true);

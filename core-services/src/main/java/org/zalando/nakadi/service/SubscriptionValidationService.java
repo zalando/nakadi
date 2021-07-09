@@ -96,7 +96,7 @@ public class SubscriptionValidationService {
 
         if (featureToggleService.isFeatureEnabled(Feature.VALIDATE_SUBSCRIPTION_OWNING_APPLICATION)) {
             if (!applicationService.exists(subscription.getOwningApplication())) {
-                throw new WrongOwningApplicationException("Owning application is not valid");
+                throw new WrongOwningApplicationException(subscription.getOwningApplication());
             }
         }
     }
