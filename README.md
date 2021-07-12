@@ -150,6 +150,8 @@ For working with an IDE, the `eclipse` IDE task is available and you'll be able 
 
 ### Running a Server
 
+**Note**: Nakadi Docker for ARM processors is available at [here](./docker-arm)
+
 From the project's home directory you can start Nakadi via Gradle:
 
 ```sh
