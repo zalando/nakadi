@@ -327,7 +327,7 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeOwningApplicationUpdatedThanItIsValidated() {
+    public void whenEventTypeOwningApplicationUpdatedThenItIsValidated() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType src = builder.build();
         final EventType updated = builder.build();
@@ -342,7 +342,7 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeOwningApplicationUpdatedThanItIsValidatedIfFTEnabledOnly() {
+    public void whenEventTypeOwningApplicationUpdatedThenItIsValidatedIfFTEnabledOnly() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType src = builder.build();
         final EventType updated = builder.build();
@@ -359,7 +359,7 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenEventTypeOwningApplicationNotUpdatedThanItIsNotValidated() {
+    public void whenEventTypeOwningApplicationNotUpdatedThenItIsNotValidated() {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType src = builder.build();
         final EventType updated = builder.build();
