@@ -101,7 +101,7 @@ public class SubscriptionValidationService {
         }
     }
 
-    public void validateSubscriptionOnChange(final Subscription old, final SubscriptionBase newValue)
+    public void validateSubscriptionOnUpdate(final Subscription old, final SubscriptionBase newValue)
             throws SubscriptionUpdateConflictException {
         if (!Objects.equals(newValue.getConsumerGroup(), old.getConsumerGroup())) {
             throw new SubscriptionUpdateConflictException("Not allowed to change subscription consumer group");

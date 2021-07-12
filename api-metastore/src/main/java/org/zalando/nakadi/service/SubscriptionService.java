@@ -168,7 +168,7 @@ public class SubscriptionService {
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
-        subscriptionValidationService.validateSubscriptionOnChange(old, newValue);
+        subscriptionValidationService.validateSubscriptionOnUpdate(old, newValue);
         final Subscription updated = old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(updated);
 
