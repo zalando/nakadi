@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -70,7 +70,7 @@ public class SubscriptionValidationService {
     public void validateSubscriptionOnCreate(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
             InconsistentStateException, WrongInitialCursorsException, UnableProcessException,
-            ServiceTemporarilyUnavailableException, WrongOwningApplicationException {
+            ServiceTemporarilyUnavailableException, InvalidOwningApplicationException {
 
         // check that all event-types exist
         final Map<String, Optional<EventType>> eventTypesOrNone = getSubscriptionEventTypesOrNone(subscription);
@@ -96,7 +96,7 @@ public class SubscriptionValidationService {
 
         if (featureToggleService.isFeatureEnabled(Feature.VALIDATE_SUBSCRIPTION_OWNING_APPLICATION)) {
             if (!applicationService.exists(subscription.getOwningApplication())) {
-                throw new WrongOwningApplicationException(subscription.getOwningApplication());
+                throw new InvalidOwningApplicationException(subscription.getOwningApplication());
             }
         }
     }

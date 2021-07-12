@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -259,7 +259,7 @@ public class EventTypeServiceTest {
         when(applicationService.exists(eq(et.getOwningApplication()))).thenReturn(false);
         when(featureToggleService.isFeatureEnabled(eq(Feature.VALIDATE_EVENT_TYPE_OWNING_APPLICATION)))
                 .thenReturn(true);
-        assertThrows(WrongOwningApplicationException.class,
+        assertThrows(InvalidOwningApplicationException.class,
                 () -> eventTypeService.create(et, true));
     }
 
@@ -338,7 +338,7 @@ public class EventTypeServiceTest {
         when(featureToggleService.isFeatureEnabled(Feature.VALIDATE_EVENT_TYPE_OWNING_APPLICATION)).thenReturn(true);
         when(applicationService.exists(eq(updated.getOwningApplication()))).thenReturn(false);
 
-        assertThrows(WrongOwningApplicationException.class, () -> eventTypeService.update(src.getName(), updated));
+        assertThrows(InvalidOwningApplicationException.class, () -> eventTypeService.update(src.getName(), updated));
     }
 
     @Test

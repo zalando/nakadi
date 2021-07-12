@@ -47,7 +47,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -168,7 +168,7 @@ public class EventTypeService {
             InvalidEventTypeException,
             DbWriteOperationsBlockedException,
             EventTypeOptionsValidationException,
-            WrongOwningApplicationException {
+            InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -238,11 +238,11 @@ public class EventTypeService {
 
     private void validateOwningApplication(
             @Nullable final String oldOwningApplication, final String newOwningApplication)
-            throws WrongOwningApplicationException {
+            throws InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.VALIDATE_EVENT_TYPE_OWNING_APPLICATION)) {
             if (!Objects.equals(oldOwningApplication, newOwningApplication)) {
                 if (!applicationService.exists(newOwningApplication)) {
-                    throw new WrongOwningApplicationException(newOwningApplication);
+                    throw new InvalidOwningApplicationException(newOwningApplication);
                 }
             }
         }
@@ -442,7 +442,7 @@ public class EventTypeService {
             DbWriteOperationsBlockedException,
             CannotAddPartitionToTopicException,
             EventTypeOptionsValidationException,
-            WrongOwningApplicationException {
+            InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
                     "are blocked by feature flag.");

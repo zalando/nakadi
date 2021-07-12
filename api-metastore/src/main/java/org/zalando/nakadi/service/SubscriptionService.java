@@ -41,7 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -127,7 +127,7 @@ public class SubscriptionService {
             NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
             AuthorizationNotPresentException, ServiceTemporarilyUnavailableException,
-            WrongOwningApplicationException {
+            InvalidOwningApplicationException {
 
         checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
