@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -12,6 +13,7 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import java.io.IOException;
 import java.util.Optional;
 
 import static org.junit.Assert.assertThat;
@@ -39,17 +41,19 @@ public class NakadiAuditLogPublisherTest {
     }
 
     @Test
-    public void testPublishAuditLog() {
+    public void testPublishAuditLog() throws IOException {
         final EventsProcessor processor = mock(EventsProcessor.class);
         final FeatureToggleService toggle = mock(FeatureToggleService.class);
         final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
         when(toggle.isFeatureEnabled(Feature.AUDIT_LOG_COLLECTION)).thenReturn(true);
 
+        final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+
         final NakadiAuditLogPublisher publisher = new NakadiAuditLogPublisher(
                 toggle,
                 processor,
-                new JsonConfig().jacksonObjectMapper(),
+                objectMapper,
                 new UsernameHasher("salt"),
                 authorizationService,
                 "audit-event-type");
@@ -72,7 +76,8 @@ public class NakadiAuditLogPublisherTest {
                         "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +
                         "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[]," +
                         "\"created_at\":\"2019-01-16T13:44:16.819Z\",\"cleanup_policy\":\"delete\"," +
-                        "\"ordering_instance_ids\":[],\"authorization\":null,\"partition_key_fields\":[]," +
+                        "\"ordering_instance_ids\":[],\"authorization\":null,\"annotations\":{},\"labels\":{}," +
+                        "\"partition_key_fields\":[]," +
                         "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
                         "\"default_statistic\":{\"read_parallelism\":1," +
                         "\"messages_per_minute\":1,\"message_size\":1,\"write_parallelism\":1}," +
@@ -91,7 +96,8 @@ public class NakadiAuditLogPublisherTest {
                         "\\\"default_statistic\\\":{\\\"messages_per_minute\\\":1,\\\"message_size\\\":1," +
                         "\\\"read_parallelism\\\":1,\\\"write_parallelism\\\":1}," +
                         "\\\"options\\\":{\\\"retention_time\\\":172800000}," +
-                        "\\\"authorization\\\":null,\\\"compatibility_mode\\\":\\\"compatible\\\"," +
+                        "\\\"authorization\\\":null,\\\"annotations\\\":{},\\\"labels\\\":{}," +
+                        "\\\"compatibility_mode\\\":\\\"compatible\\\"," +
                         "\\\"updated_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"," +
                         "\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}\"," +
                         "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"," +
