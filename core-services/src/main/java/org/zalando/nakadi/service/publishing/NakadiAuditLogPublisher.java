@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.publishing;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +84,7 @@ public class NakadiAuditLogPublisher {
                     .put("data", payload);
 
             eventsProcessor.sendEventsDisabledAuthz(
-                    eventMetadata.addTo(dataEvent).toString(), auditEventType);
+                    new JSONArray().put(eventMetadata.addTo(dataEvent)).toString(), auditEventType);
         } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }
