@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
@@ -83,8 +84,9 @@ public class SubscriptionValidationServiceTest {
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);
+        final ResourceValidationHelperService validationHelperService = new ResourceValidationHelperService();
         subscriptionValidationService = new SubscriptionValidationService(timelineService, nakadiSettings,
-                cursorConverter, authorizationValidator, etCache);
+                cursorConverter, authorizationValidator, etCache, validationHelperService);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
