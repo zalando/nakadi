@@ -7,12 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.util.FlowIdUtils;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -31,7 +28,6 @@ public class EventsProcessor {
 
     private final EventPublisher eventPublisher;
     private final ExecutorService executorService;
-    private final UUIDGenerator uuidGenerator;
 
     private final long batchCollectionTimeout;
     private final int maxBatchSize;
@@ -51,14 +47,12 @@ public class EventsProcessor {
 
     @Autowired
     public EventsProcessor(final EventPublisher eventPublisher,
-                           final UUIDGenerator uuidGenerator,
                            @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
                            @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
                            @Value("${nakadi.kpi.config.workers}") final int workers,
                            @Value("${nakadi.kpi.config.batch-queue:100}") final int maxBatchQueue,
                            @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
         this.eventPublisher = eventPublisher;
-        this.uuidGenerator = uuidGenerator;
         this.batchCollectionTimeout = batchCollectionTimeout;
         this.maxBatchSize = maxBatchSize;
 
@@ -120,11 +114,7 @@ public class EventsProcessor {
         final Runnable r = new Runnable() {
             @Override
             public void run() {
-                try {
-                    eventPublisher.processInternal(req.data.toString(), req.eventType, false, null, false);
-                } catch (final RuntimeException ex) {
-                    LOG.info("Failed to send single batch for unknown reason", ex);
-                }
+                sendEventsDisabledAuthz(req.data.toString(), req.eventType);
             }
 
             @Override
@@ -215,15 +205,18 @@ public class EventsProcessor {
         batchesBeingAssembled.clear();
     }
 
-    public void enrichAndSubmit(final String etName, final JSONObject event) {
-        final JSONObject metadata = new JSONObject()
-                .put("occurred_at", Instant.now())
-                .put("eid", uuidGenerator.randomUUID())
-                .put("flow_id", FlowIdUtils.peek());
-        event.put("metadata", metadata);
-
+    public void queueEvent(final String etName, final JSONObject event) {
         if (!eventsQueue.offer(new EventToPublish(etName, event))) {
             LOG.warn("Rejecting events to be queued for {} due to queue overload", etName);
+        }
+    }
+
+    public void sendEventsDisabledAuthz(final String events, final String eventType) {
+        try {
+            // sending events batch with disabled authz check
+            eventPublisher.processInternal(events, eventType, false, null, false);
+        } catch (final RuntimeException ex) {
+            LOG.error("Failed to send single batch for unknown reason", ex);
         }
     }
 

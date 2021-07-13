@@ -251,8 +251,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void registerSession() throws NakadiRuntimeException {
         log.info("Registering session {}", session);
-        zkClient.registerSession(session);
+
+        // Set the flag early to make sure we try to clean it up later.
+        // It's safe to unregister session even if the call to register it has failed, because its ID is unique.
         sessionRegistered = true;
+        zkClient.registerSession(session);
     }
 
     public void closeZkClient() throws IOException {
@@ -278,8 +281,9 @@ public class StreamingContext implements SubscriptionStreamer {
         } finally {
             this.sessionListSubscription = null;
             if (sessionRegistered) {
-                sessionRegistered = false;
                 zkClient.unregisterSession(session);
+                // It may get called more than one time during cleanup, so we should avoid deleting the node again.
+                sessionRegistered = false;
             }
         }
     }

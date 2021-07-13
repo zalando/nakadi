@@ -2,8 +2,10 @@ package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.BackgroundPathAndBytesable;
+import org.apache.curator.framework.api.DeleteBuilder;
 import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.curator.framework.api.SetDataBuilder;
 import org.apache.curator.framework.api.WatchPathable;
@@ -15,6 +17,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.repository.zookeeper.CuratorFrameworkRotator;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.Collections;
 
@@ -26,6 +29,8 @@ public class NewZkSubscriptionClientTest {
     private final SetDataBuilder setDataBuilder = Mockito.mock(SetDataBuilder.class);
     private final BackgroundPathAndBytesable bytesable = Mockito.mock(BackgroundPathAndBytesable.class);
     private final WatchPathable watchPathable = Mockito.mock(WatchPathable.class);
+    private final DeleteBuilder deleteBuilder = Mockito.mock(DeleteBuilder.class);
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private NewZkSubscriptionClient client;
     private byte[] topology;
@@ -37,6 +42,8 @@ public class NewZkSubscriptionClientTest {
         Mockito.when(curator.setData()).thenReturn(setDataBuilder);
         Mockito.when(setDataBuilder.withVersion(Mockito.anyInt())).thenReturn(bytesable);
         Mockito.when(getDataBuilder.storingStatIn(Mockito.any())).thenReturn(watchPathable);
+        Mockito.when(curator.delete()).thenReturn(deleteBuilder);
+
         topology = objectMapper.writeValueAsBytes(new ZkSubscriptionClient.Topology(
                 new Partition[]{new Partition(
                         "test-event-type", "0", "session-id-xxx", null, Partition.State.REASSIGNING)},
@@ -86,5 +93,17 @@ public class NewZkSubscriptionClientTest {
                 new EventTypePartition("test-event-type", "0")));
         Mockito.verify(bytesable, Mockito.times(0)).forPath(Mockito.anyString(), Mockito.any());
         Mockito.reset(bytesable);
+    }
+
+    @Test
+    public void whenUnregisterSessionMissingNodeThenOk() throws Exception {
+
+        Mockito.when(curator.delete().forPath(Mockito.any()))
+            .thenThrow(KeeperException.NoNodeException.class);
+
+        final Session session = Session.generate(1, ImmutableList.of());
+
+        // It should not throw.
+        client.unregisterSession(session);
     }
 }

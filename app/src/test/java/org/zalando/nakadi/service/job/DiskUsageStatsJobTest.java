@@ -7,6 +7,7 @@ import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.publishing.EventMetadataTestStub;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -31,7 +32,8 @@ public class DiskUsageStatsJobTest {
                 topicRepositoryHolder,
                 null,
                 null,
-                new DiskUsageStatsConfig());
+                new DiskUsageStatsConfig(),
+                new EventMetadataTestStub());
 
         // Et  | Top      | Partitions | presence in several storages
         // et1 | t1       | 1          | false
