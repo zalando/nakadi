@@ -44,6 +44,7 @@ public class NakadiAuditLogPublisher {
         this.objectMapper = objectMapper;
         this.auditEventType = auditEventType;
         this.featureToggleService = featureToggleService;
+        this.featureToggleService.setAuditLogPublisher(this);
         this.authorizationService = authorizationService;
     }
 

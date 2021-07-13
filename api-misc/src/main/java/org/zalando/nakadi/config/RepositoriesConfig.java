@@ -14,7 +14,6 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.FeatureWrapper;
 import org.zalando.nakadi.service.FeatureToggleServiceZk;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import java.util.Set;
 
@@ -28,12 +27,9 @@ public class RepositoriesConfig {
 
     @Profile({"acceptanceTest", "local"})
     @Bean
-    public FeatureToggleService featureToggleServiceLocal(
-            final ZooKeeperHolder zooKeeperHolder,
-            final FeaturesConfig featuresConfig,
-            final NakadiAuditLogPublisher nakadiAuditLogPublisher) {
-        final FeatureToggleService featureToggleService = new FeatureToggleServiceZk(
-                zooKeeperHolder, nakadiAuditLogPublisher);
+    public FeatureToggleService featureToggleServiceLocal(final ZooKeeperHolder zooKeeperHolder,
+                                                          final FeaturesConfig featuresConfig) {
+        final FeatureToggleService featureToggleService = new FeatureToggleServiceZk(zooKeeperHolder);
         if (featuresConfig.containsDefaults()) {
             final Set<String> features = featuresConfig.getFeaturesWithDefaultState();
             for (final String featureStr : features) {
@@ -48,10 +44,8 @@ public class RepositoriesConfig {
 
     @Profile("default")
     @Bean
-    public FeatureToggleService featureToggleService(
-            final ZooKeeperHolder zooKeeperHolder,
-            final NakadiAuditLogPublisher nakadiAuditLogPublisher) {
-        return new FeatureToggleServiceZk(zooKeeperHolder, nakadiAuditLogPublisher);
+    public FeatureToggleService featureToggleService(final ZooKeeperHolder zooKeeperHolder) {
+        return new FeatureToggleServiceZk(zooKeeperHolder);
     }
 
 }
