@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import org.joda.time.DateTime;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.JsonConfig;
