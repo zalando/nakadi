@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.validation;
+package org.zalando.nakadi.validation;
 
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ResourceAnnotations;
@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Component
-public final class ValidationHelperService {
+public final class ResourceValidationHelperService {
 
     private static final Pattern ALNUM_START_END_PATTERN = Pattern.compile("^[a-zA-Z0-9](.*[a-zA-Z0-9])?$");
     private static final Pattern ALLOWED_CHARACTER_PATTERN = Pattern.compile("^[a-zA-Z0-9_.-]+$");

@@ -64,7 +64,7 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.service.validation.ValidationHelperService;
+import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
@@ -100,7 +100,7 @@ public class EventTypeService {
     private final String etLogEventType;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
-    private final ValidationHelperService validationHelperService;
+    private final ResourceValidationHelperService validationHelperService;
     private final AdminService adminService;
 
     private final EventTypeCache eventTypeCache;
@@ -125,7 +125,7 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
-            final ValidationHelperService validationHelperService,
+            final ResourceValidationHelperService validationHelperService,
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,

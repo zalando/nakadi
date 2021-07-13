@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.validation;
+package org.zalando.nakadi.validation;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,7 +48,7 @@ public class ValidationHelperServiceTest {
             LONG_PREFIX + "/" + LARGE_NAME
     );
 
-    private final ValidationHelperService validationHelperService = new ValidationHelperService();
+    private final ResourceValidationHelperService validationHelperService = new ResourceValidationHelperService();
 
     @Test
     public void testCheckAnnotationPassForValidAnnotations() {
@@ -79,7 +79,7 @@ public class ValidationHelperServiceTest {
     @Test
     public void testCheckAnnotationFailsForLongerAnnotationValue() {
         final ResourceAnnotations annotations = new ResourceAnnotations();
-        final String longerAnnotation = "a".repeat(ValidationHelperService.MAX_ANNOTATION_LENGTH + 1);
+        final String longerAnnotation = "a".repeat(ResourceValidationHelperService.MAX_ANNOTATION_LENGTH + 1);
         annotations.put("nakadi.io/test", longerAnnotation);
         Assert.assertThrows(
                 "Invalid key annotation value passed validation",
@@ -90,7 +90,7 @@ public class ValidationHelperServiceTest {
     @Test
     public void testCheckAnnotationPassForValidAnnotationValues() {
         final ResourceAnnotations annotations = new ResourceAnnotations();
-        final String longerAnnotation = "a".repeat(ValidationHelperService.MAX_ANNOTATION_LENGTH);
+        final String longerAnnotation = "a".repeat(ResourceValidationHelperService.MAX_ANNOTATION_LENGTH);
         annotations.put("nakadi.io/test-long", longerAnnotation);
         annotations.put("nakadi.io/test-null", null);
         annotations.put("nakadi.io/test-empty", "");
@@ -112,7 +112,7 @@ public class ValidationHelperServiceTest {
         }
         labels.put("nakadi.io/test-empty", "");
         labels.put("nakadi.io/test-null", null);
-        labels.put("nakadi.io/test-long", "a".repeat(ValidationHelperService.MAX_LABEL_LENGTH));
+        labels.put("nakadi.io/test-long", "a".repeat(ResourceValidationHelperService.MAX_LABEL_LENGTH));
         try {
             validationHelperService.checkLabels(labels);
         } catch (final InvalidResourceLabelException irle) {
@@ -135,7 +135,7 @@ public class ValidationHelperServiceTest {
     @Test
     public void testCheckLabelFailsForInvalidLabelValues() {
         final List<String> invalidValues = Arrays.asList(
-                "a".repeat(ValidationHelperService.MAX_LABEL_LENGTH + 1),
+                "a".repeat(ResourceValidationHelperService.MAX_LABEL_LENGTH + 1),
                 "-test",
                 ".test",
                 "_test",
