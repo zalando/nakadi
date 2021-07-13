@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.publishing;
 
 import org.joda.time.DateTime;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -69,7 +70,7 @@ public class NakadiAuditLogPublisherTest {
         verify(eventsProcessor, times(1)).sendEventsDisabledAuthz(
                 supplierCaptor.capture(),
                 eq("audit-event-type"));
-        assertThat(new JSONObject("{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
+        assertThat(new JSONArray("[{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
                         "{\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\" " +
                         "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +
                         "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[]," +
@@ -98,7 +99,7 @@ public class NakadiAuditLogPublisherTest {
                         "\\\"created_at\\\":\\\"2019-01-16T13:44:16.819Z\\\"}\"," +
                         "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"," +
                         "\"resource_type\":\"event_type\",\"resource_id\":\"et-name\",\"user\":\"user-name\"}," +
-                        "\"data_type\":\"event_type\"}\n").toString(),
+                        "\"data_type\":\"event_type\"}]\n").toString(),
                 sameJSONAs(supplierCaptor.getValue().toString()));
     }
 
