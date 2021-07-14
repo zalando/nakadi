@@ -23,7 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -132,7 +132,7 @@ public class SubscriptionValidationServiceTest {
         }
     }
 
-    @Test(expected = WrongOwningApplicationException.class)
+    @Test(expected = InvalidOwningApplicationException.class)
     public void whenWrongOwningApplicationWithFTThenFail() {
         subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.END);
         subscriptionBase.setOwningApplication(OWNING_APP_WRONG);

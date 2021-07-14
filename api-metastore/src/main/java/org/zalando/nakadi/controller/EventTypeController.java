@@ -35,7 +35,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
-import org.zalando.nakadi.exceptions.runtime.WrongOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -93,7 +93,7 @@ public class EventTypeController {
                                     final Errors errors)
             throws TopicCreationException, InternalNakadiException, NoSuchPartitionStrategyException,
             DuplicatedEventTypeNameException, InvalidEventTypeException, ValidationException,
-            FeatureNotAvailableException, WrongOwningApplicationException {
+            FeatureNotAvailableException, InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             throw new FeatureNotAvailableException("Event Type creation is disabled", DISABLE_EVENT_TYPE_CREATION);
         }
@@ -142,7 +142,7 @@ public class EventTypeController {
             UnableProcessException,
             NoSuchPartitionStrategyException,
             ValidationException,
-            WrongOwningApplicationException {
+            InvalidOwningApplicationException {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
