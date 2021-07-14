@@ -24,7 +24,6 @@ public final class ResourceValidationHelperService {
     static final int MAX_ANNOTATION_LENGTH = 1000;
     static final int MAX_LABEL_LENGTH = 63;
 
-    private static final String ERROR_MESSAGE_TEMPLATE = "Error validating <%s:%s>; %s";
     private static final String EMPTY_KEY_ERROR = "Key cannot be empty.";
     private static final String MULTI_PREFIX_ERROR = "Key cannot have multiple prefixes.";
     private static final String EMPTY_KEY_PREFIX_ERROR = "Key prefix cannot be empty.";
@@ -57,40 +56,43 @@ public final class ResourceValidationHelperService {
     }
 
     private void validateAnnotation(final String key, final String value) {
-        validateKey(key).ifPresent(error -> {
-            throw new InvalidResourceAnnotationException(String.format(ERROR_MESSAGE_TEMPLATE, key, value, error));
-        });
+        try {
+            validateKey(key);
+        } catch (final InvalidKeyException e) {
+            throw new InvalidResourceAnnotationException(key, value, e.getMessage());
+        }
         if (value != null && value.length() > MAX_ANNOTATION_LENGTH) {
-            throw new InvalidResourceAnnotationException(
-                    String.format(ERROR_MESSAGE_TEMPLATE, key, value, LONG_ANNOTATION_ERROR));
+            throw new InvalidResourceAnnotationException(key, value, LONG_ANNOTATION_ERROR);
         }
     }
 
     private void validateLabel(final String key, final String value) {
-        validateKey(key).ifPresent(error -> {
-            throw new InvalidResourceLabelException(error);
-        });
+        try {
+            validateKey(key);
+        } catch (final InvalidKeyException e) {
+            throw new InvalidResourceLabelException(key, value, e.getMessage());
+        }
         if (value == null || value.isEmpty()) {
             return;
         }
         if (value.length() > MAX_LABEL_LENGTH) {
-            throw new InvalidResourceLabelException(LONG_LABEL_ERROR);
+            throw new InvalidResourceLabelException(key, value, LONG_LABEL_ERROR);
         }
         if (!ALNUM_START_END_PATTERN.matcher(value).matches()) {
-            throw new InvalidResourceLabelException(START_END_LABEL_ERROR);
+            throw new InvalidResourceLabelException(key, value, START_END_LABEL_ERROR);
         }
         if (!ALLOWED_CHARACTER_PATTERN.matcher(value).matches()) {
-            throw new InvalidResourceLabelException(LABEL_CHARACTER_ERROR);
+            throw new InvalidResourceLabelException(key, value, LABEL_CHARACTER_ERROR);
         }
     }
 
     /*
      * Both Annotation and Label key share the same format.
      */
-    private Optional<String> validateKey(final String key) {
+    private void validateKey(final String key) throws InvalidKeyException {
 
         if (key.isEmpty()) {
-            return Optional.of(EMPTY_KEY_ERROR);
+            throw new InvalidKeyException(EMPTY_KEY_ERROR);
         }
 
         final String[] keyParts = key.split(PREFIX_SEPARATOR, -1);
@@ -103,47 +105,47 @@ public final class ResourceValidationHelperService {
             keyPrefix = Optional.of(keyParts[0]);
             keyName = keyParts[1];
         } else {
-            return Optional.of(MULTI_PREFIX_ERROR);
+            throw new InvalidKeyException(MULTI_PREFIX_ERROR);
         }
 
-        final Optional<String> prefixError = validateKeyPrefix(keyPrefix);
-        if (prefixError.isPresent()) {
-            return prefixError;
-        }
-        return validateKeyName(keyName);
+        validateKeyPrefix(keyPrefix);
+        validateKeyName(keyName);
     }
 
-    private Optional<String> validateKeyPrefix(final Optional<String> keyPrefix) {
+    private void validateKeyPrefix(final Optional<String> keyPrefix) throws InvalidKeyException {
         if (keyPrefix.isEmpty()) {
-            return Optional.empty();
+            return;
         }
         final String prefix = keyPrefix.get();
         if (prefix.isEmpty()) {
-            return Optional.of(EMPTY_KEY_PREFIX_ERROR);
+            throw new InvalidKeyException(EMPTY_KEY_PREFIX_ERROR);
         }
         if (prefix.length() > MAX_PREFIX_LENGTH) {
-            return Optional.of(LONGER_PREFIX_ERROR);
+            throw new InvalidKeyException(LONGER_PREFIX_ERROR);
         }
         if (!DNS_1123_SUBDOMAIN_PATTERN.matcher(prefix).matches()) {
-            return Optional.of(INVALID_PREFIX_ERROR);
+            throw new InvalidKeyException(INVALID_PREFIX_ERROR);
         }
-        return Optional.empty();
     }
 
-    private Optional<String> validateKeyName(final String keyName) {
+    private void validateKeyName(final String keyName) throws InvalidKeyException {
         if (keyName.isEmpty()) {
-            return Optional.of(EMPTY_KEY_NAME_ERROR);
+            throw new InvalidKeyException(EMPTY_KEY_NAME_ERROR);
         }
         if (keyName.length() > MAX_KEY_NAME_LENGTH) {
-            return Optional.of(LONG_KEY_NAME_ERROR);
+            throw new InvalidKeyException(LONG_KEY_NAME_ERROR);
         }
         if (!ALNUM_START_END_PATTERN.matcher(keyName).matches()) {
-            return Optional.of(START_END_KEY_NAME_ERROR);
+            throw new InvalidKeyException(START_END_KEY_NAME_ERROR);
         }
         if (!ALLOWED_CHARACTER_PATTERN.matcher(keyName).matches()) {
-            return Optional.of(KEY_NAME_CHARACTER_ERROR);
+            throw new InvalidKeyException(KEY_NAME_CHARACTER_ERROR);
         }
-        return Optional.empty();
+    }
 
+    private static final class InvalidKeyException extends Exception {
+        InvalidKeyException(final String message) {
+            super(message);
+        }
     }
 }
