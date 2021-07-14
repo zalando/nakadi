@@ -32,8 +32,9 @@ public final class ResourceValidationHelperService {
     private static final String LONG_KEY_NAME_ERROR = "Key name cannot be more than 63 characters.";
     private static final String START_END_KEY_NAME_ERROR = "Key name should start and end with [a-zA-Z0-9].";
     private static final String START_END_LABEL_ERROR = "Label should start and end with [a-zA-Z0-9].";
-    private static final String KEY_NAME_CHARACTER_ERROR = "Key name should use only [a-zA-Z0-9] and `-`, '_', and `.`";
-    private static final String LABEL_CHARACTER_ERROR = "Label should use only [a-zA-Z0-9] and `-`, '_', and `.`";
+    private static final String KEY_NAME_CHARACTER_ERROR = "Key name should use only [a-zA-Z0-9] " +
+            "and `-`, '_', and `.`.";
+    private static final String LABEL_CHARACTER_ERROR = "Label should use only [a-zA-Z0-9] and `-`, '_', and `.`.";
     private static final String LONGER_PREFIX_ERROR = "Key prefix cannot be more than 253 characters.";
     private static final String INVALID_PREFIX_ERROR = "Key prefix must follow RFC 1123 DNS subdomain format. \n" +
             "It must contain one or more segments separated by '.'(dot), and each segment must start and end with " +
@@ -41,7 +42,7 @@ public final class ResourceValidationHelperService {
     private static final String PREFIX_SEPARATOR = "/";
     private static final String LONG_ANNOTATION_ERROR = "Annotation cannot be more than " + MAX_ANNOTATION_LENGTH
             + " characters long.";
-    private static final String LONG_LABEL_ERROR = "LABEL cannot be more than " + MAX_LABEL_LENGTH + "charecters long.";
+    private static final String LONG_LABEL_ERROR = "Label cannot be more than " + MAX_LABEL_LENGTH + "characters long.";
 
     public void checkAnnotations(final ResourceAnnotations annotations) throws InvalidResourceAnnotationException {
         if (annotations != null) {
@@ -51,7 +52,7 @@ public final class ResourceValidationHelperService {
 
     public void checkLabels(final ResourceLabels labels) throws InvalidResourceLabelException {
         if (labels != null) {
-            labels.forEach(this::validateLabels);
+            labels.forEach(this::validateLabel);
         }
     }
 
@@ -65,7 +66,7 @@ public final class ResourceValidationHelperService {
         }
     }
 
-    private void validateLabels(final String key, final String value) {
+    private void validateLabel(final String key, final String value) {
         validateKey(key).ifPresent(error -> {
             throw new InvalidResourceLabelException(error);
         });

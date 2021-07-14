@@ -60,7 +60,7 @@ public class ValidationHelperServiceTest {
         try {
             validationHelperService.checkAnnotations(annotations);
         } catch (final InvalidResourceAnnotationException irae) {
-            Assert.fail("Validation failed with message" + irae.getMessage());
+            Assert.fail("Validation failed with message: " + irae.getMessage());
         }
     }
 
@@ -82,7 +82,7 @@ public class ValidationHelperServiceTest {
         final String longerAnnotation = "a".repeat(ResourceValidationHelperService.MAX_ANNOTATION_LENGTH + 1);
         annotations.put("nakadi.io/test", longerAnnotation);
         Assert.assertThrows(
-                "Invalid key annotation value passed validation",
+                "Invalid annotation passed validation",
                 InvalidResourceAnnotationException.class,
                 () -> validationHelperService.checkAnnotations(annotations));
     }
@@ -105,7 +105,7 @@ public class ValidationHelperServiceTest {
 
     @Test
     public void testCheckLabelPassForValidLabels() {
-        validationHelperService.checkAnnotations(null);
+        validationHelperService.checkLabels(null);
         final ResourceLabels labels = new ResourceLabels();
         for (final String validKey : VALID_KEYS) {
             labels.put(validKey, "testValue");
