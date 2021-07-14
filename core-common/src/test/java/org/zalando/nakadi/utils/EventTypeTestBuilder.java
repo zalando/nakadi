@@ -15,6 +15,8 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.ResourceAnnotations;
+import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.view.EventOwnerSelector;
@@ -165,7 +167,8 @@ public class EventTypeTestBuilder {
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
-                defaultStatistic, options, compatibilityMode, cleanupPolicy);
+                defaultStatistic, options, compatibilityMode, cleanupPolicy, new ResourceAnnotations(),
+                new ResourceLabels());
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
         eventTypeBase.setEventOwnerSelector(eventOwnerSelector);

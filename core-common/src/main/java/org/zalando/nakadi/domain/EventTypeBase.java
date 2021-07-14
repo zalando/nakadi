@@ -65,6 +65,14 @@ public class EventTypeBase implements EventTypeAuthz {
     @Valid
     private ResourceAuthorization authorization;
 
+    @Valid
+    @Nullable
+    private ResourceAnnotations annotations;
+
+    @Valid
+    @Nullable
+    private ResourceLabels labels;
+
     @NotNull
     private CompatibilityMode compatibilityMode;
 
@@ -83,6 +91,8 @@ public class EventTypeBase implements EventTypeAuthz {
         this.options = new EventTypeOptions();
         this.compatibilityMode = CompatibilityMode.FORWARD;
         this.cleanupPolicy = CleanupPolicy.DELETE;
+        this.annotations = new ResourceAnnotations();
+        this.labels = new ResourceLabels();
     }
 
     public EventTypeBase(final String name,
@@ -95,7 +105,9 @@ public class EventTypeBase implements EventTypeAuthz {
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
-                         final CleanupPolicy cleanupPolicy) {
+                         final CleanupPolicy cleanupPolicy,
+                         final ResourceAnnotations annotations,
+                         final ResourceLabels labels) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -107,6 +119,8 @@ public class EventTypeBase implements EventTypeAuthz {
         this.options = options;
         this.compatibilityMode = compatibilityMode;
         this.cleanupPolicy = cleanupPolicy;
+        this.annotations = annotations;
+        this.labels = labels;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
@@ -126,6 +140,8 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
         this.setEventOwnerSelector(eventType.getEventOwnerSelector());
+        this.setAnnotations(eventType.getAnnotations());
+        this.setLabels(eventType.getLabels());
     }
 
     public String getName() {
@@ -274,5 +290,21 @@ public class EventTypeBase implements EventTypeAuthz {
     @JsonIgnore
     public Resource<EventTypeBase> asBaseResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
+    }
+
+    public void setAnnotations(final ResourceAnnotations annotations) {
+        this.annotations = annotations;
+    }
+
+    public ResourceAnnotations getAnnotations() {
+        return this.annotations;
+    }
+
+    public void setLabels(final ResourceLabels labels) {
+        this.labels = labels;
+    }
+
+    public ResourceLabels getLabels() {
+        return this.labels;
     }
 }
