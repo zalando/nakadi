@@ -41,7 +41,8 @@ public final class ResourceValidationHelperService {
     private static final String PREFIX_SEPARATOR = "/";
     private static final String LONG_ANNOTATION_ERROR = "Annotation cannot be more than " + MAX_ANNOTATION_LENGTH
             + " characters long.";
-    private static final String LONG_LABEL_ERROR = "Label cannot be more than " + MAX_LABEL_LENGTH + "characters long.";
+    private static final String LONG_LABEL_ERROR = "Label cannot be more than " + MAX_LABEL_LENGTH
+            + " characters long.";
 
     public void checkAnnotations(final ResourceAnnotations annotations) throws InvalidResourceAnnotationException {
         if (annotations != null) {
