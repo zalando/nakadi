@@ -22,7 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
-import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -180,7 +180,7 @@ public class SubscriptionValidationServiceTest {
         try {
             subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
             fail("WrongInitialCursorsException expected");
-        } catch (final WrongInitialCursorsException e) {
+        } catch (final InvalidInitialCursorsException e) {
             assertThat(e.getMessage(),
                     equalTo("initial_cursors should contain cursors for all partitions of subscription"));
         }
@@ -197,7 +197,7 @@ public class SubscriptionValidationServiceTest {
         try {
             subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
             fail("WrongInitialCursorsException expected");
-        } catch (final WrongInitialCursorsException e) {
+        } catch (final InvalidInitialCursorsException e) {
             assertThat(e.getMessage(),
                     equalTo("initial_cursors should contain cursors only for partitions of this subscription"));
         }
@@ -214,13 +214,13 @@ public class SubscriptionValidationServiceTest {
         try {
             subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
             fail("WrongInitialCursorsException expected");
-        } catch (final WrongInitialCursorsException e) {
+        } catch (final InvalidInitialCursorsException e) {
             assertThat(e.getMessage(),
                     equalTo("there should be no more than 1 cursor for each partition in initial_cursors"));
         }
     }
 
-    @Test(expected = WrongInitialCursorsException.class)
+    @Test(expected = InvalidInitialCursorsException.class)
     public void whenInvalidCursorThenException() {
         subscriptionBase.setInitialCursors(ImmutableList.of(
                 new SubscriptionCursorWithoutToken(ET1, P0, ""),

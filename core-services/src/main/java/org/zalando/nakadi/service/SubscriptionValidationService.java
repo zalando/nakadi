@@ -23,9 +23,9 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
-import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.validation.ResourceValidationHelperService;
@@ -75,7 +75,7 @@ public class SubscriptionValidationService {
 
     public void validateSubscriptionOnCreate(final SubscriptionBase subscription)
             throws TooManyPartitionsException, RepositoryProblemException, NoSuchEventTypeException,
-            InconsistentStateException, WrongInitialCursorsException, UnableProcessException,
+            InconsistentStateException, InvalidInitialCursorsException, UnableProcessException,
             ServiceTemporarilyUnavailableException, InvalidOwningApplicationException {
 
         // check that all event-types exist
@@ -143,7 +143,7 @@ public class SubscriptionValidationService {
         // check for duplicated partitions
         final long uniquePartitions = partitions.stream().distinct().count();
         if (uniquePartitions < partitions.size()) {
-            throw new WrongStreamParametersException("Duplicated partition specified");
+            throw new InvalidStreamParametersException("Duplicated partition specified");
         }
         // check that partitions belong to subscription
         final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
@@ -154,31 +154,31 @@ public class SubscriptionValidationService {
             final String wrongPartitionsDesc = wrongPartitions.stream()
                     .map(EventTypePartition::toString)
                     .collect(Collectors.joining(", "));
-            throw new WrongStreamParametersException("Wrong partitions specified - some partitions don't belong to " +
+            throw new InvalidStreamParametersException("Wrong partitions specified - some partitions don't belong to " +
                     "subscription: " + wrongPartitionsDesc);
         }
     }
 
     private void validateInitialCursors(final SubscriptionBase subscription,
                                         final List<EventTypePartition> allPartitions)
-            throws WrongInitialCursorsException, RepositoryProblemException {
+            throws InvalidInitialCursorsException, RepositoryProblemException {
 
         final boolean cursorsMissing = allPartitions.stream()
                 .anyMatch(p -> !subscription.getInitialCursors().stream().anyMatch(p::ownsCursor));
         if (cursorsMissing) {
-            throw new WrongInitialCursorsException(
+            throw new InvalidInitialCursorsException(
                     "initial_cursors should contain cursors for all partitions of subscription");
         }
 
         final boolean hasCursorForWrongPartition = subscription.getInitialCursors().stream()
                 .anyMatch(c -> !allPartitions.contains(new EventTypePartition(c.getEventType(), c.getPartition())));
         if (hasCursorForWrongPartition) {
-            throw new WrongInitialCursorsException(
+            throw new InvalidInitialCursorsException(
                     "initial_cursors should contain cursors only for partitions of this subscription");
         }
 
         if (subscription.getInitialCursors().size() > allPartitions.size()) {
-            throw new WrongInitialCursorsException(
+            throw new InvalidInitialCursorsException(
                     "there should be no more than 1 cursor for each partition in initial_cursors");
         }
 
@@ -192,7 +192,7 @@ public class SubscriptionValidationService {
                         Collections.singletonList(nakadiCursor));
             }
         } catch (final InvalidCursorException ex) {
-            throw new WrongInitialCursorsException(ex.getMessage(), ex);
+            throw new InvalidInitialCursorsException(ex.getMessage(), ex);
         } catch (final InternalNakadiException | ServiceTemporarilyUnavailableException ex) {
             throw new RepositoryProblemException("Topic repository problem occurred when validating cursors", ex);
         }

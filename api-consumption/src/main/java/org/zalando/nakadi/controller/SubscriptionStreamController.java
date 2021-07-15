@@ -26,7 +26,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
-import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -113,7 +113,7 @@ public class SubscriptionStreamController {
                     (ex) -> Problem.valueOf(FORBIDDEN, ((AccessDeniedException) ex).explain()));
             this.exceptionProblem.put(SubscriptionPartitionConflictException.class,
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
-            this.exceptionProblem.put(WrongStreamParametersException.class,
+            this.exceptionProblem.put(InvalidStreamParametersException.class,
                     (ex) -> Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()));
             this.exceptionProblem.put(NoSuchSubscriptionException.class,
                     (ex) -> Problem.valueOf(NOT_FOUND, ex.getMessage()));
