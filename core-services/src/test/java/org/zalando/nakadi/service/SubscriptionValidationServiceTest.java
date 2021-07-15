@@ -27,6 +27,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
@@ -102,8 +103,11 @@ public class SubscriptionValidationServiceTest {
         when(applicationService.exists(eq(OWNING_APP_WRONG))).thenReturn(false);
         when(applicationService.exists(eq(OWNING_APP_CORRECT))).thenReturn(true);
 
+        cursorConverter = mock(CursorConverter.class);
+        final ResourceValidationHelperService validationHelperService = new ResourceValidationHelperService();
         subscriptionValidationService = new SubscriptionValidationService(timelineService, nakadiSettings,
-                cursorConverter, authorizationValidator, etCache, featureToggleService, applicationService);
+                cursorConverter, authorizationValidator, etCache, featureToggleService, applicationService,
+                validationHelperService);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));

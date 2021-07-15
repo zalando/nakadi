@@ -16,8 +16,10 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ResourceAnnotations;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
+import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
@@ -42,8 +44,10 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -507,6 +511,110 @@ public class EventTypeAT extends BaseAT {
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .body(equalTo(MAPPER.writer().writeValueAsString(Problem.valueOf(UNPROCESSABLE_ENTITY,
                         "Changing authorization object to `null` is not possible due to existing one"))));
+    }
+
+    @Test
+    public void whenPOSTEventTypeWithAnnotationsAndLabelsThenOk() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final ResourceAnnotations annotations = new ResourceAnnotations();
+        annotations.put("test.io/test-key", "test-value");
+        eventType.setAnnotations(annotations);
+        final ResourceLabels labels = new ResourceLabels();
+        labels.put("test.io/test-label-key", "test-value");
+        eventType.setLabels(labels);
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(body).header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+
+        given()
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasKey("test.io/test-key"));
+    }
+
+    @Test
+    public void whenPUTEventTypeWithoutAnnotationsAndLabelsThenOriginalValuesAreKept() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        eventType.getAnnotations().put("nakadi.io/annotation-key", "original-annotation");
+        eventType.getLabels().put("nakadi.io/label-key", "original-label");
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json").contentType(JSON)
+                .when().post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
+
+        eventType.setAnnotations(null);
+        eventType.setLabels(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_OK);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
+
+        eventType.setAnnotations(new ResourceAnnotations());
+        eventType.getAnnotations().put("nakadi.io/annotation-key", "new-annotation");
+        eventType.setLabels(new ResourceLabels());
+        eventType.getLabels().put("nakadi.io/label-key", "new-label");
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_OK);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "new-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "new-label"));
+    }
+
+    @Test
+    public void whenPOSTEventTypeWithInvalidAnnotationOrLabelThenError() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final ResourceAnnotations annotations = new ResourceAnnotations();
+        annotations.put("", "test-value");
+        eventType.setAnnotations(annotations);
+        eventType.setLabels(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(containsString("Error validating annotation <:test-value>; Key cannot be empty."))
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+        final ResourceLabels labels = new ResourceLabels();
+        labels.put("", "test-value");
+        eventType.setLabels(labels);
+        eventType.setAnnotations(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(containsString("Error validating label <:test-value>; Key cannot be empty."))
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {

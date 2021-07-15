@@ -41,7 +41,7 @@ services:
     - "2181:2181"
 
   kafka:
-    image: registry.opensource.zalan.do/aruha/nakadi-kafka:2.6.0
+    image: registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1
     ports:
     - "29092:29092"
     - "9092:9092"

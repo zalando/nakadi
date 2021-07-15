@@ -41,6 +41,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
@@ -118,11 +119,12 @@ public class EventTypeControllerTestCase {
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
+        final ResourceValidationHelperService validationHelperService = new ResourceValidationHelperService();
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, eventTypeCache,
+                eventTypeOptionsValidator, validationHelperService, eventTypeCache,
                 schemaService, adminService, subscriptionTokenLister, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,

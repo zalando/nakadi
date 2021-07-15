@@ -46,6 +46,12 @@ public class SubscriptionBase {
     @Valid
     private SubscriptionAuthorization authorization;
 
+    @Nullable
+    private ResourceAnnotations annotations;
+
+    @Nullable
+    private ResourceLabels labels;
+
     public SubscriptionBase() {
     }
 
@@ -56,6 +62,8 @@ public class SubscriptionBase {
         this.setReadFrom(subscriptionBase.getReadFrom());
         this.setInitialCursors(subscriptionBase.getInitialCursors());
         this.setAuthorization(subscriptionBase.getAuthorization());
+        this.setAnnotations(subscriptionBase.getAnnotations());
+        this.setLabels(subscriptionBase.getLabels());
     }
 
     public SubscriptionAuthorization getAuthorization() {
@@ -106,6 +114,24 @@ public class SubscriptionBase {
         this.initialCursors = Optional.ofNullable(initialCursors).orElse(ImmutableList.of());
     }
 
+    @Nullable
+    public ResourceAnnotations getAnnotations() {
+        return annotations;
+    }
+
+    public void setAnnotations(@Nullable final ResourceAnnotations annotations) {
+        this.annotations = annotations;
+    }
+
+    @Nullable
+    public ResourceLabels getLabels() {
+        return labels;
+    }
+
+    public void setLabels(@Nullable final ResourceLabels labels) {
+        this.labels = labels;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -120,12 +146,15 @@ public class SubscriptionBase {
                 && Objects.equals(consumerGroup, that.consumerGroup)
                 && Objects.equals(readFrom, that.readFrom)
                 && Objects.equals(authorization, that.authorization)
-                && Objects.equals(initialCursors, that.initialCursors);
+                && Objects.equals(initialCursors, that.initialCursors)
+                && Objects.equals(annotations, that.annotations)
+                && Objects.equals(labels, that.labels);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors);
+        return Objects
+                .hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors, annotations, labels);
     }
 
     public Resource<SubscriptionBase> asBaseResource(final String id) {

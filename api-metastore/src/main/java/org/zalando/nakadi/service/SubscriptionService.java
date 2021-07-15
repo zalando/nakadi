@@ -20,6 +20,8 @@ import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionBaseStatistics;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.ResourceAnnotations;
+import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
@@ -132,6 +134,12 @@ public class SubscriptionService {
         checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
         subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
+        if (subscriptionBase.getAnnotations() == null) {
+            subscriptionBase.setAnnotations(new ResourceAnnotations());
+        }
+        if (subscriptionBase.getLabels() == null) {
+            subscriptionBase.setLabels(new ResourceLabels());
+        }
 
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
@@ -169,6 +177,12 @@ public class SubscriptionService {
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
         subscriptionValidationService.validateSubscriptionOnUpdate(old, newValue);
+        if (newValue.getAnnotations() == null) {
+            newValue.setAnnotations(old.getAnnotations());
+        }
+        if (newValue.getLabels() == null) {
+            newValue.setLabels(old.getLabels());
+        }
         final Subscription updated = old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(updated);
 

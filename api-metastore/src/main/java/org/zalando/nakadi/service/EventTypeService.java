@@ -18,6 +18,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.ResourceAnnotations;
+import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -35,6 +37,8 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidResourceAnnotationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidResourceLabelException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -62,6 +66,7 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
 import javax.annotation.Nullable;
@@ -98,6 +103,7 @@ public class EventTypeService {
     private final String etLogEventType;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
+    private final ResourceValidationHelperService validationHelperService;
     private final AdminService adminService;
     private final ApplicationService applicationService;
 
@@ -123,6 +129,7 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
+            final ResourceValidationHelperService validationHelperService,
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,
@@ -144,6 +151,7 @@ public class EventTypeService {
         this.etLogEventType = etLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
+        this.validationHelperService = validationHelperService;
         this.adminService = adminService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
@@ -177,7 +185,11 @@ public class EventTypeService {
         setDefaultEventTypeOptions(eventType);
         try {
             schemaService.validateSchema(eventType);
-        } catch (final SchemaValidationException e) {
+            validationHelperService.checkAnnotations(eventType.getAnnotations());
+            validationHelperService.checkLabels(eventType.getLabels());
+        } catch (final SchemaValidationException
+                | InvalidResourceAnnotationException
+                | InvalidResourceLabelException e) {
             throw new InvalidEventTypeException(e);
         }
         validateCompaction(eventType);
@@ -191,6 +203,13 @@ public class EventTypeService {
         }
 
         validateOwningApplication(null, eventType.getOwningApplication());
+
+        if (eventType.getAnnotations() == null) {
+            eventType.setAnnotations(new ResourceAnnotations());
+        }
+        if (eventType.getLabels() == null) {
+            eventType.setLabels(new ResourceLabels());
+        }
 
         final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
         final AtomicReference<Timeline> createdTimeline = new AtomicReference<>(null);
@@ -474,6 +493,7 @@ public class EventTypeService {
             validateOwningApplication(original.getOwningApplication(), eventTypeBase.getOwningApplication());
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             validateStatisticsUpdate(original, eventType);
+            updateAnnotationsAndLabels(original, eventType);
             updateRetentionTime(original, eventType);
             updateEventType(original, eventType);
         } catch (final InterruptedException e) {
@@ -520,6 +540,25 @@ public class EventTypeService {
         }
         setDefaultEventTypeOptions(original); // fixes a problem where the event type has no explicit retention time
         setDefaultEventTypeOptions(eventType);
+    }
+
+    private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
+            throws InvalidEventTypeException {
+
+        try {
+            validationHelperService.checkLabels(eventType.getLabels());
+            validationHelperService.checkAnnotations(eventType.getAnnotations());
+        } catch (final InvalidResourceLabelException | InvalidResourceAnnotationException e) {
+            LOG.warn("Invalid event type update request: {}", e.getMessage());
+            throw new InvalidEventTypeException(e);
+        }
+
+        if (eventType.getAnnotations() == null) {
+            eventType.setAnnotations(original.getAnnotations());
+        }
+        if (eventType.getLabels() == null) {
+            eventType.setLabels(original.getLabels());
+        }
     }
 
     private void updateEventType(final EventType original, final EventType eventType) {
