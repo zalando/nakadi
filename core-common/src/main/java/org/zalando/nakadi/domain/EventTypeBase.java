@@ -91,8 +91,6 @@ public class EventTypeBase implements EventTypeAuthz {
         this.options = new EventTypeOptions();
         this.compatibilityMode = CompatibilityMode.FORWARD;
         this.cleanupPolicy = CleanupPolicy.DELETE;
-        this.annotations = new ResourceAnnotations();
-        this.labels = new ResourceLabels();
     }
 
     public EventTypeBase(final String name,
