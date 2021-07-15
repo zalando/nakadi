@@ -1,6 +1,8 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -542,11 +544,13 @@ public class EventTypeAT extends BaseAT {
 
     @Test
     public void whenPUTEventTypeWithoutAnnotationsAndLabelsThenOriginalValuesAreKept() throws JsonProcessingException {
+        final ObjectMapper objectMapper = MAPPER.copy();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         final EventType eventType = buildDefaultEventType();
         eventType.getAnnotations().put("nakadi.io/annotation-key", "original-annotation");
         eventType.getLabels().put("nakadi.io/label-key", "original-label");
 
-        given().body(MAPPER.writer().writeValueAsString(eventType))
+        given().body(objectMapper.writer().writeValueAsString(eventType))
                 .header("accept", "application/json").contentType(JSON)
                 .when().post(ENDPOINT).then()
                 .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
@@ -561,7 +565,7 @@ public class EventTypeAT extends BaseAT {
         eventType.setAnnotations(null);
         eventType.setLabels(null);
 
-        given().body(MAPPER.writer().writeValueAsString(eventType))
+        given().body(objectMapper.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
                 .body(equalTo("")).statusCode(HttpStatus.SC_OK);
@@ -578,7 +582,7 @@ public class EventTypeAT extends BaseAT {
         eventType.setLabels(new ResourceLabels());
         eventType.getLabels().put("nakadi.io/label-key", "new-label");
 
-        given().body(MAPPER.writer().writeValueAsString(eventType))
+        given().body(objectMapper.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
                 .body(equalTo("")).statusCode(HttpStatus.SC_OK);
