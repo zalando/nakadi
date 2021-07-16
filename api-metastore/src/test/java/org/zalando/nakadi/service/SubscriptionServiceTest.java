@@ -126,7 +126,7 @@ public class SubscriptionServiceTest {
                 .buildSubscriptionBase();
 
         Mockito.doThrow(new UnableProcessException("fake"))
-                .when(subscriptionValidationService).validateSubscription(eq(subscriptionBase));
+                .when(subscriptionValidationService).validateSubscriptionOnCreate(eq(subscriptionBase));
 
         subscriptionService.createSubscription(subscriptionBase);
     }

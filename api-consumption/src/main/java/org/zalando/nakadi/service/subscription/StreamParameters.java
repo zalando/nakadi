@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.view.UserStreamParameters;
@@ -52,11 +52,11 @@ public class StreamParameters {
     private StreamParameters(
             final UserStreamParameters userParameters,
             final long maxCommitTimeout,
-            final Client consumingClient) throws WrongStreamParametersException {
+            final Client consumingClient) throws InvalidStreamParametersException {
 
         this.batchLimitEvents = userParameters.getBatchLimit().orElse(1);
         if (batchLimitEvents <= 0) {
-            throw new WrongStreamParametersException("batch_limit can't be lower than 1");
+            throw new InvalidStreamParametersException("batch_limit can't be lower than 1");
         }
         this.streamLimitEvents = userParameters.getStreamLimit().filter(v -> v != 0);
         this.batchTimespan = TimeUnit.SECONDS.toMillis(userParameters.getBatchTimespan().orElse(0L));
@@ -72,9 +72,9 @@ public class StreamParameters {
 
         final long commitTimeout = userParameters.getCommitTimeoutSeconds().orElse(maxCommitTimeout);
         if (commitTimeout > maxCommitTimeout) {
-            throw new WrongStreamParametersException("commit_timeout can not be more than " + maxCommitTimeout);
+            throw new InvalidStreamParametersException("commit_timeout can not be more than " + maxCommitTimeout);
         } else if (commitTimeout < 0) {
-            throw new WrongStreamParametersException("commit_timeout can not be less than 0");
+            throw new InvalidStreamParametersException("commit_timeout can not be less than 0");
         }
         this.commitTimeoutMillis = TimeUnit.SECONDS.toMillis(commitTimeout == 0 ? maxCommitTimeout : commitTimeout);
     }
@@ -101,7 +101,7 @@ public class StreamParameters {
 
     public static StreamParameters of(final UserStreamParameters userStreamParameters,
                                       final long maxCommitTimeoutSeconds,
-                                      final Client client) throws WrongStreamParametersException {
+                                      final Client client) throws InvalidStreamParametersException {
         return new StreamParameters(userStreamParameters, maxCommitTimeoutSeconds, client);
     }
 

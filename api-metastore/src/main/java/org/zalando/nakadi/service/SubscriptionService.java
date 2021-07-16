@@ -42,7 +42,8 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -125,13 +126,14 @@ public class SubscriptionService {
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            NoSuchEventTypeException, InconsistentStateException, InvalidInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
-            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException {
+            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException,
+            InvalidOwningApplicationException {
 
         checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
-        subscriptionValidationService.validateSubscription(subscriptionBase);
+        subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
         if (subscriptionBase.getAnnotations() == null) {
             subscriptionBase.setAnnotations(new ResourceAnnotations());
         }
@@ -174,7 +176,7 @@ public class SubscriptionService {
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
-        subscriptionValidationService.validateSubscriptionChange(old, newValue);
+        subscriptionValidationService.validateSubscriptionOnUpdate(old, newValue);
         if (newValue.getAnnotations() == null) {
             newValue.setAnnotations(old.getAnnotations());
         }

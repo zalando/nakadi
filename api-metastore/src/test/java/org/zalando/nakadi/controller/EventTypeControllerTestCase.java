@@ -125,7 +125,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, validationHelperService, eventTypeCache,
-                schemaService, adminService, subscriptionTokenLister);
+                schemaService, adminService, subscriptionTokenLister, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
