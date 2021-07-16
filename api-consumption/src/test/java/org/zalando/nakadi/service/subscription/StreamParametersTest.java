@@ -2,7 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
+import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.view.UserStreamParameters;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.mock;
 
 public class StreamParametersTest {
 
-    @Test(expected = InvalidStreamParametersException.class)
+    @Test(expected = WrongStreamParametersException.class)
     public void whenBatchLimitLowerOrEqualToZeroTheException() throws Exception {
         createStreamParameters(0, null, 0L, 0, null, null, 0, 0, mock(Client.class));
     }
@@ -104,7 +104,7 @@ public class StreamParametersTest {
                                                           final Integer batchKeepAliveIterations,
                                                           final int maxUncommittedMessages,
                                                           final long commitTimeoutSeconds,
-                                                          final Client client) throws InvalidStreamParametersException {
+                                                          final Client client) throws WrongStreamParametersException {
         final UserStreamParameters userParams = new UserStreamParameters(batchLimitEvents, streamLimitEvents,
                 batchTimespan, batchTimeoutSeconds, streamTimeoutSeconds, batchKeepAliveIterations,
                 maxUncommittedMessages, ImmutableList.of(), commitTimeoutSeconds);

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -45,7 +46,8 @@ public class PostSubscriptionController {
 
     @RequestMapping(value = "/subscriptions", method = RequestMethod.POST)
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
-                                                     final Errors errors)
+                                                     final Errors errors,
+                                                     final NativeWebRequest request)
             throws ValidationException,
             UnprocessableSubscriptionException,
             InconsistentStateException,
@@ -74,7 +76,8 @@ public class PostSubscriptionController {
     public ResponseEntity<?> updateSubscription(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final SubscriptionBase subscription,
-            final Errors errors)
+            final Errors errors,
+            final NativeWebRequest request)
             throws NoSuchSubscriptionException, ValidationException, SubscriptionUpdateConflictException {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);

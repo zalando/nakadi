@@ -10,10 +10,11 @@ import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
@@ -35,7 +36,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
-import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -90,10 +90,11 @@ public class EventTypeController {
 
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> create(@Valid @RequestBody final EventTypeBase eventType,
-                                    final Errors errors)
+                                    final Errors errors,
+                                    final NativeWebRequest request)
             throws TopicCreationException, InternalNakadiException, NoSuchPartitionStrategyException,
             DuplicatedEventTypeNameException, InvalidEventTypeException, ValidationException,
-            FeatureNotAvailableException, InvalidOwningApplicationException {
+            FeatureNotAvailableException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             throw new FeatureNotAvailableException("Event Type creation is disabled", DISABLE_EVENT_TYPE_CREATION);
         }
@@ -114,7 +115,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName)
+    public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName, final NativeWebRequest request)
             throws EventTypeDeletionException,
             AccessDeniedException,
             NoSuchEventTypeException,
@@ -134,15 +135,15 @@ public class EventTypeController {
     public ResponseEntity<?> update(
             @PathVariable("name") final String name,
             @RequestBody @Valid final EventTypeBase eventType,
-            final Errors errors)
+            final Errors errors,
+            final NativeWebRequest request)
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
             ServiceTemporarilyUnavailableException,
             UnableProcessException,
             NoSuchPartitionStrategyException,
-            ValidationException,
-            InvalidOwningApplicationException {
+            ValidationException {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
@@ -159,7 +160,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
-    public ResponseEntity<?> get(@PathVariable final String name)
+    public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request)
             throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeService.get(name);
         return status(HttpStatus.OK).body(eventType);
