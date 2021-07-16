@@ -20,7 +20,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 public class SubscriptionStreamExceptionHandler implements AdviceTrait {
 
     @ExceptionHandler(InvalidStreamParametersException.class)
-    public ResponseEntity<Problem> handleWrongStreamParametersException(
+    public ResponseEntity<Problem> handleInvalidStreamParametersException(
             final InvalidStreamParametersException exception,
             final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());
