@@ -13,7 +13,7 @@ import java.util.Set;
 @Component
 public class ShutdownHooks {
 
-    private final Set<Runnable> HOOKS = new HashSet<>();
+    private final Set<Runnable> hooks = new HashSet<>();
     private static final Logger LOG = LoggerFactory.getLogger(ShutdownHooks.class);
 
     @PreDestroy
@@ -22,10 +22,10 @@ public class ShutdownHooks {
         boolean haveHooks = true;
         while (haveHooks) {
             final Runnable hook;
-            synchronized (HOOKS) {
-                hook = HOOKS.isEmpty() ? null : HOOKS.iterator().next();
-                HOOKS.remove(hook);
-                haveHooks = !HOOKS.isEmpty();
+            synchronized (hooks) {
+                hook = hooks.isEmpty() ? null : hooks.iterator().next();
+                hooks.remove(hook);
+                haveHooks = !hooks.isEmpty();
             }
             if (null != hook) {
                 try {
@@ -39,15 +39,15 @@ public class ShutdownHooks {
     }
 
     public Closeable addHook(final Runnable runnable) {
-        synchronized (HOOKS) {
-            HOOKS.add(runnable);
+        synchronized (hooks) {
+            hooks.add(runnable);
         }
         return () -> removeHook(runnable);
     }
 
     private void removeHook(final Runnable runnable) {
-        synchronized (HOOKS) {
-            HOOKS.remove(runnable);
+        synchronized (hooks) {
+            hooks.remove(runnable);
         }
     }
 
