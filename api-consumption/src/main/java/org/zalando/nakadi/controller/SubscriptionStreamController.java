@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -45,6 +46,7 @@ import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -74,6 +76,7 @@ public class SubscriptionStreamController {
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final ShutdownHooks shutdownHooks;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -83,7 +86,8 @@ public class SubscriptionStreamController {
                                         final EventStreamChecks eventStreamChecks,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
                                         final SubscriptionDbRepository subscriptionDbRepository,
-                                        final SubscriptionValidationService subscriptionValidationService) {
+                                        final SubscriptionValidationService subscriptionValidationService,
+                                        final ShutdownHooks shutdownHooks) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
@@ -92,6 +96,7 @@ public class SubscriptionStreamController {
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.shutdownHooks = shutdownHooks;
     }
 
     class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -228,9 +233,14 @@ public class SubscriptionStreamController {
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
+
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, parentSubscriptionSpan, client.getClientId());
-                streamer.stream();
+
+                try (Closeable ignore = shutdownHooks.addHook(streamer::terminateStream)) { // bugfix ARUHA-485
+                    streamer.stream();
+                }
+
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();

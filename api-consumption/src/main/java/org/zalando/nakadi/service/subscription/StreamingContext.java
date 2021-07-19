@@ -6,7 +6,6 @@ import com.google.common.base.Preconditions;
 import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
@@ -73,7 +72,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
     private final CursorOperationsService cursorOperationsService;
-    private final ShutdownHooks shutdownHooks;
 
     private final long kpiCollectionFrequencyMs;
 
@@ -115,7 +113,6 @@ public class StreamingContext implements SubscriptionStreamer {
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.currentSpan = builder.currentSpan;
         this.cursorOperationsService = builder.cursorOperationsService;
-        this.shutdownHooks = builder.shutdownHooks;
     }
 
     public Span getCurrentSpan() {
@@ -178,25 +175,18 @@ public class StreamingContext implements SubscriptionStreamer {
         return cursorOperationsService;
     }
 
-    @Override
-    public void stream() throws InterruptedException {
-        try (Closeable ignore = shutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
-            streamInternal(new StartingState());
-        } catch (final IOException ex) {
-            log.error(
-                    "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
-                    getSubscription(),
-                    ex);
-        }
-    }
-
     public AutocommitSupport getAutocommitSupport() {
         return autocommitSupport;
     }
 
-    void onNodeShutdown() {
+    public void terminateStream() {
         log.info("Shutdown hook called. Trying to terminate subscription gracefully");
         switchState(new CleanupState(null));
+    }
+
+    @Override
+    public void stream() throws InterruptedException {
+        streamInternal(new StartingState());
     }
 
     void streamInternal(final State firstState)
@@ -398,7 +388,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private Comparator<NakadiCursor> cursorComparator;
         private NakadiKpiPublisher kpiPublisher;
         private CursorOperationsService cursorOperationsService;
-        private ShutdownHooks shutdownHooks;
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
@@ -516,11 +505,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setCursorOperationsService(final CursorOperationsService cursorOperationsService) {
             this.cursorOperationsService = cursorOperationsService;
-            return this;
-        }
-
-        public Builder setShutdownHooks(final ShutdownHooks shutdownHooks) {
-            this.shutdownHooks = shutdownHooks;
             return this;
         }
 
