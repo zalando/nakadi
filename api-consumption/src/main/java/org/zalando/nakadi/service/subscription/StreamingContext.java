@@ -73,6 +73,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Span currentSpan;
     private final String kpiDataStreamedEventType;
     private final CursorOperationsService cursorOperationsService;
+    private final ShutdownHooks shutdownHooks;
 
     private final long kpiCollectionFrequencyMs;
 
@@ -114,6 +115,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.currentSpan = builder.currentSpan;
         this.cursorOperationsService = builder.cursorOperationsService;
+        this.shutdownHooks = builder.shutdownHooks;
     }
 
     public Span getCurrentSpan() {
@@ -178,7 +180,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
+        try (Closeable ignore = shutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
             streamInternal(new StartingState());
         } catch (final IOException ex) {
             log.error(
@@ -396,6 +398,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private Comparator<NakadiCursor> cursorComparator;
         private NakadiKpiPublisher kpiPublisher;
         private CursorOperationsService cursorOperationsService;
+        private ShutdownHooks shutdownHooks;
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
@@ -513,6 +516,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setCursorOperationsService(final CursorOperationsService cursorOperationsService) {
             this.cursorOperationsService = cursorOperationsService;
+            return this;
+        }
+
+        public Builder setShutdownHooks(final ShutdownHooks shutdownHooks) {
+            this.shutdownHooks = shutdownHooks;
             return this;
         }
 

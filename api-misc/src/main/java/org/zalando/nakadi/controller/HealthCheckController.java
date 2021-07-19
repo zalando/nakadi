@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,19 +23,24 @@ import static org.springframework.web.bind.annotation.RequestMethod.GET;
 public class HealthCheckController {
 
     private static final Logger LOG = LoggerFactory.getLogger(HealthCheckController.class);
+
+    private final ShutdownHooks shutdownHooks;
     private final AtomicBoolean shuttingDown;
 
-    public HealthCheckController() {
+    @Autowired
+    public HealthCheckController(final ShutdownHooks shutdownHooks) {
+        this.shutdownHooks = shutdownHooks;
         this.shuttingDown = new AtomicBoolean(false);
     }
 
-    public HealthCheckController(final AtomicBoolean shuttingDown) {
+    HealthCheckController(final ShutdownHooks shutdownHooks, final AtomicBoolean shuttingDown) {
+        this.shutdownHooks = shutdownHooks;
         this.shuttingDown = shuttingDown;
     }
 
     @PostConstruct
     public void postConstruct() {
-        ShutdownHooks.addHook(() -> shuttingDown.set(true));
+        shutdownHooks.addHook(() -> shuttingDown.set(true));
     }
 
     @RequestMapping(method = GET)

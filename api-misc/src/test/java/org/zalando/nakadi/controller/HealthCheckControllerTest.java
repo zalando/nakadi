@@ -11,7 +11,7 @@ public class HealthCheckControllerTest {
     @Test
     public void testHealthControllerReports503OnShutdown() {
         final AtomicBoolean shuttingDown = new AtomicBoolean(false);
-        final HealthCheckController controller = new HealthCheckController(shuttingDown);
+        final HealthCheckController controller = new HealthCheckController(null, shuttingDown);
         controller.postConstruct();
         Assert.assertEquals(
                 HttpStatus.OK,

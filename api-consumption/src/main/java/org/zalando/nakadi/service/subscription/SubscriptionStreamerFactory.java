@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -48,6 +49,7 @@ public class SubscriptionStreamerFactory {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final CursorOperationsService cursorOperationsService;
     private final EventStreamChecks eventStreamChecks;
+    private final ShutdownHooks shutdownHooks;
     private final String kpiDataStreamedEventType;
     private final long kpiCollectionFrequencyMs;
     private final long streamMemoryLimitBytes;
@@ -67,6 +69,7 @@ public class SubscriptionStreamerFactory {
             final NakadiKpiPublisher nakadiKpiPublisher,
             final CursorOperationsService cursorOperationsService,
             final EventStreamChecks eventStreamChecks,
+            final ShutdownHooks shutdownHooks,
             @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
             @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs,
             @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes) {
@@ -83,6 +86,7 @@ public class SubscriptionStreamerFactory {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.cursorOperationsService = cursorOperationsService;
         this.eventStreamChecks = eventStreamChecks;
+        this.shutdownHooks = shutdownHooks;
         this.kpiDataStreamedEventType = kpiDataStreamedEventType;
         this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = streamMemoryLimitBytes;
@@ -133,6 +137,7 @@ public class SubscriptionStreamerFactory {
                 .setCursorComparator(new NakadiCursorComparator(eventTypeCache))
                 .setKpiPublisher(nakadiKpiPublisher)
                 .setCursorOperationsService(cursorOperationsService)
+                .setShutdownHooks(shutdownHooks)
                 .setKpiDataStremedEventType(kpiDataStreamedEventType)
                 .setKpiCollectionFrequencyMs(kpiCollectionFrequencyMs)
                 .setCurrentSpan(streamSpan)
