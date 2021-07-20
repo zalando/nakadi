@@ -6,7 +6,6 @@ import com.google.common.base.Preconditions;
 import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
@@ -176,25 +175,18 @@ public class StreamingContext implements SubscriptionStreamer {
         return cursorOperationsService;
     }
 
-    @Override
-    public void stream() throws InterruptedException {
-        try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
-            streamInternal(new StartingState());
-        } catch (final IOException ex) {
-            log.error(
-                    "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
-                    getSubscription(),
-                    ex);
-        }
-    }
-
     public AutocommitSupport getAutocommitSupport() {
         return autocommitSupport;
     }
 
-    void onNodeShutdown() {
+    public void terminateStream() {
         log.info("Shutdown hook called. Trying to terminate subscription gracefully");
         switchState(new CleanupState(null));
+    }
+
+    @Override
+    public void stream() throws InterruptedException {
+        streamInternal(new StartingState());
     }
 
     void streamInternal(final State firstState)

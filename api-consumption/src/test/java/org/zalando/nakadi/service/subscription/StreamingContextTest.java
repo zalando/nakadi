@@ -168,7 +168,7 @@ public class StreamingContextTest {
         t.start();
         t.join(1000);
 
-        new Thread(() -> ctxSpy.onNodeShutdown()).start();
+        new Thread(() -> ctxSpy.terminateStream()).start();
         ThreadUtils.sleep(2000);
 
         Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
@@ -177,7 +177,7 @@ public class StreamingContextTest {
     }
 
     @Test
-    public void testSessionAlwaysCleanedManyTimesOk() throws Exception {
+    public void testSessionAlwaysCleanedManyTimesOk() {
 
         final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
         when(zkMock.isActiveSession(any())).thenReturn(true);
