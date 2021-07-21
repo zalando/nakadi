@@ -3131,7 +3131,7 @@ definitions:
   Annotations:
     type: object
     description: >
-      # [Work in progress] Annotations of the Nakadi resource.
+      # Annotations of the Nakadi resource.
 
       A Nakadi event-type or a subscription is considered as a Nakadi resource. A Nakadi resource can have a set of
       annotations associated with it. The syntax of annotations is adopted from Kubernetes.
@@ -3144,6 +3144,7 @@ definitions:
       separated by dots (`.`), not longer than 253 characters in total, followed by a slash (`/`).
 
         Values of the annotations are currently limited to 1000 bytes. This can be relaxed in the future.
+        The prefix `nakadi.io/` is reserved for internal use, and should not be used by clients.
     example:
       nakadi.io/internal-event-type: "true"
       criticality: "low"
@@ -3153,7 +3154,7 @@ definitions:
   Labels:
     type: object
     description: >
-      # [Work in progress] Labels of the Nakadi resource.
+      # Labels of the Nakadi resource.
 
       A Nakadi event-type or a subscription is considered as a Nakadi resource. A Nakadi resource can have a set of
       labels associated with it. The syntax of labels is adopted from Kubernetes.
@@ -3168,6 +3169,9 @@ definitions:
         From the Kubernetes documentation about Label values:
       > A valid value must be 63 characters or less (can be empty), unless empty, must begin and end with an alphanumeric
       character ([a-z0-9A-Z]),could contain dashes (-), underscores (_), dots (.), and alphanumerics between.
+
+
+        The prefix `nakadi.io/` is reserved for internal use, and should not be used by clients.
     example:
       classification: production.tier-1
       custom-label: custom-label-value
@@ -3595,4 +3599,3 @@ parameters:
       - 'PRODUCER_ET': producer event type.
     type: string
     required: true
-
