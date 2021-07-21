@@ -801,24 +801,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: cursors
-          in: query
-          description: |
-            Each cursor indicates the partition and offset consumed by the client. When this parameter is provided,
-            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
-            recent published event. This lag will be present in the response as `unconsumed_events` property.
-
-            It's not mandatory to specify cursors for every partition.
-
-            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
-            event, the number of `unconsumed_events` will be zero.
-
-            The value of this parameter must be a json array URL encoded.
-          required: false
-          type: array
-          items:
-            type: string
-            format: '#/definitions/Cursor'
       responses:
         '200':
           description: OK
@@ -906,12 +888,6 @@ paths:
           description: |
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
-          type: string
-        - name: consumed_offset
-          in: query
-          description: |
-            Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
-            `unconsumed_events` to the response partition object.
           type: string
       responses:
         '200':
@@ -2453,15 +2429,6 @@ definitions:
           Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
           available event in the partition.
         type: string
-      unconsumed_events:
-        description: |
-          Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
-          monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
-
-          If the event type uses 'compact' cleanup policy - then the actual number of unconsumed events in this
-          partition can be lower than the one reported in this field.
-        type: number
-        format: int64
 
   StreamInfo:
     type: object
