@@ -3171,7 +3171,7 @@ definitions:
       character ([a-z0-9A-Z]),could contain dashes (-), underscores (_), dots (.), and alphanumerics between.
 
 
-        The prefix `nakadi.io/` is reserved for internal use, and should be used.
+        The prefix `nakadi.io/` is reserved for internal use, and should not be used by clients.
     example:
       classification: production.tier-1
       custom-label: custom-label-value
