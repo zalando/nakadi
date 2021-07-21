@@ -762,9 +762,9 @@ paths:
           schema:
             type: array
             description: |
-              List of partitions with the number of unconsummed events.
+              List of partition stat having number of unconsumed events.
             items:
-              $ref: '#/definitions/Partition'
+              $ref: '#/definitions/PartitionStat'
         '422':
           description: Unprocessable Entity
           schema:
@@ -2429,6 +2429,45 @@ definitions:
           Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
           available event in the partition.
         type: string
+
+  PartitionStat:
+    description: |
+      Partition information with unconsumed events information. Can be helpful when trying to start a stream using an unmanaged API.
+
+      This information is not related to the state of the consumer clients.
+    required:
+      - partition
+      - oldest_available_offset
+      - newest_available_offset
+      - unconsumed_events
+    properties:
+      partition:
+        type: string
+      oldest_available_offset:
+        description: |
+          An offset of the oldest available Event in that partition. This value will be changing
+          upon removal of Events from the partition by the background archiving/cleanup mechanism.
+        type: string
+      newest_available_offset:
+        description: |
+          An offset of the newest available Event in that partition. This value will be changing
+          upon reception of new events for this partition by Nakadi.
+
+          This value can be used to construct a cursor when opening streams (see
+          `GET /event-type/{name}/events` for details).
+
+          Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
+          available event in the partition.
+        type: string
+      unconsumed_events:
+        description: |
+          Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
+          monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
+
+          If the event type uses 'compact' cleanup policy - then the actual number of unconsumed events in this
+          partition can be lower than the one reported in this field.
+        type: number
+        format: int64
 
   StreamInfo:
     type: object
