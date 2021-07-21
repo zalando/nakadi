@@ -33,7 +33,6 @@ import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -62,10 +61,10 @@ public class PartitionsControllerTest {
     private static final String UNKNOWN_PARTITION = "unknown-partition";
 
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_0 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "001-0000-000000000000000012",
+            new EventTypePartitionView("0", "001-0000-000000000000000012",
                     "001-0000-000000000000000067");
     private static final EventTypePartitionView TEST_TOPIC_PARTITION_1 =
-            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "001-0000-000000000000000043",
+            new EventTypePartitionView("1", "001-0000-000000000000000043",
                     "001-0000-000000000000000098");
 
     private static final List<EventTypePartitionView> TEST_TOPIC_PARTITIONS = ImmutableList.of(
@@ -213,7 +212,7 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s?consumed_offset=1", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(new CursorLag(
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(new EventTypePartitionView(
                         "0",
                         "001-0000-0",
                         "001-0000-1",

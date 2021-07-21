@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,11 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -36,7 +33,6 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.nakadi.view.PartitionCountView;
 
@@ -45,9 +41,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static org.springframework.http.ResponseEntity.noContent;
-import static org.springframework.http.ResponseEntity.ok;
 
 @RestController
 public class PartitionsController {
@@ -103,8 +96,8 @@ public class PartitionsController {
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
-    public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
-                                            final NativeWebRequest request) throws NoSuchEventTypeException {
+    public List<EventTypePartitionView> listPartitions(@PathVariable("name") final String eventTypeName)
+            throws NoSuchEventTypeException {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
@@ -120,42 +113,37 @@ public class PartitionsController {
             lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
                     .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
         }
-        final List<EventTypePartitionView> result = firstStats.stream().map(first -> {
+        return firstStats.stream().map(first -> {
             final PartitionStatistics last = lastStats.stream()
                     .filter(l -> l.getPartition().equals(first.getPartition()))
                     .findAny().get();
             return new EventTypePartitionView(
-                    eventTypeName,
                     first.getPartition(),
                     cursorConverter.convert(first.getFirst()).getOffset(),
                     cursorConverter.convert(selectLast(timelines, last, first)).getOffset());
         }).collect(Collectors.toList());
-        return ok().body(result);
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
-    public ResponseEntity<?> getPartition(
+    public EventTypePartitionView getPartition(
             @PathVariable("name") final String eventTypeName,
             @PathVariable("partition") final String partition,
-            @Nullable @RequestParam(value = "consumed_offset", required = false) final String consumedOffset,
-            final NativeWebRequest request) throws NoSuchEventTypeException {
+            @Nullable @RequestParam(value = "consumed_offset", required = false) final String consumedOffset)
+            throws NoSuchEventTypeException {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
         if (consumedOffset != null) {
-            final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
-            return ok().body(cursorLag);
+            return getCursorLag(eventTypeName, partition, consumedOffset);
         } else {
-            final EventTypePartitionView result = getTopicPartition(eventTypeName, partition);
-
-            return ok().body(result);
+            return getTopicPartition(eventTypeName, partition);
         }
     }
 
     @PutMapping(value = "/event-types/{name}/partition-count")
-    public ResponseEntity<?> repartition(
+    public void repartition(
             @PathVariable("name") final String eventTypeName,
             @RequestBody final PartitionCountView partitionsNumberView) throws NoSuchEventTypeException {
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
@@ -164,11 +152,11 @@ public class PartitionsController {
         }
 
         repartitioningService.repartition(eventType.getName(), partitionsNumberView.getPartitionCount());
-        return noContent().build();
     }
 
 
-    private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
+    private EventTypePartitionView getCursorLag(
+            final String eventTypeName, final String partition, final String consumedOffset)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
             ServiceTemporarilyUnavailableException {
         final Cursor consumedCursor = new Cursor(partition, consumedOffset);
@@ -176,7 +164,11 @@ public class PartitionsController {
         return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
                 .stream()
                 .findFirst()
-                .map(this::toCursorLag)
+                .map(v -> new EventTypePartitionView(
+                        v.getPartition(),
+                        cursorConverter.convert(v.getFirstCursor()).getOffset(),
+                        cursorConverter.convert(v.getLastCursor()).getOffset(),
+                        v.getLag()))
                 .orElseThrow(NakadiBaseException::new);
     }
 
@@ -200,19 +192,9 @@ public class PartitionsController {
         }
 
         return new EventTypePartitionView(
-                eventTypeName,
                 partition,
                 cursorConverter.convert(firstStats.get().getFirst()).getOffset(),
                 cursorConverter.convert(newest).getOffset());
-    }
-
-    private CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag) {
-        return new CursorLag(
-                nakadiCursorLag.getPartition(),
-                cursorConverter.convert(nakadiCursorLag.getFirstCursor()).getOffset(),
-                cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
-                nakadiCursorLag.getLag()
-        );
     }
 
 }
