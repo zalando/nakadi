@@ -18,10 +18,8 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAnnotations;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
@@ -34,6 +32,7 @@ import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -518,10 +517,10 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenPOSTEventTypeWithAnnotationsAndLabelsThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final ResourceAnnotations annotations = new ResourceAnnotations();
+        final Map<String, String> annotations = new HashMap<>();
         annotations.put("test.io/test-key", "test-value");
         eventType.setAnnotations(annotations);
-        final ResourceLabels labels = new ResourceLabels();
+        final Map<String, String> labels = new HashMap<>();
         labels.put("test.io/test-label-key", "test-value");
         eventType.setLabels(labels);
 
@@ -577,9 +576,9 @@ public class EventTypeAT extends BaseAT {
                 .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
                 .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
 
-        eventType.setAnnotations(new ResourceAnnotations());
+        eventType.setAnnotations(new HashMap<>());
         eventType.getAnnotations().put("nakadi.io/annotation-key", "new-annotation");
-        eventType.setLabels(new ResourceLabels());
+        eventType.setLabels(new HashMap<>());
         eventType.getLabels().put("nakadi.io/label-key", "new-label");
 
         given().body(objectMapper.writer().writeValueAsString(eventType))
@@ -598,7 +597,7 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenPOSTEventTypeWithInvalidAnnotationOrLabelThenError() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final ResourceAnnotations annotations = new ResourceAnnotations();
+        final Map<String, String> annotations = new HashMap<>();
         annotations.put("", "test-value");
         eventType.setAnnotations(annotations);
         eventType.setLabels(null);
@@ -609,7 +608,7 @@ public class EventTypeAT extends BaseAT {
                 .body(containsString("Error validating annotation <:test-value>; Key cannot be empty."))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
-        final ResourceLabels labels = new ResourceLabels();
+        final Map<String, String> labels = new HashMap<>();
         labels.put("", "test-value");
         eventType.setLabels(labels);
         eventType.setAnnotations(null);

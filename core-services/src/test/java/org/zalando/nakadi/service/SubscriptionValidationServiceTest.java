@@ -18,16 +18,15 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
-import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
-import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
@@ -104,10 +103,8 @@ public class SubscriptionValidationServiceTest {
         when(applicationService.exists(eq(OWNING_APP_CORRECT))).thenReturn(true);
 
         cursorConverter = mock(CursorConverter.class);
-        final ResourceValidationHelperService validationHelperService = new ResourceValidationHelperService();
         subscriptionValidationService = new SubscriptionValidationService(timelineService, nakadiSettings,
-                cursorConverter, authorizationValidator, etCache, featureToggleService, applicationService,
-                validationHelperService);
+                cursorConverter, authorizationValidator, etCache, featureToggleService, applicationService);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
