@@ -36,8 +36,6 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
-import org.zalando.nakadi.exceptions.runtime.InvalidResourceAnnotationException;
-import org.zalando.nakadi.exceptions.runtime.InvalidResourceLabelException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -180,9 +178,7 @@ public class EventTypeService {
         setDefaultEventTypeOptions(eventType);
         try {
             schemaService.validateSchema(eventType);
-        } catch (final SchemaValidationException
-                | InvalidResourceAnnotationException
-                | InvalidResourceLabelException e) {
+        } catch (final SchemaValidationException e) {
             throw new InvalidEventTypeException(e);
         }
         validateCompaction(eventType);
