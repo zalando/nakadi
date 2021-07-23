@@ -1,9 +1,14 @@
 package org.zalando.nakadi.controller;
 
-import com.google.common.collect.Lists;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.controller.util.CursorUtil;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -24,6 +31,8 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.service.AdminService;
@@ -35,13 +44,18 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.nakadi.view.PartitionCountView;
+import static org.springframework.http.ResponseEntity.noContent;
+
 
 import javax.annotation.Nullable;
-import java.util.Collections;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.emptyList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Validated
 @RestController
 public class PartitionsController {
 
@@ -55,6 +69,7 @@ public class PartitionsController {
     private final EventTypeRepository eventTypeRepository;
     private final AdminService adminService;
     private final RepartitioningService repartitioningService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public PartitionsController(final TimelineService timelineService,
@@ -64,7 +79,9 @@ public class PartitionsController {
                                 final EventTypeRepository eventTypeRepository,
                                 final AuthorizationValidator authorizationValidator,
                                 final AdminService adminService,
-                                final RepartitioningService repartitioningService) {
+                                final RepartitioningService repartitioningService,
+                                final ObjectMapper objectMapper
+                                ) {
         this.timelineService = timelineService;
         this.cursorConverter = cursorConverter;
         this.cursorOperationsService = cursorOperationsService;
@@ -73,6 +90,7 @@ public class PartitionsController {
         this.eventTypeRepository = eventTypeRepository;
         this.adminService = adminService;
         this.repartitioningService = repartitioningService;
+        this.objectMapper = objectMapper;
     }
 
     private static NakadiCursor selectLast(final List<Timeline> activeTimelines, final PartitionEndStatistics last,
@@ -96,24 +114,42 @@ public class PartitionsController {
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
-    public List<EventTypePartitionView> listPartitions(@PathVariable("name") final String eventTypeName)
-            throws NoSuchEventTypeException {
-        LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
-        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-        authorizationValidator.authorizeEventTypeView(eventType);
-        authorizationValidator.authorizeStreamRead(eventType);
+    public List<EventTypePartitionView> listPartitions(
+            @PathVariable("name") final String eventTypeName,
+            @RequestParam(value = "cursors", required = false) final String cursorsString
+    ) throws NoSuchEventTypeException {
+        LOG.trace(
+                "Get partitions endpoint for event-type '{}' with cursorList `{}` is called",
+                eventTypeName, cursorsString);
+
+        checkAuthorization(eventTypeName);
 
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
-                .loadTopicStatistics(Collections.singletonList(timelines.get(0)));
-        final List<PartitionStatistics> lastStats;
-        if (timelines.size() == 1) {
-            lastStats = firstStats;
-        } else {
-            lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
-                    .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
+                .loadTopicStatistics(singletonList(timelines.get(0)));
+        final List<PartitionStatistics> lastStats = initializeLastStats(timelines, firstStats);
+
+        final List<PartitionStatistics> filteredFirstStats;
+        final List<EventTypePartitionView> cursorLags;
+        final List<Cursor> cursorList = getParsedCursors(cursorsString, eventTypeName);
+
+        if(!cursorList.isEmpty()){
+            final Map<String, List<Cursor>> cursorsGroupByPartition =
+                    getCursorsGroupByPartition(cursorList);
+
+            //take only whats not present in cursorList
+            filteredFirstStats = firstStats.stream()
+                    .filter(pStat -> !cursorsGroupByPartition.containsKey(pStat.getPartition()))
+                    .collect(Collectors.toList());
+
+            cursorLags = getViewsWithUnconsumedEvents(eventTypeName, cursorList);
+
+        }else {
+            filteredFirstStats = firstStats;
+            cursorLags = emptyList();
         }
-        return firstStats.stream().map(first -> {
+
+        final List<EventTypePartitionView> result = filteredFirstStats.stream().map(first -> {
             final PartitionStatistics last = lastStats.stream()
                     .filter(l -> l.getPartition().equals(first.getPartition()))
                     .findAny().get();
@@ -122,6 +158,101 @@ public class PartitionsController {
                     cursorConverter.convert(first.getFirst()).getOffset(),
                     cursorConverter.convert(selectLast(timelines, last, first)).getOffset());
         }).collect(Collectors.toList());
+
+        result.addAll(cursorLags);
+        return result;
+    }
+
+    private List<Cursor> getParsedCursors(final String cursorsString, final String eventType){
+        if(StringUtils.isEmpty(cursorsString)){
+            return emptyList();
+        }
+        try {
+            final List<Cursor> cursorList = objectMapper.
+                    readValue(
+                        cursorsString,
+                        new TypeReference<List<Cursor>>() {
+                    });
+
+            validateCursors(cursorList, eventType);
+            return cursorList;
+        } catch (JsonProcessingException e) {
+            throw new UnparseableCursorException("malformed cursors", e, cursorsString);
+        }
+
+    }
+
+    private void validateCursors(final List<Cursor> cursorList, final String eventType) {
+        for (final Cursor cursor : cursorList) {
+            if (StringUtils.isEmpty(cursor.getPartition())) {
+                throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor, eventType);
+            } else if (StringUtils.isEmpty(cursor.getOffset())) {
+                throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor, eventType);
+            }
+        }
+    }
+
+    private List<PartitionStatistics> initializeLastStats( final List<Timeline> timelines,
+                                                           final List<PartitionStatistics> firstStats) {
+        final List<PartitionStatistics> lastStats;
+        if (timelines.size() == 1) {
+            lastStats = firstStats;
+        } else {
+            lastStats = timelineService.
+                    getTopicRepository(timelines.get(timelines.size() - 1))
+                    .loadTopicStatistics(singletonList(timelines.get(timelines.size() - 1)));
+        }
+        return lastStats;
+    }
+
+    private Map<String, List<Cursor>> getCursorsGroupByPartition(final List<Cursor> cursorList) {
+        final Map<String, List<Cursor>> cursorsGroupByPartition =
+                cursorList.stream()
+                .collect(Collectors.groupingBy(Cursor::getPartition));
+
+        checkDuplicatePartitionIds(cursorsGroupByPartition);
+        return cursorsGroupByPartition;
+    }
+
+    private List<EventTypePartitionView> getViewsWithUnconsumedEvents
+            (final String eventTypeName,
+             final List<Cursor> cursorList) {
+
+        final List<EventTypePartitionView> cursorLags
+                = CursorUtil
+                .toCursorLagStream(
+                        cursorList,
+                        eventTypeName,
+                        cursorConverter,
+                        cursorOperationsService)
+                .map(cl -> new EventTypePartitionView(
+                                cl.getPartition(),
+                                cl.getOldestAvailableOffset(),
+                                cl.getNewestAvailableOffset(),
+                                cl.getUnconsumedEvents())
+                ).collect(Collectors.toList());
+
+        if (cursorLags.isEmpty()){
+            throw new NakadiBaseException();
+        }
+        return cursorLags;
+    }
+
+    private void checkDuplicatePartitionIds(
+            final Map<String, List<Cursor>> cursorsGroupByPartition) {
+
+        final boolean duplicatePartitionExists =
+                cursorsGroupByPartition.values().stream()
+                .anyMatch(list -> list.size() > 1);
+        if(duplicatePartitionExists) {
+            throw new UnprocessableEntityException("duplicate partition ids provided in cursors");
+        }
+    }
+
+    private void checkAuthorization(final String eventTypeName) {
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+        authorizationValidator.authorizeStreamRead(eventType);
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
@@ -131,19 +262,20 @@ public class PartitionsController {
             @Nullable @RequestParam(value = "consumed_offset", required = false) final String consumedOffset)
             throws NoSuchEventTypeException {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
-        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-        authorizationValidator.authorizeEventTypeView(eventType);
-        authorizationValidator.authorizeStreamRead(eventType);
+        checkAuthorization(eventTypeName);
 
         if (consumedOffset != null) {
-            return getCursorLag(eventTypeName, partition, consumedOffset);
+            return getViewsWithUnconsumedEvents(
+                        eventTypeName,
+                        List.of(new Cursor(partition, consumedOffset)))
+                    .get(0);
         } else {
             return getTopicPartition(eventTypeName, partition);
         }
     }
 
     @PutMapping(value = "/event-types/{name}/partition-count")
-    public void repartition(
+    public ResponseEntity<Void> repartition(
             @PathVariable("name") final String eventTypeName,
             @RequestBody final PartitionCountView partitionsNumberView) throws NoSuchEventTypeException {
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
@@ -152,24 +284,7 @@ public class PartitionsController {
         }
 
         repartitioningService.repartition(eventType.getName(), partitionsNumberView.getPartitionCount());
-    }
-
-
-    private EventTypePartitionView getCursorLag(
-            final String eventTypeName, final String partition, final String consumedOffset)
-            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
-            ServiceTemporarilyUnavailableException {
-        final Cursor consumedCursor = new Cursor(partition, consumedOffset);
-        final NakadiCursor consumedNakadiCursor = cursorConverter.convert(eventTypeName, consumedCursor);
-        return cursorOperationsService.cursorsLag(eventTypeName, Lists.newArrayList(consumedNakadiCursor))
-                .stream()
-                .findFirst()
-                .map(v -> new EventTypePartitionView(
-                        v.getPartition(),
-                        cursorConverter.convert(v.getFirstCursor()).getOffset(),
-                        cursorConverter.convert(v.getLastCursor()).getOffset(),
-                        v.getLag()))
-                .orElseThrow(NakadiBaseException::new);
+        return noContent().build();
     }
 
     private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
