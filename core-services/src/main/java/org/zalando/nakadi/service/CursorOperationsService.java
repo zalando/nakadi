@@ -8,17 +8,23 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.CursorLag;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
@@ -123,6 +129,15 @@ public class CursorOperationsService {
         }
     }
 
+    public Stream<CursorLag> toCursorLagStream(final List<Cursor> cursorList,
+                                               final String eventTypeName, final CursorConverter cursorConverter){
+        final List<NakadiCursor> domainCursor = cursorList.stream()
+                .map(toNakadiCursor(eventTypeName, cursorConverter))
+                .collect(Collectors.toList());
+        return cursorsLag(eventTypeName, domainCursor)
+                .stream().map(ncl -> toCursorLag(ncl, cursorConverter));
+    }
+
     private NakadiCursor moveForward(final NakadiCursor cursor, final long shift) {
         NakadiCursor currentCursor = cursor;
         long stillToAdd = shift;
@@ -206,5 +221,26 @@ public class CursorOperationsService {
     private static StaticStorageWorkerFactory.StaticStorageWorker getStorageWorker(final Timeline timeline) {
         return StaticStorageWorkerFactory.get(timeline);
     }
+
+    private static CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag, final CursorConverter cursorConverter) {
+        return new CursorLag(
+                nakadiCursorLag.getPartition(),
+                cursorConverter.convert(nakadiCursorLag.getFirstCursor()).getOffset(),
+                cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
+                nakadiCursorLag.getLag()
+        );
+    }
+
+    private static Function<Cursor, NakadiCursor> toNakadiCursor(final String eventTypeName,
+                                                                 final CursorConverter cursorConverter) {
+        return cursor -> {
+            try {
+                return cursorConverter.convert(eventTypeName, cursor);
+            } catch (final InternalNakadiException | InvalidCursorException e) {
+                throw new CursorConversionException("problem converting cursors", e);
+            }
+        };
+    }
+
 
 }

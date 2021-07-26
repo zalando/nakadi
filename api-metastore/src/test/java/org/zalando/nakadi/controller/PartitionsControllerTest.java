@@ -49,6 +49,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -121,7 +122,7 @@ public class PartitionsControllerTest {
         topicRepositoryMock = mock(TopicRepository.class);
         eventTypeCache = mock(EventTypeCache.class);
         timelineService = mock(TimelineService.class);
-        cursorOperationsService = mock(CursorOperationsService.class);
+        cursorOperationsService = spy(new CursorOperationsService(timelineService));
         authorizationService = mock(AuthorizationService.class);
         Mockito.when(authorizationService.getSubject()).thenReturn(Optional.empty());
         Mockito.when(timelineService.getActiveTimelinesOrdered(eq(UNKNOWN_EVENT_TYPE)))
@@ -235,7 +236,9 @@ public class PartitionsControllerTest {
         Mockito.when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
                 .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
         final List<NakadiCursorLag> lags = mockCursorLag();
-        Mockito.when(cursorOperationsService.cursorsLag(any(), any())).thenReturn(lags);
+        Mockito.doReturn(lags)
+                .when(cursorOperationsService)
+                .cursorsLag(any(), anyList());
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s?consumed_offset=1", TEST_EVENT_TYPE, TEST_PARTITION)))
@@ -367,8 +370,9 @@ public class PartitionsControllerTest {
                 .thenReturn(TEST_POSITION_STATS);
 
         final List<NakadiCursorLag> cursorLagList = getNakadiCursorLags();
-        Mockito.when(cursorOperationsService.cursorsLag(any(), anyList())).
-                thenReturn(cursorLagList);
+        Mockito.doReturn(cursorLagList)
+                .when(cursorOperationsService)
+                .cursorsLag(any(), anyList());
         final String cursorString = String.format(CURSORS_TEMPLATE, "1", "0");
         mockMvc.perform(
                     get("/event-types/{0}/partitions?cursors={1}", TEST_EVENT_TYPE, cursorString))

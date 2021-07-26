@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.controller.util.CursorUtil;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
@@ -107,7 +106,7 @@ public class CursorOperationsController {
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
-        return CursorUtil.toCursorLagStream(cursors.getList(), eventTypeName, cursorConverter, cursorOperationsService)
+        return cursorOperationsService.toCursorLagStream(cursors.getList(), eventTypeName, cursorConverter)
                 .collect(Collectors.toList());
     }
 

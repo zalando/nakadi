@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.controller.util.CursorUtil;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -55,7 +53,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Validated
 @RestController
 public class PartitionsController {
 
@@ -121,35 +118,54 @@ public class PartitionsController {
         LOG.trace(
                 "Get partitions endpoint for event-type '{}' with cursorList `{}` is called",
                 eventTypeName, cursorsString);
-
         checkAuthorization(eventTypeName);
 
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
-        final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
+        final List<PartitionStatistics> firstStats =
+                timelineService.getTopicRepository(timelines.get(0))
                 .loadTopicStatistics(singletonList(timelines.get(0)));
         final List<PartitionStatistics> lastStats = initializeLastStats(timelines, firstStats);
 
+        final List<Cursor> cursorList = getParsedCursors(cursorsString, eventTypeName);
         final List<PartitionStatistics> filteredFirstStats;
         final List<EventTypePartitionView> cursorLags;
-        final List<Cursor> cursorList = getParsedCursors(cursorsString, eventTypeName);
 
         if(!cursorList.isEmpty()){
-            final Map<String, List<Cursor>> cursorsGroupByPartition =
-                    getCursorsGroupByPartition(cursorList);
+            final Map<String, List<Cursor>> cursorsGroupByPartition = cursorList
+                    .stream()
+                    .collect(Collectors.groupingBy(Cursor::getPartition));
 
-            //take only whats not present in cursorList
+            checkDuplicatePartitionIds(cursorsGroupByPartition);
+
+            //exclude whats present in cursorList
             filteredFirstStats = firstStats.stream()
                     .filter(pStat -> !cursorsGroupByPartition.containsKey(pStat.getPartition()))
                     .collect(Collectors.toList());
 
             cursorLags = getViewsWithUnconsumedEvents(eventTypeName, cursorList);
-
         }else {
+            //if no cursor supplied, default to original behaviour
             filteredFirstStats = firstStats;
             cursorLags = emptyList();
         }
 
-        final List<EventTypePartitionView> result = filteredFirstStats.stream().map(first -> {
+        final List<EventTypePartitionView> result =
+                getViewsByMatchingSamePartitionAcrossStats(
+                        timelines,
+                        filteredFirstStats,
+                        lastStats);
+        result.addAll(cursorLags);
+        return result;
+    }
+
+    private List<EventTypePartitionView> getViewsByMatchingSamePartitionAcrossStats(
+            final List<Timeline> timelines,
+            final List<PartitionStatistics> filteredFirstStats,
+            final List<PartitionStatistics> lastStats) {
+        //For each partition in first stat, find the matching one in last stat
+        //and create EventTypePartitionView
+        //special handling for finding correct last  partition is done in selectLast()
+        return filteredFirstStats.stream().map(first -> {
             final PartitionStatistics last = lastStats.stream()
                     .filter(l -> l.getPartition().equals(first.getPartition()))
                     .findAny().get();
@@ -158,9 +174,6 @@ public class PartitionsController {
                     cursorConverter.convert(first.getFirst()).getOffset(),
                     cursorConverter.convert(selectLast(timelines, last, first)).getOffset());
         }).collect(Collectors.toList());
-
-        result.addAll(cursorLags);
-        return result;
     }
 
     private List<Cursor> getParsedCursors(final String cursorsString, final String eventType){
@@ -205,26 +218,16 @@ public class PartitionsController {
         return lastStats;
     }
 
-    private Map<String, List<Cursor>> getCursorsGroupByPartition(final List<Cursor> cursorList) {
-        final Map<String, List<Cursor>> cursorsGroupByPartition =
-                cursorList.stream()
-                .collect(Collectors.groupingBy(Cursor::getPartition));
-
-        checkDuplicatePartitionIds(cursorsGroupByPartition);
-        return cursorsGroupByPartition;
-    }
-
     private List<EventTypePartitionView> getViewsWithUnconsumedEvents
             (final String eventTypeName,
              final List<Cursor> cursorList) {
 
         final List<EventTypePartitionView> cursorLags
-                = CursorUtil
+                = cursorOperationsService
                 .toCursorLagStream(
                         cursorList,
                         eventTypeName,
-                        cursorConverter,
-                        cursorOperationsService)
+                        cursorConverter)
                 .map(cl -> new EventTypePartitionView(
                                 cl.getPartition(),
                                 cl.getOldestAvailableOffset(),
@@ -232,8 +235,8 @@ public class PartitionsController {
                                 cl.getUnconsumedEvents())
                 ).collect(Collectors.toList());
 
-        if (cursorLags.isEmpty()){
-            throw new NakadiBaseException();
+        if (cursorLags.size() != cursorList.size()){
+            throw new NakadiBaseException(String.format("Problem with cursors '%s'", cursorLags));
         }
         return cursorLags;
     }
@@ -267,7 +270,7 @@ public class PartitionsController {
         if (consumedOffset != null) {
             return getViewsWithUnconsumedEvents(
                         eventTypeName,
-                        List.of(new Cursor(partition, consumedOffset)))
+                        singletonList(new Cursor(partition, consumedOffset)))
                     .get(0);
         } else {
             return getTopicPartition(eventTypeName, partition);
@@ -292,7 +295,7 @@ public class PartitionsController {
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final Optional<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                 .loadPartitionStatistics(timelines.get(0), partition);
-        if (!firstStats.isPresent()) {
+        if (firstStats.isEmpty()) {
             throw new NotFoundException("partition not found");
         }
         final NakadiCursor newest;
