@@ -34,7 +34,7 @@ public class LabelValueTest {
         final String[] validValues = new String[]{
                 "",
                 null,
-                "a".repeat(1000)
+                "a".repeat(63)
         };
 
         for (final String valid : validValues) {
@@ -46,7 +46,7 @@ public class LabelValueTest {
     @Test
     public void whenInvalidLabelValueThenViolation() {
         final String[] invalidValues = new String[]{
-                "a".repeat(1001),
+                "a".repeat(64),
                 "-test",
                 ".test",
                 "_test",
