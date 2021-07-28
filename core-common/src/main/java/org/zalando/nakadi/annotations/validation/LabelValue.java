@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
         ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE,
         ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
-@Size(max = 1000)
+@Size(max = 63)
 @Pattern(regexp = "^([a-zA-Z0-9]([a-zA-Z0-9_.-]*[a-zA-Z0-9])?)?$", message = "Should contain only allowed symbols")
 @Constraint(validatedBy = {})
 public @interface LabelValue {
