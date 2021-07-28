@@ -337,8 +337,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish an event to the event type (without partition compaction key)
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -374,8 +374,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -428,8 +428,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -605,8 +605,9 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Field \"annotations[]\" Key name should start with letter or digit " +
-                        "and end with letter\nField \"annotations[]\" Key cannot be empty"))
+                .body(containsString("Field \\\"annotations[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"annotations[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
         final Map<String, String> labels = new HashMap<>();
@@ -617,8 +618,9 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Field \"labels[]\" Key name should start with letter or digit " +
-                        "and end with letter\nField \"labels[]\" Key cannot be empty"))
+                .body(containsString("Field \\\"labels[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"labels[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
