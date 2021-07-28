@@ -605,7 +605,8 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Error validating annotation <:test-value>; Key cannot be empty."))
+                .body(containsString("Field \"annotations[]\" Key name should start with letter or digit " +
+                        "and end with letter\nField \"annotations[]\" Key cannot be empty"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
         final Map<String, String> labels = new HashMap<>();
@@ -616,7 +617,8 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Error validating label <:test-value>; Key cannot be empty."))
+                .body(containsString("Field \"labels[]\" Key name should start with letter or digit " +
+                        "and end with letter\nField \"labels[]\" Key cannot be empty"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
