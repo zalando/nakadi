@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.References;
+import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.util.GlobalTracer;
@@ -82,6 +83,18 @@ public class TracingService {
         return GlobalTracer.get()
                 .buildSpan(operationName)
                 .asChildOf(span).start();
+    }
+
+    public static void runWithActiveSpan(final Span span, final Runnable task) {
+        try (Scope scope = activateSpan(span)) {
+            task.run();
+        } finally {
+            span.finish();
+        }
+    }
+
+    private static Scope activateSpan(final Span span) {
+        return GlobalTracer.get().scopeManager().activate(span, false);
     }
 
     public static String getSLOBucket(final long batchSize) {
