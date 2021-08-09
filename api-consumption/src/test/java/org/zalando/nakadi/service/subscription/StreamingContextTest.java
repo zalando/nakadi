@@ -85,10 +85,7 @@ public class StreamingContextTest {
             }
         };
         final Thread t = new Thread(() -> {
-            try {
-                ctx.streamInternal(killerState);
-            } catch (final InterruptedException ignore) {
-            }
+            ctx.streamInternal(killerState);
         });
         t.start();
         t.join(1000);
@@ -156,14 +153,11 @@ public class StreamingContextTest {
     public void testOnNodeShutdown() throws Exception {
         final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
         final Thread t = new Thread(() -> {
-            try {
-                ctxSpy.streamInternal(new State() {
-                    @Override
-                    public void onEnter() {
-                    }
-                });
-            } catch (final InterruptedException ignore) {
-            }
+            ctxSpy.streamInternal(new State() {
+                @Override
+                public void onEnter() {
+                }
+            });
         });
         t.start();
         t.join(1000);

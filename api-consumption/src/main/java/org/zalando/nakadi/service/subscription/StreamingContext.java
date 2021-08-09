@@ -30,6 +30,7 @@ import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.TracingService;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -186,17 +187,22 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        streamInternal(new StartingState());
+        TracingService.runWithActiveSpan(getCurrentSpan(),
+                                         () -> streamInternal(new StartingState()));
     }
 
-    void streamInternal(final State firstState)
-            throws InterruptedException {
+    void streamInternal(final State firstState) {
         // Add first task - switch to starting state.
         switchState(firstState);
 
         while (currentState != DEAD_STATE) {
-            // Wait forever
-            final Runnable task = taskQueue.poll(1, TimeUnit.HOURS);
+            Runnable task = null;
+            try {
+                task = taskQueue.poll(1, TimeUnit.HOURS);
+            } catch (final InterruptedException ie) {
+                log.warn("Interrupted while polling for next task", ie);
+                switchStateImmediately(new CleanupState(ie));
+            }
             try {
                 if (task != null) {
                     task.run();
