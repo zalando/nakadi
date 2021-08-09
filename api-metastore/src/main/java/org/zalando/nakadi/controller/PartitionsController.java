@@ -218,10 +218,8 @@ public class PartitionsController {
         return lastStats;
     }
 
-    private List<EventTypePartitionView> getViewsWithUnconsumedEvents
-            (final String eventTypeName,
-             final List<Cursor> cursorList) {
-
+    private List<EventTypePartitionView> getViewsWithUnconsumedEvents(final String eventTypeName,
+                                                                      final List<Cursor> cursorList) {
         final List<EventTypePartitionView> cursorLags
                 = cursorOperationsService
                 .toCursorLagStream(
@@ -236,7 +234,9 @@ public class PartitionsController {
                 ).collect(Collectors.toList());
 
         if (cursorLags.size() != cursorList.size()){
-            throw new NakadiBaseException(String.format("Problem with cursors '%s'", cursorLags));
+            throw new NakadiBaseException(String.format("Input cursors (%d) " +
+                    "and output cursors (%d) length mismatch for input '%s'"
+                    , cursorList.size(), cursorLags.size(), cursorList));
         }
         return cursorLags;
     }
