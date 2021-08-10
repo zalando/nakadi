@@ -238,7 +238,7 @@ public class SubscriptionStreamController {
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output,
                         connectionReady);
 
-                final Tracer.SpanBuilder spanBuilder = TracingService.getNewSpanBuilder(
+                final Tracer.SpanBuilder spanBuilder = TracingService.buildNewFollowerSpan(
                         "streaming_async", parentSubscriptionSpan)
                         .withTag("client", client.getClientId())
                         .withTag("session.id", session.getId())
@@ -249,7 +249,6 @@ public class SubscriptionStreamController {
                 ) {
                     streamer.stream();
                 }
-
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();

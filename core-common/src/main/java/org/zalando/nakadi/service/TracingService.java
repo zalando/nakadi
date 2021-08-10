@@ -7,23 +7,17 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 
-import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import java.io.Closeable;
 import java.util.concurrent.TimeUnit;
 
 public class TracingService {
-
     private static final String BUCKET_NAME_5_50_KB = "5K-50K";
     private static final String BUCKET_NAME_5_KB = "<5K";
     private static final String BUCKET_NAME_MORE_THAN_50_KB = ">50K";
 
     private static final Long BUCKET_5_KB = 5000L;
     private static final Long BUCKET_MORE_THAN_50_KB = 50000L;
-
-    public static Span getCurrentActiveSpan() {
-        return GlobalTracer.get().activeSpan();
-    }
 
     public static void logErrorInSpan(final Span span, final String error) {
         if (error != null) {
@@ -94,17 +88,11 @@ public class TracingService {
         return BUCKET_NAME_5_50_KB;
     }
 
-    public static Tracer.SpanBuilder getNewSpanBuilder(
-            final String operationName,
-            @Nullable
-            final Span referenceSpan) {
-        final Tracer.SpanBuilder spanBuilder = GlobalTracer.get()
+    public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName, final Span referenceSpan) {
+        return GlobalTracer.get()
                 .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()));
-        if (null != referenceSpan) {
-            spanBuilder.addReference(References.FOLLOWS_FROM, referenceSpan.context());
-        }
-        return spanBuilder;
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()))
+                .addReference(References.FOLLOWS_FROM, referenceSpan.context());
     }
 
     public static Closeable withActiveSpan(final Tracer.SpanBuilder spanBuilder) {
@@ -126,5 +114,9 @@ public class TracingService {
                 span.finish();
             }
         };
+    }
+
+    public static Span getActiveSpan() {
+        return GlobalTracer.get().activeSpan();
     }
 }
