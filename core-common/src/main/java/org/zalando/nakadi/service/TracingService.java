@@ -99,7 +99,7 @@ public class TracingService {
         final Span span = spanBuilder.start();
         final Closeable scope;
         try {
-            scope = GlobalTracer.get().scopeManager().activate(span, false);
+            scope = GlobalTracer.get().activateSpan(span);
         } catch (final RuntimeException ex) {
             try {
                 span.finish();

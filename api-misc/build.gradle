@@ -59,8 +59,8 @@ dependencies {
     compile 'org.slf4j:slf4j-log4j12'
 
     // open tracing
-    compile 'io.opentracing:opentracing-api:0.31.0'
-    compile 'io.opentracing:opentracing-util:0.31.0'
+    compile 'io.opentracing:opentracing-api:0.33.0'
+    compile 'io.opentracing:opentracing-util:0.33.0'
 
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"

@@ -2,8 +2,7 @@ package org.zalando.nakadi.filters;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
-import io.opentracing.propagation.TextMapExtractAdapter;
-import io.opentracing.propagation.TextMapInjectAdapter;
+import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.util.GlobalTracer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -91,7 +90,7 @@ public class TracingFilter extends OncePerRequestFilter {
                 .collect(Collectors.toMap(h -> h, request::getHeader));
 
         final SpanContext spanContext = GlobalTracer.get()
-                .extract(HTTP_HEADERS, new TextMapExtractAdapter(requestHeaders));
+                .extract(HTTP_HEADERS, new TextMapAdapter(requestHeaders));
         final Span baseSpan;
         if (spanContext != null) {
             if (isCommitRequest(request.getRequestURI(), request.getMethod())) {
@@ -129,7 +128,7 @@ public class TracingFilter extends OncePerRequestFilter {
             }
             final Map<String, String> spanContextToInject = new HashMap<>();
             GlobalTracer.get().inject(baseSpan.context(),
-                    HTTP_HEADERS, new TextMapInjectAdapter(spanContextToInject));
+                    HTTP_HEADERS, new TextMapAdapter(spanContextToInject));
             response.setHeader(SPAN_CONTEXT, spanContextToInject.toString());
             baseSpan.finish();
         }
