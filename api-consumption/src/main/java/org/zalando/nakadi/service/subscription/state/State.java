@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
@@ -93,5 +95,9 @@ public abstract class State {
 
     protected AutocommitSupport getAutocommit() {
         return getContext().getAutocommitSupport();
+    }
+
+    protected static void logStreamCloseReason(final String reason) {
+        TracingService.getCurrentActiveSpan().log(ImmutableMap.of("stream.close.reason", reason));
     }
 }

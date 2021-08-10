@@ -21,6 +21,10 @@ public class TracingService {
     private static final Long BUCKET_5_KB = 5000L;
     private static final Long BUCKET_MORE_THAN_50_KB = 50000L;
 
+    public static Span getCurrentActiveSpan() {
+        return GlobalTracer.get().activeSpan();
+    }
+
     public static void logErrorInSpan(final Span span, final String error) {
         if (error != null) {
             span.log(ImmutableMap.of("error.description", error));
@@ -35,23 +39,12 @@ public class TracingService {
         }
     }
 
-    public static void logStreamCloseReason(final String error) {
-        final Span currentActiveSpan = getCurrentActiveSpan();
-        if (null != currentActiveSpan && error != null) {
-            currentActiveSpan.log(ImmutableMap.of("stream.close.reason", error));
-        }
-    }
-
     public static Span extractSpan(final HttpServletRequest request, final String operation) {
         final Span span = (Span) request.getAttribute("span");
         if (span != null) {
             return span.setOperationName(operation);
         }
         return GlobalTracer.get().buildSpan("default_Span").start();
-    }
-
-    public static Span getCurrentActiveSpan() {
-        return GlobalTracer.get().activeSpan();
     }
 
     public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,
@@ -115,30 +108,23 @@ public class TracingService {
     }
 
     public static Closeable withActiveSpan(final Tracer.SpanBuilder spanBuilder) {
-        final Span newSpan = spanBuilder.start();
-        final Closeable activation;
+        final Span span = spanBuilder.start();
+        final Closeable scope;
         try {
-            activation = activateScope(newSpan);
-        } catch (RuntimeException ex) {
+            scope = GlobalTracer.get().scopeManager().activate(span, false);
+        } catch (final RuntimeException ex) {
             try {
-                newSpan.finish();
+                span.finish();
             } finally {
                 throw ex;
             }
         }
         return () -> {
             try {
-                activation.close();
+                scope.close();
             } finally {
-                newSpan.finish();
+                span.finish();
             }
         };
-
     }
-
-
-    public static Closeable activateScope(final Span span) {
-        return GlobalTracer.get().scopeManager().activate(span, false);
-    }
-
 }

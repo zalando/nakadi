@@ -6,7 +6,6 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.SubscriptionInitializer;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -42,7 +41,6 @@ public class StartingState extends State {
                 getContext().getSubscription(),
                 getContext().getTimelineService(),
                 getContext().getCursorConverter());
-        TracingService.getCurrentActiveSpan().setTag("session.id", getContext().getSessionId());
         try {
             checkStreamingSlotsAvailable(getZk().listSessions());
         } catch (NoStreamingSlotsAvailable | SubscriptionPartitionConflictException ex) {
@@ -51,8 +49,7 @@ public class StartingState extends State {
         }
 
         if (getZk().isCloseSubscriptionStreamsInProgress()) {
-            TracingService.logStreamCloseReason(
-                    "Resetting subscription cursors request is still in progress");
+            logStreamCloseReason("Resetting subscription cursors request is still in progress");
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
@@ -87,7 +84,7 @@ public class StartingState extends State {
                     .count();
 
             if (autoBalanceSessionsCount >= autoSlotsCount) {
-                TracingService.logStreamCloseReason("No streaming slots available");
+                logStreamCloseReason("No streaming slots available");
                 throw new NoStreamingSlotsAvailable(partitions.length);
             }
         }
@@ -98,7 +95,7 @@ public class StartingState extends State {
                 .filter(requestedPartitions::contains)
                 .collect(Collectors.toList());
         if (!conflictPartitions.isEmpty()) {
-            TracingService.logStreamCloseReason("Partition already taken by other stream of the subscription");
+            logStreamCloseReason("Partition already taken by other stream of the subscription");
             throw SubscriptionPartitionConflictException.of(conflictPartitions);
         }
     }

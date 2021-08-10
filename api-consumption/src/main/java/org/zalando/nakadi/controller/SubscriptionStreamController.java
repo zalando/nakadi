@@ -38,6 +38,7 @@ import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
@@ -222,12 +223,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
 
-            final Tracer.SpanBuilder spanBuilder = TracingService.getNewSpanBuilder(
-                    "streaming_async", parentSubscriptionSpan)
-                    .withTag("client", client.getClientId())
-                    .withTag("subscription.id", subscriptionId);
-
-            try (Closeable ignored = TracingService.withActiveSpan(spanBuilder)) {
+            try {
                 if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
@@ -237,9 +233,20 @@ public class SubscriptionStreamController {
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
 
-                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output, connectionReady);
+                final Session session = Session.generate(1, streamParameters.getPartitions());
 
-                try (Closeable ignore = shutdownHooks.addHook(streamer::terminateStream)) { // bugfix ARUHA-485
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output,
+                        connectionReady);
+
+                final Tracer.SpanBuilder spanBuilder = TracingService.getNewSpanBuilder(
+                        "streaming_async", parentSubscriptionSpan)
+                        .withTag("client", client.getClientId())
+                        .withTag("session.id", session.getId())
+                        .withTag("subscription.id", subscriptionId);
+                try (
+                    Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
+                    Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
+                ) {
                     streamer.stream();
                 }
 

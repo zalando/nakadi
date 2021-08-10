@@ -89,10 +89,10 @@ public class SubscriptionStreamerFactory {
     public SubscriptionStreamer build(
             final Subscription subscription,
             final StreamParameters streamParameters,
+            final Session session,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady)
             throws InternalNakadiException, NoSuchEventTypeException {
-        final Session session = Session.generate(1, streamParameters.getPartitions());
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
                 LogPathBuilder.build(subscription.getId(), session.getId()),
