@@ -4,9 +4,12 @@ import com.google.common.collect.ImmutableMap;
 import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
+import java.io.Closeable;
 import java.util.concurrent.TimeUnit;
 
 public class TracingService {
@@ -32,9 +35,10 @@ public class TracingService {
         }
     }
 
-    public static void logStreamCloseReason(final Span span, final String error) {
-        if (error != null) {
-            span.log(ImmutableMap.of("stream.close.reason", error));
+    public static void logStreamCloseReason(final String error) {
+        final Span currentActiveSpan = getCurrentActiveSpan();
+        if (null != currentActiveSpan && error != null) {
+            currentActiveSpan.log(ImmutableMap.of("stream.close.reason", error));
         }
     }
 
@@ -44,6 +48,10 @@ public class TracingService {
             return span.setOperationName(operation);
         }
         return GlobalTracer.get().buildSpan("default_Span").start();
+    }
+
+    public static Span getCurrentActiveSpan() {
+        return GlobalTracer.get().activeSpan();
     }
 
     public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,
@@ -91,6 +99,46 @@ public class TracingService {
             return BUCKET_NAME_5_KB;
         }
         return BUCKET_NAME_5_50_KB;
+    }
+
+    public static Tracer.SpanBuilder getNewSpanBuilder(
+            final String operationName,
+            @Nullable
+            final Span referenceSpan) {
+        final Tracer.SpanBuilder spanBuilder = GlobalTracer.get()
+                .buildSpan(operationName)
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()));
+        if (null != referenceSpan) {
+            spanBuilder.addReference(References.FOLLOWS_FROM, referenceSpan.context());
+        }
+        return spanBuilder;
+    }
+
+    public static Closeable withActiveSpan(final Tracer.SpanBuilder spanBuilder) {
+        final Span newSpan = spanBuilder.start();
+        final Closeable activation;
+        try {
+            activation = activateScope(newSpan);
+        } catch (RuntimeException ex) {
+            try {
+                newSpan.finish();
+            } finally {
+                throw ex;
+            }
+        }
+        return () -> {
+            try {
+                activation.close();
+            } finally {
+                newSpan.finish();
+            }
+        };
+
+    }
+
+
+    public static Closeable activateScope(final Span span) {
+        return GlobalTracer.get().scopeManager().activate(span, false);
     }
 
 }

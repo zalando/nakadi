@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.subscription;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +18,6 @@ import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.NakadiCursorComparator;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -92,23 +90,13 @@ public class SubscriptionStreamerFactory {
             final Subscription subscription,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
-            final AtomicBoolean connectionReady,
-            final Span parentSpan, final String clientId)
+            final AtomicBoolean connectionReady)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1, streamParameters.getPartitions());
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
                 LogPathBuilder.build(subscription.getId(), session.getId()),
                 streamParameters.commitTimeoutMillis);
-        final Span streamSpan;
-        if (parentSpan != null) {
-            streamSpan = TracingService.getNewSpanWithReference("streaming_async",
-                    System.currentTimeMillis(), parentSpan.context());
-            streamSpan.setTag("client", clientId);
-            streamSpan.setTag("subscription.id", subscription.getId());
-        } else {
-            streamSpan = null;
-        }
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
@@ -135,7 +123,6 @@ public class SubscriptionStreamerFactory {
                 .setCursorOperationsService(cursorOperationsService)
                 .setKpiDataStremedEventType(kpiDataStreamedEventType)
                 .setKpiCollectionFrequencyMs(kpiCollectionFrequencyMs)
-                .setCurrentSpan(streamSpan)
                 .build();
     }
 

@@ -193,7 +193,7 @@ class StreamingState extends State {
     }
 
     private void shutdownGracefully(final String reason) {
-        TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
+        TracingService.logStreamCloseReason(
                 "Shutting down gracefully. Reason: " + reason);
         getLog().info("Shutting down gracefully. Reason: {}", reason);
         switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));

@@ -16,7 +16,7 @@ public class SubscriptionOutputImplTest {
     public void testProblemRaisedForConflictException() {
         final SubscriptionStreamController ssc =
                 new SubscriptionStreamController(null, new ObjectMapper(), null,
-                        null, null, null, null,
+                        null, null, null,
                         null, null);
 
         final SubscriptionStreamController.SubscriptionOutputImpl impl =
