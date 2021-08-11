@@ -8,7 +8,6 @@ import io.opentracing.Tracer;
 import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.util.GlobalTracer;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.Closeable;
 import java.util.HashMap;
 import java.util.Map;

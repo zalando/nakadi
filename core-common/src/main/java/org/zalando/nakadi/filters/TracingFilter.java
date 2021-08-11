@@ -133,11 +133,7 @@ public class TracingFilter extends OncePerRequestFilter {
 
         final SpanContext spanContext = TracingService.extractFromRequestHeaders(requestHeaders);
         if (spanContext != null) {
-            if (isCommitRequest(request.getRequestURI(), request.getMethod())) {
-                spanBuilder = TracingService.buildNewFollowerSpan("commit_events", spanContext);
-            } else {
-                spanBuilder = TracingService.buildNewFollowerSpan("all_requests", spanContext);
-            }
+            spanBuilder = TracingService.buildNewFollowerSpan("all_requests", spanContext);
         } else {
             spanBuilder = TracingService.buildNewSpan("all_requests");
         }
@@ -172,13 +168,7 @@ public class TracingFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean isCommitRequest(final String path, final String method) {
-        return (path != null && "POST".equals(method) &&
-                path.startsWith("/subscriptions/") &&
-                (path.endsWith("/cursors") || path.endsWith("/cursors/")));
-    }
-
-    private void traceResponse(final Span span, final HttpServletResponse response) {
+    private static void traceResponse(final Span span, final HttpServletResponse response) {
         final int statusCode = response.getStatus();
         span.setTag("http.status_code", statusCode)
                 .setTag("error", statusCode == 207 || statusCode >= 500);
