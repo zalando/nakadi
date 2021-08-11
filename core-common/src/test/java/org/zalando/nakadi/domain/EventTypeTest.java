@@ -3,6 +3,8 @@ package org.zalando.nakadi.domain;
 import org.junit.Test;
 import org.zalando.nakadi.utils.TestUtils;
 
+import java.util.Map;
+
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -30,8 +32,8 @@ public class EventTypeTest {
     public void canDeserializeWithAnnotationsAndLabels() throws Exception {
         final String json = TestUtils.resourceAsString("event-type.with.annotations-and-labels.json", this.getClass());
         final EventType eventType = TestUtils.OBJECT_MAPPER.readValue(json, EventType.class);
-        final ResourceAnnotations annotations = eventType.getAnnotations();
-        final ResourceLabels labels = eventType.getLabels();
+        final Map<String, String> annotations = eventType.getAnnotations();
+        final Map<String, String> labels = eventType.getLabels();
         assertNotNull(annotations);
         assertNotNull(labels);
         assertEquals(2, annotations.size());

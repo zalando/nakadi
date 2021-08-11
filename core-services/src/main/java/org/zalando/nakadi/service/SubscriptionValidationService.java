@@ -15,20 +15,17 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.InvalidResourceAnnotationException;
-import org.zalando.nakadi.exceptions.runtime.InvalidResourceLabelException;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
-import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
-import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.validation.ResourceValidationHelperService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collection;
@@ -52,7 +49,6 @@ public class SubscriptionValidationService {
     private final EventTypeCache eventTypeCache;
     private final FeatureToggleService featureToggleService;
     private final ApplicationService applicationService;
-    private final ResourceValidationHelperService validationHelperService;
 
     @Autowired
     public SubscriptionValidationService(final TimelineService timelineService,
@@ -61,14 +57,12 @@ public class SubscriptionValidationService {
                                          final AuthorizationValidator authorizationValidator,
                                          final EventTypeCache eventTypeCache,
                                          final FeatureToggleService featureToggleService,
-                                         final ApplicationService applicationService,
-                                         final ResourceValidationHelperService validationHelperService) {
+                                         final ApplicationService applicationService) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
-        this.validationHelperService = validationHelperService;
         this.featureToggleService = featureToggleService;
         this.applicationService = applicationService;
     }
@@ -97,12 +91,6 @@ public class SubscriptionValidationService {
         if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
             validateInitialCursors(subscription, allPartitions);
         }
-        try {
-            validationHelperService.checkAnnotations(subscription.getAnnotations());
-            validationHelperService.checkLabels(subscription.getLabels());
-        } catch (final InvalidResourceAnnotationException | InvalidResourceLabelException e) {
-            throw new UnableProcessException(e.getMessage(), e);
-        }
         // Verify that subscription authorization object is valid
         authorizationValidator.validateAuthorization(subscription.asBaseResource("new-subscription"));
 
@@ -129,12 +117,6 @@ public class SubscriptionValidationService {
         }
         if (!Objects.equals(newValue.getInitialCursors(), old.getInitialCursors())) {
             throw new SubscriptionUpdateConflictException("Not allowed to change initial cursors");
-        }
-        try {
-            validationHelperService.checkAnnotations(newValue.getAnnotations());
-            validationHelperService.checkLabels(newValue.getLabels());
-        } catch (final InvalidResourceAnnotationException | InvalidResourceLabelException e) {
-            throw new UnableProcessException(e.getMessage(), e);
         }
         authorizationValidator.validateAuthorization(old.asResource(), newValue.asBaseResource(old.getId()));
     }

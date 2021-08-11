@@ -3,6 +3,10 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.annotations.validation.AnnotationKey;
+import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.LabelKey;
+import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.EventTypeAuthz;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -15,6 +19,7 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -67,11 +72,15 @@ public class EventTypeBase implements EventTypeAuthz {
 
     @Valid
     @Nullable
-    private ResourceAnnotations annotations;
+    private Map<
+            @AnnotationKey String,
+            @AnnotationValue String> annotations;
 
     @Valid
     @Nullable
-    private ResourceLabels labels;
+    private Map<
+            @LabelKey String,
+            @LabelValue String> labels;
 
     @NotNull
     private CompatibilityMode compatibilityMode;
@@ -104,8 +113,8 @@ public class EventTypeBase implements EventTypeAuthz {
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
                          final CleanupPolicy cleanupPolicy,
-                         final ResourceAnnotations annotations,
-                         final ResourceLabels labels) {
+                         final Map<String, String> annotations,
+                         final Map<String, String> labels) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -290,19 +299,19 @@ public class EventTypeBase implements EventTypeAuthz {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
     }
 
-    public void setAnnotations(final ResourceAnnotations annotations) {
+    public void setAnnotations(final Map<String, String> annotations) {
         this.annotations = annotations;
     }
 
-    public ResourceAnnotations getAnnotations() {
+    public Map<String, String> getAnnotations() {
         return this.annotations;
     }
 
-    public void setLabels(final ResourceLabels labels) {
+    public void setLabels(final Map<String, String> labels) {
         this.labels = labels;
     }
 
-    public ResourceLabels getLabels() {
+    public Map<String, String> getLabels() {
         return this.labels;
     }
 }

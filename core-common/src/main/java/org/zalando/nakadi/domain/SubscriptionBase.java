@@ -1,6 +1,10 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.annotations.validation.AnnotationKey;
+import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.LabelKey;
+import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -10,6 +14,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -47,10 +52,14 @@ public class SubscriptionBase {
     private SubscriptionAuthorization authorization;
 
     @Nullable
-    private ResourceAnnotations annotations;
+    private Map<
+            @AnnotationKey String,
+            @AnnotationValue String> annotations;
 
     @Nullable
-    private ResourceLabels labels;
+    private Map<
+            @LabelKey String,
+            @LabelValue String> labels;
 
     public SubscriptionBase() {
     }
@@ -115,20 +124,20 @@ public class SubscriptionBase {
     }
 
     @Nullable
-    public ResourceAnnotations getAnnotations() {
+    public Map<String, String> getAnnotations() {
         return annotations;
     }
 
-    public void setAnnotations(@Nullable final ResourceAnnotations annotations) {
+    public void setAnnotations(@Nullable final Map<String, String> annotations) {
         this.annotations = annotations;
     }
 
     @Nullable
-    public ResourceLabels getLabels() {
+    public Map<String, String> getLabels() {
         return labels;
     }
 
-    public void setLabels(@Nullable final ResourceLabels labels) {
+    public void setLabels(@Nullable final Map<String, String> labels) {
         this.labels = labels;
     }
 

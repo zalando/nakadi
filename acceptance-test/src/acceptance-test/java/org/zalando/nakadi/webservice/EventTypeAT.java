@@ -18,10 +18,8 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ResourceAnnotations;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.ResourceLabels;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
@@ -34,6 +32,7 @@ import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -338,8 +337,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish an event to the event type (without partition compaction key)
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -375,8 +374,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -429,8 +428,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -518,10 +517,10 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenPOSTEventTypeWithAnnotationsAndLabelsThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final ResourceAnnotations annotations = new ResourceAnnotations();
+        final Map<String, String> annotations = new HashMap<>();
         annotations.put("test.io/test-key", "test-value");
         eventType.setAnnotations(annotations);
-        final ResourceLabels labels = new ResourceLabels();
+        final Map<String, String> labels = new HashMap<>();
         labels.put("test.io/test-label-key", "test-value");
         eventType.setLabels(labels);
 
@@ -577,9 +576,9 @@ public class EventTypeAT extends BaseAT {
                 .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
                 .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
 
-        eventType.setAnnotations(new ResourceAnnotations());
+        eventType.setAnnotations(new HashMap<>());
         eventType.getAnnotations().put("nakadi.io/annotation-key", "new-annotation");
-        eventType.setLabels(new ResourceLabels());
+        eventType.setLabels(new HashMap<>());
         eventType.getLabels().put("nakadi.io/label-key", "new-label");
 
         given().body(objectMapper.writer().writeValueAsString(eventType))
@@ -598,7 +597,7 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenPOSTEventTypeWithInvalidAnnotationOrLabelThenError() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final ResourceAnnotations annotations = new ResourceAnnotations();
+        final Map<String, String> annotations = new HashMap<>();
         annotations.put("", "test-value");
         eventType.setAnnotations(annotations);
         eventType.setLabels(null);
@@ -606,10 +605,12 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Error validating annotation <:test-value>; Key cannot be empty."))
+                .body(containsString("Field \\\"annotations[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"annotations[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
-        final ResourceLabels labels = new ResourceLabels();
+        final Map<String, String> labels = new HashMap<>();
         labels.put("", "test-value");
         eventType.setLabels(labels);
         eventType.setAnnotations(null);
@@ -617,7 +618,9 @@ public class EventTypeAT extends BaseAT {
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
                 .contentType(JSON).when().post(ENDPOINT).then()
-                .body(containsString("Error validating label <:test-value>; Key cannot be empty."))
+                .body(containsString("Field \\\"labels[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"labels[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
