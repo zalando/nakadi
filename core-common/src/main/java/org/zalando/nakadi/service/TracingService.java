@@ -5,11 +5,17 @@ import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.util.GlobalTracer;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.Closeable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
+import static io.opentracing.propagation.Format.Builtin.TEXT_MAP;
 
 public class TracingService {
     private static final String BUCKET_NAME_5_50_KB = "5K-50K";
@@ -88,11 +94,15 @@ public class TracingService {
         return BUCKET_NAME_5_50_KB;
     }
 
-    public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName, final Span referenceSpan) {
+    public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
         return GlobalTracer.get()
                 .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()))
-                .addReference(References.FOLLOWS_FROM, referenceSpan.context());
+                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()));
+    }
+
+    public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName,
+                                                          final SpanContext referenceContext) {
+        return buildNewSpan(operationName).addReference(References.FOLLOWS_FROM, referenceContext);
     }
 
     public static Closeable withActiveSpan(final Tracer.SpanBuilder spanBuilder) {
@@ -116,7 +126,21 @@ public class TracingService {
         };
     }
 
+    public static Closeable activateSpan(final Span span) {
+        return GlobalTracer.get().activateSpan(span);
+    }
+
     public static Span getActiveSpan() {
         return GlobalTracer.get().activeSpan();
+    }
+
+    public static SpanContext extractFromRequestHeaders(final Map<String, String> requestHeaders) {
+        return GlobalTracer.get().extract(HTTP_HEADERS, new TextMapAdapter(requestHeaders));
+    }
+
+    public static Map<String, String> getTextMapFromSpanContext(final SpanContext spanContext) {
+        final Map<String, String> textMap = new HashMap<>();
+        GlobalTracer.get().inject(spanContext, TEXT_MAP, new TextMapAdapter(textMap));
+        return textMap;
     }
 }

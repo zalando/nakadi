@@ -238,8 +238,8 @@ public class SubscriptionStreamController {
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output,
                         connectionReady);
 
-                final Tracer.SpanBuilder spanBuilder = TracingService.buildNewFollowerSpan(
-                        "streaming_async", parentSubscriptionSpan)
+                final Tracer.SpanBuilder spanBuilder =
+                        TracingService.buildNewFollowerSpan("streaming_async", parentSubscriptionSpan.context())
                         .withTag("client", client.getClientId())
                         .withTag("session.id", session.getId())
                         .withTag("subscription.id", subscriptionId);
