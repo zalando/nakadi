@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import io.opentracing.Tracer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.WebDataBinder;
@@ -30,8 +29,6 @@ import org.zalando.nakadi.service.TracingService;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Set;
 
 import static org.springframework.http.HttpStatus.NO_CONTENT;
@@ -94,14 +91,12 @@ public class SubscriptionController {
             throws InconsistentStateException, NoSuchEventTypeException, NoSuchSubscriptionException,
             ServiceTemporarilyUnavailableException, InternalNakadiException {
 
-        final Tracer.SpanBuilder statsSpan = TracingService.buildNewSpan("fetch_stats")
-                .withTag("subscription.id", subscriptionId)
-                .withTag("show_time_lag", showTimeLag);
-        try (Closeable ignored = TracingService.withActiveSpan(statsSpan)) {
-            final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
-            return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
-        } catch (final IOException ioe) {
-            throw new InternalNakadiException("Error closing active span scope", ioe);
-        }
+        TracingService.getActiveSpan()
+                .setOperationName("fetch_stats")
+                .setTag("subscription.id", subscriptionId)
+                .setTag("show_time_lag", showTimeLag);
+
+        final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
+        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }
 }

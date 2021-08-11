@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
-import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -262,14 +261,15 @@ public class EventPublisher {
     private void validate(final List<BatchItem> batch, final EventType eventType, final boolean delete)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
 
-        if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
-            throw new EventValidationException("It is not allowed to delete events from non compacted event type");
-        }
+        final Span validationSpan =
+                TracingService.buildNewSpan("validation")
+                .withTag("event_type", eventType.getName())
+                .start();
+        try (Closeable ignored = TracingService.activateSpan(validationSpan)) {
 
-        final Tracer.SpanBuilder validationSpan = TracingService.buildNewSpan("validation")
-                .withTag("event_type", eventType.getName());
-
-        try (Closeable ignored = TracingService.withActiveSpan(validationSpan)) {
+            if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
+                throw new EventValidationException("It is not allowed to delete events from non compacted event type");
+            }
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
@@ -280,16 +280,17 @@ public class EventPublisher {
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                     if (eventType.getCategory() != EventCategory.UNDEFINED) {
-                        TracingService.getActiveSpan().log(ImmutableMap.of(
+                        validationSpan.log(ImmutableMap.of(
                                 "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
                                 "error", e.getMessage()));
                     }
-
                     throw e;
                 }
             }
         } catch (final IOException ioe) {
             throw new InternalNakadiException("Error closing active span scope", ioe);
+        } finally {
+            validationSpan.finish();
         }
     }
 

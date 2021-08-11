@@ -172,7 +172,9 @@ public class SubscriptionStreamController {
             final HttpServletResponse response,
             final Client client) {
 
-        TracingService.getActiveSpan().setTag("subscription.id", subscriptionId);
+        TracingService.getActiveSpan()
+                .setOperationName("stream_events_request")
+                .setTag("subscription.id", subscriptionId);
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
@@ -194,7 +196,9 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
 
-        TracingService.getActiveSpan().setTag("subscription.id", subscriptionId);
+        TracingService.getActiveSpan()
+                .setOperationName("stream_events_request")
+                .setTag("subscription.id", subscriptionId);
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
                 batchTimeout, streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(),
