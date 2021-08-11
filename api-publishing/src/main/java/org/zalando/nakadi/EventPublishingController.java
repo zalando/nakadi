@@ -1,7 +1,7 @@
 package org.zalando.nakadi;
 
 import com.google.common.base.Charsets;
-import io.opentracing.Span;
+import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +29,8 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.TracingService;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -113,19 +115,22 @@ public class EventPublishingController {
             EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
         try {
-            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
-            final Span publishingSpan = TracingService.extractSpan(request, "publish_events")
-                    .setTag("event_type", eventTypeName)
-                    .setTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
-                    .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
-
             final EventPublishResult result;
-            if (delete) {
-                result = publisher.delete(eventsAsString, eventTypeName);
-            } else {
-                result = publisher.publish(eventsAsString, eventTypeName);
-            }
+            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
+            final Tracer.SpanBuilder publishingSpan = TracingService.buildNewSpan("publish_events")
+                    .withTag("event_type", eventTypeName)
+                    .withTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
+                    .withTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+            try (Closeable ignored = TracingService.withActiveSpan(publishingSpan)) {
+                if (delete) {
+                    result = publisher.delete(eventsAsString, eventTypeName);
+                } else {
+                    result = publisher.publish(eventsAsString, eventTypeName);
+                }
+            } catch (final IOException ioe) {
+                throw new InternalNakadiException("Error closing active span scope", ioe);
+            }
             final int eventCount = result.getResponses().size();
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);

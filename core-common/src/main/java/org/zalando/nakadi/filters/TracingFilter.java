@@ -154,9 +154,7 @@ public class TracingFilter extends OncePerRequestFilter {
 
         final Span span = spanBuilder.start();
         try (Closeable ignored = TracingService.activateSpan(span)) {
-
             span.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
-            request.setAttribute("span", span);
 
             //execute request
             final AsyncRequestTracingWrapper requestWrapper = new AsyncRequestTracingWrapper(request, span.context());

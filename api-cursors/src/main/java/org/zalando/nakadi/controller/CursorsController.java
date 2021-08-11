@@ -1,6 +1,6 @@
 package org.zalando.nakadi.controller;
 
-import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +32,8 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,21 +90,30 @@ public class CursorsController {
         if (cursors.isEmpty()) {
             throw new CursorsAreEmptyException();
         }
-        final Span commitSpan = TracingService.extractSpan(request, "commit_events");
-        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            TracingService.logError("Application or subscription is blocked");
-            throw new BlockedException("Application or subscription is blocked");
-        }
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
-        final boolean allCommitted = items.stream().allMatch(item -> item);
-        if (allCommitted) {
-            return ResponseEntity.noContent().build();
-        } else {
-            final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
+        final Tracer.SpanBuilder commitSpan =
+                TracingService.buildNewSpan("commit_events")
+                .withTag("subscription.id", subscriptionId)
+                .withTag("stream.id", streamId);
+        try (Closeable ignored = TracingService.withActiveSpan(commitSpan)) {
+
+            if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                TracingService.logError("Application or subscription is blocked");
+                throw new BlockedException("Application or subscription is blocked");
+            }
+            final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
+
+            final boolean allCommitted = items.stream().allMatch(item -> item);
+            if (allCommitted) {
+                return ResponseEntity.noContent().build();
+            } else {
+                final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
                     .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
                     .collect(Collectors.toList());
-            return ResponseEntity.ok(new ItemsWrapper<>(body));
+                return ResponseEntity.ok(new ItemsWrapper<>(body));
+            }
+        } catch (final IOException ioe) {
+            throw new InternalNakadiException("Error closing active span scope", ioe);
         }
     }
 
@@ -117,9 +128,14 @@ public class CursorsController {
             throw new BlockedException("Application or subscription is blocked");
         }
 
-        final Span resetSpan = TracingService.extractSpan(request, "reset_cursors");
-        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
-
+        final Tracer.SpanBuilder resetSpan =
+                TracingService.buildNewSpan("reset_cursors")
+                .withTag("subscription.id", subscriptionId);
+        try (Closeable ignored = TracingService.withActiveSpan(resetSpan)) {
+            cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
+        } catch (final IOException ioe) {
+            throw new InternalNakadiException("Error closing active span scope", ioe);
+        }
         return ResponseEntity.noContent().build();
     }
 

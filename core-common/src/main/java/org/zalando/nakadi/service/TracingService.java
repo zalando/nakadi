@@ -47,14 +47,6 @@ public class TracingService {
         }
     }
 
-    public static Span extractSpan(final HttpServletRequest request, final String operation) {
-        final Span span = (Span) request.getAttribute("span");
-        if (span != null) {
-            return span.setOperationName(operation);
-        }
-        return GlobalTracer.get().buildSpan("default_Span").start();
-    }
-
     public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
         return GlobalTracer.get().buildSpan(operationName);
     }

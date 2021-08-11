@@ -4,7 +4,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import io.opentracing.Span;
 import io.opentracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,11 +171,12 @@ public class SubscriptionStreamController {
             final HttpServletRequest request,
             final HttpServletResponse response,
             final Client client) {
+
+        TracingService.getActiveSpan().setTag("subscription.id", subscriptionId);
+
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
-        return stream(subscriptionId, response, client, streamParameters,
-                TracingService.extractSpan(request, "stream_events_request")
-                        .setTag("subscription.id", subscriptionId));
+        return stream(subscriptionId, response, client, streamParameters);
     }
 
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
@@ -193,6 +193,9 @@ public class SubscriptionStreamController {
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) {
+
+        TracingService.getActiveSpan().setTag("subscription.id", subscriptionId);
+
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
                 batchTimeout, streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(),
                 commitTimeout);
@@ -200,16 +203,13 @@ public class SubscriptionStreamController {
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
 
-        return stream(subscriptionId, response, client, streamParameters,
-                TracingService.extractSpan(request, "stream_events_request")
-                        .setTag("subscription.id", subscriptionId));
+        return stream(subscriptionId, response, client, streamParameters);
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
                                          final HttpServletResponse response,
                                          final Client client,
-                                         final StreamParameters streamParameters,
-                                         final Span parentSubscriptionSpan) {
+                                         final StreamParameters streamParameters) {
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
@@ -239,7 +239,7 @@ public class SubscriptionStreamController {
                         connectionReady);
 
                 final Tracer.SpanBuilder spanBuilder =
-                        TracingService.buildNewFollowerSpan("streaming_async", parentSubscriptionSpan.context())
+                        TracingService.buildNewFollowerSpan("streaming_async", TracingService.getActiveSpan().context())
                         .withTag("client", client.getClientId())
                         .withTag("session.id", session.getId())
                         .withTag("subscription.id", subscriptionId);
