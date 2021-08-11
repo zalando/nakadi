@@ -121,9 +121,9 @@ public class EventPublishingController {
 
             final EventPublishResult result;
             if (delete) {
-                result = publisher.delete(eventsAsString, eventTypeName, publishingSpan);
+                result = publisher.delete(eventsAsString, eventTypeName);
             } else {
-                result = publisher.publish(eventsAsString, eventTypeName, publishingSpan);
+                result = publisher.publish(eventsAsString, eventTypeName);
             }
 
             final int eventCount = result.getResponses().size();

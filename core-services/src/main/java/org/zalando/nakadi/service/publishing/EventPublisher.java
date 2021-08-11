@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.publishing;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
+import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -88,7 +89,7 @@ public class EventPublisher {
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName, final Span parentSpan)
+    public EventPublishResult publish(final String events, final String eventTypeName)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -97,10 +98,10 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, parentSpan, false);
+        return processInternal(events, eventTypeName, true, false);
     }
 
-    public EventPublishResult delete(final String events, final String eventTypeName, final Span parentSpan)
+    public EventPublishResult delete(final String events, final String eventTypeName)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -109,13 +110,12 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, parentSpan, true);
+        return processInternal(events, eventTypeName, true, true);
     }
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
                                        final boolean useAuthz,
-                                       final Span parentSpan,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
             AccessDeniedException, ServiceTemporarilyUnavailableException, PublishEventOwnershipException,
@@ -131,13 +131,13 @@ public class EventPublisher {
                 authValidator.authorizeEventTypeWrite(eventType);
             }
             validateEventOwnership(eventType, batch);
-            validate(batch, eventType, parentSpan, delete);
+            validate(batch, eventType, delete);
             partition(batch, eventType);
             setEventKey(batch, eventType);
             if (!delete) {
                 enrich(batch, eventType);
             }
-            submit(batch, eventType, parentSpan, delete);
+            submit(batch, eventType, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -259,16 +259,17 @@ public class EventPublisher {
         }
     }
 
-    private void validate(final List<BatchItem> batch, final EventType eventType, final Span parentSpan,
-                          final boolean delete)
+    private void validate(final List<BatchItem> batch, final EventType eventType, final boolean delete)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
-        final Span validationSpan = TracingService.getNewSpanWithParent("validation", System.currentTimeMillis(),
-                parentSpan);
-        validationSpan.setTag("event_type", eventType.getName());
+
         if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
             throw new EventValidationException("It is not allowed to delete events from non compacted event type");
         }
-        try {
+
+        final Tracer.SpanBuilder validationSpan = TracingService.buildNewSpan("validation")
+                .withTag("event_type", eventType.getName());
+
+        try (Closeable ignored = TracingService.withActiveSpan(validationSpan)) {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.VALIDATING);
                 try {
@@ -279,7 +280,7 @@ public class EventPublisher {
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                     if (eventType.getCategory() != EventCategory.UNDEFINED) {
-                        validationSpan.log(ImmutableMap.of(
+                        TracingService.getActiveSpan().log(ImmutableMap.of(
                                 "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
                                 "error", e.getMessage()));
                     }
@@ -287,25 +288,31 @@ public class EventPublisher {
                     throw e;
                 }
             }
-        } finally {
-            validationSpan.finish();
+        } catch (final IOException ioe) {
+            throw new InternalNakadiException("Error closing active span scope", ioe);
         }
     }
 
     private void submit(
-            final List<BatchItem> batch, final EventType eventType, final Span parentSpan, final boolean delete)
-            throws EventPublishingException {
+            final List<BatchItem> batch, final EventType eventType, final boolean delete)
+        throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
-        final Span publishSpan = TracingService.getNewSpanWithParent(parentSpan, "publishing_to_kafka")
-                .setTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic);
-        try {
-            timelineService.getTopicRepository(eventType).syncPostBatch(topic, batch, eventType.getName(), delete);
+
+        final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
+                .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
+                .start();
+        try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
+            timelineService
+                    .getTopicRepository(eventType)
+                    .syncPostBatch(topic, batch, eventType.getName(), delete);
         } catch (final EventPublishingException epe) {
-            publishSpan.log(epe.getMessage());
+            publishingSpan.log(epe.getMessage());
             throw epe;
+        } catch (final IOException ioe) {
+            throw new InternalNakadiException("Error closing active span scope", ioe);
         } finally {
-            publishSpan.finish();
+            publishingSpan.finish();
         }
     }
 

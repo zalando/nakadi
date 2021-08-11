@@ -152,9 +152,9 @@ public class TracingFilter extends OncePerRequestFilter {
                 .withTag("http.header.user_agent",
                          Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
 
-        try (Closeable ignored = TracingService.withActiveSpan(spanBuilder)) {
+        final Span span = spanBuilder.start();
+        try (Closeable ignored = TracingService.activateSpan(span)) {
 
-            final Span span = TracingService.getActiveSpan();
             span.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
             request.setAttribute("span", span);
 
@@ -169,6 +169,8 @@ public class TracingFilter extends OncePerRequestFilter {
             } else {
                 traceResponse(span, response);
             }
+        } finally {
+            span.finish();
         }
     }
 

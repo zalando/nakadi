@@ -22,7 +22,7 @@ public class EventsProcessorTest {
             eventsProcessor.queueEvent("test_et_name", event);
             TestUtils.waitFor(() -> {
                 try {
-                    Mockito.verify(eventPublisher).processInternal(any(), any(), eq(false), any(), eq(false));
+                    Mockito.verify(eventPublisher).processInternal(any(), any(), eq(false), eq(false));
                 } catch (final Exception e) {
                     throw new AssertionError(e);
                 }

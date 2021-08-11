@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.Closeable;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
 import static io.opentracing.propagation.Format.Builtin.TEXT_MAP;
@@ -24,6 +23,15 @@ public class TracingService {
 
     private static final Long BUCKET_5_KB = 5000L;
     private static final Long BUCKET_MORE_THAN_50_KB = 50000L;
+
+    public static String getSLOBucket(final long batchSize) {
+        if (batchSize > BUCKET_MORE_THAN_50_KB) {
+            return BUCKET_NAME_MORE_THAN_50_KB;
+        } else if (batchSize < BUCKET_5_KB) {
+            return BUCKET_NAME_5_KB;
+        }
+        return BUCKET_NAME_5_50_KB;
+    }
 
     public static void logErrorInSpan(final Span span, final String error) {
         if (error != null) {
@@ -47,57 +55,8 @@ public class TracingService {
         return GlobalTracer.get().buildSpan("default_Span").start();
     }
 
-    public static Span getNewSpanWithReference(final String operationName, final Long timeStamp,
-                                               final SpanContext referenceSpanContext) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .addReference(References.FOLLOWS_FROM, referenceSpanContext)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
-                .start();
-    }
-
-    public static Span getNewSpan(final String operationName, final Long timeStamp) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
-                .ignoreActiveSpan().start();
-    }
-
-    public static Span getNewSpanWithParent(final String operationName, final Long timeStamp,
-                                            final Span span) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
-                .asChildOf(span).start();
-    }
-
-    public static Span getNewSpanWithParent(final String operationName, final Long timeStamp,
-                                            final SpanContext spanContext) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(timeStamp))
-                .asChildOf(spanContext).start();
-    }
-
-    public static Span getNewSpanWithParent(final Span span, final String operationName) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .asChildOf(span).start();
-    }
-
-    public static String getSLOBucket(final long batchSize) {
-        if (batchSize > BUCKET_MORE_THAN_50_KB) {
-            return BUCKET_NAME_MORE_THAN_50_KB;
-        } else if (batchSize < BUCKET_5_KB) {
-            return BUCKET_NAME_5_KB;
-        }
-        return BUCKET_NAME_5_50_KB;
-    }
-
     public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
-        return GlobalTracer.get()
-                .buildSpan(operationName)
-                .withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()));
+        return GlobalTracer.get().buildSpan(operationName);
     }
 
     public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName,
