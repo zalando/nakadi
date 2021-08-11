@@ -95,6 +95,6 @@ public class SubscriptionController {
                 .setTag("subscription_id", subscriptionId)
                 .setTag("show_time_lag", showTimeLag);
         final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
-        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode, statsSpan);
+        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
     }
 }

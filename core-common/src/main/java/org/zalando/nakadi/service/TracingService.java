@@ -33,17 +33,17 @@ public class TracingService {
         return BUCKET_NAME_5_50_KB;
     }
 
-    public static void logErrorInSpan(final Span span, final String error) {
+    public static void logError(final String error) {
         if (error != null) {
-            span.log(ImmutableMap.of("error.description", error));
+            getActiveSpan().log(ImmutableMap.of("error.description", error));
         }
     }
 
-    public static void logErrorInSpan(final Span span, final Exception ex) {
+    public static void logError(final Exception ex) {
         if (ex.getMessage() != null) {
-            span.log(ImmutableMap.of("error.description", ex.getMessage()));
+            getActiveSpan().log(ImmutableMap.of("error.description", ex.getMessage()));
         } else {
-            span.log(ImmutableMap.of("error.description", ex.toString()));
+            getActiveSpan().log(ImmutableMap.of("error.description", ex.toString()));
         }
     }
 

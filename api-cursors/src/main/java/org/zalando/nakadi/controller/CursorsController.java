@@ -90,10 +90,10 @@ public class CursorsController {
         }
         final Span commitSpan = TracingService.extractSpan(request, "commit_events");
         if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            TracingService.logErrorInSpan(commitSpan, "Application or subscription is blocked");
+            TracingService.logError("Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitSpan);
+        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
         final boolean allCommitted = items.stream().allMatch(item -> item);
         if (allCommitted) {
@@ -117,9 +117,9 @@ public class CursorsController {
             throw new BlockedException("Application or subscription is blocked");
         }
 
-        cursorsService.resetCursors(subscriptionId,
-                convertToNakadiCursors(cursors),
-                TracingService.extractSpan(request, "reset_cursors"));
+        final Span resetSpan = TracingService.extractSpan(request, "reset_cursors");
+        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
+
         return ResponseEntity.noContent().build();
     }
 
