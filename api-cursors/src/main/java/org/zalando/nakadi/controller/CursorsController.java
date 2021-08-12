@@ -105,8 +105,8 @@ public class CursorsController {
             return ResponseEntity.noContent().build();
         } else {
             final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
-                .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
-                .collect(Collectors.toList());
+                    .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
+                    .collect(Collectors.toList());
             return ResponseEntity.ok(new ItemsWrapper<>(body));
         }
     }
