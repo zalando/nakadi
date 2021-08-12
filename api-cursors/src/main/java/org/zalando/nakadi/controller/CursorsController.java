@@ -85,7 +85,7 @@ public class CursorsController {
             InternalNakadiException {
 
         TracingService.getActiveSpan()
-                .setOperationName("commit_events")
+                .setOperationName("commit_cursors")
                 .setTag("subscription.id", subscriptionId)
                 .setTag("stream.id", streamId);
 
