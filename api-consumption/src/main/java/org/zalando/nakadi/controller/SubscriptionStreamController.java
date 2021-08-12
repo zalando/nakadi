@@ -44,7 +44,6 @@ import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.Closeable;
@@ -169,7 +168,6 @@ public class SubscriptionStreamController {
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final UserStreamParameters userParameters,
-            final HttpServletRequest request,
             final HttpServletResponse response,
             final Client client) {
 
@@ -191,7 +189,7 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
+            final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
                 batchTimeout, streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(),
