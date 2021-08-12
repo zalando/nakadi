@@ -104,7 +104,7 @@ public class TracingFilter extends OncePerRequestFilter {
 
         final SpanContext spanContext = TracingService.extractFromRequestHeaders(requestHeaders);
         if (spanContext != null) {
-            spanBuilder = TracingService.buildNewFollowerSpan(GENERIC_OPERATION_NAME, spanContext);
+            spanBuilder = TracingService.buildNewChildSpan(GENERIC_OPERATION_NAME, spanContext);
         } else {
             spanBuilder = TracingService.buildNewSpan(GENERIC_OPERATION_NAME);
         }

@@ -37,6 +37,11 @@ public class TracingService {
         return GlobalTracer.get().buildSpan(operationName);
     }
 
+    public static Tracer.SpanBuilder buildNewChildSpan(final String operationName,
+                                                       final SpanContext referenceContext) {
+        return buildNewSpan(operationName).addReference(References.CHILD_OF, referenceContext);
+    }
+
     public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName,
                                                           final SpanContext referenceContext) {
         return buildNewSpan(operationName).addReference(References.FOLLOWS_FROM, referenceContext);
