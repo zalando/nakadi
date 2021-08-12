@@ -206,8 +206,9 @@ public class SubscriptionStreamController {
                                          final HttpServletResponse response,
                                          final Client client,
                                          final StreamParameters streamParameters) {
-        TracingService.getActiveSpan()
-                .setOperationName("stream_events")
+
+        final Span requestSpan = TracingService.getActiveSpan();
+        requestSpan.setOperationName("stream_events")
                 .setTag("subscription.id", subscriptionId);
 
         final String flowId = FlowIdUtils.peek();
@@ -239,7 +240,7 @@ public class SubscriptionStreamController {
                         connectionReady);
 
                 final Tracer.SpanBuilder spanBuilder =
-                        TracingService.buildNewFollowerSpan("streaming_async", TracingService.getActiveSpan().context())
+                        TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
                         .withTag("client", client.getClientId())
                         .withTag("session.id", session.getId())
                         .withTag("subscription.id", subscriptionId);
