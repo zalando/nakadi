@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @Component
 public class TracingFilter extends OncePerRequestFilter {
 
+    private static final String GENERIC_OPERATION_NAME = "generic_request";
     private static final String SPAN_CONTEXT = "span_ctx";
     private final AuthorizationService authorizationService;
 
@@ -47,12 +48,11 @@ public class TracingFilter extends OncePerRequestFilter {
 
         final SpanContext spanContext = TracingService.extractFromRequestHeaders(requestHeaders);
         if (spanContext != null) {
-            spanBuilder = TracingService.buildNewFollowerSpan("all_requests", spanContext);
+            spanBuilder = TracingService.buildNewFollowerSpan(GENERIC_OPERATION_NAME, spanContext);
         } else {
-            spanBuilder = TracingService.buildNewSpan("all_requests");
+            spanBuilder = TracingService.buildNewSpan(GENERIC_OPERATION_NAME);
         }
         spanBuilder
-                .withTag("content_length", request.getContentLength())
                 .withTag("http.url", request.getRequestURI() +
                          Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
                 .withTag("http.header.content_encoding",
@@ -77,6 +77,9 @@ public class TracingFilter extends OncePerRequestFilter {
                 // controllers may also set the error flag for other status codes, but we won't overwrite it here
                 TracingService.setErrorFlag();
             }
+
+            // content length might not be known before the request was consumed, so set it after handling
+            span.setTag("content_length", request.getContentLengthLong());
         } finally {
             span.finish();
         }
