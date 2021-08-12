@@ -5,6 +5,7 @@ import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.util.GlobalTracer;
 
@@ -76,6 +77,10 @@ public class TracingService {
 
     public static Span setTag(final String key, final String value) {
         return getActiveSpan().setTag(key, value);
+    }
+
+    public static Span setErrorFlag() {
+        return getActiveSpan().setTag(Tags.ERROR, true);
     }
 
     public static void logError(final String error) {

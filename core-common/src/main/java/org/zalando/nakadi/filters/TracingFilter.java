@@ -3,7 +3,6 @@ package org.zalando.nakadi.filters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -73,8 +72,11 @@ public class TracingFilter extends OncePerRequestFilter {
             response.setHeader(SPAN_CONTEXT, TracingService.getTextMapFromSpanContext(span.context()).toString());
 
             final int statusCode = response.getStatus();
-            span.setTag("http.status_code", statusCode)
-                    .setTag(Tags.ERROR, statusCode >= 400);
+            span.setTag("http.status_code", statusCode);
+            if (statusCode >= 500) {
+                // controllers may also set the error flag for other status codes, but we won't overwrite it here
+                TracingService.setErrorFlag();
+            }
         } finally {
             span.finish();
         }

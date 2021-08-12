@@ -131,6 +131,10 @@ public class EventPublishingController {
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
 
+            if (result.getStatus() == EventPublishingStatus.FAILED) {
+                TracingService.setErrorFlag();
+            }
+
             return response(result);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
@@ -177,7 +181,6 @@ public class EventPublishingController {
             case ABORTED:
                 return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
             default:
-                //TracingService.getActiveSpan().setTag("error", true);
                 return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
     }
