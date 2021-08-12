@@ -16,7 +16,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
@@ -78,7 +77,7 @@ public class SubscriptionController {
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
                                                 final NativeWebRequest request)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
-            ServiceTemporarilyUnavailableException, InternalNakadiException {
+            ServiceTemporarilyUnavailableException {
         subscriptionService.deleteSubscription(subscriptionId);
         return status(NO_CONTENT).build();
     }
@@ -89,7 +88,7 @@ public class SubscriptionController {
             @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag,
             final HttpServletRequest request)
             throws InconsistentStateException, NoSuchEventTypeException, NoSuchSubscriptionException,
-            ServiceTemporarilyUnavailableException, InternalNakadiException {
+            ServiceTemporarilyUnavailableException {
 
         TracingService.setOperationName("fetch_stats")
                 .setTag("subscription.id", subscriptionId)
