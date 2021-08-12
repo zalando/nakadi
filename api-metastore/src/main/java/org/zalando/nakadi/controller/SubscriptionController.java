@@ -91,8 +91,7 @@ public class SubscriptionController {
             throws InconsistentStateException, NoSuchEventTypeException, NoSuchSubscriptionException,
             ServiceTemporarilyUnavailableException, InternalNakadiException {
 
-        TracingService.getActiveSpan()
-                .setOperationName("fetch_stats")
+        TracingService.setOperationName("fetch_stats")
                 .setTag("subscription.id", subscriptionId)
                 .setTag("show_time_lag", showTimeLag);
 

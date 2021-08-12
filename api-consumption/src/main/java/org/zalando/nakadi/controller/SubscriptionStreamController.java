@@ -206,10 +206,10 @@ public class SubscriptionStreamController {
                                          final Client client,
                                          final StreamParameters streamParameters) {
 
-        final Span requestSpan = TracingService.getActiveSpan();
-        requestSpan.setOperationName("stream_events")
+        TracingService.setOperationName("stream_events")
                 .setTag("subscription.id", subscriptionId);
 
+        final Span requestSpan = TracingService.getActiveSpan();
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {

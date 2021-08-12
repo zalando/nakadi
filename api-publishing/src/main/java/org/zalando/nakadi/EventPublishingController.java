@@ -84,8 +84,7 @@ public class EventPublishingController {
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
-        TracingService.getActiveSpan()
-                .setOperationName("publish_events")
+        TracingService.setOperationName("publish_events")
                 .setTag("event_type", eventTypeName)
                 .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
 
@@ -118,10 +117,9 @@ public class EventPublishingController {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result;
-            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
-            TracingService.getActiveSpan()
-                    .setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
+            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
+            TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
             if (delete) {
                 result = publisher.delete(eventsAsString, eventTypeName);

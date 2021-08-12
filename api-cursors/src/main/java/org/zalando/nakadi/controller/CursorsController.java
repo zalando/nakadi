@@ -84,8 +84,7 @@ public class CursorsController {
             ServiceTemporarilyUnavailableException,
             InternalNakadiException {
 
-        TracingService.getActiveSpan()
-                .setOperationName("commit_cursors")
+        TracingService.setOperationName("commit_cursors")
                 .setTag("subscription.id", subscriptionId)
                 .setTag("stream.id", streamId);
 
@@ -119,8 +118,7 @@ public class CursorsController {
             final Client client)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
 
-        TracingService.getActiveSpan()
-                .setOperationName("reset_cursors")
+        TracingService.setOperationName("reset_cursors")
                 .setTag("subscription.id", subscriptionId);
 
         if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {

@@ -98,6 +98,6 @@ public abstract class State {
     }
 
     protected static void logStreamCloseReason(final String reason) {
-        TracingService.getActiveSpan().log(ImmutableMap.of("stream.close.reason", reason));
+        TracingService.log(ImmutableMap.of("stream.close.reason", reason));
     }
 }

@@ -32,20 +32,6 @@ public class TracingService {
         return BUCKET_NAME_5_50_KB;
     }
 
-    public static void logError(final String error) {
-        if (error != null) {
-            getActiveSpan().log(ImmutableMap.of("error.description", error));
-        }
-    }
-
-    public static void logError(final Exception ex) {
-        if (ex.getMessage() != null) {
-            getActiveSpan().log(ImmutableMap.of("error.description", ex.getMessage()));
-        } else {
-            getActiveSpan().log(ImmutableMap.of("error.description", ex.toString()));
-        }
-    }
-
     public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
         return GlobalTracer.get().buildSpan(operationName);
     }
@@ -82,6 +68,32 @@ public class TracingService {
 
     public static Span getActiveSpan() {
         return GlobalTracer.get().activeSpan();
+    }
+
+    public static Span setOperationName(final String operationName) {
+        return getActiveSpan().setOperationName(operationName);
+    }
+
+    public static Span setTag(final String key, final String value) {
+        return getActiveSpan().setTag(key, value);
+    }
+
+    public static void logError(final String error) {
+        if (error != null) {
+            getActiveSpan().log(ImmutableMap.of("error.description", error));
+        }
+    }
+
+    public static void logError(final Exception ex) {
+        if (ex.getMessage() != null) {
+            getActiveSpan().log(ImmutableMap.of("error.description", ex.getMessage()));
+        } else {
+            getActiveSpan().log(ImmutableMap.of("error.description", ex.toString()));
+        }
+    }
+
+    public static void log(final Map<String, ?> fields) {
+        getActiveSpan().log(fields);
     }
 
     public static SpanContext extractFromRequestHeaders(final Map<String, String> requestHeaders) {
