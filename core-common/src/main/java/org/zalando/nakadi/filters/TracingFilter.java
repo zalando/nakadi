@@ -3,6 +3,7 @@ package org.zalando.nakadi.filters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -10,15 +11,9 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.TracingService;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.AsyncEvent;
-import javax.servlet.AsyncListener;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import java.io.Closeable;
 import java.io.IOException;
@@ -37,86 +32,6 @@ public class TracingFilter extends OncePerRequestFilter {
     @Autowired
     public TracingFilter(final AuthorizationService authorizationService) {
         this.authorizationService = authorizationService;
-    }
-
-    private class AsyncRequestListener implements AsyncListener {
-        private final HttpServletResponse response;
-
-        private AsyncRequestListener(final HttpServletResponse response) {
-            this.response = response;
-        }
-
-        @Override
-        public void onStartAsync(final AsyncEvent event) {
-        }
-
-        @Override
-        public void onComplete(final AsyncEvent event) {
-            finish();
-        }
-
-        @Override
-        public void onTimeout(final AsyncEvent event) {
-            finish();
-        }
-
-        @Override
-        public void onError(final AsyncEvent event) {
-            finish();
-        }
-
-        private void finish() {
-            traceResponse(TracingService.getActiveSpan(), response);
-        }
-    }
-
-    private class AsyncContextTracingWrapper extends AsyncContextWrapper {
-
-        private final SpanContext referenceTracingContext;
-
-        private AsyncContextTracingWrapper(final AsyncContext context, final SpanContext referenceTracingContext) {
-            super(context);
-            this.referenceTracingContext = referenceTracingContext;
-        }
-
-        @Override
-        public void start(final Runnable runnable) {
-            this.context.start(() -> {
-                    final Tracer.SpanBuilder span =
-                        TracingService.buildNewFollowerSpan("async_request", referenceTracingContext);
-                    try (Closeable ignored = TracingService.withActiveSpan(span)) {
-                        runnable.run();
-                    } catch (final IOException ioe) {
-                        throw new RuntimeException(ioe);
-                    }
-                });
-        }
-    }
-
-    private class AsyncRequestTracingWrapper extends HttpServletRequestWrapper {
-
-        private final HttpServletRequest request;
-        private final SpanContext referenceTracingContext;
-
-        private AsyncRequestTracingWrapper(final HttpServletRequest request,
-                                           final SpanContext referenceTracingContext) {
-            super(request);
-            this.request = request;
-            this.referenceTracingContext = referenceTracingContext;
-        }
-
-        @Override
-        public AsyncContext startAsync() throws IllegalStateException {
-            final AsyncContext asyncContext = request.startAsync();
-            return new AsyncContextTracingWrapper(asyncContext, referenceTracingContext);
-        }
-
-        @Override
-        public AsyncContext startAsync(final ServletRequest servletRequest, final ServletResponse servletResponse)
-            throws IllegalStateException {
-            final AsyncContext asyncContext = request.startAsync(servletRequest, servletResponse);
-            return new AsyncContextTracingWrapper(asyncContext, referenceTracingContext);
-        }
     }
 
     @Override
@@ -153,24 +68,15 @@ public class TracingFilter extends OncePerRequestFilter {
             span.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
 
             //execute request
-            final AsyncRequestTracingWrapper requestWrapper = new AsyncRequestTracingWrapper(request, span.context());
-            filterChain.doFilter(requestWrapper, response);
+            filterChain.doFilter(request, response);
 
             response.setHeader(SPAN_CONTEXT, TracingService.getTextMapFromSpanContext(span.context()).toString());
 
-            if (request.isAsyncStarted()) {
-                request.getAsyncContext().addListener(new AsyncRequestListener(response));
-            } else {
-                traceResponse(span, response);
-            }
+            final int statusCode = response.getStatus();
+            span.setTag("http.status_code", statusCode)
+                    .setTag(Tags.ERROR, statusCode >= 400);
         } finally {
             span.finish();
         }
-    }
-
-    private static void traceResponse(final Span span, final HttpServletResponse response) {
-        final int statusCode = response.getStatus();
-        span.setTag("http.status_code", statusCode)
-                .setTag("error", statusCode == 207 || statusCode >= 500);
     }
 }

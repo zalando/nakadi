@@ -84,6 +84,11 @@ public class EventPublishingController {
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
+        TracingService.getActiveSpan()
+                .setOperationName("publish_events")
+                .setTag("event_type", eventTypeName)
+                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
@@ -116,10 +121,7 @@ public class EventPublishingController {
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
             TracingService.getActiveSpan()
-                    .setOperationName("publish_events")
-                    .setTag("event_type", eventTypeName)
-                    .setTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
-                    .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+                    .setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
             if (delete) {
                 result = publisher.delete(eventsAsString, eventTypeName);
@@ -177,6 +179,7 @@ public class EventPublishingController {
             case ABORTED:
                 return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
             default:
+                //TracingService.getActiveSpan().setTag("error", true);
                 return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
     }
