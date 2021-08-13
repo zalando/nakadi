@@ -111,17 +111,15 @@ public class TracingFilter extends OncePerRequestFilter {
             span.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
 
             filterChain.doFilter(request, response);
-
-            if (request.isAsyncStarted()) {
-                request.getAsyncContext().addListener(new AsyncRequestSpanFinalizer(span, request, response));
-            }
         } catch (final Exception ex) {
             TracingService.setErrorFlag(span);
             TracingService.logError(span, ex);
         } finally {
             response.setHeader(SPAN_CONTEXT, TracingService.getTextMapFromSpanContext(span.context()).toString());
 
-            if (!request.isAsyncStarted()) {
+            if (request.isAsyncStarted()) {
+                request.getAsyncContext().addListener(new AsyncRequestSpanFinalizer(span, request, response));
+            } else {
                 try {
                     traceRequest(span, request, response);
                 } finally {
