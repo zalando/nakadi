@@ -3,7 +3,6 @@ package org.zalando.nakadi.service.subscription;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
-import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -69,7 +68,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Comparator<NakadiCursor> cursorComparator;
     private final NakadiKpiPublisher kpiPublisher;
     private final AutocommitSupport autocommitSupport;
-    private final Span currentSpan;
     private final String kpiDataStreamedEventType;
     private final CursorOperationsService cursorOperationsService;
 
@@ -111,12 +109,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
-        this.currentSpan = builder.currentSpan;
         this.cursorOperationsService = builder.cursorOperationsService;
-    }
-
-    public Span getCurrentSpan() {
-        return currentSpan;
     }
 
     public TimelineService getTimelineService() {
@@ -391,12 +384,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
-        private Span currentSpan;
-
-        public Builder setCurrentSpan(final Span span) {
-            this.currentSpan = span;
-            return this;
-        }
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;

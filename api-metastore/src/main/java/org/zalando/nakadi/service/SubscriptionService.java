@@ -2,7 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import io.opentracing.Span;
 import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -314,8 +313,7 @@ public class SubscriptionService {
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
-                                                                        final StatsMode statsMode,
-                                                                        final Span span)
+                                                                        final StatsMode statsMode)
             throws InconsistentStateException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
@@ -323,7 +321,7 @@ public class SubscriptionService {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
-            TracingService.logErrorInSpan(span, ex);
+            TracingService.logError(ex);
             throw new InconsistentStateException(ex.getMessage());
         }
         final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, statsMode);

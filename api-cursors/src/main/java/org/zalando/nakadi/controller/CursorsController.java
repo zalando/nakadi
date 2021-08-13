@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,16 +83,21 @@ public class CursorsController {
             InvalidCursorException,
             ServiceTemporarilyUnavailableException,
             InternalNakadiException {
+
+        TracingService.setOperationName("commit_cursors")
+                .setTag("subscription.id", subscriptionId)
+                .setTag("stream.id", streamId);
+
         final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
         if (cursors.isEmpty()) {
             throw new CursorsAreEmptyException();
         }
-        final Span commitSpan = TracingService.extractSpan(request, "commit_events");
+
         if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            TracingService.logErrorInSpan(commitSpan, "Application or subscription is blocked");
+            TracingService.logError("Application or subscription is blocked");
             throw new BlockedException("Application or subscription is blocked");
         }
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, commitSpan);
+        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
         final boolean allCommitted = items.stream().allMatch(item -> item);
         if (allCommitted) {
@@ -113,13 +117,15 @@ public class CursorsController {
             final HttpServletRequest request,
             final Client client)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
+
+        TracingService.setOperationName("reset_cursors")
+                .setTag("subscription.id", subscriptionId);
+
         if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
             throw new BlockedException("Application or subscription is blocked");
         }
 
-        cursorsService.resetCursors(subscriptionId,
-                convertToNakadiCursors(cursors),
-                TracingService.extractSpan(request, "reset_cursors"));
+        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
         return ResponseEntity.noContent().build();
     }
 

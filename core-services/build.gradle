@@ -62,8 +62,8 @@ dependencies {
     compile 'org.slf4j:slf4j-log4j12'
 
     // open tracing
-    compile 'io.opentracing:opentracing-api:0.31.0'
-    compile 'io.opentracing:opentracing-util:0.31.0'
+    compile "io.opentracing:opentracing-api:$opentracingVersion"
+    compile "io.opentracing:opentracing-util:$opentracingVersion"
 
     compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
 

@@ -103,7 +103,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -115,14 +115,14 @@ public class EventPublishingControllerTest {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
     }
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        Mockito.when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        Mockito.when(publisher.publish(any(), any())).thenThrow(new EventTypeTimeoutException(""));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -136,7 +136,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -150,7 +150,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -162,7 +162,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(new NoSuchEventTypeException("topic not found"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -177,7 +177,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any());
+                .publish(any(), any());
 
         postBatch(TOPIC, EVENT_BATCH);
         postBatch(TOPIC, EVENT_BATCH);
@@ -197,7 +197,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any());
+                .publish(any(), any());
 
         Mockito.when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
 

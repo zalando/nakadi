@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
-import io.opentracing.Span;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -51,8 +50,6 @@ public class StreamingContextTest {
         // Mocks
         final ZkSubscriptionClient zkClient = mock(ZkSubscriptionClient.class);
         doNothing().when(zkClient).close();
-        final Span span = mock(Span.class);
-        doNothing().when(span).finish();
 
         return new StreamingContext.Builder()
                 .setOut(output)
@@ -67,7 +64,6 @@ public class StreamingContextTest {
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
                 .setEventStreamChecks(null)
-                .setCurrentSpan(span)
                 .build();
     }
 

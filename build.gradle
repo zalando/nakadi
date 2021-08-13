@@ -60,6 +60,7 @@ subprojects {
             curatorVersion = '5.1.0'
             zookeeperVersion = '3.6.1'
             jacksonVersion = '2.9.8'
+            opentracingVersion = '0.33.0'
         }
     }
 }

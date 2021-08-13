@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import io.opentracing.util.GlobalTracer;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.cache.SubscriptionCache;
@@ -33,7 +32,7 @@ public class CursorsServiceTest {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
-        service.resetCursors("test", Collections.emptyList(), GlobalTracer.get().buildSpan("test").start());
+        service.resetCursors("test", Collections.emptyList());
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -41,6 +40,6 @@ public class CursorsServiceTest {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
                 new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionCommit(any());
-        service.commitCursors("test", "test", Collections.emptyList(), GlobalTracer.get().buildSpan("test").start());
+        service.commitCursors("test", "test", Collections.emptyList());
     }
 }
