@@ -85,7 +85,11 @@ public class TracingService {
     }
 
     public static Span setErrorFlag() {
-        return getActiveSpan().setTag(Tags.ERROR, true);
+        return setErrorFlag(getActiveSpan());
+    }
+
+    public static Span setErrorFlag(final Span span) {
+        return span.setTag(Tags.ERROR, true);
     }
 
     public static void logError(final String error) {
@@ -95,10 +99,14 @@ public class TracingService {
     }
 
     public static void logError(final Exception ex) {
+        logError(getActiveSpan(), ex);
+    }
+
+    public static void logError(final Span span, final Exception ex) {
         if (ex.getMessage() != null) {
-            getActiveSpan().log(ImmutableMap.of("error.description", ex.getMessage()));
+            span.log(ImmutableMap.of("error.description", ex.getMessage()));
         } else {
-            getActiveSpan().log(ImmutableMap.of("error.description", ex.toString()));
+            span.log(ImmutableMap.of("error.description", ex.toString()));
         }
     }
 
