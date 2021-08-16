@@ -1,9 +1,6 @@
 package org.zalando.nakadi.filters;
 
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.web.firewall.RequestRejectedException;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.GenericFilterBean;
 
 import javax.servlet.FilterChain;
@@ -13,9 +10,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestRejectedFilter extends GenericFilterBean {
 
     @Override
