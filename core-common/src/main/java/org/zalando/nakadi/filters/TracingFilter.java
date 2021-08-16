@@ -3,11 +3,7 @@ package org.zalando.nakadi.filters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.TracingService;
 
 import javax.servlet.AsyncEvent;
@@ -23,17 +19,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Component
 public class TracingFilter extends OncePerRequestFilter {
 
     private static final String GENERIC_OPERATION_NAME = "generic_request";
-    private static final String SPAN_CONTEXT = "span_ctx";
+    private static final String SPAN_CONTEXT_HEADER = "span_ctx";
 
-    private final AuthorizationService authorizationService;
-
-    @Autowired
-    public TracingFilter(final AuthorizationService authorizationService) {
-        this.authorizationService = authorizationService;
+    public TracingFilter() {
     }
 
     private class AsyncRequestSpanFinalizer implements AsyncListener {
@@ -108,14 +99,13 @@ public class TracingFilter extends OncePerRequestFilter {
 
         final Span span = spanBuilder.start();
         try (Closeable ignored = TracingService.activateSpan(span)) {
-            span.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
-
             filterChain.doFilter(request, response);
         } catch (final Exception ex) {
             TracingService.setErrorFlag(span);
             TracingService.logError(span, ex);
         } finally {
-            response.setHeader(SPAN_CONTEXT, TracingService.getTextMapFromSpanContext(span.context()).toString());
+            response.setHeader(SPAN_CONTEXT_HEADER,
+                    TracingService.getTextMapFromSpanContext(span.context()).toString());
 
             if (request.isAsyncStarted()) {
                 request.getAsyncContext().addListener(new AsyncRequestSpanFinalizer(span, request, response));
@@ -137,7 +127,7 @@ public class TracingFilter extends OncePerRequestFilter {
         span.setTag("http.status_code", statusCode);
         if (statusCode >= 500) {
             // controllers may also set the error flag for other status codes, but we won't overwrite it here
-            TracingService.setErrorFlag();
+            TracingService.setErrorFlag(span);
         }
 
         // content length might not be known before the request was consumed, so set it after handling

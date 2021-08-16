@@ -19,6 +19,7 @@ import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+import org.zalando.nakadi.filters.ExtraTracingFilter;
 import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
@@ -59,14 +60,19 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean traceRequestFilter() {
-        return createFilterRegistrationBean(new TracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 1);
+    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
+        return createFilterRegistrationBean(new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean
-    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
+    public FilterRegistrationBean traceRequestFilter() {
+        return createFilterRegistrationBean(new TracingFilter(), Ordered.HIGHEST_PRECEDENCE + 3);
+    }
+
+    @Bean
+    public FilterRegistrationBean extraTraceRequestFilter() {
         return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
+                new ExtraTracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 1);
     }
 
     @Bean
