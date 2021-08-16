@@ -26,5 +26,7 @@ public class ExtraTracingFilter extends OncePerRequestFilter {
             throws IOException, ServletException {
 
         TracingService.setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"));
+
+        filterChain.doFilter(request, response);
     }
 }
