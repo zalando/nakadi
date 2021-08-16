@@ -76,43 +76,54 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean requestRejectedFilter() {
-        return createFilterRegistrationBean(new RequestRejectedFilter(), Ordered.HIGHEST_PRECEDENCE);
-    }
-
-    @Bean
-    public FilterRegistrationBean flowIdRequestFilter() {
-        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 10);
-    }
-
-    @Bean
-    public FilterRegistrationBean loggingFilter() {
+    public FilterRegistrationBean traceRequestFilter() {
         return createFilterRegistrationBean(
-                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
-                Ordered.HIGHEST_PRECEDENCE + 20);
+                new TracingFilter(),
+                Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean
     public FilterRegistrationBean monitoringRequestFilter() {
         return createFilterRegistrationBean(
                 new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
+                Ordered.HIGHEST_PRECEDENCE + 10);
+    }
+
+    @Bean
+    public FilterRegistrationBean flowIdRequestFilter() {
+        return createFilterRegistrationBean(
+                new FlowIdRequestFilter(),
+                Ordered.HIGHEST_PRECEDENCE + 20);
+    }
+
+    @Bean
+    public FilterRegistrationBean loggingFilter() {
+        return createFilterRegistrationBean(
+                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
                 Ordered.HIGHEST_PRECEDENCE + 30);
     }
 
     @Bean
-    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
-        return createFilterRegistrationBean(new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 40);
+    public FilterRegistrationBean requestRejectedFilter() {
+        return createFilterRegistrationBean(
+                new RequestRejectedFilter(),
+                Ordered.HIGHEST_PRECEDENCE + 40);
     }
 
+    // <=== plugins may add more filters in the middle ===>
+
     @Bean
-    public FilterRegistrationBean traceRequestFilter() {
-        return createFilterRegistrationBean(new TracingFilter(), Ordered.HIGHEST_PRECEDENCE + 50);
+    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
+        return createFilterRegistrationBean(
+                new GzipBodyRequestFilter(mapper),
+                Ordered.LOWEST_PRECEDENCE - 20);
     }
 
     @Bean
     public FilterRegistrationBean extraTraceRequestFilter() {
         return createFilterRegistrationBean(
-                new ExtraTracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 10);
+                new ExtraTracingFilter(authorizationService),
+                Ordered.LOWEST_PRECEDENCE - 10);
     }
 
     @Bean
