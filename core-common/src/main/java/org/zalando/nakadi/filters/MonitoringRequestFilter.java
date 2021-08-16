@@ -1,13 +1,11 @@
-package org.zalando.nakadi.metrics;
+package org.zalando.nakadi.filters;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 
@@ -17,7 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@Component
 public class MonitoringRequestFilter extends OncePerRequestFilter {
 
     private final Timer httpConnectionsTimer;
@@ -25,9 +22,8 @@ public class MonitoringRequestFilter extends OncePerRequestFilter {
     private final MetricRegistry perPathMetricRegistry;
     private final AuthorizationService authorizationService;
 
-    @Autowired
     public MonitoringRequestFilter(final MetricRegistry metricRegistry,
-                                   @Qualifier("perPathMetricRegistry") final MetricRegistry perPathMetricRegistry,
+                                   final MetricRegistry perPathMetricRegistry,
                                    final AuthorizationService authorizationService) {
         openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX
                 + "general.openSynchronousHttpConnections");
