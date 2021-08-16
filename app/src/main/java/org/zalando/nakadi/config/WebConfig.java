@@ -76,27 +76,27 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
+    public FilterRegistrationBean requestRejectedFilter() {
+        return createFilterRegistrationBean(new RequestRejectedFilter(), Ordered.HIGHEST_PRECEDENCE);
+    }
+
+    @Bean
+    public FilterRegistrationBean flowIdRequestFilter() {
+        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 10);
+    }
+
+    @Bean
     public FilterRegistrationBean loggingFilter() {
         return createFilterRegistrationBean(
                 new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
-                Ordered.HIGHEST_PRECEDENCE);
+                Ordered.HIGHEST_PRECEDENCE + 20);
     }
 
     @Bean
     public FilterRegistrationBean monitoringRequestFilter() {
         return createFilterRegistrationBean(
                 new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
-                Ordered.HIGHEST_PRECEDENCE + 10);
-    }
-
-    @Bean
-    public FilterRegistrationBean requestRejectedFilter() {
-        return createFilterRegistrationBean(new RequestRejectedFilter(), Ordered.HIGHEST_PRECEDENCE + 20);
-    }
-
-    @Bean
-    public FilterRegistrationBean flowIdRequestFilter() {
-        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 30);
+                Ordered.HIGHEST_PRECEDENCE + 30);
     }
 
     @Bean

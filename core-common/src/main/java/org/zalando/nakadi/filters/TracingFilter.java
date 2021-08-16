@@ -103,6 +103,7 @@ public class TracingFilter extends OncePerRequestFilter {
         } catch (final Exception ex) {
             TracingService.setErrorFlag(span);
             TracingService.logError(span, ex);
+            throw ex;
         } finally {
             response.setHeader(SPAN_CONTEXT_HEADER,
                     TracingService.getTextMapFromSpanContext(span.context()).toString());
