@@ -6,15 +6,10 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.util.GlobalTracer;
 
 import java.io.Closeable;
-import java.util.HashMap;
 import java.util.Map;
-
-import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
-import static io.opentracing.propagation.Format.Builtin.TEXT_MAP;
 
 public class TracingService {
     private static final String BUCKET_NAME_5_KB = "<5K";
@@ -35,11 +30,6 @@ public class TracingService {
 
     public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
         return GlobalTracer.get().buildSpan(operationName);
-    }
-
-    public static Tracer.SpanBuilder buildNewChildSpan(final String operationName,
-                                                       final SpanContext referenceContext) {
-        return buildNewSpan(operationName).addReference(References.CHILD_OF, referenceContext);
     }
 
     public static Tracer.SpanBuilder buildNewFollowerSpan(final String operationName,
@@ -112,15 +102,5 @@ public class TracingService {
 
     public static void log(final Map<String, ?> fields) {
         getActiveSpan().log(fields);
-    }
-
-    public static SpanContext extractFromRequestHeaders(final Map<String, String> requestHeaders) {
-        return GlobalTracer.get().extract(HTTP_HEADERS, new TextMapAdapter(requestHeaders));
-    }
-
-    public static Map<String, String> getTextMapFromSpanContext(final SpanContext spanContext) {
-        final Map<String, String> textMap = new HashMap<>();
-        GlobalTracer.get().inject(spanContext, TEXT_MAP, new TextMapAdapter(textMap));
-        return textMap;
     }
 }
