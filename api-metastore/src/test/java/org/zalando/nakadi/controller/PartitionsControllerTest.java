@@ -16,12 +16,15 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
@@ -54,6 +57,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
@@ -196,13 +200,22 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenAllDataAccessGetPartitionsThenOk() throws Exception {
+    public void whenGetPartitionUnauthorisedThenError() throws Exception {
+        ResourceImpl<String> resource = new ResourceImpl("some_user", "user", null, "");
+        final ThrowableProblem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on VIEW user:some_user denied");
+
+        Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, resource)).
+                when(authorizationValidator).authorizeEventTypeView(EVENT_TYPE);
+
         Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        Mockito.when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getName()))).thenReturn(true);
+        Mockito.when(topicRepositoryMock.loadPartitionStatistics(eq(TIMELINE), eq(TEST_PARTITION)))
+                .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
 
-        Mockito.doNothing().when(authorizationValidator).authorizeStreamRead(any());
-
-        mockMvc.perform(get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
-                .andExpect(status().isOk());
+        mockMvc.perform(
+                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
