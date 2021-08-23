@@ -59,7 +59,6 @@ public class CursorOperationsController {
 
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
-        authorizationValidator.authorizeStreamRead(eventType);
 
         queries.getList().forEach(query -> {
             try {

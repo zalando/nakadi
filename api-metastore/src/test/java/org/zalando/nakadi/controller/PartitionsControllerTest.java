@@ -196,28 +196,6 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenUnauthorizedGetPartitionThenForbiddenStatusCode() throws Exception {
-        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-
-        Mockito.doThrow(TestUtils.mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    public void whenUnauthorizedGetPartitionsThenForbiddenStatusCode() throws Exception {
-        Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
-
-        Mockito.doThrow(TestUtils.mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
-
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     public void whenAllDataAccessGetPartitionsThenOk() throws Exception {
         Mockito.when(eventTypeCacheMock.getEventType(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
@@ -225,8 +203,6 @@ public class PartitionsControllerTest {
 
         mockMvc.perform(get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isOk());
-
-        Mockito.verify(authorizationValidator, Mockito.times(1)).authorizeStreamRead(any());
     }
 
     @Test
@@ -377,8 +353,6 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                     get("/event-types/{0}/partitions?cursors={1}", TEST_EVENT_TYPE, cursorString))
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(TEST_TOPIC_PARTITIONS_UE)));
-
-        Mockito.verify(authorizationValidator, Mockito.times(1)).authorizeStreamRead(any());
     }
 
     private List<NakadiCursorLag> getNakadiCursorLags() {
