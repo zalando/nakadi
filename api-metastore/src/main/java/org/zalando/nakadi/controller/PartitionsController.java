@@ -118,7 +118,8 @@ public class PartitionsController {
         LOG.trace(
                 "Get partitions endpoint for event-type '{}' with cursorList `{}` is called",
                 eventTypeName, cursorsString);
-        checkAuthorization(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
 
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final List<PartitionStatistics> firstStats =
@@ -252,7 +253,7 @@ public class PartitionsController {
         }
     }
 
-    private void checkAuthorization(final String eventTypeName) {
+    private void checkAuthorization(final String eventTypeName){
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
