@@ -23,7 +23,7 @@ import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
-
+//samrat
     public EventTypeAuthorizationTest() throws IOException {
     }
 
