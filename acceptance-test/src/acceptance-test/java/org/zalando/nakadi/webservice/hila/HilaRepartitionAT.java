@@ -5,7 +5,6 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventType;
@@ -26,8 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.mockito.ArgumentMatchers.anyLong;
-
 public class HilaRepartitionAT extends BaseAT {
     private static final Logger LOG = LoggerFactory.getLogger(HilaRepartitionAT.class);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -39,17 +36,11 @@ public class HilaRepartitionAT extends BaseAT {
 
     @Test
     public void testSubscriptionRepartitioningWithSingleEventType() throws Exception {
-        zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
-        Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
-
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
-                zooKeeperHolder,
+                new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
                 String.format("%s.%s", subscriptionId, sid),
-                MAPPER,
-                30000
+                MAPPER
         );
 
         final Partition[] eventTypePartitions = {new Partition(
@@ -68,17 +59,11 @@ public class HilaRepartitionAT extends BaseAT {
 
     @Test
     public void testSubscriptionRepartitioningWithMultipleEventTypes() throws Exception {
-        zooKeeperHolder = Mockito.mock(ZooKeeperHolder.class);
-        Mockito.when(zooKeeperHolder.get()).thenReturn(CURATOR);
-        Mockito.when(zooKeeperHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
-
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
-                zooKeeperHolder,
+                new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
                 String.format("%s.%s", subscriptionId, sid),
-                MAPPER,
-                30000
+                MAPPER
         );
 
         final Partition[] eventTypePartitions = {
@@ -106,7 +91,7 @@ public class HilaRepartitionAT extends BaseAT {
     private void setInitialTopology(final Partition[] partitions) throws Exception {
         final String topologyPath = subscriptionPath() + "/topology";
         final byte[] topologyData = MAPPER.writeValueAsBytes(
-                new NewZkSubscriptionClient.Topology(partitions, null, 0));
+                new NewZkSubscriptionClient.Topology(partitions, 0));
         if (null == CURATOR.checkExists().forPath(topologyPath)) {
             CURATOR.create().creatingParentsIfNeeded().forPath(topologyPath, topologyData);
         } else {

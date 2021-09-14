@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -99,6 +100,17 @@ public class EventTypeRepository extends AbstractDbRepository {
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type",
+                new EventTypeMapper());
+    }
+
+    public List<EventType> list(final AuthorizationAttribute writer) {
+        return jdbcTemplate.query(
+                "SELECT et_event_type_object " +
+                        "FROM zn_data.event_type," +
+                        "jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
+                        "AS writers(data_type text, value text) " +
+                        "WHERE writers.data_type = ? AND writers.value = ?",
+                new String[]{ writer.getDataType(), writer.getValue() },
                 new EventTypeMapper());
     }
 

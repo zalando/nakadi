@@ -325,6 +325,26 @@ public class HilaRebalanceAT extends BaseAT {
         assertThat(commitStatusCode, Matchers.is(HttpStatus.NO_CONTENT.value()));
     }
 
+    @Test(timeout = 10000)
+    public void testAtLeastOneClientGets409OnTheSamePartitionRequest() throws Exception {
+        final TestStreamingClient client1 = new TestStreamingClient(
+                URL, subscription.getId(), "batch_flush_timeout=1",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        final TestStreamingClient client2 = new TestStreamingClient(
+                URL, subscription.getId(), "batch_flush_timeout=1",
+                Optional.empty(),
+                Optional.of("{\"partitions\":[" +
+                        "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
+        client1.start();
+        client2.start();
+
+        waitFor(() -> assertThat("at least one client should get 409 conflict",
+                client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
+                        client1.getResponseCode() == HttpStatus.CONFLICT.value()));
+    }
+
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
                                                                 final Set<String> partitions) {
         if (!client.getBatches().isEmpty()) {

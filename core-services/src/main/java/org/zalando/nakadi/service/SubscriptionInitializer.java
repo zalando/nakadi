@@ -21,7 +21,7 @@ import static java.util.stream.Collectors.groupingBy;
 
 public class SubscriptionInitializer {
     
-    public static boolean initializeSubscriptionLocked(
+    public static void initialize(
             final ZkSubscriptionClient zkClient,
             final Subscription subscription,
             final TimelineService timelineService,
@@ -30,9 +30,7 @@ public class SubscriptionInitializer {
             final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
                     subscription, timelineService, cursorConverter);
             zkClient.fillEmptySubscription(cursors);
-            return true;
         }
-        return false;
     }
 
     public interface PositionCalculator {

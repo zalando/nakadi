@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.SubscriptionStreamController;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
-import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
@@ -19,9 +19,10 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 @ControllerAdvice(assignableTypes = SubscriptionStreamController.class)
 public class SubscriptionStreamExceptionHandler implements AdviceTrait {
 
-    @ExceptionHandler(WrongStreamParametersException.class)
-    public ResponseEntity<Problem> handleWrongStreamParametersException(final WrongStreamParametersException exception,
-                                                                        final NativeWebRequest request) {
+    @ExceptionHandler(InvalidStreamParametersException.class)
+    public ResponseEntity<Problem> handleInvalidStreamParametersException(
+            final InvalidStreamParametersException exception,
+            final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }

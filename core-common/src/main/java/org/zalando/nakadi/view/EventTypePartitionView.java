@@ -1,35 +1,36 @@
 package org.zalando.nakadi.view;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
 public class EventTypePartitionView {
-    @JsonIgnore
-    private String eventType;
     @JsonProperty("partition")
     private String partitionId;
     private String oldestAvailableOffset;
     private String newestAvailableOffset;
+    @JsonProperty("unconsumed_events")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long unconsumedEvents;
+
 
     public EventTypePartitionView() {
     }
 
-    public EventTypePartitionView(final String eventType, final String partitionId, final String oldestAvailableOffset,
+    public EventTypePartitionView(final String partitionId, final String oldestAvailableOffset,
                                   final String newestAvailableOffset) {
-        this.eventType = eventType;
         this.partitionId = partitionId;
         this.oldestAvailableOffset = oldestAvailableOffset;
         this.newestAvailableOffset = newestAvailableOffset;
     }
 
-    public String getEventType() {
-        return eventType;
-    }
-
-    public void setEventType(final String eventType) {
-        this.eventType = eventType;
+    public EventTypePartitionView(final String partitionId, final String oldestAvailableOffset,
+                                  final String newestAvailableOffset, final Long unconsumedEvents) {
+        this.partitionId = partitionId;
+        this.oldestAvailableOffset = oldestAvailableOffset;
+        this.newestAvailableOffset = newestAvailableOffset;
+        this.unconsumedEvents = unconsumedEvents;
     }
 
     public String getPartitionId() {
@@ -56,6 +57,14 @@ public class EventTypePartitionView {
         this.newestAvailableOffset = newestAvailableOffset;
     }
 
+    public Long getUnconsumedEvents() {
+        return unconsumedEvents;
+    }
+
+    public void setUnconsumedEvents(final Long unconsumedEvents) {
+        this.unconsumedEvents = unconsumedEvents;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -68,15 +77,15 @@ public class EventTypePartitionView {
 
         final EventTypePartitionView that = (EventTypePartitionView) o;
 
-        if (!Objects.equals(eventType, that.eventType)) {
-            return false;
-        }
-
         if (!Objects.equals(partitionId, that.partitionId)) {
             return false;
         }
 
         if (!Objects.equals(oldestAvailableOffset, that.oldestAvailableOffset)) {
+            return false;
+        }
+
+        if (!Objects.equals(unconsumedEvents, that.unconsumedEvents)) {
             return false;
         }
 
@@ -86,20 +95,16 @@ public class EventTypePartitionView {
 
     @Override
     public int hashCode() {
-        int result = eventType != null ? eventType.hashCode() : 0;
-        result = 31 * result + (partitionId != null ? partitionId.hashCode() : 0);
-        result = 31 * result + (oldestAvailableOffset != null ? oldestAvailableOffset.hashCode() : 0);
-        result = 31 * result + (newestAvailableOffset != null ? newestAvailableOffset.hashCode() : 0);
-        return result;
+        return Objects.hash(partitionId, oldestAvailableOffset, newestAvailableOffset, unconsumedEvents);
     }
 
     @Override
     public String toString() {
         return "EventTypePartitionView{" +
-                "eventType='" + eventType + '\'' +
-                ", partitionId='" + partitionId + '\'' +
+                "partitionId='" + partitionId + '\'' +
                 ", oldestAvailableOffset='" + oldestAvailableOffset + '\'' +
                 ", newestAvailableOffset='" + newestAvailableOffset + '\'' +
+                ", unconsumedEvents='" + unconsumedEvents + '\'' +
                 '}';
     }
 }

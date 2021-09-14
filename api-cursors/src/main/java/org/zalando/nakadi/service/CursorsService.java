@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
-import io.opentracing.Span;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.SubscriptionCache;
@@ -33,6 +32,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,23 +78,25 @@ public class CursorsService {
      * It is guaranteed, that len(cursors) == len(result)
      **/
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
-                                       final List<NakadiCursor> cursors, final Span parentSpan)
+                                       final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             AccessDeniedException {
-        parentSpan.setTag("subscription", subscriptionId).setTag("stream.id", streamId);
         try {
             final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
             authorizationValidator.authorizeSubscriptionCommit(subscription);
-            validateSubscriptionCommitCursors(subscription, cursors, parentSpan);
-            final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
-                    subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"));
-            validateStreamId(cursors, streamId, zkClient, subscriptionId, parentSpan);
-            return zkClient.commitOffsets(
-                    cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()));
+            validateSubscriptionCommitCursors(subscription, cursors);
+            try (ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
+                    subscription, LogPathBuilder.build(subscriptionId, streamId, "offsets"))) {
+                validateStreamId(cursors, streamId, zkClient, subscriptionId);
+                return zkClient.commitOffsets(
+                        cursors.stream().map(cursorConverter::convertToNoToken).collect(Collectors.toList()));
+            }
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         } catch (Exception e) {
-            TracingService.logErrorInSpan(parentSpan, e.getMessage());
+            TracingService.logError(e.getMessage());
             throw e;
         }
     }
@@ -102,8 +104,7 @@ public class CursorsService {
     private void validateStreamId(final List<NakadiCursor> cursors,
                                   final String streamId,
                                   final ZkSubscriptionClient subscriptionClient,
-                                  final String subscriptionId,
-                                  final Span span)
+                                  final String subscriptionId)
             throws ServiceTemporarilyUnavailableException,
             InvalidCursorException,
             InvalidStreamIdException,
@@ -111,13 +112,13 @@ public class CursorsService {
 
         if (!uuidGenerator.isUUID(streamId)) {
             final String error = String.format("Stream id has to be valid UUID, but `%s was provided", streamId);
-            TracingService.logErrorInSpan(span, error);
+            TracingService.logError(error);
             throw new InvalidStreamIdException(error, streamId);
         }
 
         if (!subscriptionClient.isActiveSession(streamId)) {
             final String error = String.format("Session with stream id %s not found", streamId);
-            TracingService.logErrorInSpan(span, error);
+            TracingService.logError(error);
             subscriptionCache.invalidateSubscription(subscriptionId);
             throw new InvalidStreamIdException(error, streamId);
         }
@@ -136,7 +137,7 @@ public class CursorsService {
             if (!streamId.equals(partitionSession)) {
                 final String error = String.format(
                         "Cursor %s cannot be committed with stream id %s", cursor, streamId);
-                TracingService.logErrorInSpan(span, error);
+                TracingService.logError(error);
                 throw new InvalidStreamIdException(error, streamId);
             }
         }
@@ -149,26 +150,33 @@ public class CursorsService {
         authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
-        final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
-
-        Partition[] partitions;
         try {
-            partitions = zkSubscriptionClient.getTopology().getPartitions();
-        } catch (final SubscriptionNotInitializedException ex) {
-            partitions = new Partition[]{};
-        }
-        final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
-                Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+            final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
 
-        for (final Partition p : partitions) {
-            cursorsListBuilder.add(positions.get(p.getKey()));
+            Partition[] partitions;
+            try {
+                partitions = zkSubscriptionClient.getTopology().getPartitions();
+            } catch (final SubscriptionNotInitializedException ex) {
+                partitions = new Partition[]{};
+            }
+            final Map<EventTypePartition, SubscriptionCursorWithoutToken> positions = zkSubscriptionClient.getOffsets(
+                    Stream.of(partitions).map(Partition::getKey).collect(Collectors.toList()));
+
+            for (final Partition p : partitions) {
+                cursorsListBuilder.add(positions.get(p.getKey()));
+            }
+            return cursorsListBuilder.build();
+        } finally {
+            try {
+                zkSubscriptionClient.close();
+            } catch (IOException io) {
+                throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+            }
         }
-        return cursorsListBuilder.build();
     }
 
     public void resetCursors(final String subscriptionId,
-                             final List<NakadiCursor> cursors,
-                             final Span span)
+                             final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, OperationTimeoutException, ZookeeperException,
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException {
@@ -177,7 +185,7 @@ public class CursorsService {
         authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
-        validateCursorsBelongToSubscription(subscription, cursors, span);
+        validateCursorsBelongToSubscription(subscription, cursors);
         for (final NakadiCursor cursor : cursors) {
             cursor.checkStorageAvailability();
         }
@@ -191,57 +199,62 @@ public class CursorsService {
 
         final ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "reset_cursors"));
+        try {
+            // In case if subscription was never initialized - initialize it
+            SubscriptionInitializer.initialize(
+                    zkClient, subscription, timelineService, cursorConverter);
+            // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
+            if (!cursors.isEmpty()) {
+                final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
 
-        // In case if subscription was never initialized - initialize it
-        zkClient.runLocked(() -> SubscriptionInitializer.initializeSubscriptionLocked(
-                zkClient, subscription, timelineService, cursorConverter));
-        // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
-        if (!cursors.isEmpty()) {
-            final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
+                final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
+                        TimeUnit.SECONDS.toMillis(1);
+                final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
+                        .map(cursorConverter::convertToNoToken)
+                        .collect(Collectors.toList());
 
-            final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
-                    TimeUnit.SECONDS.toMillis(1);
-            final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
-                    .map(cursorConverter::convertToNoToken)
-                    .collect(Collectors.toList());
+                zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
 
-            zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
-
-            auditLogPublisher.publish(
-                    Optional.of(new ItemsWrapper<>(oldCursors)),
-                    Optional.of(new ItemsWrapper<>(newCursors)),
-                    NakadiAuditLogPublisher.ResourceType.CURSORS,
-                    NakadiAuditLogPublisher.ActionType.UPDATED,
-                    subscriptionId);
+                auditLogPublisher.publish(
+                        Optional.of(new ItemsWrapper<>(oldCursors)),
+                        Optional.of(new ItemsWrapper<>(newCursors)),
+                        NakadiAuditLogPublisher.ResourceType.CURSORS,
+                        NakadiAuditLogPublisher.ActionType.UPDATED,
+                        subscriptionId);
+            }
+        } finally {
+            try {
+                zkClient.close();
+            } catch (IOException io) {
+                throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+            }
         }
     }
 
     private void validateSubscriptionCommitCursors(final Subscription subscription,
-                                                   final List<NakadiCursor> cursors,
-                                                   final Span span)
+                                                   final List<NakadiCursor> cursors)
             throws UnableProcessException {
-        validateCursorsBelongToSubscription(subscription, cursors, span);
+        validateCursorsBelongToSubscription(subscription, cursors);
 
         cursors.forEach(cursor -> {
             try {
                 cursor.checkStorageAvailability();
             } catch (final InvalidCursorException e) {
-                TracingService.logErrorInSpan(span, e.getMessage());
+                TracingService.logError(e.getMessage());
                 throw new UnableProcessException(e.getMessage(), e);
             }
         });
     }
 
     private void validateCursorsBelongToSubscription(final Subscription subscription,
-                                                     final List<NakadiCursor> cursors,
-                                                     final Span span)
+                                                     final List<NakadiCursor> cursors)
             throws UnableProcessException {
         final List<String> wrongEventTypes = cursors.stream()
                 .map(NakadiCursor::getEventType)
                 .filter(et -> !subscription.getEventTypes().contains(et))
                 .collect(Collectors.toList());
         if (!wrongEventTypes.isEmpty()) {
-            TracingService.logErrorInSpan(span, "Event type does not belong to subscription: " + wrongEventTypes);
+            TracingService.logError("Event type does not belong to subscription: " + wrongEventTypes);
             throw new UnableProcessException("Event type does not belong to subscription: " + wrongEventTypes);
         }
     }

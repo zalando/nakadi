@@ -3,21 +3,28 @@ package org.zalando.nakadi.enrichment;
 import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.util.FlowIdUtils;
+
+import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 
 public class MetadataEnrichmentStrategyTest {
-    private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy();
+    private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
+    private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy(authorizationService);
 
     @Test
     public void setReceivedAtWithSystemTimeInUTC() throws Exception {
@@ -122,7 +129,7 @@ public class MetadataEnrichmentStrategyTest {
     public void whenFlowIsNullOverrideIt() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
-        event.getJSONObject("metadata").put("flow_id", (Object)null);
+        event.getJSONObject("metadata").put("flow_id", (Object) null);
         final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
@@ -144,4 +151,19 @@ public class MetadataEnrichmentStrategyTest {
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("partition"), equalTo(partition));
     }
+
+    @Test
+    public void setPublisher() throws Exception {
+        when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "test-user-123"));
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        final String partition = randomString();
+        final BatchItem batch = createBatchItem(event);
+        batch.setPartition(partition);
+
+        strategy.enrich(batch, eventType);
+
+        assertEquals("test-user-123", batch.getEvent().getJSONObject("metadata").getString("published_by"));
+    }
+
 }

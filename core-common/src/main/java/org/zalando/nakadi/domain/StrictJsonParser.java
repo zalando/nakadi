@@ -113,8 +113,20 @@ public class StrictJsonParser {
                 return readTrueTillTheEnd(tokenizer);
             case 'f':
                 return readFalseTillTheEnd(tokenizer);
-            default:
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+            case '-':
                 return readNumberTillTheEnd(value, tokenizer);
+            default:
+                throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
         }
     }
 
@@ -135,9 +147,6 @@ public class StrictJsonParser {
     }
 
     private static Object readNumberTillTheEnd(final char value, final StringTokenizer tokenizer) {
-        if (POSSIBLE_NUMBER_DIGITS.indexOf(value) < 0) {
-            throw syntaxError("Unexpected symbol '" + value + "'", tokenizer);
-        }
         final int start = tokenizer.getCurrentPosition() - 1;
         while (tokenizer.hasNext()) {
             if (POSSIBLE_NUMBER_DIGITS.indexOf(tokenizer.next()) < 0) {
@@ -150,11 +159,15 @@ public class StrictJsonParser {
 
         if (stringNumber.indexOf('.') > -1 || stringNumber.indexOf('e') > -1
                 || stringNumber.indexOf('E') > -1 || "-0".equals(stringNumber)) {
-            final Double d = Double.valueOf(stringNumber);
-            if (!d.isInfinite() && !d.isNaN()) {
-                return d;
-            } else {
-                throw syntaxError(stringNumber + " can not be used", tokenizer);
+            try {
+                final Double d = Double.valueOf(stringNumber);
+                if (!d.isInfinite() && !d.isNaN()) {
+                    return d;
+                } else {
+                    throw syntaxError(stringNumber + " can not be used", tokenizer);
+                }
+            } catch (NumberFormatException e) {
+                throw syntaxError("The provided value '" + stringNumber + "' cannot be parsed to float", tokenizer);
             }
         } else {
             try {
@@ -240,6 +253,9 @@ public class StrictJsonParser {
         boolean finished = false;
         while (!finished) {
             char c = tokenizer.next();
+            if (isControlCharacter(c)) {
+                throw syntaxError("Illegal escape.", tokenizer);
+            }
             switch (c) {
                 case 0:
                 case '\n':
@@ -289,6 +305,10 @@ public class StrictJsonParser {
             }
         }
         return sb.toString();
+    }
+
+    private static boolean isControlCharacter(final char c) {
+        return c >= '\u0000' && c <= '\u001F';
     }
 
 }

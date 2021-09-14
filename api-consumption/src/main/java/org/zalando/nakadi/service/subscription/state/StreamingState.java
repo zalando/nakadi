@@ -18,7 +18,6 @@ import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
@@ -193,8 +192,7 @@ class StreamingState extends State {
     }
 
     private void shutdownGracefully(final String reason) {
-        TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
-                "Shutting down gracefully. Reason: " + reason);
+        logStreamCloseReason("Shutting down gracefully: " + reason);
         getLog().info("Shutting down gracefully. Reason: {}", reason);
         switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
@@ -377,8 +375,7 @@ class StreamingState extends State {
 
             batchesSent++;
         } catch (final IOException e) {
-            getLog().warn("Failed to write data to output: {}", e.getMessage());
-            shutdownGracefully("Failed to write data to output");
+            shutdownGracefully("Failed to write data to output: " + e.toString());
         }
     }
 
@@ -687,7 +684,7 @@ class StreamingState extends State {
             try {
                 keysToRelease.forEach(this::removeFromStreaming);
             } finally {
-                getZk().runLocked(() -> getZk().transfer(getSessionId(), keysToRelease));
+                getZk().transfer(getSessionId(), keysToRelease);
             }
         }
     }

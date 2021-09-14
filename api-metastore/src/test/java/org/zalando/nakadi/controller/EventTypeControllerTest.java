@@ -19,7 +19,6 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
@@ -35,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.EventOwnerSelector;
@@ -53,9 +53,10 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -132,60 +133,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventType.getSchema().setSchema("{}");
         postEventType(eventType).andExpect(status().isCreated()).andExpect(
                 header().string("Warning", "299 nakadi \"I am warning you. I am warning you, even more\""));
-    }
-
-    @Test
-    public void whenChangeDefaultStatiticsWithoutAnyChangeInPartitionThen422() throws Exception {
-        final EventType originalEventType = EventTypeTestBuilder.builder()
-                .build();
-
-        final EventType updatedEventType = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(0, 1))
-                .build();
-
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
-        doReturn(true).when(featureToggleService)
-                .isFeatureEnabled(Feature.REPARTITIONING);
-
-        putEventType(updatedEventType, originalEventType.getName())
-                .andExpect(status().isUnprocessableEntity());
-    }
-
-    @Test
-    public void whenIncreaseNumberOfPartitionThen200() throws Exception {
-        final EventType originalEventType = EventTypeTestBuilder.builder()
-                .build();
-
-        final EventType updatedEventType = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(3, 3))
-                .build();
-
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
-        doReturn(true).when(featureToggleService)
-                .isFeatureEnabled(Feature.REPARTITIONING);
-
-        putEventType(updatedEventType, originalEventType.getName())
-                .andExpect(status().isOk());
-
-        final EventType updatedEventType1 = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(new EventTypeStatistics(1, 1))
-                .build();
-
-        putEventType(updatedEventType1, originalEventType.getName())
-                .andExpect(status().isOk());
-
-        final EventType updatedEventType2 = EventTypeTestBuilder.builder()
-                .name(originalEventType.getName())
-                .defaultStatistic(null)
-                .build();
-
-        doReturn(originalEventType).when(eventTypeRepository).findByName(any());
-
-        putEventType(updatedEventType2, originalEventType.getName())
-                .andExpect(status().isOk());
     }
 
     @Test
@@ -631,9 +578,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final Subscription mockSubscription = mock(Subscription.class);
         when(mockSubscription.getConsumerGroup()).thenReturn("def");
         when(mockSubscription.getOwningApplication()).thenReturn("asdf");
-        when(subscriptionRepository
-                .listSubscriptions(eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
-                .thenReturn(ImmutableList.of(mockSubscription));
+        when(subscriptionTokenLister
+                .listSubscriptions(
+                        eq(ImmutableSet.of(eventType.getName())),
+                        eq(Optional.empty()),
+                        eq(Optional.empty()),
+                        isNull(),
+                        anyInt()))
+                .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));
 
         final Problem expectedProblem = Problem.valueOf(CONFLICT,
                 "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
@@ -917,7 +869,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doThrow(TopicConfigException.class).when(topicRepository).setRetentionTime(anyString(), anyLong());
+        doThrow(TopicConfigException.class).when(topicRepository).updateTopicConfig(anyString(), anyLong(), any());
         when(timelineService.getActiveTimelinesOrdered(any()))
                 .thenReturn(Collections.singletonList(
                         Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date())));
@@ -929,7 +881,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
                 .andExpect(status().isInternalServerError());
-        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository, times(0)).update(any());
     }
 
@@ -952,7 +904,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
                 .andExpect(status().isInternalServerError());
-        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository).update(any());
     }
 
@@ -964,5 +916,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         doThrow(new AccessDeniedException(AuthorizationService.Operation.VIEW, eventType.asResource()))
                 .when(authorizationValidator).authorizeEventTypeView(eventType);
         getEventType(eventTypeName).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testWhenFilteringEventTypes() throws Exception {
+        final String writer = "user:bshala";
+        final EventType eventType = TestUtils.buildDefaultEventType();
+        doReturn(List.of(eventType)).when(eventTypeRepository)
+                .list(new ResourceAuthorizationAttribute("user", "bshala"));
+        getEventTypes(writer).andExpect(status().is2xxSuccessful());
     }
 }

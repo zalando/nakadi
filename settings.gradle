@@ -3,7 +3,6 @@ rootProject.name = 'nakadi'
 include 'app'
 
 include 'core-common'
-include 'core-publishing'
 include 'core-services'
 include 'core-metastore'
 

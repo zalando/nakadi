@@ -19,14 +19,17 @@ public class NakadiKpiPublisher {
     private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
     private final UsernameHasher usernameHasher;
+    private final EventMetadata eventMetadata;
 
     @Autowired
     protected NakadiKpiPublisher(final FeatureToggleService featureToggleService,
                                  final EventsProcessor eventsProcessor,
-                                 final UsernameHasher usernameHasher) {
+                                 final UsernameHasher usernameHasher,
+                                 final EventMetadata eventMetadata) {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.usernameHasher = usernameHasher;
+        this.eventMetadata = eventMetadata;
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
@@ -35,8 +38,8 @@ public class NakadiKpiPublisher {
                 return;
             }
 
-            final JSONObject event = eventSupplier.get();
-            eventsProcessor.enrichAndSubmit(etName, event);
+            eventsProcessor.queueEvent(etName,
+                    eventMetadata.addTo(eventSupplier.get()));
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }

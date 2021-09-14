@@ -1,0 +1,20 @@
+{
+  "name": "article",
+  "owning_application": "article-producer",
+  "category": "data",
+  "annotations": {
+    "test/annotation": "testing-value",
+    "test/another": "another-value"
+  },
+  "labels": {
+    "test/label": "testing-value",
+    "test/another": "another-value"
+  },
+  "partition_key_fields": [
+    "name"
+  ],
+  "schema": {
+    "type": "JSON_SCHEMA",
+    "schema": "{ \"Article\": { \"properties\": { \"name\": { \"type\": \"string\" } } } }"
+  }
+}

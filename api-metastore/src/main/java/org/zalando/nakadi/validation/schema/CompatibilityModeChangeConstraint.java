@@ -20,20 +20,25 @@ public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstra
     );
 
     private final AdminService adminService;
+    private final AuthorizationService authorizationService;
 
-    public CompatibilityModeChangeConstraint(final AdminService adminService) {
+    public CompatibilityModeChangeConstraint(final AdminService adminService,
+                                             final AuthorizationService authorizationService) {
         this.adminService = adminService;
+        this.authorizationService = authorizationService;
     }
 
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
         final boolean isNakadiAdmin = adminService.isAdmin(AuthorizationService.Operation.WRITE);
+        final boolean isEventTypeAdmin = authorizationService
+                .isAuthorized(AuthorizationService.Operation.ADMIN, original.asResource());
         final boolean isChangeValid = allowedChanges.get(original.getCompatibilityMode())
                 .contains(eventType.getCompatibilityMode());
-        if (!isNakadiAdmin && !isChangeValid) {
-            return Optional.of(new SchemaEvolutionIncompatibility("changing compatibility_mode is not allowed"));
-        } else {
+        if (isEventTypeAdmin || isNakadiAdmin || isChangeValid) {
             return Optional.empty();
+        } else {
+            return Optional.of(new SchemaEvolutionIncompatibility("changing compatibility_mode is not allowed"));
         }
     }
 }

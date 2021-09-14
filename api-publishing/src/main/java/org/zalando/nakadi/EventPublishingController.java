@@ -1,7 +1,6 @@
 package org.zalando.nakadi;
 
 import com.google.common.base.Charsets;
-import io.opentracing.Span;
 import io.opentracing.tag.Tags;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +84,10 @@ public class EventPublishingController {
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
+        TracingService.setOperationName("publish_events")
+                .setTag("event_type", eventTypeName)
+                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+
         if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
@@ -113,23 +116,24 @@ public class EventPublishingController {
             EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
         try {
-            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
-            final Span publishingSpan = TracingService.extractSpan(request, "publish_events")
-                    .setTag("event_type", eventTypeName)
-                    .setTag("slo_bucket", TracingService.getSLOBucket(totalSizeBytes))
-                    .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
-
             final EventPublishResult result;
-            if (delete) {
-                result = publisher.delete(eventsAsString, eventTypeName, publishingSpan);
-            } else {
-                result = publisher.publish(eventsAsString, eventTypeName, publishingSpan);
-            }
 
+            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
+            TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
+
+            if (delete) {
+                result = publisher.delete(eventsAsString, eventTypeName);
+            } else {
+                result = publisher.publish(eventsAsString, eventTypeName);
+            }
             final int eventCount = result.getResponses().size();
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
+
+            if (result.getStatus() == EventPublishingStatus.FAILED) {
+                TracingService.setErrorFlag();
+            }
 
             return response(result);
         } finally {

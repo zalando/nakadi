@@ -4,7 +4,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.NodeCache;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
@@ -12,7 +11,6 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
@@ -35,7 +33,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,27 +44,22 @@ import static com.google.common.base.Charsets.UTF_8;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClient {
-    private static final int SECONDS_TO_WAIT_FOR_LOCK = 15;
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
     protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
-    private final CuratorFramework defaultCurator;
     private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String closeSubscriptionStream;
     private final Logger log;
-    private InterProcessSemaphoreMutex lock;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
-            final ZooKeeperHolder zooKeeperHolder,
-            final String loggingPath,
-            final long zkSessionTimeout) throws ZookeeperException {
+            final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
+            final String loggingPath) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
-        this.defaultCurator = zooKeeperHolder.get();
-        this.closeableCuratorFramework = zooKeeperHolder.getSubscriptionCurator(zkSessionTimeout);
+        this.closeableCuratorFramework = closeableCuratorFramework;
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
@@ -88,54 +80,16 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return "/nakadi/subscriptions/" + subscriptionId + value;
     }
 
-    protected String getSubscriptionLockPath() {
-        return "/nakadi/locks/subscription_" + subscriptionId;
-    }
-
     protected Logger getLog() {
         return log;
     }
 
     @Override
-    public final <T> T runLocked(final Callable<T> function) {
-        try {
-            Exception releaseException = null;
-            if (null == lock) {
-                lock = new InterProcessSemaphoreMutex(defaultCurator, getSubscriptionLockPath());
-            }
-
-            final boolean acquired = lock.acquire(SECONDS_TO_WAIT_FOR_LOCK, TimeUnit.SECONDS);
-            if (!acquired) {
-                throw new ServiceTemporarilyUnavailableException("Failed to acquire subscription lock within " +
-                        SECONDS_TO_WAIT_FOR_LOCK + " seconds");
-            }
-            final T result;
-            try {
-                result = function.call();
-            } finally {
-                try {
-                    lock.release();
-                } catch (final Exception e) {
-                    log.error("Failed to release lock", e);
-                    releaseException = e;
-                }
-            }
-            if (releaseException != null) {
-                throw releaseException;
-            }
-            return result;
-        } catch (final NakadiRuntimeException | NakadiBaseException e) {
-            throw e;
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        }
-    }
-
-    @Override
     public final void deleteSubscription() {
         try {
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionPath(""));
-            getCurator().delete().guaranteed().deletingChildrenIfNeeded().forPath(getSubscriptionLockPath());
+            getCurator().delete()
+                    .deletingChildrenIfNeeded()
+                    .forPath(getSubscriptionPath(""));
         } catch (final KeeperException.NoNodeException nne) {
             getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
@@ -159,25 +113,47 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void fillEmptySubscription(final Collection<SubscriptionCursorWithoutToken> cursors) {
         try {
-            // Delete root subscription node, if it was erroneously created
-            if (null != getCurator().checkExists().forPath(getSubscriptionPath(""))) {
-                deleteSubscription();
-            }
-            getLog().info("Creating sessions root");
+            createSessionsZNode();
+            createOffsetZNodes(cursors);
+            createTopologyZNode(cursors);
+            createStateZNodeAsInitialized();
+        } catch (final Exception e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
+    private void createSessionsZNode() throws Exception {
+        getLog().info("Creating sessions root");
+        try {
             getCurator().create()
                     .creatingParentsIfNeeded() // Important to create all nodes in hierarchy
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(getSubscriptionPath("/sessions"));
+        } catch (final KeeperException.NodeExistsException ex) {
+            getLog().info("ZNode for {} exists, not creating new one", getSubscriptionPath("/sessions"));
+        }
+    }
 
-            final byte[] topologyData = createTopologyAndOffsets(cursors);
-            getCurator().create()
-                    .withMode(CreateMode.PERSISTENT)
-                    .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
+    private void createOffsetZNodes(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
+        getLog().info("Creating offsets");
+        for (final SubscriptionCursorWithoutToken cursor : cursors) {
+            try {
+                getCurator().create().creatingParentsIfNeeded().forPath(
+                        getOffsetPath(cursor.getEventTypePartition()),
+                        cursor.getOffset().getBytes(UTF_8));
+            } catch (final KeeperException.NodeExistsException ex) {
+                getLog().info("Offset ZNode {}/{} exists, not creating a new one",
+                        cursor.getEventType(), cursor.getPartition());
+            }
+        }
+    }
 
-            getLog().info("updating state");
+    private void createStateZNodeAsInitialized() throws Exception {
+        getLog().info("updating state");
+        try {
             getCurator().create().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(UTF_8));
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
+        } catch (final KeeperException.NodeExistsException ex) {
+            getLog().info("ZNode for {} exists, not creating new one", getSubscriptionPath("/state"));
         }
     }
 
@@ -196,7 +172,9 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void unregisterSession(final Session session) {
         try {
-            getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+            getCurator().delete().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+        } catch (final KeeperException.NoNodeException ke) {
+            // It's OK that the session node was not there: all we want is to make sure it's deleted.
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -301,7 +279,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
         return () -> {
             try {
-                cursorResetCache.getListenable().clear();
                 cursorResetCache.close();
             } catch (final IOException e) {
                 throw new NakadiRuntimeException(e);
@@ -313,7 +290,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public ZkSubscription<SubscriptionCursorWithoutToken> subscribeForOffsetChanges(
             final EventTypePartition key, final Runnable commitListener) {
         final String path = getOffsetPath(key);
-        getLog().info("subscribeForOffsetChanges: {}, path: {}", key, path);
         return new ZkSubscriptionImpl.ZkSubscriptionValueImpl<>(
                 getCurator(),
                 commitListener,
@@ -370,7 +346,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
             try {
                 if (!resetWasAlreadyInitiated) {
-                    getCurator().delete().guaranteed().forPath(closeSubscriptionStream);
+                    getCurator().delete().forPath(closeSubscriptionStream);
                 }
             } catch (final Exception e) {
                 getLog().error(e.getMessage(), e);
@@ -383,7 +359,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final ZkSubscription<List<String>> subscribeForSessionListChanges(final Runnable listener)
             throws NakadiRuntimeException {
-        getLog().info("subscribeForSessionListChanges: " + listener.hashCode());
         return new ZkSubscriptionImpl.ZkSubscriptionChildrenImpl(
                 getCurator(), listener, getSubscriptionPath("/sessions"));
     }
@@ -469,8 +444,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         }
     }
 
-    protected abstract byte[] createTopologyAndOffsets(Collection<SubscriptionCursorWithoutToken> cursors)
-            throws Exception;
+    protected abstract void createTopologyZNode(Collection<SubscriptionCursorWithoutToken> cursors) throws Exception;
 
     protected abstract String getOffsetPath(EventTypePartition etp);
 

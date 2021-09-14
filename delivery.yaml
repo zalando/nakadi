@@ -1,8 +1,9 @@
 version: "2017-09-20"
 pipeline:
   - id: test
-    overlay: ci/java
+    overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Checkstyle
         cmd: |
@@ -11,22 +12,30 @@ pipeline:
         cmd: |
           ./gradlew test --stacktrace
   - id: acceptance-test
-    overlay: ci/java
+    overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Install dependencies
         cmd: |
-          pip install docker-compose==1.24.1
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          echo '04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d */usr/local/bin/docker-compose' | sha256sum -c
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
       - desc: Acceptance Test
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
   - id: build-push
-    overlay: ci/java
+    overlay: ci/java11
     type: script
+    vm: critical-large
     commands:
       - desc: Build and push to repo
         cmd: |
           ./gradlew clean app:bootJar
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
+            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+          fi
           docker build -t ${IMAGE} .
           docker push ${IMAGE}

@@ -25,30 +25,18 @@ Nakadi provides per-event filtering, allowing event type publishers to specify w
   "owning_application": "acme-order-service",
   ...
   "event_owner_selector": {
-    "type": "dot_path",
+    "type": "path",
     "name": "retailer_id",
-    "path": "security.exclusive_readers"
+    "value": "security.exclusive_readers"
   }
   "category": "business",
   ...
 }
 ```
 
-An event may be published to the above event type, and the logic for authorization then, could only allow a single
- reader/set of readers (out of many readers) to receive that event, for example:
-
-```
-  {
-    "order_number": "24873243241",
-    "security": {
-      "exclusive_readers": "Team-A"
-    }
-    "metadata": {
-      "eid": "d765de34-09c0-4bbb-8b1e-7160a33a0791",
-      "occurred_at": "2016-03-15T23:47:15+01:00"
-    }
-  }
-```
+ The events that were published to the event type above could be read only by a set of readers, that has matching 
+ `retailer_id` provided by authorization plugin. In case if consumer does not have this value - the events are silently 
+ omitted from the output.   
 
  Also, once a `event_owner_selector` is specified for an event type, it cannot be removed or updated.
 

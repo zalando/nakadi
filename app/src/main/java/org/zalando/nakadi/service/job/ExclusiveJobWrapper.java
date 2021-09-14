@@ -68,7 +68,6 @@ public class ExclusiveJobWrapper {
         try {
             zkHolder.get()
                     .delete()
-                    .guaranteed()
                     .forPath(zkPath + "/lock");
         } catch (final Exception e) {
             log.error("Zookeeper error when deleting job lock-node", e);

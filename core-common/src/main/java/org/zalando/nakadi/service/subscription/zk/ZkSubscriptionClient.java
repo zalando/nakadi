@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.function.Function;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
@@ -22,26 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 
 public interface ZkSubscriptionClient extends Closeable {
-
-    /**
-     * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi goes down. After obtaining runLocked,
-     * provided function will be called under subscription runLocked
-     *
-     * @param function Function to call in context of runLocked.
-     */
-    <T> T runLocked(Callable<T> function);
-
-    default void runLocked(final Runnable function) {
-        runLocked((Callable<Void>) () -> {
-            function.run();
-            return null;
-        });
-    }
-
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
@@ -67,10 +50,13 @@ public interface ZkSubscriptionClient extends Closeable {
     void fillEmptySubscription(Collection<SubscriptionCursorWithoutToken> cursors);
 
     /**
-     * Updates specified partitions in zk.
+     * Updates topologies partitions by reading topology first and
+     * then writing the change back with usage of zookeeper node version.
+     * If zookeeper node version was changed in between it will retry
+     * by reading new zookeeper node version.
      */
-    void updatePartitionsConfiguration(String newSessionsHash, Partition[] partitions) throws NakadiRuntimeException,
-            SubscriptionNotInitializedException;
+    void updateTopology(Function<Topology, Partition[]> partitioner)
+            throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
      * Returns session list in zk related to this subscription.
@@ -83,9 +69,11 @@ public interface ZkSubscriptionClient extends Closeable {
     boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
     /**
-     * List partitions
+     * Returns subscription {@link Topology} object from Zookeeper
      *
-     * @return list of partitions related to this subscription.
+     * @return topology {@link Topology}
+     * @throws SubscriptionNotInitializedException
+     * @throws NakadiRuntimeException
      */
     Topology getTopology() throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
@@ -198,22 +186,14 @@ public interface ZkSubscriptionClient extends Closeable {
     class Topology {
         @JsonProperty("partitions")
         private final Partition[] partitions;
-        // Each topology is based on a list of sessions, that it was built for.
-        // In case, when list of sessions wasn't changed, one should not actually perform rebalance, cause nothing have
-        // changed.
-        @Nullable
-        @JsonProperty("sessions_hash")
-        private final String sessionsHash;
         @Nullable
         @JsonProperty("version")
         private final Integer version;
 
         public Topology(
                 @JsonProperty("partitions") final Partition[] partitions,
-                @Nullable @JsonProperty("sessions_hash") final String sessionsHash,
                 @Nullable @JsonProperty("version") final Integer version) {
             this.partitions = partitions;
-            this.sessionsHash = sessionsHash;
             this.version = version;
         }
 
@@ -221,7 +201,7 @@ public interface ZkSubscriptionClient extends Closeable {
             return partitions;
         }
 
-        public Topology withUpdatedPartitions(final String newHash, final Partition[] partitions) {
+        public Topology withUpdatedPartitions(final Partition[] partitions) {
             final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
             for (final Partition newValue : partitions) {
                 int selectedIdx = -1;
@@ -236,14 +216,13 @@ public interface ZkSubscriptionClient extends Closeable {
                 }
                 resultPartitions[selectedIdx] = newValue;
             }
-            return new Topology(resultPartitions, newHash, Optional.ofNullable(version).orElse(0) + 1);
+            return new Topology(resultPartitions, Optional.ofNullable(version).orElse(0) + 1);
         }
 
         @Override
         public String toString() {
             return "Topology{" +
                     "partitions=" + Arrays.toString(partitions) +
-                    ", sessionsHash=" + sessionsHash +
                     ", version=" + version +
                     '}';
         }
@@ -258,13 +237,12 @@ public interface ZkSubscriptionClient extends Closeable {
             }
             final Topology topology = (Topology) o;
             return Objects.equals(version, topology.version) &&
-                    Arrays.equals(partitions, topology.partitions) &&
-                    Objects.equals(sessionsHash, topology.sessionsHash);
+                    Arrays.equals(partitions, topology.partitions);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(sessionsHash, version);
+            return Objects.hash(version);
         }
 
         public static String calculateSessionsHash(final Collection<String> sessionIds)
@@ -278,14 +256,6 @@ public interface ZkSubscriptionClient extends Closeable {
             sessionIds.stream().sorted().map(String::getBytes).forEach(md::update);
             final byte[] digest = md.digest();
             return Hex.encodeHexString(digest);
-        }
-
-        public boolean isSameHash(final String newHash) {
-            return Objects.equals(newHash, sessionsHash);
-        }
-
-        public String getSessionsHash() {
-            return sessionsHash;
         }
 
         public Integer getVersion() {

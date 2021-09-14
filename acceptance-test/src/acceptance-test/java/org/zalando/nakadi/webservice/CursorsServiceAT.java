@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import io.opentracing.util.GlobalTracer;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
@@ -17,6 +16,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidStreamIdException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.zookeeper.CuratorFrameworkRotator;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
@@ -97,8 +97,10 @@ public class CursorsServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
+        final CuratorFrameworkRotator curatorRotator = new CuratorFrameworkRotator(
+                () -> ZookeeperTestUtils.createCurator(ZOOKEEPER_URL), 300_000, 10_000);
         when(zkHolder.getSubscriptionCurator(anyLong()))
-                .thenReturn(new ZooKeeperHolder.DisposableCuratorFramework(CURATOR));
+                .thenReturn(new ZooKeeperHolder.RotatingCuratorFramework(curatorRotator));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         final TimelineService timelineService = mock(TimelineService.class);
@@ -140,8 +142,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors,
-                GlobalTracer.get().buildSpan("test").start());
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(ImmutableList.of(true)));
         checkCurrentOffsetInZk(P1, NEW_OFFSET);
     }
@@ -149,8 +150,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenStreamIdInvalidThenException() throws Exception {
         try {
-            cursorsService.commitCursors("wrong-stream-id", sid, testCursors,
-                    GlobalTracer.get().buildSpan("test").start());
+            cursorsService.commitCursors("wrong-stream-id", sid, testCursors);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -161,15 +161,14 @@ public class CursorsServiceAT extends BaseAT {
     public void shouldThrowInvalidStreamIdWhenStreamIdIsNotUUID() throws Exception {
         when(uuidGenerator.isUUID(any())).thenReturn(false);
         final String streamId = "/";
-        cursorsService.commitCursors(streamId, sid, testCursors,
-                GlobalTracer.get().buildSpan("test").start());
+        cursorsService.commitCursors(streamId, sid, testCursors);
     }
 
     @Test
     public void whenPartitionIsStreamedToDifferentClientThenFalse() throws Exception {
         setPartitions(new Partition[]{new Partition(etName, P1, "wrong-stream-id", null, Partition.State.ASSIGNED)});
         try {
-            cursorsService.commitCursors(streamId, sid, testCursors, GlobalTracer.get().buildSpan("test").start());
+            cursorsService.commitCursors(streamId, sid, testCursors);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -182,8 +181,7 @@ public class CursorsServiceAT extends BaseAT {
         registerNakadiCursor(cursor);
         testCursors = ImmutableList.of(cursor);
         setPartitions(new Partition[]{new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors,
-                GlobalTracer.get().buildSpan("test").start());
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(ImmutableList.of(false)));
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
     }
@@ -198,8 +196,7 @@ public class CursorsServiceAT extends BaseAT {
         setPartitions(new Partition[]{
                 new Partition(etName, P1, streamId, null, Partition.State.ASSIGNED),
                 new Partition(etName, P2, streamId, null, Partition.State.ASSIGNED)});
-        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors,
-                GlobalTracer.get().buildSpan("test").start());
+        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors);
 
         assertFalse(result.get(0));
         assertTrue(result.get(1));
@@ -233,8 +230,7 @@ public class CursorsServiceAT extends BaseAT {
         );
         testCursors.forEach(this::registerNakadiCursor);
 
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors,
-                GlobalTracer.get().buildSpan("test").start());
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(
                 ImmutableList.of(
                         true,
@@ -290,7 +286,7 @@ public class CursorsServiceAT extends BaseAT {
     private void setPartitions(final Partition[] partitions) throws Exception {
         final String topologyPath = subscriptionPath() + "/topology";
         final byte[] topologyData = MAPPER.writeValueAsBytes(
-                new NewZkSubscriptionClient.Topology(partitions, null, 0));
+                new NewZkSubscriptionClient.Topology(partitions, 0));
         if (null == CURATOR.checkExists().forPath(topologyPath)) {
             CURATOR.create().forPath(topologyPath, topologyData);
         } else {

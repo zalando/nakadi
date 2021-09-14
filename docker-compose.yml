@@ -19,8 +19,6 @@ services:
     - NAKADI_FEATURES_DEFAULT_FEATURES_REMOTE_TOKENINFO
     - NAKADI_FEATURES_DEFAULT_FEATURES_KPI_COLLECTION
     - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_DB_WRITE_OPERATIONS
-    - NAKADI_FEATURES_DEFAULT_FEATURES_DISABLE_LOG_COMPACTION
-    - NAKADI_FEATURES_DEFAULT_FEATURES_REPARTITIONING
     - NAKADI_ZOOKEEPER_CONNECTIONSTRING=zookeeper://zookeeper:2181
     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db?preferQueryMode=simple
     - SPRING_DATASOURCE_USERNAME=nakadi
@@ -38,12 +36,12 @@ services:
       POSTGRES_DB: local_nakadi_db
 
   zookeeper:
-    image: wurstmeister/zookeeper:3.4.6
+    image: zookeeper:3.6
     ports:
     - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka:2.12-2.4.0
+    image: registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1
     ports:
     - "29092:29092"
     - "9092:9092"

@@ -3,15 +3,14 @@ package org.zalando.nakadi.service.subscription;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
-import io.opentracing.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -42,7 +41,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -70,7 +68,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Comparator<NakadiCursor> cursorComparator;
     private final NakadiKpiPublisher kpiPublisher;
     private final AutocommitSupport autocommitSupport;
-    private final Span currentSpan;
     private final String kpiDataStreamedEventType;
     private final CursorOperationsService cursorOperationsService;
 
@@ -82,6 +79,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
     private boolean sessionRegistered;
+    private boolean zkClientClosed;
 
     private final Logger log;
 
@@ -111,12 +109,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
         this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
-        this.currentSpan = builder.currentSpan;
         this.cursorOperationsService = builder.cursorOperationsService;
-    }
-
-    public Span getCurrentSpan() {
-        return currentSpan;
     }
 
     public TimelineService getTimelineService() {
@@ -175,25 +168,18 @@ public class StreamingContext implements SubscriptionStreamer {
         return cursorOperationsService;
     }
 
-    @Override
-    public void stream() throws InterruptedException {
-        try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
-            streamInternal(new StartingState());
-        } catch (final IOException ex) {
-            log.error(
-                    "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
-                    getSubscription(),
-                    ex);
-        }
-    }
-
     public AutocommitSupport getAutocommitSupport() {
         return autocommitSupport;
     }
 
-    void onNodeShutdown() {
+    public void terminateStream() {
         log.info("Shutdown hook called. Trying to terminate subscription gracefully");
         switchState(new CleanupState(null));
+    }
+
+    @Override
+    public void stream() throws InterruptedException {
+        streamInternal(new StartingState());
     }
 
     void streamInternal(final State firstState)
@@ -250,8 +236,18 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void registerSession() throws NakadiRuntimeException {
         log.info("Registering session {}", session);
-        zkClient.registerSession(session);
+
+        // Set the flag early to make sure we try to clean it up later.
+        // It's safe to unregister session even if the call to register it has failed, because its ID is unique.
         sessionRegistered = true;
+        zkClient.registerSession(session);
+    }
+
+    public void closeZkClient() throws IOException {
+        if (!zkClientClosed) {
+            zkClient.close();
+            zkClientClosed = true;
+        }
     }
 
     public void subscribeToSessionListChangeAndRebalance() throws NakadiRuntimeException {
@@ -270,8 +266,9 @@ public class StreamingContext implements SubscriptionStreamer {
         } finally {
             this.sessionListSubscription = null;
             if (sessionRegistered) {
-                sessionRegistered = false;
                 zkClient.unregisterSession(session);
+                // It may get called more than one time during cleanup, so we should avoid deleting the node again.
+                sessionRegistered = false;
             }
         }
     }
@@ -313,24 +310,15 @@ public class StreamingContext implements SubscriptionStreamer {
     private void rebalance() {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
-            final List<String> newSessions = sessionListSubscription.getData();
-            final String sessionsHash = ZkSubscriptionClient.Topology.calculateSessionsHash(newSessions);
-            zkClient.runLocked(() -> {
-                final ZkSubscriptionClient.Topology topology = zkClient.getTopology();
-
-                if (!topology.isSameHash(sessionsHash)) {
-                    log.info("Performing rebalance, hash changed: {}", sessionsHash);
-                    final Collection<Session> newSessionsUnderLock = zkClient.listSessions();
-
-                    // after taking the lock list of sessions may change, so we need to update hash to correct value.
-                    final Partition[] changeset = rebalancer.apply(newSessionsUnderLock, topology.getPartitions());
-                    if (changeset.length > 0) {
-                        final String actualHash = ZkSubscriptionClient.Topology.calculateSessionsHash(
-                                newSessionsUnderLock.stream().map(Session::getId).collect(Collectors.toList()));
-                        zkClient.updatePartitionsConfiguration(actualHash, changeset);
-                    }
-                } else {
-                    log.info("Skipping rebalance, because hash is the same: {}", sessionsHash);
+            sessionListSubscription.getData();
+            zkClient.updateTopology(topology -> {
+                try {
+                    return rebalancer.apply(
+                            zkClient.listSessions(),
+                            topology.getPartitions());
+                } catch (final RebalanceConflictException e) {
+                    log.warn("failed to rebalance partitions: {}", e.getMessage(), e);
+                    return new Partition[0];
                 }
             });
         }
@@ -396,12 +384,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private String kpiDataStremedEventType;
         private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
-        private Span currentSpan;
-
-        public Builder setCurrentSpan(final Span span) {
-            this.currentSpan = span;
-            return this;
-        }
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;

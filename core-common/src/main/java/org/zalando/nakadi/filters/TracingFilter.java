@@ -2,16 +2,9 @@ package org.zalando.nakadi.filters;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
-import io.opentracing.propagation.TextMapExtractAdapter;
-import io.opentracing.propagation.TextMapInjectAdapter;
-import io.opentracing.util.GlobalTracer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import io.opentracing.Tracer;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.TracingService;
-import org.zalando.nakadi.util.FlowIdUtils;
 
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -19,133 +12,126 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
-
-@Component
 public class TracingFilter extends OncePerRequestFilter {
 
-    private static final String SPAN_CONTEXT = "span_ctx";
-    private final AuthorizationService authorizationService;
+    private static final String GENERIC_OPERATION_NAME = "generic_request";
+    private static final String SPAN_CONTEXT_HEADER = "span_ctx";
 
-
-    @Autowired
-    public TracingFilter(final AuthorizationService authorizationService) {
-        this.authorizationService = authorizationService;
+    public TracingFilter() {
     }
 
-    private class AsyncRequestListener implements AsyncListener {
-        private final HttpServletResponse response;
-        private final String flowId;
-        final long contentLength;
-        private final Span currentSpan;
+    private class AsyncRequestSpanFinalizer implements AsyncListener {
 
-        private AsyncRequestListener(final HttpServletRequest request, final HttpServletResponse response,
-                                     final String flowId, final Span span) {
+        private final Span span;
+        private final HttpServletRequest request;
+        private final HttpServletResponse response;
+
+        private AsyncRequestSpanFinalizer(final Span span,
+                                          final HttpServletRequest request,
+                                          final HttpServletResponse response) {
+            this.span = span;
+            this.request = request;
             this.response = response;
-            this.flowId = flowId;
-            this.currentSpan = span;
-            this.contentLength = request.getContentLengthLong() == -1 ? 0 : request.getContentLengthLong();
         }
 
-        private void logOnEvent() {
-            FlowIdUtils.push(this.flowId);
-            traceRequest(contentLength, this.response.getStatus(), currentSpan);
-            FlowIdUtils.clear();
+        private void finalizeSpan() {
+            try {
+                traceRequest(span, request, response);
+            } finally {
+                span.finish();
+            }
         }
 
         @Override
         public void onComplete(final AsyncEvent event) {
-            logOnEvent();
+            finalizeSpan();
         }
 
         @Override
         public void onTimeout(final AsyncEvent event) {
-            logOnEvent();
+            finalizeSpan();
         }
 
         @Override
         public void onError(final AsyncEvent event) {
-            logOnEvent();
+            finalizeSpan();
         }
 
         @Override
         public void onStartAsync(final AsyncEvent event) {
-
         }
     }
 
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
-                                    final HttpServletResponse response, final FilterChain filterChain)
+                                    final HttpServletResponse response,
+                                    final FilterChain filterChain)
             throws IOException, ServletException {
-        final Long startTime = System.currentTimeMillis();
+
+        final Tracer.SpanBuilder spanBuilder;
+
         final Map<String, String> requestHeaders = Collections.list(request.getHeaderNames())
                 .stream()
                 .collect(Collectors.toMap(h -> h, request::getHeader));
 
-        final SpanContext spanContext = GlobalTracer.get()
-                .extract(HTTP_HEADERS, new TextMapExtractAdapter(requestHeaders));
-        final Span baseSpan;
+        final SpanContext spanContext = TracingService.extractFromRequestHeaders(requestHeaders);
         if (spanContext != null) {
-            if (isCommitRequest(request.getRequestURI(), request.getMethod())) {
-                baseSpan = TracingService.getNewSpanWithReference("commit_events",
-                        startTime, spanContext);
-            } else {
-                baseSpan = TracingService.getNewSpanWithParent("all_requests",
-                        startTime, spanContext);
-            }
+            spanBuilder = TracingService.buildNewChildSpan(GENERIC_OPERATION_NAME, spanContext);
         } else {
-            baseSpan = TracingService.getNewSpan("all_requests", startTime);
+            spanBuilder = TracingService.buildNewSpan(GENERIC_OPERATION_NAME);
         }
+        spanBuilder
+                .withTag("http.url", request.getRequestURI() +
+                         Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                .withTag("http.header.content_encoding",
+                         Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                .withTag("http.header.accept_encoding",
+                         Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                .withTag("http.header.user_agent",
+                         Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
 
-        try {
-            baseSpan
-                    .setTag("client_id", authorizationService.getSubject().map(Subject::getName).orElse("-"))
-                    .setTag("http.url", request.getRequestURI() +
-                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                    .setTag("http.header.content_encoding",
-                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                    .setTag("http.header.accept_encoding",
-                            Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
-                    .setTag("http.header.user_agent",
-                            Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
-            request.setAttribute("span", baseSpan);
-            //execute request
+        final Span span = spanBuilder.start();
+        try (Closeable ignored = TracingService.activateSpan(span)) {
             filterChain.doFilter(request, response);
-            if (request.isAsyncStarted()) {
-                final String flowId = FlowIdUtils.peek();
-                request.getAsyncContext().addListener(new AsyncRequestListener(request, response, flowId, baseSpan));
-            }
+        } catch (final Exception ex) {
+            TracingService.setErrorFlag(span);
+            TracingService.logError(span, ex);
+            throw ex;
         } finally {
-            if (!request.isAsyncStarted()) {
-                traceRequest(request.getContentLength(), response.getStatus(), baseSpan);
+            response.setHeader(SPAN_CONTEXT_HEADER,
+                    TracingService.getTextMapFromSpanContext(span.context()).toString());
+
+            if (request.isAsyncStarted()) {
+                request.getAsyncContext().addListener(new AsyncRequestSpanFinalizer(span, request, response));
+            } else {
+                try {
+                    traceRequest(span, request, response);
+                } finally {
+                    span.finish();
+                }
             }
-            final Map<String, String> spanContextToInject = new HashMap<>();
-            GlobalTracer.get().inject(baseSpan.context(),
-                    HTTP_HEADERS, new TextMapInjectAdapter(spanContextToInject));
-            response.setHeader(SPAN_CONTEXT, spanContextToInject.toString());
-            baseSpan.finish();
         }
     }
 
+    private static void traceRequest(final Span span,
+                                     final HttpServletRequest request,
+                                     final HttpServletResponse response) {
 
-    private boolean isCommitRequest(final String path, final String method) {
-        return (path != null && "POST".equals(method) &&
-                path.startsWith("/subscriptions/") &&
-                (path.endsWith("/cursors") || path.endsWith("/cursors/")));
-    }
+        final int statusCode = response.getStatus();
+        span.setTag("http.status_code", statusCode);
+        if (statusCode >= 500) {
+            // controllers may also set the error flag for other status codes, but we won't overwrite it here
+            TracingService.setErrorFlag(span);
+        }
 
-    private void traceRequest(final long contentLength, final int statusCode,
-                              final Span span) {
-        span.setTag("http.status_code", statusCode)
-                .setTag("content_length", contentLength)
-                .setTag("error", statusCode == 207 || statusCode >= 500);
+        // content length might not be known before the request was consumed, so set it after handling
+        span.setTag("content_length", request.getContentLengthLong());
     }
 }

@@ -1,6 +1,8 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -20,6 +22,7 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -29,9 +32,11 @@ import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -40,12 +45,15 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
@@ -72,6 +80,32 @@ public class EventTypeAT extends BaseAT {
                 .header("accept", "application/json")
                 .contentType(JSON)
                 .get(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", hasItems(eventType.getName()));
+    }
+
+    @Test
+    public void whenGETWithQueryEThenListsEventTypes() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute(
+                "service", "stups_test" + randomTextString());
+        eventType.setAuthorization(new ResourceAuthorization(List.of(auth), List.of(auth), List.of(auth)));
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+
+        given()
+                .body(body)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        given()
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .get(ENDPOINT + "?writer=" + AuthorizationAttributeQueryParser.getQuery(auth))
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body("name", hasItems(eventType.getName()));
@@ -284,8 +318,72 @@ public class EventTypeAT extends BaseAT {
         assertRetentionTime(newRetentionTime, eventType.getName());
     }
 
+    @Test
+    public void whenUpdateCleanupPolicyDeleteToDeleteCompactJourney() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.DELETE)
+                .enrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .build();
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .contentType(JSON)
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        final CleanupPolicy initialCleanupPolicy = CleanupPolicy.DELETE;
+        assertEquals(initialCleanupPolicy, eventType.getCleanupPolicy());
+
+        // publish an event to the event type (without partition compaction key)
+        given().body("[{\"metadata\":{" +
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+
+        // update event type with compact and delete
+        final CleanupPolicy updatedPolicy = CleanupPolicy.COMPACT_AND_DELETE;
+        eventType.setCleanupPolicy(updatedPolicy);
+        final String updateBody = MAPPER.writer().writeValueAsString(eventType);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        // get event type and check that properties are set correctly (database)
+        given().body(body)
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("cleanup_policy", equalTo("compact_and_delete"));
+
+        // assert topic changes
+        final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic);
+        assertThat(cleanupPolicy, equalTo("compact,delete"));
+
+        final Long retentionMs = KafkaTestHelper.getTopicRetentionTime(topic);
+        assertEquals(retentionMs, eventType.getOptions().getRetentionTime());
+
+        // publish event with missing compaction key and expect 422
+        given().body("[{\"metadata\":{" +
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                .contentType(JSON)
+                .post(ENDPOINT + "/" + eventType.getName() + "/events")
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
     @Test(timeout = 10000)
-    public void compactedEventTypeJourney() throws IOException {
+    public void compactedEventTypeJourney() throws IOException, ExecutionException, InterruptedException {
         // create event type with 'compact' cleanup_policy
         final EventType eventType = EventTypeTestBuilder.builder()
                 .category(EventCategory.BUSINESS)
@@ -309,7 +407,7 @@ public class EventTypeAT extends BaseAT {
 
         // assert that created topic in kafka has correct cleanup_policy
         final String topic = (String) NakadiTestUtils.listTimelines(eventType.getName()).get(0).get("topic");
-        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic, ZOOKEEPER_URL);
+        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topic);
         assertThat(cleanupPolicy, equalTo("compact"));
 
         // publish event to compacted event type
@@ -330,8 +428,8 @@ public class EventTypeAT extends BaseAT {
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +
-                "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
-                "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
+                        "\"occurred_at\":\"1992-08-03T10:00:00Z\"," +
+                        "\"eid\":\"329ed3d2-8366-11e8-adc0-fa7ae01bbebc\"}}]")
                 .contentType(JSON)
                 .post(ENDPOINT + "/" + eventType.getName() + "/events")
                 .then()
@@ -416,13 +514,129 @@ public class EventTypeAT extends BaseAT {
                         "Changing authorization object to `null` is not possible due to existing one"))));
     }
 
+    @Test
+    public void whenPOSTEventTypeWithAnnotationsAndLabelsThenOk() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final Map<String, String> annotations = new HashMap<>();
+        annotations.put("test.io/test-key", "test-value");
+        eventType.setAnnotations(annotations);
+        final Map<String, String> labels = new HashMap<>();
+        labels.put("test.io/test-label-key", "test-value");
+        eventType.setLabels(labels);
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(body).header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+
+        given()
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasKey("test.io/test-key"));
+    }
+
+    @Test
+    public void whenPUTEventTypeWithoutAnnotationsAndLabelsThenOriginalValuesAreKept() throws JsonProcessingException {
+        final ObjectMapper objectMapper = MAPPER.copy();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        final EventType eventType = buildDefaultEventType();
+        eventType.getAnnotations().put("nakadi.io/annotation-key", "original-annotation");
+        eventType.getLabels().put("nakadi.io/label-key", "original-label");
+
+        given().body(objectMapper.writer().writeValueAsString(eventType))
+                .header("accept", "application/json").contentType(JSON)
+                .when().post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
+
+        eventType.setAnnotations(null);
+        eventType.setLabels(null);
+
+        given().body(objectMapper.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_OK);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "original-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "original-label"));
+
+        eventType.setAnnotations(new HashMap<>());
+        eventType.getAnnotations().put("nakadi.io/annotation-key", "new-annotation");
+        eventType.setLabels(new HashMap<>());
+        eventType.getLabels().put("nakadi.io/label-key", "new-label");
+
+        given().body(objectMapper.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().put(ENDPOINT + "/" + eventType.getName()).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_OK);
+
+        given().header("accept", "application/json").contentType(JSON)
+                .get(ENDPOINT + "/" + eventType.getName()).then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo(eventType.getName()))
+                .body("annotations", hasEntry("nakadi.io/annotation-key", "new-annotation"))
+                .body("labels", hasEntry("nakadi.io/label-key", "new-label"));
+    }
+
+    @Test
+    public void whenPOSTEventTypeWithInvalidAnnotationOrLabelThenError() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final Map<String, String> annotations = new HashMap<>();
+        annotations.put("", "test-value");
+        eventType.setAnnotations(annotations);
+        eventType.setLabels(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(containsString("Field \\\"annotations[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"annotations[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+        final Map<String, String> labels = new HashMap<>();
+        labels.put("", "test-value");
+        eventType.setLabels(labels);
+        eventType.setAnnotations(null);
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).when().post(ENDPOINT).then()
+                .body(containsString("Field \\\"labels[]\\\" Key cannot be empty"))
+                .body(containsString("Field \\\"labels[]\\\" Key name should start and end " +
+                        "with a letter or a digit"))
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
         final EventType eventType = NakadiTestUtils.getEventType(etName);
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
         TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
                 .map(Timeline::getTopic)
-                .forEach(topic -> waitFor(() -> Assert.assertEquals(checkingRetentionTime,
-                        KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
+                .forEach(topic -> waitFor(() -> {
+                    try {
+                        Assert.assertEquals(checkingRetentionTime,
+                                KafkaTestHelper.getTopicRetentionTime(topic));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
     }
 
     private void postTimeline(final EventType eventType) {

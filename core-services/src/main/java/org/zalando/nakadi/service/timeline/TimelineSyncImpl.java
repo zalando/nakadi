@@ -1,385 +1,191 @@
 package org.zalando.nakadi.service.timeline;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.ThreadUtils;
-import org.zalando.nakadi.util.UUIDGenerator;
 
-import javax.annotation.Nullable;
 import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Profile("!test")
 public class TimelineSyncImpl implements TimelineSync {
-    private static class DelayedChange {
-        private final int version;
-        private final Set<String> lockedEventTypes;
-
-        private DelayedChange(final int version, final Collection<String> lockedEventTypes) {
-            this.version = version;
-            this.lockedEventTypes = new HashSet<>(lockedEventTypes);
-        }
-
-        @Override
-        public String toString() {
-            return "{version=" + version + ", lockedEventTypes=" + lockedEventTypes + '}';
-        }
-    }
-
-    private static final String ROOT_PATH = "/nakadi/timelines";
     private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
-    private static final long LOCK_ZK_TIMEOUT = 10_000;
-
-    private final ZooKeeperHolder zooKeeperHolder;
-    private final String nodeId;
-    private final LocalLocking localLocking = new LocalLocking();
-    private final Map<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
-    private final List<Consumer<String>> headlessConsumerListeners = new ArrayList<>();
-    private final BlockingQueue<DelayedChange> queuedChanges = new LinkedBlockingQueue<>();
-    private final AtomicBoolean newVersionPresent = new AtomicBoolean(true);
+    private final TimelinesZookeeper timelinesZookeeper;
+    private final LocalLockIntegration localLockIntegration;
 
     @Autowired
-    public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator)
-            throws InterruptedException, RuntimeException {
-        this.nodeId = uuidGenerator.randomUUID().toString();
-        this.zooKeeperHolder = zooKeeperHolder;
-        this.initializeZkStructure();
-    }
-
-    @VisibleForTesting
-    public String getNodeId() {
-        return nodeId;
-    }
-
-    private String toZkPath(final String path) {
-        return ROOT_PATH + path;
-    }
-
-    private void initializeZkStructure() throws InterruptedException, RuntimeException {
-        LOG.info("Starting initialization");
-        checkAndCreateZkNode("version", "0");
-        checkAndCreateZkNode("locked_et", "[]");
-        checkAndCreateZkNode("nodes", "[]");
-
-        runLocked(() -> {
-            try {
-                LOG.info("Registering node in zk");
-                updateSelfVersionTo(0);
-            } catch (final Exception e) {
-                LOG.error("Failed to initialize timeline synchronization", e);
-                throw new RuntimeException(e);
-            }
-        });
-        // 4. React on what was received and write node version to zk.
-        reactOnEventTypesChange();
-    }
-
-    private void checkAndCreateZkNode(final String nodeName, final String data) throws RuntimeException {
-        final String nodePath = toZkPath("/" + nodeName);
-        boolean exist = false;
-        try {
-            exist = zooKeeperHolder.get().checkExists().forPath(nodePath) != null;
-        } catch (final Exception e) {
-            LOG.error("failed to check zookeeper node {}", nodePath, e.getMessage());
-        }
-
-        try {
-            if (!exist) {
-                zooKeeperHolder.get().create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
-                        .forPath(nodePath, data.getBytes(Charsets.UTF_8));
-            }
-        } catch (final KeeperException.NodeExistsException ignore) {
-            // skip it, node was already created
-        } catch (final Exception e) {
-            LOG.error("failed to create zookeeper node {}", nodePath, e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    private <T> T readData(final String relativeName,
-                           @Nullable final Watcher watcher, final Function<String, T> converter) throws Exception {
-        final byte[] data;
-        final String zkPath = toZkPath(relativeName);
-        if (null == watcher) {
-            data = zooKeeperHolder.get().getData().forPath(zkPath);
-        } else {
-            data = zooKeeperHolder.get().getData().usingWatcher(watcher).forPath(zkPath);
-        }
-        return converter.apply(new String(data, Charsets.UTF_8));
-    }
-
-    @Scheduled(fixedDelay = 500)
-    public void reactOnEventTypesChange() throws InterruptedException {
-        checkForNewChange();
-        while (!queuedChanges.isEmpty()) {
-            final DelayedChange change = queuedChanges.peek();
-            LOG.info("Reacting on delayed change {}", change);
-            final Set<String> unlockedEventTypes = localLocking.getUnlockedEventTypes(change.lockedEventTypes);
-            // Notify consumers that they should refresh timeline information
-            for (final String unlocked : unlockedEventTypes) {
-                LOG.info("Notifying about unlock of {}", unlocked);
-                final List<Consumer<String>> toNotify;
-                synchronized (headlessConsumerListeners) {
-                    toNotify = new ArrayList<>(headlessConsumerListeners);
-                }
-                synchronized (consumerListeners) {
-                    if (consumerListeners.containsKey(unlocked)) {
-                        toNotify.addAll(consumerListeners.get(unlocked));
-                    }
-                }
-                for (final Consumer<String> listener : toNotify) {
-                    try {
-                        listener.accept(unlocked);
-                    } catch (final RuntimeException ex) {
-                        LOG.error("Failed to notify about event type {} unlock", unlocked, ex);
-                    }
-                }
-            }
-            // Updating the list of locked event types is done only after updating the cache in order to guarantee that
-            // there is no concurrency between publisher threads and cache expire thread, which has lead to events being
-            // published to the wrong timeline. More details in ARUHA-1359.
-            localLocking.updateLockedEventTypes(change.lockedEventTypes);
-            try {
-                updateSelfVersionTo(change.version);
-            } catch (final Exception ex) {
-                LOG.error("Failed to update node version in zk. Will try to reprocess again", ex);
-                return;
-            }
-            queuedChanges.poll();
-            LOG.info("Delayed change {} successfully processed", change);
-        }
-    }
-
-    private void updateSelfVersionTo(final int version) throws Exception {
-        final String zkPath = toZkPath("/nodes/" + nodeId);
-        final byte[] versionBytes = String.valueOf(version).getBytes(Charsets.UTF_8);
-        try {
-            zooKeeperHolder.get().setData().forPath(zkPath, versionBytes);
-        } catch (final KeeperException.NoNodeException ex) {
-            zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL).forPath(zkPath, versionBytes);
-        }
-    }
-
-    private void checkForNewChange() {
-        if (newVersionPresent.compareAndSet(true, false)) {
-            runLocked(() -> {
-                boolean success = false;
-                try {
-                    queuedChanges.add(
-                            new DelayedChange(readData("/version", this::versionChanged, Integer::parseInt),
-                                    this.zooKeeperHolder.get().getChildren().forPath(toZkPath("/locked_et"))));
-                    success = true;
-                } catch (final RuntimeException ex) {
-                    throw ex;
-                } catch (final InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(ex);
-                } catch (final Exception ex) {
-                    throw new RuntimeException(ex);
-                } finally {
-                    if (!success) {
-                        newVersionPresent.set(true);
-                    }
-                }
-            });
-        }
-    }
-
-    private void versionChanged(final WatchedEvent ignore) {
-        LOG.info("Adding refresh call to delayed changes list");
-        newVersionPresent.set(true);
-    }
-
-    private void runLocked(final Runnable action) {
-        try {
-            Exception releaseException = null;
-            final InterProcessLock lock =
-                    new InterProcessSemaphoreMutex(zooKeeperHolder.get(), ROOT_PATH + "/lock");
-            final boolean acquired = lock.acquire(LOCK_ZK_TIMEOUT, TimeUnit.MILLISECONDS);
-            if (!acquired) {
-                throw new RuntimeException(String.format("Lock can not be acquired in %d ms", LOCK_ZK_TIMEOUT));
-            }
-            try {
-                action.run();
-            } finally {
-                try {
-                    lock.release();
-                } catch (final Exception ex) {
-                    LOG.error("Failed to release lock", ex);
-                    releaseException = ex;
-                }
-            }
-            if (null != releaseException) {
-                throw releaseException;
-            }
-        } catch (final RuntimeException ex) {
-            throw ex;
-        } catch (final Exception ex) {
-            throw new RuntimeException(ex);
-        }
+    public TimelineSyncImpl(
+            final TimelinesZookeeper timelinesZookeeper,
+            final LocalLockIntegration localLockIntegration) {
+        this.timelinesZookeeper = timelinesZookeeper;
+        this.localLockIntegration = localLockIntegration;
     }
 
     @Override
     public Closeable workWithEventType(final String eventType, final long timeoutMs)
             throws InterruptedException, TimeoutException {
-        return localLocking.workWithEventType(eventType, timeoutMs);
+        return localLockIntegration.workWithEventType(eventType, timeoutMs);
     }
 
-    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs)
-            throws InterruptedException, RuntimeException {
-        // Create next version, that will contain locked event type.
-        final Optional<Long> expectedFinish = Optional.ofNullable(timeoutMs).map(t -> System.currentTimeMillis() + t);
-        final AtomicInteger versionToWait = new AtomicInteger();
-        runLocked(() -> {
-            try {
-                final int latestVersion = readData("/version", null, Integer::valueOf);
-                versionToWait.set(latestVersion + 1);
-                zooKeeperHolder.get().setData().forPath(
-                        toZkPath("/version"), String.valueOf(versionToWait.get()).getBytes(Charsets.UTF_8));
-                LOG.info("Wrote to ZK version to wait (was: {}), new one: {}", latestVersion, versionToWait.get());
-            } catch (final RuntimeException ex) {
-                throw ex;
-            } catch (final Exception e) {
-                throw new RuntimeException(e);
+    @Override
+    public ListenerRegistration registerTimelineChangeListener(
+            final String eventType, final Consumer<String> listener) {
+        return localLockIntegration.registerTimelineChangeListener(eventType, listener);
+    }
+
+    @Override
+    public ListenerRegistration registerTimelineChangeListener(final Consumer<String> listener) {
+        return localLockIntegration.registerTimelineChangeListener(listener);
+    }
+
+    /**
+     * Applies mutator {@code lockedEtMutator} to set of locked event types using optimistic locking within
+     * {@code timeoutMs} timeout.
+     *
+     * @param lockedEtMutator mutator for event types.
+     * @param timeoutMs       timeout to perform update.
+     * @return Version, that was generated within this particular mutation.
+     */
+    private Long applyChangeToState(final Function<Set<String>, Set<String>> lockedEtMutator, final long timeoutMs)
+            throws InterruptedException {
+        final long finishTime = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() <= finishTime) {
+            // First step - read value and remember version it has.
+            final TimelinesZookeeper.ZkVersionedLockedEventTypes oldVersion =
+                    timelinesZookeeper.getCurrentState(null);
+
+            // Second step - save updated value if version is the same
+            final VersionedLockedEventTypes newLocked = new VersionedLockedEventTypes(
+                    oldVersion.data.getVersion() + 1L,
+                    lockedEtMutator.apply(oldVersion.data.getLockedEts())
+            );
+            final boolean updateSucceeded = timelinesZookeeper.setCurrentState(newLocked, oldVersion.zkVersion);
+            LOG.info("Set current version to {} and update succeeded: {}", newLocked.getVersion(), updateSucceeded);
+            if (updateSucceeded) {
+                return newLocked.getVersion();
             }
-        });
-        // Wait for all nodes to have latest version.
-        final AtomicBoolean latestVersionIsThere = new AtomicBoolean(false);
-        while (!latestVersionIsThere.get()) {
-            LOG.info("Waiting for all nodes to have the same version {}", versionToWait.get());
-            if (expectedFinish.isPresent() && System.currentTimeMillis() > expectedFinish.get()) {
-                throw new RuntimeException("Timed out while updating version to " + versionToWait.get());
-            }
-            ThreadUtils.sleep(TimeUnit.SECONDS.toMillis(1));
-            runLocked(() -> {
-                try {
-                    final List<String> nodes = zooKeeperHolder.get().getChildren().forPath(toZkPath("/nodes"));
-                    boolean allOk = true;
-                    for (final String node : nodes) {
-                        final int nodeVersion = readData("/nodes/" + node, null, Integer::valueOf);
-                        final boolean nodeOk = nodeVersion >= versionToWait.get();
-                        if (!nodeOk) {
-                            allOk = false;
-                        }
-                        LOG.info("Node {} OK (current: {}, expected: {})", node, nodeVersion, versionToWait.get());
-                    }
-                    if (allOk) {
-                        latestVersionIsThere.set(true);
-                    }
-                } catch (final RuntimeException e) {
-                    throw e;
-                } catch (final Exception ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
         }
-        LOG.info("Version update to {} complete", versionToWait.get());
+        throw new RuntimeException("Failed to apply " + lockedEtMutator + " within " + timeoutMs + " ms");
+    }
+
+    private static class LockedEtMutator implements Function<Set<String>, Set<String>> {
+        private final String eventType;
+        private final boolean add;
+
+        private LockedEtMutator(final String eventType, final boolean add) {
+            this.eventType = eventType;
+            this.add = add;
+        }
+
+        @Override
+        public Set<String> apply(final Set<String> old) {
+            final Set<String> newSet = new HashSet<>(old);
+            if (add) {
+                if (old.contains(eventType)) {
+                    throw new RuntimeException("Event type " + eventType + " is already in locked event types");
+                }
+                newSet.add(eventType);
+            } else {
+                if (!old.contains(eventType)) {
+                    throw new RuntimeException("Event type " + eventType + " is not locked to be unlocked");
+                }
+                newSet.remove(eventType);
+            }
+            return newSet;
+        }
+
+        @Override
+        public String toString() {
+            if (add) {
+                return "Add event type " + eventType + " to list of locked event types";
+            } else {
+                return "Remove event type " + eventType + " from list of locked event types";
+            }
+        }
+
     }
 
     @Override
     public void startTimelineUpdate(final String eventType, final long timeoutMs)
             throws InterruptedException, RuntimeException {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
-        final String etZkPath = toZkPath("/locked_et/" + eventType);
-
-        try {
-            zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                    .forPath(etZkPath, nodeId.getBytes(Charsets.UTF_8));
-        } catch (final KeeperException.NodeExistsException ex) {
-            throw new IllegalStateException(ex);
-        } catch (final Exception ex) {
-            throw new RuntimeException(ex);
+        if (timeoutMs <= 0) {
+            throw new IllegalArgumentException("Timeline update can not start withing timeout " + timeoutMs + " ms");
         }
+        final long startTime = System.currentTimeMillis();
 
-        boolean successful = false;
+        final Long newVersion = applyChangeToState(new LockedEtMutator(eventType, true), timeoutMs);
+
+        Exception exceptionCaught = null;
         try {
-            updateVersionAndWaitForAllNodes(timeoutMs);
-            successful = true;
-        } catch (final InterruptedException ex) {
-            throw ex;
-        } finally {
-            if (!successful) {
-                try {
-                    zooKeeperHolder.get().delete().forPath(etZkPath);
-                } catch (final Exception e) {
-                    LOG.error("Failed to delete node {}", etZkPath, e);
-                }
+            waitForAllNodesVersion(newVersion, startTime + timeoutMs - System.currentTimeMillis());
+        } catch (InterruptedException | RuntimeException ex) {
+            exceptionCaught = ex;
+        }
+        if (exceptionCaught != null) {
+            LOG.warn("Failed to roll wait for nodes to have at least version {}. Rolling back the change", newVersion);
+            // We need to rollback the change, and it doesn't matter how long it will take, or et will be locked
+            // forever.
+            try {
+                applyChangeToState(new LockedEtMutator(eventType, false), TimeUnit.MINUTES.toMillis(1));
+            } catch (final RuntimeException ex) {
+                LOG.error("Failed to roll back event type {} timeline update. Please, go to zookeeper {} node and " +
+                                "remove locked event types you think are wrongly locked, after that - increase version",
+                        eventType, TimelinesZookeeper.STATE_PATH, ex);
+            }
+            if (exceptionCaught instanceof InterruptedException) {
+                throw (InterruptedException) exceptionCaught;
+            } else {
+                throw (RuntimeException) exceptionCaught;
             }
         }
     }
 
     @Override
     public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException {
+        // In case if this method is not called (or fails) - the only way to roll back - go manually to zk and update
+        // version in the verion node (and probably remove event type from locked event types).
         LOG.info("Finishing timeline update for event type {}", eventType);
-        final String etZkPath = toZkPath("/locked_et/" + eventType);
-        try {
-            zooKeeperHolder.get().delete().forPath(etZkPath);
-        } catch (final RuntimeException ex) {
-            throw ex;
-        } catch (final Exception ex) {
-            throw new RuntimeException(ex);
-        }
-        updateVersionAndWaitForAllNodes(null);
+        final Long version = applyChangeToState(
+                new LockedEtMutator(eventType, false), TimeUnit.MINUTES.toMillis(1));
+        waitForAllNodesVersion(version, TimeUnit.MINUTES.toMillis(1));
+        LOG.info("Timeline update for event type {} finished", eventType);
     }
 
-    @Override
-    public ListenerRegistration registerTimelineChangeListener(
-            final String eventType,
-            final Consumer<String> listener) {
-        synchronized (consumerListeners) {
-            if (!consumerListeners.containsKey(eventType)) {
-                consumerListeners.put(eventType, new ArrayList<>());
+    private void waitForAllNodesVersion(final Long version, final long toMillis)
+            throws InterruptedException, RuntimeException {
+        final long finishAt = System.currentTimeMillis() + toMillis;
+        Map<String, Long> nodesVersions = new HashMap<>();
+        LOG.info("Waiting for all nodes to have the same version within {} ms", toMillis);
+        while (finishAt > System.currentTimeMillis()) {
+            nodesVersions = timelinesZookeeper.getNodesVersions();
+            final List<Map.Entry<String, Long>> outdated = nodesVersions.entrySet().stream()
+                    .filter(e -> e.getValue() < version)
+                    .collect(Collectors.toList());
+            if (outdated.isEmpty()) {
+                LOG.info("Finished waiting for all {} nodes to have version {}", nodesVersions.size(), version);
+                return;
             }
-            consumerListeners.get(eventType).add(listener);
+            LOG.warn("Not all the nodes have registered version {}. Outdated nodes: {}",
+                    version,
+                    outdated.stream().map(n -> n.getKey() + ": " + n.getValue()).collect(Collectors.joining(",")));
+            Thread.sleep(100);
         }
-        return () -> {
-            synchronized (consumerListeners) {
-                consumerListeners.get(eventType).remove(listener);
-                if (consumerListeners.get(eventType).isEmpty()) {
-                    consumerListeners.remove(eventType);
-                }
-            }
-        };
+        throw new RuntimeException("Failed to wait for all nodes to have at least version " + version +
+                ". State: " + nodesVersions.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining(", ")));
     }
 
-    @Override
-    public ListenerRegistration registerTimelineChangeListener(final Consumer<String> listener) {
-        synchronized (headlessConsumerListeners) {
-            headlessConsumerListeners.add(listener);
-        }
-        return () -> {
-            synchronized (headlessConsumerListeners) {
-                headlessConsumerListeners.remove(listener);
-            }
-        };
-    }
 }

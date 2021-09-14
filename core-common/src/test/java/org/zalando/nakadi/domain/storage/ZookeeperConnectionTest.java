@@ -16,12 +16,6 @@ public class ZookeeperConnectionTest {
     public static Collection<Object[]> data() {
         return Arrays.asList(
                 new Object[]{
-                        "exhibitor://localhost:8181/path",
-                        new ZookeeperConnection(
-                                ZookeeperConnectionType.EXHIBITOR,
-                                Collections.singletonList(new AddressPort("localhost", 8181)),
-                                "/path")
-                }, new Object[]{
                         "zookeeper://localhost:8181/path",
                         new ZookeeperConnection(
                                 ZookeeperConnectionType.ZOOKEEPER,

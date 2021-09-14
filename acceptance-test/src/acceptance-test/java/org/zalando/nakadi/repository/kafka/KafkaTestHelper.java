@@ -1,19 +1,19 @@
 package org.zalando.nakadi.repository.kafka;
 
-import kafka.admin.RackAwareMode;
-import kafka.server.ConfigType;
-import kafka.zk.AdminZkClient;
-import kafka.zk.KafkaZkClient;
-import kafka.zookeeper.ZooKeeperClient;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.config.ConfigResource;
+import org.assertj.core.util.Lists;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -38,9 +38,9 @@ public class KafkaTestHelper {
         return new KafkaProducer<>(createKafkaProperties());
     }
 
-    private Properties createKafkaProperties() {
+    protected static Properties createKafkaProperties() {
         final Properties props = new Properties();
-        props.put("bootstrap.servers", kafkaUrl);
+        props.put("bootstrap.servers", "localhost:29092");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
@@ -99,43 +99,39 @@ public class KafkaTestHelper {
                 .collect(Collectors.toList());
     }
 
-    public void createTopic(final String topic, final String zkUrl) {
-        try (KafkaZkClient zkClient = createZkClient(zkUrl)) {
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            adminZkClient.createTopic(topic, 1, 1,
-                    new Properties(), RackAwareMode.Safe$.MODULE$);
+    public void createTopic(final String topic) {
+        try (AdminClient adminClient = AdminClient.create(createKafkaProperties())) {
+            adminClient.createTopics(Lists.newArrayList(
+                    new NewTopic(topic, Optional.of(1), Optional.of((short) 1))
+            ));
         }
     }
 
-    private static KafkaZkClient createZkClient(final String zkUrl) {
-        return new KafkaZkClient(
-                new ZooKeeperClient(
-                        zkUrl,
-                        30000,
-                        10000,
-                        1000,
-                        Time.SYSTEM,
-                        "dummyMetricGroup",
-                        "dummyMetricType"
-                ),
-                false,
-                Time.SYSTEM
-        );
+    public static Long getTopicRetentionTime(final String topic)
+            throws ExecutionException, InterruptedException {
+        return Long.valueOf(getTopicProperty(topic, "retention.ms"));
     }
 
-    public static Long getTopicRetentionTime(final String topic, final String zkPath) {
-        return Long.valueOf(getTopicProperty(topic, zkPath, "retention.ms"));
+    public static String getTopicCleanupPolicy(final String topic)
+            throws ExecutionException, InterruptedException {
+        return getTopicProperty(topic, "cleanup.policy");
     }
 
-    public static String getTopicCleanupPolicy(final String topic, final String zkPath) {
-        return getTopicProperty(topic, zkPath, "cleanup.policy");
-    }
-
-    public static String getTopicProperty(final String topic, final String zkPath, final String propertyName) {
-        try (KafkaZkClient zkClient = createZkClient(zkPath)) {
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            final Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
-            return topicConfig.getProperty(propertyName);
+    public static String getTopicProperty(final String topic, final String propertyName)
+            throws ExecutionException, InterruptedException {
+        try (AdminClient adminClient = AdminClient.create(createKafkaProperties())) {
+            final ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
+            final DescribeConfigsResult result = adminClient.describeConfigs(Lists.newArrayList(configResource));
+            return result
+                    .values()
+                    .get(configResource)
+                    .get()
+                    .entries()
+                    .stream()
+                    .filter(entry -> entry.name().equals(propertyName))
+                    .findFirst()
+                    .get()
+                    .value();
         }
     }
 }

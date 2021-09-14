@@ -34,6 +34,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.zalando.nakadi.repository.kafka.KafkaTestHelper.createKafkaProperties;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -70,6 +71,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final String DEFAULT_WARN_LOG_COMPACTION_MESSAGE = "";
     private static final String DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION = "nakadi_archiver";
     private static final String DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP = "nakadi_to_s3";
+    private static final long DEFAULT_CURATOR_MAX_LIFETIME_MS = 1000;
+    private static final long DEFAULT_CURATOR_ROTATION_MS = 10000;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -98,11 +101,13 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
                 DEFAULT_WARN_LOG_COMPACTION_MESSAGE,
                 DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION,
-                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP);
+                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP,
+                DEFAULT_CURATOR_MAX_LIFETIME_MS,
+                DEFAULT_CURATOR_ROTATION_MS);
 
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
-                KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT);
+                KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "");
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, ZK_MAX_IN_FLIGHT_REQUESTS);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
@@ -130,14 +135,19 @@ public class KafkaRepositoryAT extends BaseAT {
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                    final Long retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL);
-                    assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
+                    final Long retentionTime;
+                    try {
+                        retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName);
+                        assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
 
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
-                    assertThat(cleanupPolicy, equalTo("delete"));
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("delete"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -162,19 +172,23 @@ public class KafkaRepositoryAT extends BaseAT {
                     partitionInfos.forEach(pInfo ->
                             assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName, ZOOKEEPER_URL);
-                    assertThat(cleanupPolicy, equalTo("compact"));
+                    try {
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("compact"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
 
-                    final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
-                            "segment.bytes");
-                    assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
+                        final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName,
+                                "segment.bytes");
+                        assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
 
-                    final String compactionLag = KafkaTestHelper.getTopicProperty(topicName, ZOOKEEPER_URL,
-                            "min.compaction.lag.ms");
-                    assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
+                        final String compactionLag = KafkaTestHelper.getTopicProperty(topicName,
+                                "min.compaction.lag.ms");
+                        assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -186,7 +200,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ARRANGE //
         final String topicName = UUID.randomUUID().toString();
-        kafkaHelper.createTopic(topicName, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicName);
 
         // wait for topic to be created
         executeWithRetry(() -> {
@@ -211,7 +225,7 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
-        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicId);
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
@@ -230,7 +244,7 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenSendBatchWithItemHeadersThenCheckBatchStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
-        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
+        kafkaHelper.createTopic(topicId);
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
@@ -260,6 +274,10 @@ public class KafkaRepositoryAT extends BaseAT {
         final KafkaFactory factory = Mockito.mock(KafkaFactory.class);
         Mockito.when(factory.getConsumer()).thenReturn(consumer);
         final KafkaLocationManager kafkaLocationManager = Mockito.mock(KafkaLocationManager.class);
+        Mockito
+                .when(kafkaLocationManager.getProperties())
+                .thenReturn(createKafkaProperties());
+
         Mockito
                 .doReturn(kafkaHelper.createProducer())
                 .when(factory)

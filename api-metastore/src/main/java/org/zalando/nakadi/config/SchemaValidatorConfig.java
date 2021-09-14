@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CategoryChangeConstraint;
@@ -47,10 +48,12 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_NARROWED;
 public class SchemaValidatorConfig {
 
     private final AdminService adminService;
+    private final AuthorizationService authorizationService;
 
     @Autowired
-    public SchemaValidatorConfig(final AdminService adminService) {
+    public SchemaValidatorConfig(final AdminService adminService, final AuthorizationService authorizationService) {
         this.adminService = adminService;
+        this.authorizationService = authorizationService;
     }
 
     @Bean
@@ -61,7 +64,7 @@ public class SchemaValidatorConfig {
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
                 new CategoryChangeConstraint(),
-                new CompatibilityModeChangeConstraint(adminService),
+                new CompatibilityModeChangeConstraint(adminService, authorizationService),
                 new PartitionKeyFieldsConstraint(),
                 new PartitionStrategyConstraint(),
                 new EnrichmentStrategyConstraint()

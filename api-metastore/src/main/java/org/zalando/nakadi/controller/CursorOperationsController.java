@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -60,7 +59,6 @@ public class CursorOperationsController {
 
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         authorizationValidator.authorizeEventTypeView(eventType);
-        authorizationValidator.authorizeStreamRead(eventType);
 
         queries.getList().forEach(query -> {
             try {
@@ -107,34 +105,8 @@ public class CursorOperationsController {
         authorizationValidator.authorizeEventTypeView(eventType);
         authorizationValidator.authorizeStreamRead(eventType);
 
-        final List<NakadiCursor> domainCursor = cursors.getList().stream()
-                .map(toNakadiCursor(eventTypeName))
+        return cursorOperationsService.toCursorLagStream(cursors.getList(), eventTypeName, cursorConverter)
                 .collect(Collectors.toList());
-
-        final List<NakadiCursorLag> lagResult = cursorOperationsService
-                .cursorsLag(eventTypeName, domainCursor);
-
-        return lagResult.stream().map(this::toCursorLag)
-                .collect(Collectors.toList());
-    }
-
-    private CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag) {
-        return new CursorLag(
-                nakadiCursorLag.getPartition(),
-                cursorConverter.convert(nakadiCursorLag.getFirstCursor()).getOffset(),
-                cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
-                nakadiCursorLag.getLag()
-        );
-    }
-
-    private Function<Cursor, NakadiCursor> toNakadiCursor(final String eventTypeName) {
-        return cursor -> {
-            try {
-                return cursorConverter.convert(eventTypeName, cursor);
-            } catch (final InternalNakadiException | InvalidCursorException e) {
-                throw new CursorConversionException("problem converting cursors", e);
-            }
-        };
     }
 
     private Function<ShiftedCursor, ShiftedNakadiCursor> toShiftedNakadiCursor(final String eventTypeName) {

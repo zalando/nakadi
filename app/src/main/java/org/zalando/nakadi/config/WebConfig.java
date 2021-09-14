@@ -1,7 +1,9 @@
 package org.zalando.nakadi.config;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -19,9 +21,15 @@ import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+import org.zalando.nakadi.filters.ExtraTracingFilter;
+import org.zalando.nakadi.filters.LoggingFilter;
+import org.zalando.nakadi.filters.MonitoringRequestFilter;
+import org.zalando.nakadi.filters.RequestRejectedFilter;
 import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.GzipBodyRequestFilter;
 
@@ -34,6 +42,9 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Value("${nakadi.stream.timeoutMs}")
     private long nakadiStreamTimeout;
 
+    @Value("${nakadi.kpi.event-types.nakadiAccessLog}")
+    private String accessLogEventType;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -41,6 +52,17 @@ public class WebConfig extends WebMvcConfigurationSupport {
     private ClientResolver clientResolver;
     @Autowired
     private AuthorizationService authorizationService;
+    @Autowired
+    private NakadiKpiPublisher nakadiKpiPublisher;
+    @Autowired
+    private FeatureToggleService featureToggleService;
+
+    @Autowired
+    private MetricRegistry metricRegistry;
+
+    @Autowired
+    @Qualifier("perPathMetricRegistry")
+    private MetricRegistry perPathMetricRegistry;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -54,19 +76,54 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean flowIdRequestFilter() {
-        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
+    public FilterRegistrationBean traceRequestFilter() {
+        return createFilterRegistrationBean(
+                new TracingFilter(),
+                Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean
-    public FilterRegistrationBean traceRequestFilter() {
-        return createFilterRegistrationBean(new TracingFilter(authorizationService), Ordered.LOWEST_PRECEDENCE - 1);
+    public FilterRegistrationBean monitoringRequestFilter() {
+        return createFilterRegistrationBean(
+                new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
+                Ordered.HIGHEST_PRECEDENCE + 10);
     }
+
+    @Bean
+    public FilterRegistrationBean flowIdRequestFilter() {
+        return createFilterRegistrationBean(
+                new FlowIdRequestFilter(),
+                Ordered.HIGHEST_PRECEDENCE + 20);
+    }
+
+    @Bean
+    public FilterRegistrationBean loggingFilter() {
+        return createFilterRegistrationBean(
+                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
+                Ordered.HIGHEST_PRECEDENCE + 30);
+    }
+
+    @Bean
+    public FilterRegistrationBean requestRejectedFilter() {
+        return createFilterRegistrationBean(
+                new RequestRejectedFilter(),
+                Ordered.HIGHEST_PRECEDENCE + 40);
+    }
+
+    // <=== plugins may add more filters in the middle ===>
 
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
         return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
+                new GzipBodyRequestFilter(mapper),
+                Ordered.LOWEST_PRECEDENCE - 20);
+    }
+
+    @Bean
+    public FilterRegistrationBean extraTraceRequestFilter() {
+        return createFilterRegistrationBean(
+                new ExtraTracingFilter(authorizationService),
+                Ordered.LOWEST_PRECEDENCE - 10);
     }
 
     @Bean

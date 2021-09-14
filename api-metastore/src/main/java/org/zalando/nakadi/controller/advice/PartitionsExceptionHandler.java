@@ -5,8 +5,10 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.controller.PartitionsController;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
+import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
@@ -33,4 +35,19 @@ public class PartitionsExceptionHandler implements AdviceTrait {
         AdviceTrait.LOG.debug(exception.getMessage());
         return create(Problem.valueOf(NOT_FOUND, exception.getMessage()), request);
     }
+
+    @ExceptionHandler(InvalidCursorException.class)
+    public ResponseEntity<?> handleInvalidCursorException(final InvalidCursorException exception,
+                                                          final NativeWebRequest request) {
+        AdviceTrait.LOG.debug("User provided invalid cursor for operation", exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(UnparseableCursorException.class)
+    public ResponseEntity<?> handleInvalidCursorException(final UnparseableCursorException exception,
+                                                          final NativeWebRequest request) {
+        AdviceTrait.LOG.debug("User provided invalid cursor for operation", exception);
+        return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
+    }
+
 }

@@ -55,6 +55,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
@@ -161,6 +162,39 @@ public class SubscriptionAT extends BaseAT {
         response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
         final Subscription updatedSub = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(updatedSub.getUpdatedAt(), not(equalTo(subFirst.getUpdatedAt())));
+    }
+
+    @Test
+    public void testQuerySubscriptionByAuthReturnsOk() throws JsonProcessingException {
+        final String serviceName = "stups_test-app" + randomTextString();
+        final EventType eventType = createEventType();
+        final String authAttr = "{\"data_type\":\"service\",\"value\": \"" + serviceName + "\"}";
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\""
+                + eventType.getName() + "\"], \"read_from\": \"end\", \"consumer_group\":\"test-%s\"," +
+                "\"authorization\": {\"admins\": [" + authAttr + "], \"readers\": [" + authAttr + "]}}";
+
+        final Subscription firstSub = MAPPER.readValue(given()
+                .body(String.format(subscription, "first-group"))
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL).print(), Subscription.class);
+        final Subscription secondSub = MAPPER.readValue(given()
+                .body(String.format(subscription, "second-group"))
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL).print(), Subscription.class);
+
+        final PaginationLinks.Link paginationLink = new PaginationLinks.Link(
+                String.format("%s?reader=service:%s&offset=2&limit=2", SUBSCRIPTIONS_URL, serviceName));
+        final PaginationWrapper<Subscription> expectedList = new PaginationWrapper<>(
+                ImmutableList.of(secondSub, firstSub),
+                new PaginationLinks(Optional.empty(), Optional.of(paginationLink)));
+
+        given()
+                .param("reader", "service:" + serviceName)
+                .param("limit", 2)
+                .get("/subscriptions")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body(JSON_HELPER.matchesObject(expectedList));
     }
 
     @Test
@@ -388,9 +422,6 @@ public class SubscriptionAT extends BaseAT {
         // check that subscription node and lock node were created in ZK
         assertThat(
                 CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId())),
-                not(nullValue()));
-        assertThat(
-                CURATOR.checkExists().forPath(format("/nakadi/locks/subscription_{0}", subscription.getId())),
                 not(nullValue()));
 
         // delete subscription

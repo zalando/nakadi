@@ -24,6 +24,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
@@ -31,10 +32,8 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.RepartitioningService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -86,13 +85,13 @@ public class EventTypeControllerTestCase {
     protected final TimelineSync timelineSync = mock(TimelineSync.class);
     protected final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     protected final AdminService adminService = mock(AdminService.class);
-    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService)
-            .schemaEvolutionService();
+    protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService,
+            authorizationService).schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
-    protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    protected final TracingService tracingService = mock(TracingService.class);
+    protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
     protected MockMvc mockMvc;
 
@@ -105,7 +104,7 @@ public class EventTypeControllerTestCase {
         final NakadiSettings nakadiSettings = new NakadiSettings(32, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "I am warning you",
-                "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3");
+                "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3", 100, 10000);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
@@ -123,8 +122,8 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, adminService, mock(RepartitioningService.class), eventTypeCache,
-                schemaService);
+                eventTypeOptionsValidator, eventTypeCache,
+                schemaService, adminService, subscriptionTokenLister, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
@@ -190,6 +189,11 @@ public class EventTypeControllerTestCase {
 
     protected ResultActions getEventType(final String eventTypeName) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName);
+        return mockMvc.perform(requestBuilder);
+    }
+
+    protected ResultActions getEventTypes(final String writer) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
         return mockMvc.perform(requestBuilder);
     }
 

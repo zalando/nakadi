@@ -4,24 +4,23 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import kafka.server.ConfigType;
-import kafka.zk.AdminZkClient;
-import kafka.zk.KafkaZkClient;
-import kafka.zookeeper.ZooKeeperClient;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.NewPartitions;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
-import org.apache.kafka.common.utils.Time;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
@@ -29,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -59,7 +59,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,6 +72,7 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
+import static org.apache.kafka.common.config.ConfigResource.Type.TOPIC;
 import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
 import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
@@ -273,19 +273,21 @@ public class KafkaTopicRepository implements TopicRepository {
     public String createTopic(final NakadiTopicConfig nakadiTopicConfig) throws TopicCreationException {
 
         final KafkaTopicConfig kafkaTopicConfig = kafkaTopicConfigFactory.createKafkaTopicConfig(nakadiTopicConfig);
-        try (KafkaZkClient client = createZkClient()) {
-            final AdminZkClient adminZkClient = new AdminZkClient(client);
-            adminZkClient.createTopic(
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
+            final NewTopic newTopic = new NewTopic(
                     kafkaTopicConfig.getTopicName(),
-                    kafkaTopicConfig.getPartitionCount(),
-                    kafkaTopicConfig.getReplicaFactor(),
-                    kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig),
-                    kafkaTopicConfig.getRackAwareMode()
-            );
+                    Optional.of(kafkaTopicConfig.getPartitionCount()),
+                    Optional.of((short) kafkaTopicConfig.getReplicaFactor()));
+            newTopic.configs(kafkaTopicConfigFactory.createKafkaTopicLevelProperties(kafkaTopicConfig));
+
+            adminClient.createTopics(Lists.newArrayList(newTopic)).all().get(30, TimeUnit.SECONDS);
         } catch (final TopicExistsException e) {
             throw new TopicCreationException("Topic with name " + kafkaTopicConfig.getTopicName() +
                     " already exists (or wasn't completely removed yet)", e);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicCreationException("Unable to create topic " + kafkaTopicConfig.getTopicName(), e);
         }
         // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
@@ -309,11 +311,13 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void deleteTopic(final String topic) throws TopicDeletionException {
-        try (KafkaZkClient zkClient = createZkClient()) {
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            adminZkClient.deleteTopic(topic);
+            adminClient.deleteTopics(Lists.newArrayList(topic)).all().get(30, TimeUnit.SECONDS);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicDeletionException("Unable to delete topic " + topic, e);
         }
     }
@@ -331,10 +335,12 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream().collect(
-                    Collectors.toMap(
-                            p -> String.valueOf(p.partition()),
-                            p -> p.leader().idString() + "_" + p.leader().host()));
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+                    .filter(partitionInfo -> partitionInfo.leader() != null)
+                    .collect(
+                            Collectors.toMap(
+                                    p -> String.valueOf(p.partition()),
+                                    p -> p.leader().idString() + "_" + p.leader().host()));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
                         item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
@@ -344,6 +350,13 @@ public class KafkaTopicRepository implements TopicRepository {
             int shortCircuited = 0;
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
+                if (item.getBrokerId() == null) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED,
+                            String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
+                    LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
+                            topicId, item.getPartition());
+                    continue;
+                }
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
                         item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
@@ -688,13 +701,30 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-        try (KafkaZkClient zkClient = createZkClient()) {
-            final AdminZkClient adminZkClient = new AdminZkClient(zkClient);
-            final Properties topicProps = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
-            topicProps.setProperty("retention.ms", Long.toString(retentionMs));
-            adminZkClient.changeTopicConfig(topic, topicProps);
+    public void updateTopicConfig(final String topic, final Long retentionMs, final CleanupPolicy cleanupPolicy)
+            throws TopicConfigException {
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
+            final KafkaTopicConfigBuilder builder = new KafkaTopicConfigBuilder();
+            kafkaTopicConfigFactory.configureCleanupPolicy(builder, cleanupPolicy);
+            builder.withRetentionMs(retentionMs);
+            final KafkaTopicConfig config = builder.build();
+            final Map<String, String> configMap = kafkaTopicConfigFactory.createKafkaTopicLevelProperties(config);
+            final ConfigResource configResource = new ConfigResource(TOPIC, topic);
+            final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>();
+            final List<AlterConfigOp> alterConfigOps = configMap
+                    .entrySet()
+                    .stream()
+                    .map(entry -> new AlterConfigOp(
+                            new ConfigEntry(entry.getKey(), entry.getValue()),
+                            AlterConfigOp.OpType.SET))
+                    .collect(Collectors.toList());
+
+            configs.put(configResource, alterConfigOps);
+            adminClient.incrementalAlterConfigs(configs).all().get(30, TimeUnit.SECONDS);
         } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
         }
     }
@@ -706,22 +736,5 @@ public class KafkaTopicRepository implements TopicRepository {
         if (cursor.getOffset() == null) {
             throw new InvalidCursorException(NULL_OFFSET, cursor);
         }
-    }
-
-    private KafkaZkClient createZkClient() {
-        // The calling method should make sure to close connection
-        return new KafkaZkClient(
-                new ZooKeeperClient(
-                        kafkaZookeeper.getZookeeperConnectionString(),
-                        zookeeperSettings.getZkSessionTimeoutMs(),
-                        zookeeperSettings.getZkConnectionTimeoutMs(),
-                        zookeeperSettings.getMaxInFlightRequests(),
-                        Time.SYSTEM,
-                        ZookeeperSettings.METRIC_GROUP,
-                        ZookeeperSettings.METRIC_TYPE
-                ),
-                false,
-                Time.SYSTEM
-        );
     }
 }

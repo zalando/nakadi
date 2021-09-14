@@ -42,9 +42,9 @@ public class SubscriptionClientFactory {
         Preconditions.checkNotNull(subscription.getId());
         return new NewZkSubscriptionClient(
                 subscription.getId(),
-                zkHolder,
+                zkHolder.getSubscriptionCurator(commitTimeoutMillis),
                 loggingPath,
-                objectMapper,
-                commitTimeoutMillis);
+                objectMapper
+        );
     }
 }

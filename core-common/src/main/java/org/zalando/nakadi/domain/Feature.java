@@ -12,12 +12,16 @@ public enum Feature {
     KPI_COLLECTION("kpi_collection"),
     AUDIT_LOG_COLLECTION("audit_log_collection"),
     DISABLE_DB_WRITE_OPERATIONS("disable_db_write_operations"),
-    DISABLE_LOG_COMPACTION("disable_log_compaction"),
     FORCE_EVENT_TYPE_AUTHZ("force_event_type_authz"),
     FORCE_SUBSCRIPTION_AUTHZ("force_subscription_authz"),
     REPARTITIONING("repartitioning"),
     EVENT_OWNER_SELECTOR_AUTHZ("event_owner_selector_authz"),
-    ACCESS_LOG_ENABLED("access_log_enabled");
+    ACCESS_LOG_ENABLED("access_log_enabled"),
+    TOKEN_SUBSCRIPTIONS_ITERATION("token_subscription_iteration"),
+    RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE("return_body_on_create_update_event_type"),
+    VALIDATE_SUBSCRIPTION_OWNING_APPLICATION("validate_subscription_owning_app"),
+    VALIDATE_EVENT_TYPE_OWNING_APPLICATION("validate_event_type_owning_app"),
+    ;
 
     private final String id;
 

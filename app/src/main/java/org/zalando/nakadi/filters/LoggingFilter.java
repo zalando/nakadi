@@ -4,10 +4,7 @@ import com.google.common.net.HttpHeaders;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -25,7 +22,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-@Component
 public class LoggingFilter extends OncePerRequestFilter {
 
     // We are using empty log name, cause it is used only for access log and we do not care about class name
@@ -35,11 +31,10 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
 
-    @Autowired
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
                          final AuthorizationService authorizationService,
                          final FeatureToggleService featureToggleService,
-                         @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
+                         final String accessLogEventType) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
         this.authorizationService = authorizationService;

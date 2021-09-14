@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -87,5 +88,5 @@ public interface TopicRepository {
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceTemporarilyUnavailableException;
 
-    void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
+    void updateTopicConfig(String topic, Long retentionMs, CleanupPolicy cleanupPolicy) throws TopicConfigException;
 }

@@ -2,7 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import io.opentracing.Span;
+import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,7 +31,9 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.InvalidInitialCursorsException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -39,9 +41,10 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
@@ -50,20 +53,23 @@ import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.service.SubscriptionsUriHelper.createSubscriptionListLink;
 
 @Component
 public class SubscriptionService {
@@ -83,6 +89,7 @@ public class SubscriptionService {
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeCache eventTypeCache;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -97,7 +104,8 @@ public class SubscriptionService {
                                @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
-                               final EventTypeCache eventTypeCache) {
+                               final EventTypeCache eventTypeCache,
+                               final SubscriptionTokenLister subscriptionTokenLister) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -111,17 +119,25 @@ public class SubscriptionService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
+        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
             throws TooManyPartitionsException, RepositoryProblemException, DuplicatedSubscriptionException,
-            NoSuchEventTypeException, InconsistentStateException, WrongInitialCursorsException,
+            NoSuchEventTypeException, InconsistentStateException, InvalidInitialCursorsException,
             DbWriteOperationsBlockedException, UnableProcessException,
-            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException {
+            AuthorizationNotPresentException, ServiceTemporarilyUnavailableException,
+            InvalidOwningApplicationException {
 
         checkFeatureTogglesForCreationAndUpdate(subscriptionBase);
 
-        subscriptionValidationService.validateSubscription(subscriptionBase);
+        subscriptionValidationService.validateSubscriptionOnCreate(subscriptionBase);
+        if (subscriptionBase.getAnnotations() == null) {
+            subscriptionBase.setAnnotations(new HashMap<>());
+        }
+        if (subscriptionBase.getLabels() == null) {
+            subscriptionBase.setLabels(new HashMap<>());
+        }
 
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
@@ -158,7 +174,13 @@ public class SubscriptionService {
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
 
-        subscriptionValidationService.validateSubscriptionChange(old, newValue);
+        subscriptionValidationService.validateSubscriptionOnUpdate(old, newValue);
+        if (newValue.getAnnotations() == null) {
+            newValue.setAnnotations(old.getAnnotations());
+        }
+        if (newValue.getLabels() == null) {
+            newValue.setLabels(old.getLabels());
+        }
         final Subscription updated = old.mergeFrom(newValue);
         subscriptionRepository.updateSubscription(updated);
 
@@ -185,9 +207,11 @@ public class SubscriptionService {
 
     public PaginationWrapper<Subscription> listSubscriptions(@Nullable final String owningApplication,
                                                              @Nullable final Set<String> eventTypes,
+                                                             @Nullable final AuthorizationAttribute reader,
                                                              final boolean showStatus,
                                                              final int limit,
-                                                             final int offset)
+                                                             final int offset,
+                                                             final String token)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         if (limit < 1 || limit > 1000) {
             throw new InvalidLimitException("'limit' parameter should have value between 1 and 1000");
@@ -196,15 +220,55 @@ public class SubscriptionService {
         if (offset < 0) {
             throw new InvalidLimitException("'offset' parameter can't be lower than 0");
         }
-
+        final Optional<AuthorizationAttribute> readersFilter = Optional.ofNullable(reader);
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-        final List<Subscription> subscriptions =
-                subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
-        final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                owningAppOption, eventTypesFilter, offset, limit, showStatus, subscriptions.size());
-        final PaginationWrapper<Subscription> paginationWrapper =
-                new PaginationWrapper<>(subscriptions, paginationLinks);
+        SubscriptionTokenLister.Token tokenObj = null;
+        // Here we are basically trying to support 3 situations
+        // - In case if feature is not enabled, but token is provided - use token
+        // - In case if feature is enabled but service is handcrafting offset - use offset instead of token
+        //   This behavior is actually buggy, because first and other pages will use different sorting criteria.
+        // - In case if feature is enabled and there is no handcraft - try to use token.
+        if (!StringUtils.isEmpty(token) ||
+                (0 == offset && featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))) {
+            if ("new".equalsIgnoreCase(token)) { // in order to test without feature toggle
+                // TODO: remove handling of "new"
+                tokenObj = SubscriptionTokenLister.Token.createEmpty();
+            } else {
+                tokenObj = SubscriptionTokenLister.Token.parse(token);
+            }
+        }
+        final PaginationWrapper<Subscription> paginationWrapper;
+        if (tokenObj == null) {
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                    eventTypesFilter,
+                    owningAppOption,
+                    readersFilter,
+                    offset,
+                    limit);
+            final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
+                    .map(o -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            Math.max(0, o - limit), Optional.empty(), limit, showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.of(subscriptions.size()).filter(v -> v >= limit)
+                    .map(size -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            offset + size, Optional.empty(), limit, showStatus));
+
+            paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
+        } else {
+            final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                    eventTypesFilter, owningAppOption, readersFilter, tokenObj, limit);
+            final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            0, Optional.of(t), limit, showStatus));
+            final Optional<PaginationLinks.Link> next = Optional.ofNullable(listResult.getNext())
+                    .map(t -> createSubscriptionListLink(
+                            owningAppOption, eventTypesFilter, readersFilter,
+                            0, Optional.of(t), limit, showStatus));
+            paginationWrapper = new PaginationWrapper<>(listResult.getItems(), new PaginationLinks(prev, next));
+        }
         if (showStatus) {
             final List<Subscription> items = paginationWrapper.getItems();
             items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
@@ -232,9 +296,12 @@ public class SubscriptionService {
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         subscriptionRepository.deleteSubscription(subscriptionId);
-        final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
-                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"));
-        zkSubscriptionClient.deleteSubscription();
+        try (ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
+                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"))) {
+            zkSubscriptionClient.deleteSubscription();
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
+        }
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
                 .put("subscription_id", subscriptionId)
@@ -246,8 +313,7 @@ public class SubscriptionService {
     }
 
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId,
-                                                                        final StatsMode statsMode,
-                                                                        final Span span)
+                                                                        final StatsMode statsMode)
             throws InconsistentStateException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
@@ -255,7 +321,7 @@ public class SubscriptionService {
             subscription = subscriptionRepository.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
-            TracingService.logErrorInSpan(span, ex);
+            TracingService.logError(ex);
             throw new InconsistentStateException(ex.getMessage());
         }
         final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription, statsMode);
@@ -267,25 +333,20 @@ public class SubscriptionService {
             throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         subscriptionValidationService.verifyViewAccessOnEventTypes(eventTypes);
-        final ZkSubscriptionClient subscriptionClient = createZkSubscriptionClient(subscription);
-        final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
+        try (ZkSubscriptionClient subscriptionClient = subscriptionClientFactory.createClient(subscription,
+                LogPathBuilder.build(subscription.getId(), "stats"))) {
+            final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
-        if (statsMode == StatsMode.LIGHT) {
-            return loadLightStats(eventTypes, zkSubscriptionNode);
-        } else {
-            return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
+            if (statsMode == StatsMode.LIGHT) {
+                return loadLightStats(eventTypes, zkSubscriptionNode);
+            } else {
+                return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, statsMode);
+            }
+        } catch (IOException io) {
+            throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         }
     }
 
-    private ZkSubscriptionClient createZkSubscriptionClient(final Subscription subscription)
-            throws ServiceTemporarilyUnavailableException {
-        try {
-            return subscriptionClientFactory.createClient(subscription,
-                    LogPathBuilder.build(subscription.getId(), "stats"));
-        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
-            throw new ServiceTemporarilyUnavailableException(e);
-        }
-    }
 
     private List<EventType> getEventTypesForSubscription(final Subscription subscription)
             throws NoSuchEventTypeException {

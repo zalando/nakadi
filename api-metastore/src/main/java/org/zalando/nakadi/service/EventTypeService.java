@@ -32,10 +32,10 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeOptionsValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -49,10 +49,13 @@ import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -61,10 +64,13 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -94,10 +100,11 @@ public class EventTypeService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
-    private final RepartitioningService repartitioningService;
+    private final ApplicationService applicationService;
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
+    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public EventTypeService(
@@ -117,10 +124,11 @@ public class EventTypeService {
             @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
-            final AdminService adminService,
-            final RepartitioningService repartitioningService,
             final EventTypeCache eventTypeCache,
-            final SchemaService schemaService) {
+            final SchemaService schemaService,
+            final AdminService adminService,
+            final SubscriptionTokenLister subscriptionTokenLister,
+            final ApplicationService applicationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
@@ -138,13 +146,18 @@ public class EventTypeService {
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
-        this.repartitioningService = repartitioningService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
+        this.subscriptionTokenLister = subscriptionTokenLister;
+        this.applicationService = applicationService;
     }
 
     public List<EventType> list() {
         return eventTypeRepository.list();
+    }
+
+    public List<EventType> list(final AuthorizationAttribute writers) {
+        return eventTypeRepository.list(writers);
     }
 
     public void create(final EventTypeBase eventType, final boolean checkAuth)
@@ -155,16 +168,11 @@ public class EventTypeService {
             DuplicatedEventTypeNameException,
             InvalidEventTypeException,
             DbWriteOperationsBlockedException,
-            EventTypeOptionsValidationException {
+            EventTypeOptionsValidationException,
+            InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot create event type: write operations on DB " +
                     "are blocked by feature flag.");
-        }
-        if ((eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
-                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)
-                && featureToggleService.isFeatureEnabled(Feature.DISABLE_LOG_COMPACTION)) {
-            throw new FeatureNotAvailableException("log compaction is not available",
-                    Feature.DISABLE_LOG_COMPACTION);
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
         setDefaultEventTypeOptions(eventType);
@@ -181,6 +189,15 @@ public class EventTypeService {
         }
         if (checkAuth) {
             authorizationValidator.validateAuthorization(eventType.asBaseResource());
+        }
+
+        validateOwningApplication(null, eventType.getOwningApplication());
+
+        if (eventType.getAnnotations() == null) {
+            eventType.setAnnotations(new HashMap<>());
+        }
+        if (eventType.getLabels() == null) {
+            eventType.setLabels(new HashMap<>());
         }
 
         final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
@@ -227,6 +244,18 @@ public class EventTypeService {
                 eventType.getName());
     }
 
+    private void validateOwningApplication(
+            @Nullable final String oldOwningApplication, final String newOwningApplication)
+            throws InvalidOwningApplicationException {
+        if (featureToggleService.isFeatureEnabled(Feature.VALIDATE_EVENT_TYPE_OWNING_APPLICATION)) {
+            if (!Objects.equals(oldOwningApplication, newOwningApplication)) {
+                if (!applicationService.exists(newOwningApplication)) {
+                    throw new InvalidOwningApplicationException(newOwningApplication);
+                }
+            }
+        }
+    }
+
     public void createIfMissing(final EventTypeBase eventType, final boolean checkAuth)
             throws AuthorizationSectionException,
             TopicCreationException,
@@ -251,14 +280,22 @@ public class EventTypeService {
                 (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
                         eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE)) {
             throw new InvalidEventTypeException(
-                    "cleanup_policy 'compact' is not available for 'undefined' event type category");
+                    "cleanup_policy 'compact' and 'compact_and_delete' is not available " +
+                            "for 'undefined' event type category");
         }
     }
 
     private void validateCompactionUpdate(final EventType original, final EventTypeBase updatedET) {
         validateCompaction(updatedET);
+        if (updatedET.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE
+                && original.getCleanupPolicy() == CleanupPolicy.DELETE) {
+            return;
+        }
         if (original.getCleanupPolicy() != updatedET.getCleanupPolicy()) {
-            throw new InvalidEventTypeException("cleanup_policy can not be changed");
+            throw new InvalidEventTypeException(
+                    "Invalid cleanup_policy change: " + original.getCleanupPolicy().name() +
+                            " cannot be changed to " + updatedET.getCleanupPolicy().name()
+            );
         }
     }
 
@@ -362,16 +399,20 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
-                final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), 0, 100000);
-                subscriptions.forEach(s -> {
-                    try {
-                        subscriptionRepository.deleteSubscription(s.getId());
-                    } catch (final NoSuchSubscriptionException e) {
-                        // should not happen as we are inside transaction
-                        throw new InconsistentStateException("Subscription to be deleted is not found", e);
-                    }
-                });
+                SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                        ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
+                while (null != listResult) {
+                    listResult.getItems().forEach(s -> {
+                        try {
+                            subscriptionRepository.deleteSubscription(s.getId());
+                        } catch (final NoSuchSubscriptionException e) {
+                            // should not happen as we are inside transaction
+                            throw new InconsistentStateException("Subscription to be deleted is not found", e);
+                        }
+                    });
+                    listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                            ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
+                }
                 return deleteEventType(eventType);
             });
         } catch (final TransactionException e) {
@@ -380,21 +421,21 @@ public class EventTypeService {
     }
 
 
+    // TODO: This method should be fixed by creating proper db query.
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
-        int offset = 0;
-        List<Subscription> subs = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
-        while (!subs.isEmpty()) {
-            for (final Subscription sub : subs) {
+
+        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
+                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), null, 20);
+        while (null != list) {
+            for (final Subscription sub : list.getItems()) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
                         || !sub.getOwningApplication()
                         .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
                     return true;
                 }
             }
-            offset += 20;
-            subs = subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), offset, 20);
+            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 20);
         }
         return false;
     }
@@ -408,7 +449,8 @@ public class EventTypeService {
             UnableProcessException,
             DbWriteOperationsBlockedException,
             CannotAddPartitionToTopicException,
-            EventTypeOptionsValidationException {
+            EventTypeOptionsValidationException,
+            InvalidOwningApplicationException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update event type: write operations on DB " +
                     "are blocked by feature flag.");
@@ -437,9 +479,12 @@ public class EventTypeService {
             schemaService.validateSchema(eventTypeBase);
             validateAudience(original, eventTypeBase);
             partitionResolver.validate(eventTypeBase);
+            validateOwningApplication(original.getOwningApplication(), eventTypeBase.getOwningApplication());
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
-            repartitioningService.checkAndRepartition(original, eventType);
+            validateStatisticsUpdate(original, eventType);
+            updateAnnotationsAndLabels(original, eventType);
             updateRetentionTime(original, eventType);
+            updateEventType(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ServiceTemporarilyUnavailableException(
@@ -479,24 +524,36 @@ public class EventTypeService {
     }
 
     private void updateRetentionTime(final EventType original, final EventType eventType) {
+        if (eventType.getOptions() == null || eventType.getOptions().getRetentionTime() == null) {
+            eventType.setOptions(original.getOptions());
+        }
+        setDefaultEventTypeOptions(original); // fixes a problem where the event type has no explicit retention time
+        setDefaultEventTypeOptions(eventType);
+    }
+
+    private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
+            throws InvalidEventTypeException {
+
+        if (eventType.getAnnotations() == null) {
+            eventType.setAnnotations(original.getAnnotations());
+        }
+        if (eventType.getLabels() == null) {
+            eventType.setLabels(original.getLabels());
+        }
+    }
+
+    private void updateEventType(final EventType original, final EventType eventType) {
         final Long newRetentionTime = eventType.getOptions().getRetentionTime();
         final Long oldRetentionTime = original.getOptions().getRetentionTime();
-        if (oldRetentionTime == null) {
-            // since we have some inconsistency in DB I will put here for a while
-            throw new InconsistentStateException("Empty value for retention time in existing EventType");
-        }
-        boolean retentionTimeUpdated = false;
+        boolean updatedDefinitions = false;
         try {
-            if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-                updateTopicRetentionTime(original.getName(), newRetentionTime);
-            } else {
-                eventType.setOptions(original.getOptions());
-            }
+            updateTopicConfig(original.getName(), newRetentionTime, eventType.getCleanupPolicy());
             updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
-            retentionTimeUpdated = true;
+            updatedDefinitions = true;
         } finally {
-            if (!retentionTimeUpdated) {
-                updateTopicRetentionTime(original.getName(), oldRetentionTime);
+            if (!updatedDefinitions) {
+                LOG.warn("Error while updating topic configuration for {}, attempting to revert.", original.getName());
+                updateTopicConfig(original.getName(), oldRetentionTime, original.getCleanupPolicy());
             }
         }
     }
@@ -529,11 +586,12 @@ public class EventTypeService {
         }
     }
 
-    private void updateTopicRetentionTime(final String eventTypeName, final Long retentionTime)
+    private void updateTopicConfig(final String eventTypeName, final Long retentionTime,
+                                   final CleanupPolicy cleanupPolicy)
             throws InternalNakadiException, NoSuchEventTypeException {
         timelineService.getActiveTimelinesOrdered(eventTypeName)
                 .forEach(timeline -> timelineService.getTopicRepository(timeline)
-                        .setRetentionTime(timeline.getTopic(), retentionTime));
+                        .updateTopicConfig(timeline.getTopic(), retentionTime, cleanupPolicy));
     }
 
     public EventType get(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
@@ -555,6 +613,16 @@ public class EventTypeService {
         } catch (InternalNakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
+        }
+    }
+
+    private void validateStatisticsUpdate(
+            final EventType originalEventType,
+            final EventTypeBase newEventType) throws InvalidEventTypeException {
+        if (newEventType.getDefaultStatistic() == null) {
+            newEventType.setDefaultStatistic(originalEventType.getDefaultStatistic());
+        } else if (!Objects.equals(originalEventType.getDefaultStatistic(), newEventType.getDefaultStatistic())) {
+            throw new InvalidEventTypeException("default statistics must not be changed");
         }
     }
 

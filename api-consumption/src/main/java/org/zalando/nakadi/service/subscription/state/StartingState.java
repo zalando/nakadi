@@ -6,7 +6,6 @@ import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
 import org.zalando.nakadi.service.SubscriptionInitializer;
-import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -25,7 +24,7 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
             return;
         }
-        getZk().runLocked(this::registerSessionAndStartStreaming);
+        registerSessionAndStartStreaming();
     }
 
     /**
@@ -38,46 +37,19 @@ public class StartingState extends State {
      * 4. Switches to streaming state.
      */
     private void registerSessionAndStartStreaming() {
-        final boolean subscriptionJustInitialized = SubscriptionInitializer.initializeSubscriptionLocked(getZk(),
-                getContext().getSubscription(), getContext().getTimelineService(), getContext().getCursorConverter());
-        getContext().getCurrentSpan().setTag("session.id", getContext().getSessionId());
-        if (!subscriptionJustInitialized) {
-            // check if there are streaming slots available
-            final Collection<Session> sessions = getZk().listSessions();
-            final Partition[] partitions = getZk().getTopology().getPartitions();
-            final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
-            if (requestedPartitions.isEmpty()) {
-                final long directlyRequestedPartitionsCount = sessions.stream()
-                        .flatMap(s -> s.getRequestedPartitions().stream())
-                        .distinct()
-                        .count();
-                final long autoSlotsCount = partitions.length - directlyRequestedPartitionsCount;
-                final long autoBalanceSessionsCount = sessions.stream()
-                        .filter(s -> s.getRequestedPartitions().isEmpty())
-                        .count();
-                if (autoBalanceSessionsCount >= autoSlotsCount) {
-                    TracingService.logStreamCloseReason(getContext().getCurrentSpan(), "No streaming slots available");
-                    switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
-                    return;
-                }
-            }
-
-            // check if the requested partitions are not directly requested by another stream(s)
-            final List<EventTypePartition> conflictPartitions = sessions.stream()
-                    .flatMap(s -> s.getRequestedPartitions().stream())
-                    .filter(requestedPartitions::contains)
-                    .collect(Collectors.toList());
-            if (!conflictPartitions.isEmpty()) {
-                TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
-                        "Partition already taken by other stream of the subscription");
-                switchState(new CleanupState(SubscriptionPartitionConflictException.of(conflictPartitions)));
-                return;
-            }
+        SubscriptionInitializer.initialize(getZk(),
+                getContext().getSubscription(),
+                getContext().getTimelineService(),
+                getContext().getCursorConverter());
+        try {
+            checkStreamingSlotsAvailable(getZk().listSessions());
+        } catch (NoStreamingSlotsAvailable | SubscriptionPartitionConflictException ex) {
+            switchState(new CleanupState(ex));
+            return;
         }
 
         if (getZk().isCloseSubscriptionStreamsInProgress()) {
-            TracingService.logStreamCloseReason(getContext().getCurrentSpan(),
-                    "Resetting subscription cursors request is still in progress");
+            logStreamCloseReason("Resetting subscription cursors request is still in progress");
             switchState(new CleanupState(
                     new ConflictException("Resetting subscription cursors request is still in progress")));
             return;
@@ -85,11 +57,46 @@ public class StartingState extends State {
 
         try {
             getContext().registerSession();
-        } catch (Exception ex) {
+            checkStreamingSlotsAvailable(getZk().listSessions().stream()
+                    .filter(s -> !s.getId().equals(getSessionId()))
+                    .collect(Collectors.toList()));
+        } catch (RuntimeException ex) {
             switchState(new CleanupState(ex));
             return;
         }
+
         switchState(new StreamingState());
     }
 
+    private void checkStreamingSlotsAvailable(final Collection<Session> sessions)
+            throws NoStreamingSlotsAvailable, SubscriptionPartitionConflictException {
+        // check if there are streaming slots available
+        final Partition[] partitions = getZk().getTopology().getPartitions();
+        final List<EventTypePartition> requestedPartitions = getContext().getParameters().getPartitions();
+        if (requestedPartitions.isEmpty()) {
+            final long directlyRequestedPartitionsCount = sessions.stream()
+                    .flatMap(s -> s.getRequestedPartitions().stream())
+                    .distinct()
+                    .count();
+            final long autoSlotsCount = partitions.length - directlyRequestedPartitionsCount;
+            final long autoBalanceSessionsCount = sessions.stream()
+                    .filter(s -> s.getRequestedPartitions().isEmpty())
+                    .count();
+
+            if (autoBalanceSessionsCount >= autoSlotsCount) {
+                logStreamCloseReason("No streaming slots available");
+                throw new NoStreamingSlotsAvailable(partitions.length);
+            }
+        }
+
+        // check if the requested partitions are not directly requested by another stream(s)
+        final List<EventTypePartition> conflictPartitions = sessions.stream()
+                .flatMap(s -> s.getRequestedPartitions().stream())
+                .filter(requestedPartitions::contains)
+                .collect(Collectors.toList());
+        if (!conflictPartitions.isEmpty()) {
+            logStreamCloseReason("Partition already taken by other stream of the subscription");
+            throw SubscriptionPartitionConflictException.of(conflictPartitions);
+        }
+    }
 }

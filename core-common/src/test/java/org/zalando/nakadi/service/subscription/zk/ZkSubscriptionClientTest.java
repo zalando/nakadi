@@ -31,7 +31,6 @@ public class ZkSubscriptionClientTest {
     public void testSerializationDeserialization() throws IOException {
         final ZkSubscriptionClient.Topology first = new ZkSubscriptionClient.Topology(
                 new Partition[]{new Partition("1", "2", "3", "4", Partition.State.ASSIGNED)},
-                "123",
                 456);
 
         final String serialized = TestUtils.OBJECT_MAPPER.writer().writeValueAsString(first);
