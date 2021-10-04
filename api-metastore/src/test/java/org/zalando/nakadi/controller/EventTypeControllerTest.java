@@ -41,7 +41,6 @@ import org.zalando.nakadi.view.EventOwnerSelector;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -78,7 +77,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
-    public EventTypeControllerTest() throws IOException {
+    public EventTypeControllerTest() {
     }
 
     @Test
@@ -610,7 +609,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+                        .string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -621,7 +620,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(TestUtils.buildDefaultEventType()).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
+                        content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -648,7 +647,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(et).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
-                matchesProblem(expectedProblem)));
+                        matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventTypeBase.class));
         verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
@@ -667,8 +666,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         putEventType(jsonObject.toString(), invalidEventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType(
                         "application/problem+json")).andExpect(
-                content().string(
-                        matchesProblem(expectedProblem)));
+                        content().string(
+                                matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -684,7 +683,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType, eventTypeName).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
+                        content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -711,7 +710,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
-                TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
+                        TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
 
     }
 
@@ -729,7 +728,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(404))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json")).andExpect(content().string(
-                matchesProblem(expectedProblem)));
+                        matchesProblem(expectedProblem)));
 
     }
 

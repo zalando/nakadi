@@ -2,6 +2,8 @@ package org.zalando.nakadi.validation.schema;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Service
 public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstraint {
     final Map<CompatibilityMode, List<CompatibilityMode>> allowedChanges = ImmutableMap.of(
             CompatibilityMode.COMPATIBLE, Lists.newArrayList(CompatibilityMode.COMPATIBLE),
@@ -22,6 +25,7 @@ public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstra
     private final AdminService adminService;
     private final AuthorizationService authorizationService;
 
+    @Autowired
     public CompatibilityModeChangeConstraint(final AdminService adminService,
                                              final AuthorizationService authorizationService) {
         this.adminService = adminService;

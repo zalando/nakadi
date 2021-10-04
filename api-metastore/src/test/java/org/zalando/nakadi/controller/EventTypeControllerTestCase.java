@@ -41,10 +41,11 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
+import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -86,8 +87,6 @@ public class EventTypeControllerTestCase {
     protected final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     protected final AdminService adminService = mock(AdminService.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
-    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService,
-            authorizationService).schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
@@ -95,7 +94,7 @@ public class EventTypeControllerTestCase {
     private final SchemaService schemaService = mock(SchemaService.class);
     protected MockMvc mockMvc;
 
-    public EventTypeControllerTestCase() throws IOException {
+    public EventTypeControllerTestCase() {
     }
 
     @Before
@@ -116,10 +115,15 @@ public class EventTypeControllerTestCase {
         });
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
 
+        final SchemaEvolutionService ses = new SchemaValidatorConfig(
+                new CompatibilityModeChangeConstraint(adminService, authorizationService),
+                new PartitionStrategyConstraint(adminService)
+        ).schemaEvolutionService();
+
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
-                partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
+                partitionResolver, enrichment, subscriptionRepository, ses, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
