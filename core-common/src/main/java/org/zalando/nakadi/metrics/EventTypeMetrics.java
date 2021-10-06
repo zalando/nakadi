@@ -31,7 +31,8 @@ public class EventTypeMetrics {
         this.metricRegistry = metricRegistry;
         eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
         trafficInBytesMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.trafficInBytes"));
-        batchSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.batchSizeInBytes"));
+        batchSizeInBytesHistogram = metricRegistry.histogram(
+                metricNameFor(eventTypeName, "publishing.batchSizeInBytes"));
         eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
         averageEventSizeInBytesHistogram = metricRegistry.histogram(
                 metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
