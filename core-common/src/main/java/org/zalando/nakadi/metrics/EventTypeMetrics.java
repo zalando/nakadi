@@ -21,6 +21,8 @@ public class EventTypeMetrics {
     private final Histogram eventsPerBatchHistogram;
     private final Timer publishingTimer;
     private final Meter eventCountMeter;
+    private final Meter trafficInBytesMeter;
+    private final Histogram batchSizeInBytesHistogram;
     private final Histogram averageEventSizeInBytesHistogram;
     private final ConcurrentMap<Integer, Meter> statusCodeMeter = new ConcurrentHashMap<>();
 
@@ -28,6 +30,8 @@ public class EventTypeMetrics {
         this.eventTypeName = eventTypeName;
         this.metricRegistry = metricRegistry;
         eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
+        trafficInBytesMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.trafficInBytes"));
+        batchSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.batchSizeInBytes"));
         eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
         averageEventSizeInBytesHistogram = metricRegistry.histogram(
                 metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
@@ -37,6 +41,8 @@ public class EventTypeMetrics {
     public void reportSizing(final int eventsPerBatch, final int totalEventSize) {
         eventsPerBatchHistogram.update(eventsPerBatch);
         eventCountMeter.mark(eventsPerBatch);
+        trafficInBytesMeter.mark(totalEventSize);
+        batchSizeInBytesHistogram.update(totalEventSize);
         averageEventSizeInBytesHistogram.update(eventsPerBatch == 0 ? 0 : totalEventSize / eventsPerBatch);
     }
 
