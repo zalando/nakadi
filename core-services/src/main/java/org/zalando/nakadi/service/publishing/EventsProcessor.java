@@ -114,7 +114,7 @@ public class EventsProcessor {
         final Runnable r = new Runnable() {
             @Override
             public void run() {
-                sendEventsDisabledAuthz(req.data.toString(), req.eventType);
+                sendEventsDisabledAuthz(req.data, req.eventType);
             }
 
             @Override
@@ -211,10 +211,10 @@ public class EventsProcessor {
         }
     }
 
-    public void sendEventsDisabledAuthz(final String events, final String eventType) {
+    public void sendEventsDisabledAuthz(final JSONArray events, final String eventType) {
         try {
             // sending events batch with disabled authz check
-            eventPublisher.processInternal(events, eventType, false, false);
+            eventPublisher.processInternal(events.toString(), eventType, false, false);
         } catch (final RuntimeException ex) {
             LOG.error("Failed to send single batch for unknown reason", ex);
         }

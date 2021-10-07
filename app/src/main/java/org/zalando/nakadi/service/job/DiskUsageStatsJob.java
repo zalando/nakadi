@@ -12,7 +12,7 @@ import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SystemEventTypeInitializer;
-import org.zalando.nakadi.service.publishing.EventMetadata;
+import org.zalando.nakadi.service.publishing.MetadataService;
 import org.zalando.nakadi.service.publishing.EventsProcessor;
 
 import javax.annotation.PostConstruct;
@@ -31,7 +31,7 @@ public class DiskUsageStatsJob {
     private final EventsProcessor eventsProcessor;
     private final SystemEventTypeInitializer systemEventTypeInitializer;
     private final DiskUsageStatsConfig config;
-    private final EventMetadata eventMetadata;
+    private final MetadataService metadataService;
 
     private static final Logger LOG = LoggerFactory.getLogger(DiskUsageStatsJob.class);
 
@@ -42,14 +42,14 @@ public class DiskUsageStatsJob {
             final EventsProcessor eventsProcessor,
             final SystemEventTypeInitializer systemEventTypeInitializer,
             final DiskUsageStatsConfig config,
-            final EventMetadata eventMetadata) {
+            final MetadataService metadataService) {
         this.timelineDbRepository = timelineDbRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.eventsProcessor = eventsProcessor;
         this.systemEventTypeInitializer = systemEventTypeInitializer;
         this.config = config;
         this.wrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, config.getRunPeriodMs());
-        this.eventMetadata = eventMetadata;
+        this.metadataService = metadataService;
     }
 
     @PostConstruct
@@ -119,7 +119,8 @@ public class DiskUsageStatsJob {
                     final JSONObject event = new JSONObject();
                     event.put("event_type", x.getKey());
                     event.put("size_bytes", x.getValue() * 1024);
-                    return eventMetadata.addTo(event);
+                    metadataService.enrich(event);
+                    return event;
                 })
                 .forEach(item -> eventsProcessor.queueEvent(config.getEventTypeName(), item));
     }

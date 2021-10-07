@@ -29,6 +29,7 @@ import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.publishing.AvroEventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.GzipBodyRequestFilter;
@@ -63,6 +64,9 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Autowired
     @Qualifier("perPathMetricRegistry")
     private MetricRegistry perPathMetricRegistry;
+
+    @Autowired
+    private AvroEventPublisher avroEventPublisher;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -99,7 +103,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public FilterRegistrationBean loggingFilter() {
         return createFilterRegistrationBean(
-                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
+                new LoggingFilter(
+                        nakadiKpiPublisher,
+                        authorizationService,
+                        featureToggleService,
+                        accessLogEventType,
+                        avroEventPublisher),
                 Ordered.HIGHEST_PRECEDENCE + 30);
     }
 

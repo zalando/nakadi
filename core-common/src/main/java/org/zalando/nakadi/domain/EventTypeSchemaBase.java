@@ -17,7 +17,8 @@ public class EventTypeSchemaBase {
     }
 
     public enum Type {
-        JSON_SCHEMA
+        JSON_SCHEMA,
+        AVRO
     }
 
     @NotNull

@@ -32,6 +32,7 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -49,6 +50,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -171,18 +173,20 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer,
+            final Producer<byte[], byte[]> producer,
             final String topicId,
             final BatchItem item,
             final HystrixKafkaCircuitBreaker circuitBreaker,
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+            final byte[] eventKey = item.getEventKey() == null ? null :
+                    item.getEventKey().getBytes(StandardCharsets.UTF_8);
+            final ProducerRecord<byte[], byte[]> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getEventKey(),
-                    delete ? null : item.dumpEventToString());
+                    eventKey,
+                    delete ? null : item.dumpEventToString().getBytes(StandardCharsets.UTF_8));
             if (null != item.getOwner()) {
                 item.getOwner().serialize(kafkaRecord);
             }
@@ -259,7 +263,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
-            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
             kafkaFactory.terminateProducer(producer);
             kafkaFactory.releaseProducer(producer);
         } catch (Exception e) {
@@ -333,7 +337,7 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
@@ -445,6 +449,42 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         LOG.info("Failed events in batch {}", sb.toString());
+    }
+
+    public void syncPostEvent(final NakadiRecord nakadiRecord) {
+        final Producer<byte[], byte[]> producer = kafkaFactory.createProducerInstance();
+        try {
+            final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
+                    nakadiRecord.getTopic(),
+                    nakadiRecord.getPartition(),
+                    nakadiRecord.getEventKey(),
+                    nakadiRecord.getData());
+            producerRecord.headers().add(
+                    NakadiRecord.HEADER_EVENT_TYPE,
+                    nakadiRecord.getEventType().getBytes(StandardCharsets.UTF_8));
+            producerRecord.headers().add(
+                    NakadiRecord.HEADER_SCHEMA_TYPE,
+                    nakadiRecord.getSchemaType().getBytes(StandardCharsets.UTF_8));
+            producerRecord.headers().add(
+                    NakadiRecord.HEADER_SCHEMA_VERSION,
+                    nakadiRecord.getSchemaVersion().getBytes(StandardCharsets.UTF_8));
+
+            producer.send(producerRecord, ((metadata, exception) -> {
+                if (null != exception) {
+                    LOG.warn("Failed to publish to kafka topic {}",
+                            nakadiRecord.getTopic(), exception);
+                    if (isExceptionShouldLeadToReset(exception)) {
+                        kafkaFactory.terminateProducer(producer);
+                    }
+                }
+            }));
+        } catch (final InterruptException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Error publishing message to kafka", e);
+        } catch (final RuntimeException e) {
+            kafkaFactory.terminateProducer(producer);
+            LOG.error("Error publishing message to kafka", e);
+        }
     }
 
     @Override
@@ -627,7 +667,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
                     .stream()

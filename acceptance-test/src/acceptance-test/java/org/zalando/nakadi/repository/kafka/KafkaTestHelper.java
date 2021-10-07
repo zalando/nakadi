@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.assertj.core.util.Lists;
 import org.zalando.nakadi.view.Cursor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -34,15 +35,15 @@ public class KafkaTestHelper {
         return new KafkaConsumer<>(createKafkaProperties());
     }
 
-    public KafkaProducer<String, String> createProducer() {
+    public KafkaProducer<byte[], byte[]> createProducer() {
         return new KafkaProducer<>(createKafkaProperties());
     }
 
     protected static Properties createKafkaProperties() {
         final Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:29092");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
@@ -50,9 +51,10 @@ public class KafkaTestHelper {
 
     public void writeMessageToPartition(final String partition, final String topic, final String message)
             throws ExecutionException, InterruptedException {
-        final String messageToSend = String.format("\"%s\"", message);
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Integer.parseInt(partition),
-                "someKey", messageToSend);
+        final byte[] messageToSend = String.format("\"%s\"", message).getBytes(StandardCharsets.UTF_8);
+        final byte[] messageKey = "someKey".getBytes(StandardCharsets.UTF_8);
+        final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(topic, Integer.parseInt(partition),
+                messageKey, messageToSend);
         createProducer().send(producerRecord).get();
     }
 

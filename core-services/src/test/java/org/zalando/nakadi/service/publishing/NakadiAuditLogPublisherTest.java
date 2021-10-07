@@ -65,7 +65,7 @@ public class NakadiAuditLogPublisherTest {
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name");
 
-        final ArgumentCaptor<String> supplierCaptor = ArgumentCaptor.forClass(String.class);
+        final ArgumentCaptor<JSONArray> supplierCaptor = ArgumentCaptor.forClass(JSONArray.class);
         verify(eventsProcessor, times(1)).sendEventsDisabledAuthz(
                 supplierCaptor.capture(),
                 eq("audit-event-type"));

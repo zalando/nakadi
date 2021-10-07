@@ -3,6 +3,8 @@ package org.zalando.nakadi.service.publishing;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -25,8 +27,7 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
                 .thenReturn(true);
         final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher,
-                new EventMetadataTestStub())
+        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher, new EventMetadataTestStub())
                 .publish("test_et_name", dataSupplier);
 
         verify(eventsProcessor).queueEvent("test_et_name", dataSupplier.get());
@@ -37,8 +38,7 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
                 .thenReturn(false);
         final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher,
-                new EventMetadataTestStub())
+        new NakadiKpiPublisher(featureToggleService, eventsProcessor, usernameHasher, new EventMetadataTestStub())
                 .publish("test_et_name", dataSupplier);
 
         verify(eventsProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());

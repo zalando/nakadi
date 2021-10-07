@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import java.io.IOException;
 import java.util.function.Supplier;
 
 @Component
@@ -19,17 +20,19 @@ public class NakadiKpiPublisher {
     private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
     private final UsernameHasher usernameHasher;
-    private final EventMetadata eventMetadata;
+    private final MetadataService metadataService;
 
     @Autowired
-    protected NakadiKpiPublisher(final FeatureToggleService featureToggleService,
-                                 final EventsProcessor eventsProcessor,
-                                 final UsernameHasher usernameHasher,
-                                 final EventMetadata eventMetadata) {
+    protected NakadiKpiPublisher(
+            final FeatureToggleService featureToggleService,
+            final EventsProcessor eventsProcessor,
+            final UsernameHasher usernameHasher,
+            final MetadataService metadataService)
+            throws IOException {
         this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.usernameHasher = usernameHasher;
-        this.eventMetadata = eventMetadata;
+        this.metadataService = metadataService;
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
@@ -37,9 +40,9 @@ public class NakadiKpiPublisher {
             if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
                 return;
             }
-
-            eventsProcessor.queueEvent(etName,
-                    eventMetadata.addTo(eventSupplier.get()));
+            final JSONObject event = eventSupplier.get();
+            metadataService.enrich(event);
+            eventsProcessor.queueEvent(etName, event);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
@@ -48,5 +51,4 @@ public class NakadiKpiPublisher {
     public String hash(final String value) {
         return usernameHasher.hash(value);
     }
-
 }

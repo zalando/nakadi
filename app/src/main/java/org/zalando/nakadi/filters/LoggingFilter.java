@@ -1,7 +1,6 @@
 package org.zalando.nakadi.filters;
 
 import com.google.common.net.HttpHeaders;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -10,6 +9,7 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.publishing.AvroEventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -30,15 +30,18 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final String accessLogEventType;
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
+    private final AvroEventPublisher avroEventPublisher;
 
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
                          final AuthorizationService authorizationService,
                          final FeatureToggleService featureToggleService,
-                         final String accessLogEventType) {
+                         final String accessLogEventType,
+                         final AvroEventPublisher avroEventPublisher) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
         this.authorizationService = authorizationService;
         this.featureToggleService = featureToggleService;
+        this.avroEventPublisher = avroEventPublisher;
     }
 
     private class RequestLogInfo {
@@ -138,22 +141,22 @@ public class LoggingFilter extends OncePerRequestFilter {
             logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
         }
 
-        logToKpiPublisher(requestLogInfo, statusCode, timeSpentMs);
+        logToNakadi(requestLogInfo, statusCode, timeSpentMs);
     }
 
     private boolean isAccessLogEnabled() {
         return featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
     }
 
-    private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
-                .put("method", requestLogInfo.method)
-                .put("path", requestLogInfo.path)
-                .put("query", requestLogInfo.query)
-                .put("app", requestLogInfo.user)
-                .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
-                .put("status_code", statusCode)
-                .put("response_time_ms", timeSpentMs));
+    private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+        avroEventPublisher.publishAvro(accessLogEventType,
+                requestLogInfo.method,
+                requestLogInfo.path,
+                requestLogInfo.query,
+                requestLogInfo.user,
+                nakadiKpiPublisher.hash(requestLogInfo.user),
+                statusCode,
+                timeSpentMs);
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
