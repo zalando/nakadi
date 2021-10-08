@@ -78,7 +78,7 @@ public class NakadiKafkaConsumerTest {
                 kafkaCursor(TOPIC, randomUInt(), randomULong()));
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(), POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(), POLL_TIMEOUT, any());
 
         // ASSERT //
         final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
@@ -129,7 +129,7 @@ public class NakadiKafkaConsumerTest {
 
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
-                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT);
+                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT, any());
         final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
@@ -167,7 +167,7 @@ public class NakadiKafkaConsumerTest {
 
                 // ACT //
                 final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                        ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                        ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT, any());
                 consumer.readEvents();
 
                 // ASSERT //
@@ -188,7 +188,7 @@ public class NakadiKafkaConsumerTest {
         // ARRANGE //
         final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT, any());
         // ACT //
         nakadiKafkaConsumer.close();
         // ASSERT //

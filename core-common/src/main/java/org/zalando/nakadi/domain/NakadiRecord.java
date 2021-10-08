@@ -1,18 +1,22 @@
 package org.zalando.nakadi.domain;
 
+import java.nio.charset.StandardCharsets;
+
 public class NakadiRecord {
 
     public static final String HEADER_EVENT_TYPE = "X-Event-Type";
     public static final String HEADER_SCHEMA_TYPE = "X-Schema-Type";
     public static final String HEADER_SCHEMA_VERSION = "X-Schema-Version";
 
+    public static final byte[] SCHEMA_TYPE_AVRO = "avro".getBytes(StandardCharsets.UTF_8);
+
     private final String eventType;
     private final String topic;
     private final Integer partition;
     private final byte[] eventKey;
     private final byte[] data;
-    private final String schemaType;
-    private final String schemaVersion;
+    private final byte[] schemaType;
+    private final byte[] schemaVersion;
 
     public NakadiRecord(
             final String eventType,
@@ -23,9 +27,9 @@ public class NakadiRecord {
         this.partition = null;
         this.eventKey = eventKey;
         this.data = data;
-        this.schemaType = "avro";
+        this.schemaType = SCHEMA_TYPE_AVRO;
         this.eventType = eventType;
-        this.schemaVersion = "v1";
+        this.schemaVersion = "v1".getBytes(StandardCharsets.UTF_8);
     }
 
     public String getTopic() {
@@ -48,11 +52,11 @@ public class NakadiRecord {
         return eventType;
     }
 
-    public String getSchemaType() {
+    public byte[] getSchemaType() {
         return schemaType;
     }
 
-    public String getSchemaVersion() {
+    public byte[] getSchemaVersion() {
         return schemaVersion;
     }
 }

@@ -200,18 +200,18 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)), any());
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS), any());
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)), any());
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
+                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), any());
     }
 
     @Test
@@ -220,7 +220,7 @@ public class KafkaTopicRepositoryTest {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)), any());
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -228,14 +228,14 @@ public class KafkaTopicRepositoryTest {
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)), any());
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
 
         final Cursor wrongOffset = cursor("0", "blah");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(wrongOffset)));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(wrongOffset)), any());
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }

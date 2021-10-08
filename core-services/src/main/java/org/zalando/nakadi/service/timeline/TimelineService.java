@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
@@ -46,14 +47,13 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
-import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -289,14 +289,20 @@ public class TimelineService {
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache),
+                new KafkaRecordDeserializer(eventTypeCache)
+        );
         result.reassign(positions);
         return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache),
+                new KafkaRecordDeserializer(eventTypeCache)
+        );
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

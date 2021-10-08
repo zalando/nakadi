@@ -21,15 +21,18 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
     private final Map<TopicPartition, Timeline> timelineMap;
+    private final RecordDeserializer recordDeserializer;
 
     public NakadiKafkaConsumer(
             final Consumer<byte[], byte[]> kafkaConsumer,
             final List<KafkaCursor> kafkaCursors,
             final Map<TopicPartition, Timeline> timelineMap,
-            final long pollTimeout) {
+            final long pollTimeout,
+            final RecordDeserializer recordDeserializer) {
         this.kafkaConsumer = kafkaConsumer;
         this.pollTimeout = pollTimeout;
         this.timelineMap = timelineMap;
+        this.recordDeserializer = recordDeserializer;
         // define topic/partitions to consume from
         final Map<TopicPartition, KafkaCursor> topicCursors = kafkaCursors.stream().collect(
                 Collectors.toMap(
@@ -62,7 +65,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
 
             result.add(new ConsumedEvent(
-                    record.value(),
+                    recordDeserializer.deserialize(record),
                     cursor.toNakadiCursor(timeline),
                     record.timestamp(),
                     EventOwnerHeader.deserialize(record)));

@@ -464,10 +464,10 @@ public class KafkaTopicRepository implements TopicRepository {
                     nakadiRecord.getEventType().getBytes(StandardCharsets.UTF_8));
             producerRecord.headers().add(
                     NakadiRecord.HEADER_SCHEMA_TYPE,
-                    nakadiRecord.getSchemaType().getBytes(StandardCharsets.UTF_8));
+                    nakadiRecord.getSchemaType());
             producerRecord.headers().add(
                     NakadiRecord.HEADER_SCHEMA_VERSION,
-                    nakadiRecord.getSchemaVersion().getBytes(StandardCharsets.UTF_8));
+                    nakadiRecord.getSchemaVersion());
 
             producer.send(producerRecord, ((metadata, exception) -> {
                 if (null != exception) {
@@ -680,7 +680,9 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
-            @Nullable final String clientId, final List<NakadiCursor> cursors)
+            @Nullable final String clientId,
+            final List<NakadiCursor> cursors,
+            final RecordDeserializer recordDeserializer)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
 
         final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
@@ -697,7 +699,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 kafkaFactory.getConsumer(clientId),
                 kafkaCursors,
                 timelineMap,
-                nakadiSettings.getKafkaPollTimeoutMs());
+                nakadiSettings.getKafkaPollTimeoutMs(),
+                recordDeserializer);
 
     }
 

@@ -88,7 +88,7 @@ public class AvroEventPublisher {
             event.put("response_time_ms", timeSpentMs);
 
             final GenericRecord metadata = new GenericData.Record(metadataSchema);
-            metadata.put("occurred_at", Instant.now().toString());
+            metadata.put("occurred_at", new DateTime(DateTimeZone.UTC).toString());
             metadata.put("eid", uuidGenerator.randomUUID().toString());
             metadata.put("flow_id", FlowIdUtils.peek());
             metadata.put("event_type", etName);
