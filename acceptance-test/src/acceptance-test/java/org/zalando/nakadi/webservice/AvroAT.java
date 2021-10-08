@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;

@@ -1,6 +1,7 @@
 package org.zalando.nakadi.filters;
 
 import com.google.common.net.HttpHeaders;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -149,14 +150,25 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        avroEventPublisher.publishAvro(accessLogEventType,
-                requestLogInfo.method,
-                requestLogInfo.path,
-                requestLogInfo.query,
-                requestLogInfo.user,
-                nakadiKpiPublisher.hash(requestLogInfo.user),
-                statusCode,
-                timeSpentMs);
+        if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_IN_AVRO)) {
+            avroEventPublisher.publishAvro(accessLogEventType,
+                    requestLogInfo.method,
+                    requestLogInfo.path,
+                    requestLogInfo.query,
+                    requestLogInfo.user,
+                    nakadiKpiPublisher.hash(requestLogInfo.user),
+                    statusCode,
+                    timeSpentMs);
+        } else {
+            nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
+                    .put("method", requestLogInfo.method)
+                    .put("path", requestLogInfo.path)
+                    .put("query", requestLogInfo.query)
+                    .put("app", requestLogInfo.user)
+                    .put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user))
+                    .put("status_code", statusCode)
+                    .put("response_time_ms", timeSpentMs));
+        }
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
