@@ -57,9 +57,9 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -118,6 +118,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaTopicRepository kafkaTopicRepository;
     private final KafkaProducer<byte[], byte[]> kafkaProducer;
     private final KafkaFactory kafkaFactory;
+    private final RecordDeserializer stubRecordDeserializer;
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
@@ -145,6 +146,7 @@ public class KafkaTopicRepositoryTest {
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
+        stubRecordDeserializer = (record) -> null;
     }
 
 
@@ -201,20 +203,21 @@ public class KafkaTopicRepositoryTest {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(cursor)), any());
+                    asTopicPosition(MY_TOPIC, asList(cursor)), stubRecordDeserializer);
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID,
-                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS), any());
+                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS), stubRecordDeserializer);
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID,
-                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)), any());
+                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)), stubRecordDeserializer);
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), any());
+                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS),
+                stubRecordDeserializer);
     }
 
     @Test
@@ -223,7 +226,8 @@ public class KafkaTopicRepositoryTest {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)), any());
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)),
+                    stubRecordDeserializer);
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -231,7 +235,8 @@ public class KafkaTopicRepositoryTest {
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)), any());
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)),
+                    stubRecordDeserializer);
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
@@ -239,7 +244,7 @@ public class KafkaTopicRepositoryTest {
         final Cursor wrongOffset = cursor("0", "blah");
         try {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(wrongOffset)), any());
+                    asTopicPosition(MY_TOPIC, asList(wrongOffset)), stubRecordDeserializer);
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }

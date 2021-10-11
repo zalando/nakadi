@@ -86,3 +86,4 @@ kafka-src
 scm-source.json
 
 *.code-workspace
+*.DS_Store

@@ -127,9 +127,12 @@ public class NakadiKafkaConsumerTest {
         // we mock KafkaConsumer anyway, so the cursors we pass are not really important
         final List<KafkaCursor> cursors = ImmutableList.of(kafkaCursor(TOPIC, PARTITION, 0));
 
+        final RecordDeserializer recordDeserializer = mock(RecordDeserializer.class);
+        when(recordDeserializer.deserialize(any())).thenReturn(event1, event2);
+
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
-                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT, any());
+                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT, recordDeserializer);
         final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
