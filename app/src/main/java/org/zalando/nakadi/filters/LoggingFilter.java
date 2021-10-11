@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
@@ -32,17 +35,20 @@ public class LoggingFilter extends OncePerRequestFilter {
     private final AuthorizationService authorizationService;
     private final FeatureToggleService featureToggleService;
     private final AvroEventPublisher avroEventPublisher;
+    private final EventTypeCache eventTypeCache;
 
     public LoggingFilter(final NakadiKpiPublisher nakadiKpiPublisher,
                          final AuthorizationService authorizationService,
                          final FeatureToggleService featureToggleService,
                          final String accessLogEventType,
-                         final AvroEventPublisher avroEventPublisher) {
+                         final AvroEventPublisher avroEventPublisher,
+                         final EventTypeCache eventTypeCache) {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.accessLogEventType = accessLogEventType;
         this.authorizationService = authorizationService;
         this.featureToggleService = featureToggleService;
         this.avroEventPublisher = avroEventPublisher;
+        this.eventTypeCache = eventTypeCache;
     }
 
     private class RequestLogInfo {
@@ -150,7 +156,8 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_IN_AVRO)) {
+        final EventTypeSchema schema = eventTypeCache.getEventType(accessLogEventType).getSchema();
+        if (schema.getType() == EventTypeSchemaBase.Type.AVRO) {
             avroEventPublisher.publishAvro(accessLogEventType,
                     requestLogInfo.method,
                     requestLogInfo.path,

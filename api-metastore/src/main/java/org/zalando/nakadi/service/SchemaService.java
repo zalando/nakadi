@@ -174,6 +174,7 @@ public class SchemaService {
 
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         if (eventType.getSchema().getType() == EventTypeSchemaBase.Type.AVRO) {
+            // todo stub
             return;
         }
 

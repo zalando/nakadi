@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TimelinesNotSupportedException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
+import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
@@ -53,7 +54,7 @@ public class TimelineServiceTest {
             storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
             topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
             new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage",
-            auditLogPublisher);
+            auditLogPublisher, mock(SchemaRepository.class));
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {

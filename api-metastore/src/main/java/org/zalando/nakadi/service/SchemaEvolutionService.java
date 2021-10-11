@@ -14,6 +14,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
@@ -97,6 +98,14 @@ public class SchemaEvolutionService {
     }
 
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
+        // when migrating to avro change major version, when migrating from avro change major version
+        if (eventType.getSchema().getType() == EventTypeSchemaBase.Type.AVRO ||
+                (original.getSchema().getType() == EventTypeSchemaBase.Type.AVRO &&
+                        eventType.getSchema().getType() == EventTypeSchemaBase.Type.JSON_SCHEMA)) {
+            // todo fix
+            return bumpVersion(original, eventType, MAJOR);
+        }
+
         checkEvolutionIncompatibilities(original, eventType);
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));

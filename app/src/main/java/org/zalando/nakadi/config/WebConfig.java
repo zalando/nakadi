@@ -21,6 +21,7 @@ import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.filters.ExtraTracingFilter;
 import org.zalando.nakadi.filters.LoggingFilter;
 import org.zalando.nakadi.filters.MonitoringRequestFilter;
@@ -68,6 +69,9 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Autowired
     private AvroEventPublisher avroEventPublisher;
 
+    @Autowired
+    private EventTypeCache eventTypeCache;
+
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(nakadiStreamTimeout);
@@ -108,7 +112,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
                         authorizationService,
                         featureToggleService,
                         accessLogEventType,
-                        avroEventPublisher),
+                        avroEventPublisher,
+                        eventTypeCache),
                 Ordered.HIGHEST_PRECEDENCE + 30);
     }
 

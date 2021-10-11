@@ -172,7 +172,6 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
     ACCESS_LOG_ENABLED: true
-    ACCESS_LOG_IN_AVRO: true
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
@@ -198,4 +197,3 @@ nakadi.features.defaultFeatures:
   FORCE_SUBSCRIPTION_AUTHZ: false
   EVENT_OWNER_SELECTOR_AUTHZ: false
   ACCESS_LOG_ENABLED: true
-  ACCESS_LOG_IN_AVRO: true

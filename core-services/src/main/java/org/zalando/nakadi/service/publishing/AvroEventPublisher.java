@@ -64,6 +64,7 @@ public class AvroEventPublisher {
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
         this.uuidGenerator = uuidGenerator;
+        // todo load from event type by name
         this.eventSchema = new Schema.Parser().parse(eventSchemaRes.getInputStream());
         this.metadataSchema = new Schema.Parser().parse(metadataSchemaRes.getInputStream());
     }
@@ -86,6 +87,8 @@ public class AvroEventPublisher {
             event.put("status_code", statusCode);
             event.put("response_time_ms", timeSpentMs);
 
+            final String schemaVersion = eventTypeCache.getEventType(etName)
+                    .getSchema().getVersion().toString();
             final GenericRecord metadata = new GenericData.Record(metadataSchema);
             metadata.put("occurred_at", new DateTime(DateTimeZone.UTC).toString());
             metadata.put("eid", uuidGenerator.randomUUID().toString());
@@ -93,18 +96,19 @@ public class AvroEventPublisher {
             metadata.put("event_type", etName);
             metadata.put("partition", 0); // fixme
             metadata.put("received_at", new DateTime(DateTimeZone.UTC).toString());
-            metadata.put("version", "avro/v1"); // fixme
+            metadata.put("version", schemaVersion); // fixme if it is not avro?
             metadata.put("published_by", app);
 
             event.put("metadata", metadata);
 
-            publishUnderTimelineLock(etName, metadata, event);
+            publishUnderTimelineLock(etName, schemaVersion, metadata, event);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
     }
 
     public void publishUnderTimelineLock(final String eventTypeName,
+                                         final String schemaVersion,
                                          final GenericRecord metadata,
                                          final GenericRecord event) {
         Closeable publishingCloser = null;
@@ -112,7 +116,7 @@ public class AvroEventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             // publish under timeline lock
-            serializeAndSendToKafka(eventTypeName, metadata, event);
+            serializeAndSendToKafka(eventTypeName, schemaVersion, metadata, event);
 
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -131,6 +135,7 @@ public class AvroEventPublisher {
     }
 
     private void serializeAndSendToKafka(final String eventTypeName,
+                                         final String schemaVersion,
                                          final GenericRecord metadata,
                                          final GenericRecord event) {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
@@ -154,7 +159,11 @@ public class AvroEventPublisher {
                     // partition is null, kafka will assign partition
                     // org.apache.kafka.clients.producer.Partitioner
                     .syncPostEvent(new NakadiRecord(
-                            eventTypeName, topic, eventKey, eventOutputStream.toByteArray()));
+                            eventTypeName,
+                            schemaVersion,
+                            topic,
+                            eventKey,
+                            eventOutputStream.toByteArray()));
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

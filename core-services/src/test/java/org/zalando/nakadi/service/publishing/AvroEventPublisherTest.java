@@ -15,8 +15,10 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -34,6 +36,7 @@ public class AvroEventPublisherTest {
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final KafkaTopicRepository kafkaTopicRepository = Mockito.mock(KafkaTopicRepository.class);
     private final EventType eventType = Mockito.mock(EventType.class);
+    private final EventTypeSchema eventTypeSchema = Mockito.mock(EventTypeSchema.class);
     private final Timeline timeline = Mockito.mock(Timeline.class);
     private final String etName = "nakadi.access.log";
     private final DefaultResourceLoader resourceLoader;
@@ -59,6 +62,10 @@ public class AvroEventPublisherTest {
                 .thenReturn(UUID.fromString("0b3beccd-ce52-4f08-bff4-3a3945102d6b"));
         Mockito.when(eventTypeCache.getEventType(ArgumentMatchers.any()))
                 .thenReturn(eventType);
+        Mockito.when(eventType.getSchema())
+                .thenReturn(eventTypeSchema);
+        Mockito.when(eventTypeSchema.getVersion())
+                .thenReturn(new Version("0.0.1"));
         Mockito.when(timelineService.getActiveTimeline(eventType))
                 .thenReturn(timeline);
         Mockito.when(timelineService.getTopicRepository(eventType))

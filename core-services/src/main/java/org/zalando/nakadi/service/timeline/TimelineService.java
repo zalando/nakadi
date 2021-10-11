@@ -47,6 +47,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
+import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
@@ -80,6 +81,7 @@ public class TimelineService {
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
     private final NakadiAuditLogPublisher auditLogPublisher;
+    private final SchemaRepository schemaRepository;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -93,7 +95,8 @@ public class TimelineService {
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
-                           @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
+                           @Lazy final NakadiAuditLogPublisher auditLogPublisher,
+                           final SchemaRepository schemaRepository) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -106,6 +109,7 @@ public class TimelineService {
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
         this.auditLogPublisher = auditLogPublisher;
+        this.schemaRepository = schemaRepository;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId)
@@ -291,7 +295,7 @@ public class TimelineService {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
                 clientId, this, timelineSync,
                 new NakadiCursorComparator(eventTypeCache),
-                new KafkaRecordDeserializer(eventTypeCache)
+                new KafkaRecordDeserializer(schemaRepository)
         );
         result.reassign(positions);
         return result;
@@ -301,7 +305,7 @@ public class TimelineService {
         return new MultiTimelineEventConsumer(
                 clientId, this, timelineSync,
                 new NakadiCursorComparator(eventTypeCache),
-                new KafkaRecordDeserializer(eventTypeCache)
+                new KafkaRecordDeserializer(schemaRepository)
         );
     }
 

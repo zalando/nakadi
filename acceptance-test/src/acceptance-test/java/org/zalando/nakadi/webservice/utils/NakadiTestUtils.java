@@ -8,6 +8,8 @@ import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.apache.http.HttpStatus;
+import org.assertj.core.internal.bytebuddy.matcher.StringMatcher;
+import org.hamcrest.Matchers;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
@@ -18,7 +20,6 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -65,7 +66,10 @@ public class NakadiTestUtils {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .put("/event-types/" + eventType.getName());
+                .put("/event-types/" + eventType.getName())
+                .then()
+                .content(Matchers.containsString(""))
+                .statusCode(200);
     }
 
     public static EventType createBusinessEventTypeWithPartitions(final int partitionNum)

@@ -20,6 +20,7 @@ public class NakadiRecord {
 
     public NakadiRecord(
             final String eventType,
+            final String version,
             final String topic,
             final byte[] eventKey,
             final byte[] data) {
@@ -29,7 +30,7 @@ public class NakadiRecord {
         this.data = data;
         this.schemaType = SCHEMA_TYPE_AVRO;
         this.eventType = eventType;
-        this.schemaVersion = "v1".getBytes(StandardCharsets.UTF_8);
+        this.schemaVersion = version.getBytes(StandardCharsets.UTF_8);
     }
 
     public String getTopic() {
