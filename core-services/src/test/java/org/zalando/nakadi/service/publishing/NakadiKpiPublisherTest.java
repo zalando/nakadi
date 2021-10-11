@@ -3,8 +3,6 @@ package org.zalando.nakadi.service.publishing;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
