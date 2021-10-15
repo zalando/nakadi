@@ -452,7 +452,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public void syncPostEvent(final NakadiRecord nakadiRecord) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.createProducerInstance();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
                     nakadiRecord.getTopic(),
@@ -484,6 +484,8 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
             LOG.error("Error publishing message to kafka", e);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
         }
     }
 

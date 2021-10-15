@@ -156,6 +156,10 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToNakadi(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+        if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
+            return;
+        }
+
         final EventTypeSchema schema = eventTypeCache.getEventType(accessLogEventType).getSchema();
         if (schema.getType() == EventTypeSchemaBase.Type.AVRO) {
             avroEventPublisher.publishAvro(accessLogEventType,

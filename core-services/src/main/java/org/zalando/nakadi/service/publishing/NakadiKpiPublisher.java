@@ -5,9 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.security.UsernameHasher;
-import org.zalando.nakadi.service.FeatureToggleService;
 
 import java.io.IOException;
 import java.util.function.Supplier;
@@ -17,19 +15,16 @@ public class NakadiKpiPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiPublisher.class);
 
-    private final FeatureToggleService featureToggleService;
     private final EventsProcessor eventsProcessor;
     private final UsernameHasher usernameHasher;
     private final MetadataService metadataService;
 
     @Autowired
     protected NakadiKpiPublisher(
-            final FeatureToggleService featureToggleService,
             final EventsProcessor eventsProcessor,
             final UsernameHasher usernameHasher,
             final MetadataService metadataService)
             throws IOException {
-        this.featureToggleService = featureToggleService;
         this.eventsProcessor = eventsProcessor;
         this.usernameHasher = usernameHasher;
         this.metadataService = metadataService;
@@ -37,9 +32,6 @@ public class NakadiKpiPublisher {
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
         try {
-            if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
-                return;
-            }
             final JSONObject event = eventSupplier.get();
             metadataService.enrich(event);
             eventsProcessor.queueEvent(etName, event);
