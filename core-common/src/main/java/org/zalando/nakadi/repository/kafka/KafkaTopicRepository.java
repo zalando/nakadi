@@ -54,6 +54,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -348,9 +349,11 @@ public class KafkaTopicRepository implements TopicRepository {
             });
 
             int shortCircuited = 0;
+            final Set<String> shortCircuitedBrokerIds = new HashSet<>();
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
-                if (item.getBrokerId() == null) {
+                final String brokerId = item.getBrokerId();
+                if (brokerId == null) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED,
                             String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
                     LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
@@ -359,22 +362,24 @@ public class KafkaTopicRepository implements TopicRepository {
                 }
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
+                        brokerId, _id -> new HystrixKafkaCircuitBreaker(brokerId));
                 if (circuitBreaker.attemptExecution()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, delete));
                 } else {
                     shortCircuited++;
+                    shortCircuitedBrokerIds.add(brokerId);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
                     metricRegistry
-                            .meter(String.format(
-                                    HYSTRIX_SHORT_CIRCUIT_COUNTER,
-                                    item.getBrokerId()))
+                            .meter(String.format(HYSTRIX_SHORT_CIRCUIT_COUNTER, brokerId))
                             .mark();
                 }
             }
             if (shortCircuited > 0) {
-                LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
-                        shortCircuited, topicId);
+                final String brokerIdsString = shortCircuitedBrokerIds.stream()
+                        .sorted()
+                        .collect(Collectors.joining(", "));
+                LOG.warn("Short circuiting request to Kafka broker(s) {}: {} time(s) due to timeout for topic {} / {}",
+                        brokerIdsString, shortCircuited, topicId, eventType);
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
