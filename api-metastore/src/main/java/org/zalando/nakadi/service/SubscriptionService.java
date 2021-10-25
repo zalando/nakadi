@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.Feature;
@@ -77,6 +78,7 @@ public class SubscriptionService {
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
 
     private final SubscriptionDbRepository subscriptionRepository;
+    private final SubscriptionCache subscriptionCache;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
@@ -93,6 +95,7 @@ public class SubscriptionService {
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
+                               final SubscriptionCache subscriptionCache,
                                final SubscriptionClientFactory subscriptionClientFactory,
                                final TimelineService timelineService,
                                final SubscriptionValidationService subscriptionValidationService,
@@ -107,6 +110,7 @@ public class SubscriptionService {
                                final EventTypeCache eventTypeCache,
                                final SubscriptionTokenLister subscriptionTokenLister) {
         this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionCache = subscriptionCache;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
         this.subscriptionValidationService = subscriptionValidationService;
@@ -278,7 +282,7 @@ public class SubscriptionService {
 
     public Subscription getSubscription(final String subscriptionId)
             throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(subscription);
         return subscription;
     }
@@ -318,7 +322,7 @@ public class SubscriptionService {
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
-            subscription = subscriptionRepository.getSubscription(subscriptionId);
+            subscription = subscriptionCache.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
             TracingService.logError(ex);

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.ShutdownHooks;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -73,7 +74,7 @@ public class SubscriptionStreamController {
     private final NakadiSettings nakadiSettings;
     private final EventStreamChecks eventStreamChecks;
     private final MetricRegistry metricRegistry;
-    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionCache subscriptionCache;
     private final SubscriptionValidationService subscriptionValidationService;
     private final ShutdownHooks shutdownHooks;
 
@@ -83,7 +84,7 @@ public class SubscriptionStreamController {
                                         final NakadiSettings nakadiSettings,
                                         final EventStreamChecks eventStreamChecks,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
-                                        final SubscriptionDbRepository subscriptionDbRepository,
+                                        final SubscriptionCache subscriptionCache,
                                         final SubscriptionValidationService subscriptionValidationService,
                                         final ShutdownHooks shutdownHooks) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
@@ -91,7 +92,7 @@ public class SubscriptionStreamController {
         this.nakadiSettings = nakadiSettings;
         this.eventStreamChecks = eventStreamChecks;
         this.metricRegistry = metricRegistry;
-        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionCache = subscriptionCache;
         this.subscriptionValidationService = subscriptionValidationService;
         this.shutdownHooks = shutdownHooks;
     }
@@ -229,7 +230,7 @@ public class SubscriptionStreamController {
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
-                final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+                final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
 
