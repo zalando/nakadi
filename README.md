@@ -141,9 +141,9 @@ The gradle setup is fairly standard, the main tasks are:
 Some other useful tasks are:
 
 - `./gradlew startNakadi`: build Nakadi and start docker-compose services: nakadi, postgresql, zookeeper and kafka
-- `./gradlew stopNakadi`: shutdown docker-compose services
+- `./gradlew stopNakadi`: shutdown all docker-compose services (current implementation is same as that of `./gradlew stopStorages`)
 - `./gradlew startStorages`: start docker-compose services: postgres, zookeeper and kafka (useful for development purposes)
-- `./gradlew stopStorages`: shutdown docker-compose services
+- `./gradlew stopStorages`: shutdown all docker-compose services (current implementation is same as that of `./gradlew stopNakadi`)
 - `./gradlew fullAcceptanceTest`: start Nakadi configured for acceptance tests and run acceptance tests
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
