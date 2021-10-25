@@ -367,6 +367,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, delete));
                 } else {
                     shortCircuited++;
+                    shortCircuitedBrokerIds.add(brokerId);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
                     metricRegistry
                             .meter(String.format(HYSTRIX_SHORT_CIRCUIT_COUNTER, brokerId))
