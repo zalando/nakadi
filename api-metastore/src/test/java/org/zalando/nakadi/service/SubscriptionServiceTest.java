@@ -59,7 +59,8 @@ public class SubscriptionServiceTest {
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
         subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
 
-        subscriptionService = new SubscriptionService(subscriptionRepository, subscriptionCache, zkSubscriptionClientFactory,
+        subscriptionService = new SubscriptionService(subscriptionRepository,
+                subscriptionCache, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
                 nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister);
