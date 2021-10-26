@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.Feature;
@@ -76,7 +77,8 @@ public class SubscriptionService {
 
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
 
-    private final SubscriptionDbRepository subscriptionRepository;
+    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionCache subscriptionCache;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
@@ -92,7 +94,8 @@ public class SubscriptionService {
     private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
-    public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
+    public SubscriptionService(final SubscriptionDbRepository subscriptionDbRepository,
+                               final SubscriptionCache subscriptionCache,
                                final SubscriptionClientFactory subscriptionClientFactory,
                                final TimelineService timelineService,
                                final SubscriptionValidationService subscriptionValidationService,
@@ -106,7 +109,8 @@ public class SubscriptionService {
                                final AuthorizationValidator authorizationValidator,
                                final EventTypeCache eventTypeCache,
                                final SubscriptionTokenLister subscriptionTokenLister) {
-        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionCache = subscriptionCache;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
         this.subscriptionValidationService = subscriptionValidationService;
@@ -139,7 +143,7 @@ public class SubscriptionService {
             subscriptionBase.setLabels(new HashMap<>());
         }
 
-        final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
+        final Subscription subscription = subscriptionDbRepository.createSubscription(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
@@ -169,7 +173,7 @@ public class SubscriptionService {
 
         checkFeatureTogglesForCreationAndUpdate(newValue);
 
-        final Subscription old = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription old = subscriptionDbRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(old);
 
         authorizationValidator.authorizeSubscriptionAdmin(old);
@@ -182,7 +186,7 @@ public class SubscriptionService {
             newValue.setLabels(old.getLabels());
         }
         final Subscription updated = old.mergeFrom(newValue);
-        subscriptionRepository.updateSubscription(updated);
+        subscriptionDbRepository.updateSubscription(updated);
 
         nakadiAuditLogPublisher.publish(Optional.of(old), Optional.of(updated),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.UPDATED,
@@ -193,7 +197,7 @@ public class SubscriptionService {
 
     public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws InconsistentStateException, NoSuchSubscriptionException, RepositoryProblemException {
-        final Subscription subscription = subscriptionRepository.getSubscription(
+        final Subscription subscription = subscriptionDbRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),
                 subscriptionBase.getConsumerGroup());
@@ -240,7 +244,7 @@ public class SubscriptionService {
         }
         final PaginationWrapper<Subscription> paginationWrapper;
         if (tokenObj == null) {
-            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+            final List<Subscription> subscriptions = subscriptionDbRepository.listSubscriptions(
                     eventTypesFilter,
                     owningAppOption,
                     readersFilter,
@@ -278,7 +282,7 @@ public class SubscriptionService {
 
     public Subscription getSubscription(final String subscriptionId)
             throws NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(subscription);
         return subscription;
     }
@@ -290,12 +294,12 @@ public class SubscriptionService {
             throw new DbWriteOperationsBlockedException("Cannot delete subscription: write operations on DB " +
                     "are blocked by feature flag.");
         }
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
-        subscriptionRepository.deleteSubscription(subscriptionId);
+        subscriptionDbRepository.deleteSubscription(subscriptionId);
         try (ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"))) {
             zkSubscriptionClient.deleteSubscription();
@@ -318,7 +322,7 @@ public class SubscriptionService {
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
         final Subscription subscription;
         try {
-            subscription = subscriptionRepository.getSubscription(subscriptionId);
+            subscription = subscriptionCache.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
         } catch (final ServiceTemporarilyUnavailableException ex) {
             TracingService.logError(ex);
