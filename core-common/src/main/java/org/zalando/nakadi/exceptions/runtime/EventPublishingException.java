@@ -12,6 +12,6 @@ public class EventPublishingException extends NakadiBaseException {
     }
 
     private static String makeMessage(final String msg, final String topicId, final String eventType) {
-        return String.format("%s: %s / %s", msg, topicId, eventType);
+        return String.format("%s: topic %s / %s", msg, topicId, eventType);
     }
 }

@@ -211,12 +211,12 @@ public class KafkaTopicRepository implements TopicRepository {
             Thread.currentThread().interrupt();
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka topic", e, topicId, eventType);
+            throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka topic", e, topicId, eventType);
+            throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         }
     }
 
