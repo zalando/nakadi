@@ -2,7 +2,8 @@ package org.zalando.nakadi.exceptions.runtime;
 
 public class EventPublishingException extends NakadiBaseException {
 
-    public EventPublishingException(final String msg, final Exception cause, final String topicId, final String eventType) {
+    public EventPublishingException(
+            final String msg, final Exception cause, final String topicId, final String eventType) {
         super(makeMessage(msg, topicId, eventType), cause);
     }
 
