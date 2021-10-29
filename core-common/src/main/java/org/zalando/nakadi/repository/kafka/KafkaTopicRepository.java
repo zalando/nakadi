@@ -174,6 +174,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private CompletableFuture<Exception> publishItem(
             final Producer<String, String> producer,
             final String topicId,
+            final String eventType,
             final BatchItem item,
             final HystrixKafkaCircuitBreaker circuitBreaker,
             final boolean delete) throws EventPublishingException {
@@ -210,12 +211,12 @@ public class KafkaTopicRepository implements TopicRepository {
             Thread.currentThread().interrupt();
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
+            throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
+            throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         }
     }
 
@@ -364,7 +365,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
                         brokerId, _id -> new HystrixKafkaCircuitBreaker(brokerId));
                 if (circuitBreaker.attemptExecution()) {
-                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker, delete));
+                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, circuitBreaker, delete));
                 } else {
                     shortCircuited++;
                     shortCircuitedBrokerIds.add(brokerId);
@@ -398,14 +399,14 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final TimeoutException ex) {
             kafkaFactory.terminateProducer(producer);
             failUnpublished(batch, "timed out");
-            throw new EventPublishingException("Timeout publishing message to kafka", ex);
+            throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
             failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Internal error publishing message to kafka", ex);
+            throw new EventPublishingException("Internal error publishing message to kafka", ex, topicId, eventType);
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
             failUnpublished(batch, "interrupted");
-            throw new EventPublishingException("Interrupted publishing message to kafka", ex);
+            throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
@@ -413,7 +414,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
         if (atLeastOneFailed) {
             failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Internal error publishing message to kafka");
+            throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
         }
     }
 
