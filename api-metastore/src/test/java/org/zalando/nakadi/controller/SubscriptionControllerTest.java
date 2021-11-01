@@ -11,7 +11,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
@@ -95,7 +94,6 @@ public class SubscriptionControllerTest {
     private static final Timeline TIMELINE = TestUtils.buildTimelineWithTopic("topic");
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final SubscriptionCache subscriptionCache = mock(SubscriptionCache.class);
     private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     private final MockMvc mockMvc;
     private final TopicRepository topicRepository;
@@ -130,9 +128,7 @@ public class SubscriptionControllerTest {
         subscriptionValidationService = mock(SubscriptionValidationService.class);
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                subscriptionCache,
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
@@ -152,7 +148,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionThenOk() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
                 .andExpect(status().isOk())
@@ -163,7 +159,7 @@ public class SubscriptionControllerTest {
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionCache.getSubscription(subscription.getId()))
+        when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -248,7 +244,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionCache.getSubscription(any()))
+        when(subscriptionRepository.getSubscription(any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscription("dummyId"), expectedProblem);
@@ -263,7 +259,7 @@ public class SubscriptionControllerTest {
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
         final ZkSubscriptionNode zkSubscriptionNode =
                 new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
-        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
@@ -301,7 +297,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().withEventType("myET").build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeCache.getEventType("myET")).thenThrow(NoSuchEventTypeException.class);

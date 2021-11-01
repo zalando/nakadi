@@ -142,22 +142,11 @@ public class CursorsService {
             }
         }
     }
-    public List<SubscriptionCursorWithoutToken> getSubscriptionCursorsForUpdate(final String subscriptionId)
-            throws InternalNakadiException, NoSuchEventTypeException,
-            NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        return getSubscriptionCursors(subscriptionRepository.getSubscription(subscriptionId));
-    }
 
     public List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final String subscriptionId)
             throws InternalNakadiException, NoSuchEventTypeException,
             NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        return getSubscriptionCursors(subscriptionCache.getSubscription(subscriptionId));
-    }
-
-    private List<SubscriptionCursorWithoutToken> getSubscriptionCursors(final Subscription subscription)
-            throws InternalNakadiException, NoSuchEventTypeException,
-            NoSuchSubscriptionException, ServiceTemporarilyUnavailableException {
-        final var subscriptionId = subscription.getId();
+        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         authorizationValidator.authorizeSubscriptionView(subscription);
         final ZkSubscriptionClient zkSubscriptionClient = zkSubscriptionFactory.createClient(
                 subscription, LogPathBuilder.build(subscriptionId, "get_cursors"));
@@ -216,7 +205,7 @@ public class CursorsService {
                     zkClient, subscription, timelineService, cursorConverter);
             // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
             if (!cursors.isEmpty()) {
-                final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursorsForUpdate(subscriptionId);
+                final List<SubscriptionCursorWithoutToken> oldCursors = getSubscriptionCursors(subscriptionId);
 
                 final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()) +
                         TimeUnit.SECONDS.toMillis(1);
