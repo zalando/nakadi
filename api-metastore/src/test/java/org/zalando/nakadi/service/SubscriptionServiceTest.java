@@ -5,7 +5,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
@@ -33,7 +32,6 @@ public class SubscriptionServiceTest {
     private static final String SUBSCRIPTION_LOG_ET = "subscription_log_et";
 
     private SubscriptionDbRepository subscriptionRepository;
-    private SubscriptionCache subscriptionCache;
     private NakadiKpiPublisher nakadiKpiPublisher;
     private SubscriptionService subscriptionService;
     private FeatureToggleService featureToggleService;
@@ -54,13 +52,11 @@ public class SubscriptionServiceTest {
         subscriptionValidationService = Mockito.mock(SubscriptionValidationService.class);
         nakadiKpiPublisher = Mockito.mock(NakadiKpiPublisher.class);
         subscriptionRepository = Mockito.mock(SubscriptionDbRepository.class);
-        subscriptionCache = Mockito.mock(SubscriptionCache.class);
         featureToggleService = Mockito.mock(FeatureToggleService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
         subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
 
-        subscriptionService = new SubscriptionService(subscriptionRepository,
-                subscriptionCache, zkSubscriptionClientFactory,
+        subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
                 nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister);
