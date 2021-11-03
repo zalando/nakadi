@@ -24,8 +24,7 @@ public class ConsumptionKpiCollectorFactory {
         this.kpiCollectionIntervalMs = kpiCollectionIntervalMs;
     }
 
-    public ConsumptionKpiCollector createForLoLA(
-            final Client client) {
+    public ConsumptionKpiCollector createForLoLA(final Client client) {
         return new ConsumptionKpiCollector(client, kpiPublisher, kpiDataStreamedEventType, kpiCollectionIntervalMs) {
             @Override
             protected JSONObject enrich(final JSONObject o) {

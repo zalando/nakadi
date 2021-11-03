@@ -13,7 +13,7 @@ public abstract class ConsumptionKpiCollector {
     private final String appNameHashed;
     private final NakadiKpiPublisher kpiPublisher;
     private final String kpiEventType;
-    private final long kpiFlushInterval;
+    private final long kpiFlushIntervalMs;
 
     private final Map<String, StreamKpiData> kpiDataPerEventType = new HashMap<>();
     private long lastKpiEventSent = System.currentTimeMillis();
@@ -28,7 +28,7 @@ public abstract class ConsumptionKpiCollector {
         this.appNameHashed = kpiPublisher.hash(clientId);
         this.kpiPublisher = kpiPublisher;
         this.kpiEventType = kpiEventType;
-        this.kpiFlushInterval = kpiFlushIntervalMs;
+        this.kpiFlushIntervalMs = kpiFlushIntervalMs;
     }
 
     public void sendKpi() {
@@ -37,7 +37,7 @@ public abstract class ConsumptionKpiCollector {
     }
 
     public void checkAndSendKpi() {
-        if ((System.currentTimeMillis() - lastKpiEventSent) > kpiFlushInterval) {
+        if ((System.currentTimeMillis() - lastKpiEventSent) > kpiFlushIntervalMs) {
             sendKpi();
             lastKpiEventSent = System.currentTimeMillis();
         }
@@ -45,9 +45,9 @@ public abstract class ConsumptionKpiCollector {
 
     public void recordBatchSent(final String eventType, final int bytesCount, final int eventsCount) {
         final StreamKpiData kpiData = kpiDataPerEventType.computeIfAbsent(eventType, (x) -> new StreamKpiData());
-        kpiData.addBytesSent(bytesCount);
-        kpiData.addNumberOfEventsSent(eventsCount);
-        kpiData.incBatchesCount();
+        kpiData.bytesSent += bytesCount;
+        kpiData.numberOfEventsSent += eventsCount;
+        kpiData.batchesCount += 1;
     }
 
     protected abstract JSONObject enrich(JSONObject o);
@@ -58,9 +58,9 @@ public abstract class ConsumptionKpiCollector {
                 .put("app", clientId)
                 .put("app_hashed", appNameHashed)
                 .put("token_realm", clientRealm)
-                .put("number_of_events", data.getNumberOfEventsSent())
-                .put("bytes_streamed", data.getBytesSent())
-                .put("batches_streamed", data.getBatchesCount()));
+                .put("number_of_events", data.numberOfEventsSent)
+                .put("bytes_streamed", data.bytesSent)
+                .put("batches_streamed", data.batchesCount));
     }
 
     private void publishKpi(final String eventType, final StreamKpiData data) {
@@ -73,29 +73,5 @@ public abstract class ConsumptionKpiCollector {
         private long bytesSent = 0;
         private long numberOfEventsSent = 0;
         private int batchesCount = 0;
-
-        public long getBytesSent() {
-            return bytesSent;
-        }
-
-        public long getNumberOfEventsSent() {
-            return numberOfEventsSent;
-        }
-
-        public int getBatchesCount() {
-            return batchesCount;
-        }
-
-        public void addBytesSent(final long bytes) {
-            bytesSent = bytesSent + bytes;
-        }
-
-        public void addNumberOfEventsSent(final long count) {
-            numberOfEventsSent = numberOfEventsSent + count;
-        }
-
-        public void incBatchesCount() {
-            batchesCount += 1;
-        }
     }
 }
