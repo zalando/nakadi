@@ -85,7 +85,7 @@ public class StartingState extends State {
 
             if (autoBalanceSessionsCount >= autoSlotsCount) {
                 logStreamCloseReason("No streaming slots available");
-                throw new NoStreamingSlotsAvailable(partitions.length);
+                throw new NoStreamingSlotsAvailable(getContext().getSubscription().getId(), partitions.length);
             }
         }
 
