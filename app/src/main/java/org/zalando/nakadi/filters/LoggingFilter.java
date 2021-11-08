@@ -77,7 +77,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.flowId = flowId;
             this.requestLogInfo = new RequestLogInfo(request, startTime);
 
-            if (featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED)) {
+            if (isAccessLogEnabled()) {
                 logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
             }
         }
