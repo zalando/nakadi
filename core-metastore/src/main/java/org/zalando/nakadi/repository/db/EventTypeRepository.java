@@ -99,7 +99,7 @@ public class EventTypeRepository extends AbstractDbRepository {
 
     public List<EventType> list() {
         return jdbcTemplate.query(
-                "SELECT et_event_type_object FROM zn_data.event_type",
+                "SELECT et_event_type_object FROM zn_data.event_type ORDER BY et_name",
                 new EventTypeMapper());
     }
 
