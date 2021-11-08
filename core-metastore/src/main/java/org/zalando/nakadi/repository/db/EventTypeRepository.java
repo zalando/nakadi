@@ -109,7 +109,8 @@ public class EventTypeRepository extends AbstractDbRepository {
                         "FROM zn_data.event_type," +
                         "jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
                         "AS writers(data_type text, value text) " +
-                        "WHERE writers.data_type = ? AND writers.value = ?",
+                        "WHERE writers.data_type = ? AND writers.value = ? " +
+                        "ORDER BY et_name",
                 new String[]{ writer.getDataType(), writer.getValue() },
                 new EventTypeMapper());
     }
