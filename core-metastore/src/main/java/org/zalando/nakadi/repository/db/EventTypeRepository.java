@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 @DB
 @Component
@@ -100,6 +101,13 @@ public class EventTypeRepository extends AbstractDbRepository {
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type",
+                new EventTypeMapper());
+    }
+
+    public List<EventType> listEventTypesWithRowLock(final Set<String> eventTypes) {
+        final String whereClause = "WHERE zn_data.event_type.et_name in ( " + String.join(",", eventTypes) +")";
+        return jdbcTemplate.query(
+                "SELECT et_event_type_object FROM zn_data.event_type " + whereClause + " FOR KEY SHARE",
                 new EventTypeMapper());
     }
 
