@@ -22,6 +22,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -105,9 +106,11 @@ public class EventTypeRepository extends AbstractDbRepository {
     }
 
     public List<EventType> listEventTypesWithRowLock(final Set<String> eventTypes) {
-        final String whereClause = "WHERE zn_data.event_type.et_name in ( " + String.join(",", eventTypes) +")";
+        final String whereClause = "WHERE zn_data.event_type.et_name in ( "
+                + String.join(",", Collections.nCopies(eventTypes.size(), "?") ) +")";
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type " + whereClause + " FOR KEY SHARE",
+                eventTypes.toArray(),
                 new EventTypeMapper());
     }
 

@@ -16,7 +16,6 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
@@ -48,8 +47,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     @Autowired
     public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper,
-                                    final UUIDGenerator uuidGenerator, final HashGenerator hashGenerator,
-                                    final TransactionTemplate transactionTemplate) {
+                                    final UUIDGenerator uuidGenerator, final HashGenerator hashGenerator) {
         super(jdbcTemplate, jsonMapper);
         this.uuidGenerator = uuidGenerator;
         this.hashGenerator = hashGenerator;
