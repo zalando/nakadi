@@ -167,8 +167,9 @@ public class SubscriptionService {
     private Subscription createSubscriptionWithEventTypeLock(final SubscriptionBase subscriptionBase) {
         try {
             return transactionTemplate.execute(action -> {
+                eventTypeRepository.lockTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE);
                 final Set<String> dbEventTypes = eventTypeRepository.
-                        listEventTypesWithRowLock(subscriptionBase.getEventTypes()).stream().
+                        listEventTypes(subscriptionBase.getEventTypes()).stream().
                         map(EventType::getName).collect(Collectors.toSet());
 
                 if(dbEventTypes.size() != subscriptionBase.getEventTypes().size() ){

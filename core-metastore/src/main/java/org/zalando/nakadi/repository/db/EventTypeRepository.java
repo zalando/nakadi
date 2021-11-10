@@ -30,6 +30,20 @@ import java.util.Set;
 @Component
 public class EventTypeRepository extends AbstractDbRepository {
 
+    public enum TableLock {
+        ROW_EXCLUSIVE("ROW EXCLUSIVE");
+
+        private final String value;
+        TableLock(final String value){
+            this.value = value;
+        }
+
+        public String get(){
+            return value;
+        }
+
+    }
+
     @Autowired
     public EventTypeRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
@@ -105,13 +119,19 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> listEventTypesWithRowLock(final Set<String> eventTypes) {
-        final String whereClause = "WHERE zn_data.event_type.et_name in ( "
-                + String.join(",", Collections.nCopies(eventTypes.size(), "?") ) +")";
+    public List<EventType> listEventTypes(final Set<String> eventTypes) {
+        final String query = String.format(
+                "SELECT et_event_type_object FROM zn_data.event_type WHERE zn_data.event_type.et_name in ( %s )",
+                String.join(",", Collections.nCopies(eventTypes.size(), "?"))
+        );
         return jdbcTemplate.query(
-                "SELECT et_event_type_object FROM zn_data.event_type " + whereClause + " FOR KEY SHARE",
+                query,
                 eventTypes.toArray(),
                 new EventTypeMapper());
+    }
+
+    public void lockTable(final TableLock lockTable){
+        jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockTable.get() + " MODE");
     }
 
     public List<EventType> list(final AuthorizationAttribute writer) {

@@ -399,6 +399,7 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
+                eventTypeRepository.lockTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE);
                 SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
                         ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
                 while (null != listResult) {
