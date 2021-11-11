@@ -398,7 +398,8 @@ public class EventTypeService {
 
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
-            return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.SHARE, transactionTemplate,
+            return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.ROW_EXCLUSIVE,
+                    transactionTemplate,
                     action -> {
                         SubscriptionTokenLister.ListResult listResult = listSubscriptions(eventType, null, 100);
                         while (null != listResult) {
@@ -410,7 +411,8 @@ public class EventTypeService {
                                     throw new InconsistentStateException("Subscription to be deleted is not found", e);
                                 }
                             });
-                            listResult = null == listResult.getNext() ? null : listSubscriptions(eventType, listResult.getNext(), 100);
+                            listResult = null == listResult.getNext() ? null :
+                                    listSubscriptions(eventType, listResult.getNext(), 100);
                         }
                         return deleteEventType(eventType);
                     }
