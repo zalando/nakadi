@@ -166,18 +166,20 @@ public class SubscriptionService {
 
     private Subscription createSubscriptionWithEventTypeLock(final SubscriptionBase subscriptionBase) {
         try {
-            return eventTypeRepository.lockingTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE, transactionTemplate,
+            return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.SHARE, transactionTemplate,
                     action -> {
-                        final Set<String> dbEventTypes = eventTypeRepository.
+                        final Set<String> dbEventTypeNames = eventTypeRepository.
                                 listEventTypes(subscriptionBase.getEventTypes()).stream().
                                 map(EventType::getName).collect(Collectors.toSet());
 
-                        if (dbEventTypes.size() != subscriptionBase.getEventTypes().size()) {
+                        if (dbEventTypeNames.size() != subscriptionBase.getEventTypes().size()) {
                             final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream().
-                                    filter(name -> !dbEventTypes.contains(name)).collect(Collectors.toList());
+                                    filter(name -> !dbEventTypeNames.contains(name)).collect(Collectors.toList());
 
-                            throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
-                                    "event type(s) not found: '%s'", String.join("', '", missingEventTypes)));
+                            if(!missingEventTypes.isEmpty()) {
+                                throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
+                                        "event type(s) not found: '%s'", String.join("', '", missingEventTypes)));
+                            }
                         }
 
                         return subscriptionRepository.createSubscription(subscriptionBase);

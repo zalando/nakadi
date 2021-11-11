@@ -32,18 +32,18 @@ import java.util.Set;
 @Component
 public class EventTypeRepository extends AbstractDbRepository {
 
-    public enum TableLock {
+    public enum TableLockMode {
         ROW_EXCLUSIVE("ROW EXCLUSIVE"), SHARE("SHARE");
 
         private final String value;
-        TableLock(final String value){
+
+        TableLockMode(final String value){
             this.value = value;
         }
 
         public String get(){
             return value;
         }
-
     }
 
     @Autowired
@@ -121,21 +121,21 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> listEventTypes(final Set<String> eventTypes) {
+    public List<EventType> listEventTypes(final Set<String> eventTypeNames) {
         final String query = String.format(
                 "SELECT et_event_type_object FROM zn_data.event_type WHERE zn_data.event_type.et_name IN ( %s )",
-                String.join(",", Collections.nCopies(eventTypes.size(), "?"))
+                String.join(",", Collections.nCopies(eventTypeNames.size(), "?"))
         );
         return jdbcTemplate.query(
                 query,
-                eventTypes.toArray(),
+                eventTypeNames.toArray(),
                 new EventTypeMapper());
     }
 
-    public <T> T lockingTable(final TableLock lockTable, final TransactionTemplate transactionTemplate,
+    public <T> T lockingTable(final TableLockMode lockMode, final TransactionTemplate transactionTemplate,
                               final TransactionCallback<T> action) {
         return transactionTemplate.execute(ac -> {
-            jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockTable.get() + " MODE");
+            jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockMode.get() + " MODE");
             return action.doInTransaction(ac);
         });
     }

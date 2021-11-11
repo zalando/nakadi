@@ -117,7 +117,6 @@ public class EventTypeServiceTest {
         when(eventTypeRepository.lockingTable(any(),any(),any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[2];
             return callback.doInTransaction(null);
-
         });
 
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {

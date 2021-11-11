@@ -398,10 +398,9 @@ public class EventTypeService {
 
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
-            return eventTypeRepository.lockingTable(EventTypeRepository.TableLock.SHARE, transactionTemplate,
+            return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.SHARE, transactionTemplate,
                     action -> {
-                        SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
+                        SubscriptionTokenLister.ListResult listResult = listSubscriptions(eventType, null, 100);
                         while (null != listResult) {
                             listResult.getItems().forEach(s -> {
                                 try {
@@ -411,7 +410,7 @@ public class EventTypeService {
                                     throw new InconsistentStateException("Subscription to be deleted is not found", e);
                                 }
                             });
-                            listResult = getNextResult(eventType, listResult);
+                            listResult = null == listResult.getNext() ? null : listSubscriptions(eventType, listResult.getNext(), 100);
                         }
                         return deleteEventType(eventType);
                     }
@@ -422,18 +421,17 @@ public class EventTypeService {
         }
     }
 
-    private SubscriptionTokenLister.ListResult getNextResult(final String eventType,
-                                                             final SubscriptionTokenLister.ListResult listResult) {
-        return null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
+    private SubscriptionTokenLister.ListResult listSubscriptions(final String eventType,
+                                                                 final SubscriptionTokenLister.Token token,
+                                                                 final int limit) {
+        return subscriptionTokenLister.listSubscriptions(
+                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), token, limit);
     }
-
 
     // TODO: This method should be fixed by creating proper db query.
     private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
 
-        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), null, 20);
+        SubscriptionTokenLister.ListResult list = listSubscriptions(eventTypeName, null, 20);
         while (null != list) {
             for (final Subscription sub : list.getItems()) {
                 if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
@@ -442,8 +440,7 @@ public class EventTypeService {
                     return true;
                 }
             }
-            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 20);
+            list = null == list.getNext() ? null : listSubscriptions(eventTypeName, list.getNext(), 20);
         }
         return false;
     }
