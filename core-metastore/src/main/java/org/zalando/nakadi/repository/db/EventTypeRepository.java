@@ -11,6 +11,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -31,7 +33,7 @@ import java.util.Set;
 public class EventTypeRepository extends AbstractDbRepository {
 
     public enum TableLock {
-        ROW_EXCLUSIVE("ROW EXCLUSIVE");
+        ROW_EXCLUSIVE("ROW EXCLUSIVE"), SHARE("SHARE");
 
         private final String value;
         TableLock(final String value){
@@ -121,7 +123,7 @@ public class EventTypeRepository extends AbstractDbRepository {
 
     public List<EventType> listEventTypes(final Set<String> eventTypes) {
         final String query = String.format(
-                "SELECT et_event_type_object FROM zn_data.event_type WHERE zn_data.event_type.et_name in ( %s )",
+                "SELECT et_event_type_object FROM zn_data.event_type WHERE zn_data.event_type.et_name IN ( %s )",
                 String.join(",", Collections.nCopies(eventTypes.size(), "?"))
         );
         return jdbcTemplate.query(
@@ -130,8 +132,12 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public void lockTable(final TableLock lockTable){
-        jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockTable.get() + " MODE");
+    public <T> T lockingTable(final TableLock lockTable, final TransactionTemplate transactionTemplate,
+                              final TransactionCallback<T> action) {
+        return transactionTemplate.execute(ac -> {
+            jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockTable.get() + " MODE");
+            return action.doInTransaction(ac);
+        });
     }
 
     public List<EventType> list(final AuthorizationAttribute writer) {

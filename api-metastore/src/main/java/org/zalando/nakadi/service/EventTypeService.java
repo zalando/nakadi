@@ -398,27 +398,34 @@ public class EventTypeService {
 
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
-            return transactionTemplate.execute(action -> {
-                eventTypeRepository.lockTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE);
-                SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
-                while (null != listResult) {
-                    listResult.getItems().forEach(s -> {
-                        try {
-                            subscriptionRepository.deleteSubscription(s.getId());
-                        } catch (final NoSuchSubscriptionException e) {
-                            // should not happen as we are inside transaction
-                            throw new InconsistentStateException("Subscription to be deleted is not found", e);
+            return eventTypeRepository.lockingTable(EventTypeRepository.TableLock.SHARE, transactionTemplate,
+                    action -> {
+                        SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+                                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
+                        while (null != listResult) {
+                            listResult.getItems().forEach(s -> {
+                                try {
+                                    subscriptionRepository.deleteSubscription(s.getId());
+                                } catch (final NoSuchSubscriptionException e) {
+                                    // should not happen as we are inside transaction
+                                    throw new InconsistentStateException("Subscription to be deleted is not found", e);
+                                }
+                            });
+                            listResult = getNextResult(eventType, listResult);
                         }
-                    });
-                    listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                            ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
-                }
-                return deleteEventType(eventType);
-            });
+                        return deleteEventType(eventType);
+                    }
+            );
+
         } catch (final TransactionException e) {
             throw new InconsistentStateException("Failed to delete event-type because of race condition in DB", e);
         }
+    }
+
+    private SubscriptionTokenLister.ListResult getNextResult(final String eventType,
+                                                             final SubscriptionTokenLister.ListResult listResult) {
+        return null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
     }
 
 

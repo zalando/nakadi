@@ -166,22 +166,23 @@ public class SubscriptionService {
 
     private Subscription createSubscriptionWithEventTypeLock(final SubscriptionBase subscriptionBase) {
         try {
-            return transactionTemplate.execute(action -> {
-                eventTypeRepository.lockTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE);
-                final Set<String> dbEventTypes = eventTypeRepository.
-                        listEventTypes(subscriptionBase.getEventTypes()).stream().
-                        map(EventType::getName).collect(Collectors.toSet());
+            return eventTypeRepository.lockingTable(EventTypeRepository.TableLock.ROW_EXCLUSIVE, transactionTemplate,
+                    action -> {
+                        final Set<String> dbEventTypes = eventTypeRepository.
+                                listEventTypes(subscriptionBase.getEventTypes()).stream().
+                                map(EventType::getName).collect(Collectors.toSet());
 
-                if(dbEventTypes.size() != subscriptionBase.getEventTypes().size() ){
-                    final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream().
-                            filter(name -> !dbEventTypes.contains(name)).collect(Collectors.toList());
+                        if (dbEventTypes.size() != subscriptionBase.getEventTypes().size()) {
+                            final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream().
+                                    filter(name -> !dbEventTypes.contains(name)).collect(Collectors.toList());
 
-                    throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
-                            "event type(s) not found: '%s'", String.join("', '", missingEventTypes)));
-                }
+                            throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
+                                    "event type(s) not found: '%s'", String.join("', '", missingEventTypes)));
+                        }
 
-                return subscriptionRepository.createSubscription(subscriptionBase);
-            });
+                        return subscriptionRepository.createSubscription(subscriptionBase);
+                    }
+            );
         } catch (TransactionException e) {
             LOGGER.error("Failed to create subscription, unable to obtain lock", e);
             throw new InconsistentStateException("Failed to create subscription, unable to obtain lock");
