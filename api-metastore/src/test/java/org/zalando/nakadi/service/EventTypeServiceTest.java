@@ -113,6 +113,13 @@ public class EventTypeServiceTest {
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
                 eventTypeCache, schemaService, adminService, subscriptionTokenLister, applicationService);
+
+        when(eventTypeRepository.lockingTable(any(),any(),any())).thenAnswer(invocation -> {
+            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[2];
+            return callback.doInTransaction(null);
+
+        });
+
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

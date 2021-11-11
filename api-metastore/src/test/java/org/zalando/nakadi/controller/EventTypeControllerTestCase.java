@@ -109,6 +109,11 @@ public class EventTypeControllerTestCase {
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
+        when(eventTypeRepository.lockingTable(any(),any(),any())).thenAnswer(invocation -> {
+            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[2];
+            return callback.doInTransaction(null);
+
+        });
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

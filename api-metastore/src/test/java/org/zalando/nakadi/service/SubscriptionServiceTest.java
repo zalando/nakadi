@@ -108,8 +108,7 @@ public class SubscriptionServiceTest {
                 .withId("my_subscription_id1")
                 .build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        Mockito.when(transactionTemplate.execute(any())).thenReturn(subscription);
-
+        Mockito.when(eventTypeRepository.lockingTable(any(),any(),any())).thenReturn(subscription);
         subscriptionService.createSubscription(subscriptionBase);
 
         TestKpiUtils.checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
