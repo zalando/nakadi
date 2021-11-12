@@ -9,8 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
@@ -29,11 +27,6 @@ import java.util.Optional;
 public class NakadiConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NakadiConfig.class);
-
-    @Bean
-    public TaskExecutor taskExecutor() {
-        return new SimpleAsyncTaskExecutor();
-    }
 
     @Bean
     @Qualifier("default_storage")
