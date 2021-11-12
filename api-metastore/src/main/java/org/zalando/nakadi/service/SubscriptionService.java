@@ -167,7 +167,7 @@ public class SubscriptionService {
     private Subscription createSubscriptionWithEventTypeLock(final SubscriptionBase subscriptionBase) {
         try {
             return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.SHARE, transactionTemplate,
-                    action -> {
+                    status -> {
                         final Set<String> dbEventTypeNames = eventTypeRepository.
                                 listEventTypes(subscriptionBase.getEventTypes()).stream().
                                 map(EventType::getName).collect(Collectors.toSet());

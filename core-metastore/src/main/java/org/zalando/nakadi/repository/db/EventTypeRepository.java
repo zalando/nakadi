@@ -134,9 +134,9 @@ public class EventTypeRepository extends AbstractDbRepository {
 
     public <T> T lockingTable(final TableLockMode lockMode, final TransactionTemplate transactionTemplate,
                               final TransactionCallback<T> action) {
-        return transactionTemplate.execute(ac -> {
+        return transactionTemplate.execute(status -> {
             jdbcTemplate.execute("LOCK TABLE zn_data.event_type IN " + lockMode.get() + " MODE");
-            return action.doInTransaction(ac);
+            return action.doInTransaction(status);
         });
     }
 

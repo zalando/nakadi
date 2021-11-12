@@ -400,7 +400,7 @@ public class EventTypeService {
         try {
             return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.ROW_EXCLUSIVE,
                     transactionTemplate,
-                    action -> {
+                    status -> {
                         SubscriptionTokenLister.ListResult listResult = listSubscriptions(eventType, null, 100);
                         while (null != listResult) {
                             listResult.getItems().forEach(s -> {
