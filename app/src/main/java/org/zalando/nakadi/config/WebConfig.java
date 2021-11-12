@@ -9,6 +9,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
@@ -64,10 +65,14 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Qualifier("perPathMetricRegistry")
     private MetricRegistry perPathMetricRegistry;
 
+    @Autowired
+    private AsyncTaskExecutor asyncTaskExecutor;
+
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(nakadiStreamTimeout);
         configurer.registerCallableInterceptors(timeoutInterceptor());
+        configurer.setTaskExecutor(asyncTaskExecutor);
     }
 
     @Bean
