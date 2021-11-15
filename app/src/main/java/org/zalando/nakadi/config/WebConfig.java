@@ -83,34 +83,39 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean monitoringRequestFilter() {
-        return createFilterRegistrationBean(
-                new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
-                Ordered.HIGHEST_PRECEDENCE + 10);
-    }
-
-    @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
         return createFilterRegistrationBean(
                 new FlowIdRequestFilter(),
-                Ordered.HIGHEST_PRECEDENCE + 20);
-    }
-
-    @Bean
-    public FilterRegistrationBean loggingFilter() {
-        return createFilterRegistrationBean(
-                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
-                Ordered.HIGHEST_PRECEDENCE + 30);
+                Ordered.HIGHEST_PRECEDENCE + 10);
     }
 
     @Bean
     public FilterRegistrationBean requestRejectedFilter() {
         return createFilterRegistrationBean(
                 new RequestRejectedFilter(),
-                Ordered.HIGHEST_PRECEDENCE + 40);
+                Ordered.HIGHEST_PRECEDENCE + 20);
     }
 
-    // <=== plugins may add more filters in the middle ===>
+    //
+    // Plugins may add more filters in the middle.
+    //
+    // In particular, the client id from the token is set by a plugin: therefore, put any filters
+    // that use AuthorizationService under this line.
+    //
+
+    @Bean
+    public FilterRegistrationBean monitoringRequestFilter() {
+        return createFilterRegistrationBean(
+                new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
+                Ordered.LOWEST_PRECEDENCE - 40);
+    }
+
+    @Bean
+    public FilterRegistrationBean loggingFilter() {
+        return createFilterRegistrationBean(
+                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
+                Ordered.LOWEST_PRECEDENCE - 30);
+    }
 
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
