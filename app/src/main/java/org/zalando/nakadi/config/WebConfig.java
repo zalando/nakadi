@@ -89,13 +89,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
                 Ordered.HIGHEST_PRECEDENCE + 10);
     }
 
-    @Bean
-    public FilterRegistrationBean requestRejectedFilter() {
-        return createFilterRegistrationBean(
-                new RequestRejectedFilter(),
-                Ordered.HIGHEST_PRECEDENCE + 20);
-    }
-
     //
     // Plugins may add more filters in the middle.
     //
@@ -107,13 +100,20 @@ public class WebConfig extends WebMvcConfigurationSupport {
     public FilterRegistrationBean monitoringRequestFilter() {
         return createFilterRegistrationBean(
                 new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
-                Ordered.LOWEST_PRECEDENCE - 40);
+                Ordered.LOWEST_PRECEDENCE - 50);
     }
 
     @Bean
     public FilterRegistrationBean loggingFilter() {
         return createFilterRegistrationBean(
                 new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
+                Ordered.LOWEST_PRECEDENCE - 40);
+    }
+
+    @Bean
+    public FilterRegistrationBean requestRejectedFilter() {
+        return createFilterRegistrationBean(
+                new RequestRejectedFilter(),
                 Ordered.LOWEST_PRECEDENCE - 30);
     }
 
