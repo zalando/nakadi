@@ -28,6 +28,7 @@ import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -126,7 +127,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
                                                 final Optional<AuthorizationAttribute> reader,
-                                                final int offset, final int limit)
+                                                final Optional<OffsetLimit> offsetLimit)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
@@ -139,9 +140,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
-        final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
-        params.add(limit);
-        params.add(offset);
+        String order = " ORDER BY s_subscription_object->>'created_at' DESC " + (offsetLimit.isPresent()? "LIMIT ? OFFSET ? ": "");
+
+        offsetLimit.ifPresent(ol -> {
+            params.add(ol.limit);
+            params.add(ol.offset);
+        });
+
         if (!clauses.isEmpty()) {
             queryBuilder.append(" WHERE ");
             queryBuilder.append(StringUtils.join(clauses, " AND "));
@@ -152,6 +157,29 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final DataAccessException e) {
             LOG.error("Database error when listing subscriptions", e);
             throw new ServiceTemporarilyUnavailableException("Error occurred when running database request");
+        }
+    }
+
+    public static class OffsetLimit {
+        public final int offset;
+        public final int limit;
+
+        public OffsetLimit(final int offset, final int limit){
+            this.offset = offset;
+            this.limit = limit;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            OffsetLimit that = (OffsetLimit) o;
+            return offset == that.offset && limit == that.limit;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(offset, limit);
         }
     }
 

@@ -282,8 +282,7 @@ public class SubscriptionService {
                     eventTypesFilter,
                     owningAppOption,
                     readersFilter,
-                    offset,
-                    limit);
+                    Optional.of(new SubscriptionDbRepository.OffsetLimit(offset, limit)));
             final Optional<PaginationLinks.Link> prev = Optional.of(offset).filter(v -> v > 0)
                     .map(o -> createSubscriptionListLink(
                             owningAppOption, eventTypesFilter, readersFilter,
