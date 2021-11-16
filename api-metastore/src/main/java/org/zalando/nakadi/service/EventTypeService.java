@@ -72,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -344,12 +345,7 @@ public class EventTypeService {
                         "You cannot delete event-type without authorization.");
             }
 
-            if (featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS) ||
-                    !hasNonDeletableSubscriptions(eventType.getName())) {
-                topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
-            } else {
-                throw new ConflictException("Can't remove event type " + eventTypeName + ", as it has subscriptions");
-            }
+            topicsToDelete = deleteEventTypeWithSubscriptions(eventTypeName);
             eventTypeCache.invalidate(eventTypeName);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -396,14 +392,20 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
+    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(
+            final String eventType)
+            throws ConflictException, InconsistentStateException, EventTypeDeletionException {
+
         try {
             return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.ROW_EXCLUSIVE,
                     transactionTemplate,
                     status -> {
-                        SubscriptionTokenLister.ListResult listResult = listSubscriptions(eventType, null, 100);
-                        while (null != listResult) {
-                            listResult.getItems().forEach(s -> {
+                        final var subscriptionList = getAllSubscriptions(eventType);
+
+                         if(!featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS) && hasNonDeletableSubscriptions(subscriptionList))
+                             throw new ConflictException("Can't remove event type " + eventType + ", as it has subscriptions");
+
+                        subscriptionList.forEach(s -> {
                                 try {
                                     subscriptionRepository.deleteSubscription(s.getId());
                                 } catch (final NoSuchSubscriptionException e) {
@@ -411,9 +413,7 @@ public class EventTypeService {
                                     throw new InconsistentStateException("Subscription to be deleted is not found", e);
                                 }
                             });
-                            listResult = null == listResult.getNext() ? null :
-                                    listSubscriptions(eventType, listResult.getNext(), 100);
-                        }
+
                         return deleteEventType(eventType);
                     }
             );
@@ -423,6 +423,10 @@ public class EventTypeService {
         }
     }
 
+    private List<Subscription> getAllSubscriptions(String eventType) {
+        return subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(), Optional.empty(), Optional.empty());
+    }
+
     private SubscriptionTokenLister.ListResult listSubscriptions(final String eventType,
                                                                  final SubscriptionTokenLister.Token token,
                                                                  final int limit) {
@@ -430,21 +434,12 @@ public class EventTypeService {
                 ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), token, limit);
     }
 
-    // TODO: This method should be fixed by creating proper db query.
-    private boolean hasNonDeletableSubscriptions(final String eventTypeName) {
-
-        SubscriptionTokenLister.ListResult list = listSubscriptions(eventTypeName, null, 20);
-        while (null != list) {
-            for (final Subscription sub : list.getItems()) {
-                if (!sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
+    private boolean hasNonDeletableSubscriptions(final List<Subscription> subscriptionList) {
+        return subscriptionList.stream().anyMatch(sub ->
+                !sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
                         || !sub.getOwningApplication()
-                        .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())) {
-                    return true;
-                }
-            }
-            list = null == list.getNext() ? null : listSubscriptions(eventTypeName, list.getNext(), 20);
-        }
-        return false;
+                        .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())
+        );
     }
 
     public void update(final String eventTypeName,
