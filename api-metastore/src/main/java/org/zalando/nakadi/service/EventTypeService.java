@@ -402,8 +402,11 @@ public class EventTypeService {
                     status -> {
                         final var subscriptionList = getAllSubscriptions(eventType);
 
-                         if(!featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS) && hasNonDeletableSubscriptions(subscriptionList))
-                             throw new ConflictException("Can't remove event type " + eventType + ", as it has subscriptions");
+                         if(!featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
+                                 && hasNonDeletableSubscriptions(subscriptionList)){
+                             throw new ConflictException("Can't remove event type " + eventType +
+                                     ", as it has subscriptions");
+                         }
 
                         subscriptionList.forEach(s -> {
                                 try {
@@ -423,8 +426,9 @@ public class EventTypeService {
         }
     }
 
-    private List<Subscription> getAllSubscriptions(String eventType) {
-        return subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(), Optional.empty(), Optional.empty());
+    private List<Subscription> getAllSubscriptions(final String eventType) {
+        return subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
+                Optional.empty(), Optional.empty());
     }
 
     private SubscriptionTokenLister.ListResult listSubscriptions(final String eventType,

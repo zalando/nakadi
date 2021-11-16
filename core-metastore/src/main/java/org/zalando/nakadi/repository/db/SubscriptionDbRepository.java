@@ -140,7 +140,9 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
-        String order = " ORDER BY s_subscription_object->>'created_at' DESC " + (offsetLimit.isPresent()? "LIMIT ? OFFSET ? ": "");
+        final String order =
+                " ORDER BY s_subscription_object->>'created_at' DESC "
+                + (offsetLimit.isPresent()? "LIMIT ? OFFSET ? ": "");
 
         offsetLimit.ifPresent(ol -> {
             params.add(ol.limit);
@@ -170,10 +172,14 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            OffsetLimit that = (OffsetLimit) o;
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final OffsetLimit that = (OffsetLimit) o;
             return offset == that.offset && limit == that.limit;
         }
 

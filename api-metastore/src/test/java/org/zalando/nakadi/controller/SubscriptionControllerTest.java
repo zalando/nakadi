@@ -70,8 +70,6 @@ import java.util.Set;
 
 import static java.text.MessageFormat.format;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyObject;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -189,7 +187,8 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.empty(), Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 20)));
+                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.empty(),
+                        Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 20)));
     }
 
     @Test
