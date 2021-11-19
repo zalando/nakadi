@@ -130,7 +130,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1"),
                 Optional.of(owningApp), Optional.empty(),
-                Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 10)));
+                Optional.of(new SubscriptionDbRepository.PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -157,7 +157,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
                 Optional.empty(), Optional.empty(),
-                Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 10)));
+                Optional.of(new SubscriptionDbRepository.PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -173,7 +173,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<Subscription> subscriptions = repository.listSubscriptions(
                 emptySet(), Optional.of(owningApp), Optional.empty(),
-                Optional.of(new SubscriptionDbRepository.OffsetLimit(2, 3)));
+                Optional.of(new SubscriptionDbRepository.PaginationParameters(3, 2)));
         assertThat(subscriptions, equalTo(testSubscriptions));
     }
 

@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -392,23 +391,23 @@ public class EventTypeService {
                 eventType.getName());
     }
 
-    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(
-            final String eventType)
+    private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType)
             throws ConflictException, InconsistentStateException, EventTypeDeletionException {
-
         try {
             return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.ROW_EXCLUSIVE,
                     transactionTemplate,
                     status -> {
-                        final var subscriptionList = getAllSubscriptions(eventType);
+                        final List<Subscription> subscriptions =
+                            subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
+                                    Optional.empty(), Optional.empty());
 
-                         if(!featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
-                                 && hasNonDeletableSubscriptions(subscriptionList)){
-                             throw new ConflictException("Can't remove event type " + eventType +
-                                     ", as it has subscriptions");
-                         }
+                        if (!(featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
+                                || allDeletableSubscriptions(subscriptions))) {
+                            throw new ConflictException("Can't remove event type " + eventType +
+                                    ", as it has subscriptions");
+                        }
 
-                        subscriptionList.forEach(s -> {
+                        subscriptions.forEach(s -> {
                                 try {
                                     subscriptionRepository.deleteSubscription(s.getId());
                                 } catch (final NoSuchSubscriptionException e) {
@@ -420,30 +419,17 @@ public class EventTypeService {
                         return deleteEventType(eventType);
                     }
             );
-
         } catch (final TransactionException e) {
             throw new InconsistentStateException("Failed to delete event-type because of race condition in DB", e);
         }
     }
 
-    private List<Subscription> getAllSubscriptions(final String eventType) {
-        return subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
-                Optional.empty(), Optional.empty());
-    }
+    private boolean allDeletableSubscriptions(final List<Subscription> subscriptions) {
+        final String owningApplication = nakadiSettings.getDeletableSubscriptionOwningApplication();
+        final String consumerGroup = nakadiSettings.getDeletableSubscriptionConsumerGroup();
 
-    private SubscriptionTokenLister.ListResult listSubscriptions(final String eventType,
-                                                                 final SubscriptionTokenLister.Token token,
-                                                                 final int limit) {
-        return subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), token, limit);
-    }
-
-    private boolean hasNonDeletableSubscriptions(final List<Subscription> subscriptionList) {
-        return subscriptionList.stream().anyMatch(sub ->
-                !sub.getConsumerGroup().equals(nakadiSettings.getDeletableSubscriptionConsumerGroup())
-                        || !sub.getOwningApplication()
-                        .equals(nakadiSettings.getDeletableSubscriptionOwningApplication())
-        );
+        return subscriptions.stream().allMatch(sub ->
+                sub.getOwningApplication().equals(owningApplication) && sub.getConsumerGroup().equals(consumerGroup));
     }
 
     public void update(final String eventTypeName,

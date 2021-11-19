@@ -127,7 +127,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
                                                 final Optional<AuthorizationAttribute> reader,
-                                                final Optional<OffsetLimit> offsetLimit)
+                                                final Optional<PaginationParameters> paginationParams)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
@@ -140,20 +140,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
-        final String order =
-                " ORDER BY s_subscription_object->>'created_at' DESC "
-                + (offsetLimit.isPresent()? "LIMIT ? OFFSET ? ": "");
-
-        offsetLimit.ifPresent(ol -> {
-            params.add(ol.limit);
-            params.add(ol.offset);
-        });
-
         if (!clauses.isEmpty()) {
             queryBuilder.append(" WHERE ");
             queryBuilder.append(StringUtils.join(clauses, " AND "));
         }
-        queryBuilder.append(order);
+
+        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC");
+
+        paginationParams.ifPresent(pp -> {
+                queryBuilder.append(" LIMIT ? OFFSET ?");
+                params.add(pp.limit);
+                params.add(pp.offset);
+        });
+
         try {
             return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
         } catch (final DataAccessException e) {
@@ -162,15 +161,16 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    public static class OffsetLimit {
-        public final int offset;
+    public static class PaginationParameters {
         public final int limit;
+        public final int offset;
 
-        public OffsetLimit(final int offset, final int limit){
-            this.offset = offset;
+        public PaginationParameters(final int limit, final int offset) {
             this.limit = limit;
+            this.offset = offset;
         }
 
+        // only needed for verification in the tests
         @Override
         public boolean equals(final Object o) {
             if (this == o) {
@@ -179,13 +179,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            final OffsetLimit that = (OffsetLimit) o;
-            return offset == that.offset && limit == that.limit;
+            final PaginationParameters that = (PaginationParameters) o;
+            return limit == that.limit && offset == that.offset;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(offset, limit);
+            return Objects.hash(limit, offset);
         }
     }
 

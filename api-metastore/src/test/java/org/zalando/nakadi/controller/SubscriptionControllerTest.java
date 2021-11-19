@@ -188,7 +188,7 @@ public class SubscriptionControllerTest {
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.empty(),
-                        Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 20)));
+                        Optional.of(new SubscriptionDbRepository.PaginationParameters(20, 0)));
     }
 
     @Test
@@ -199,13 +199,13 @@ public class SubscriptionControllerTest {
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.empty(), 0, 30)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.empty(), 30, 0)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"),
-                        Optional.empty(), Optional.of(new SubscriptionDbRepository.OffsetLimit(0, 30)));
+                        Optional.empty(), Optional.of(new SubscriptionDbRepository.PaginationParameters(30, 0)));
     }
 
     @Test
@@ -219,16 +219,16 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
-        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
-                Optional.ofNullable(null), -5, 10), expectedProblem);
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", Optional.ofNullable(null), 10, -5),
+                expectedProblem);
     }
 
     @Test
     public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
                 "'limit' parameter should have value between 1 and 1000");
-        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app",
-                Optional.ofNullable(null), 0, -5), expectedProblem);
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", Optional.ofNullable(null), -5, 0),
+                expectedProblem);
     }
 
     @Test
@@ -244,7 +244,7 @@ public class SubscriptionControllerTest {
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
         final PaginationWrapper expectedResult = new PaginationWrapper(subscriptions, links);
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 5, 10)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", Optional.ofNullable(null), 10, 5)
                 .andExpect(status().isOk())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedResult)));
     }
@@ -323,7 +323,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp,
                                            final Optional<AuthorizationAttribute> reader,
-                                           final int offset, final int limit
+                                           final int limit, final int offset
     ) throws Exception {
         final String url = SubscriptionsUriHelper.createSubscriptionListLink(
                 Optional.of(owningApp), eventTypes, reader, offset, Optional.empty(), limit, false).getHref();
