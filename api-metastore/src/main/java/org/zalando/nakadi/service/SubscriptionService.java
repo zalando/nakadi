@@ -168,18 +168,18 @@ public class SubscriptionService {
         try {
             return eventTypeRepository.lockingTable(EventTypeRepository.TableLockMode.SHARE, transactionTemplate,
                     status -> {
-                        final Set<String> dbEventTypeNames = eventTypeRepository.
-                                listEventTypes(subscriptionBase.getEventTypes()).stream().
-                                map(EventType::getName).collect(Collectors.toSet());
+                        final Set<String> dbEventTypeNames = eventTypeRepository
+                                .listEventTypes(subscriptionBase.getEventTypes()).stream()
+                                .map(EventType::getName)
+                                .collect(Collectors.toSet());
 
-                        if (dbEventTypeNames.size() != subscriptionBase.getEventTypes().size()) {
-                            final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream().
-                                    filter(name -> !dbEventTypeNames.contains(name)).collect(Collectors.toList());
+                        final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream()
+                                .filter(name -> !dbEventTypeNames.contains(name))
+                                .collect(Collectors.toList());
 
-                            if(!missingEventTypes.isEmpty()) {
-                                throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
-                                        "event type(s) not found: '%s'", String.join("', '", missingEventTypes)));
-                            }
+                        if (!missingEventTypes.isEmpty()) {
+                            throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
+                                    "event type(s) not found: %s", String.join(", ", missingEventTypes)));
                         }
 
                         return subscriptionRepository.createSubscription(subscriptionBase);
