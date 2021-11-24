@@ -2317,7 +2317,7 @@ definitions:
       span_ctx:
         description: |
           Object containing an OpenTracing http://opentracing.io span context. In case the producer of this event type
-          uses OpenTracing for tracing transactions accross distributed services, this field is populated with an
+          uses OpenTracing for tracing transactions across distributed services, this field is populated with an
           object that allows consumers to resume the context of a span. The details of the payload are vendor
           specific and consumers are expected to contact the producer in order to obtain further details. Any attempt
           to inspect or effectively use the payload, apart from the tracer implementation, can lead to vendor lock-in
@@ -2906,7 +2906,7 @@ definitions:
           This is only an informational field. The events are delivered to consumers in the order they were published.
           No reordering is done by Nakadi.
 
-          This field is useful in case the producer wants to communicate the complete order accross all the events
+          This field is useful in case the producer wants to communicate the complete order across all the events
           published to all partitions. This is the case when there is an incremental generator on the producer side,
           for example.
 
