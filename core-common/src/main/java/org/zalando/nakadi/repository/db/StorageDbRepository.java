@@ -89,7 +89,7 @@ public class StorageDbRepository extends AbstractDbRepository {
 
     public void setDefaultStorage(final String storageId, final boolean isDefault) {
         try {
-            jdbcTemplate.update("update zn_data.storage set st_default=? where st_id=?",
+            jdbcTemplate.update("UPDATE zn_data.storage SET st_default=? WHERE st_id=?",
                     isDefault,
                     storageId);
         } catch (final DataAccessException e) {

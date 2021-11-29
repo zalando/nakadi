@@ -57,7 +57,6 @@ public class StorageService {
         this.environment = environment;
     }
 
-    // TODO: the next method is completely useless in the real world, and makes sense only in test environment.
     @PostConstruct
     public void initializeDefaultStorage() {
         if (!storageDbRepository.listStorages().isEmpty()) {
