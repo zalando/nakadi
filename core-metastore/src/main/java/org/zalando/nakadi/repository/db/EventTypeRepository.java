@@ -99,7 +99,7 @@ public class EventTypeRepository extends AbstractDbRepository {
 
     public List<EventType> list() {
         return jdbcTemplate.query(
-                "SELECT et_event_type_object FROM zn_data.event_type",
+                "SELECT et_event_type_object FROM zn_data.event_type ORDER BY et_name",
                 new EventTypeMapper());
     }
 
@@ -109,7 +109,8 @@ public class EventTypeRepository extends AbstractDbRepository {
                         "FROM zn_data.event_type," +
                         "jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
                         "AS writers(data_type text, value text) " +
-                        "WHERE writers.data_type = ? AND writers.value = ?",
+                        "WHERE writers.data_type = ? AND writers.value = ? " +
+                        "ORDER BY et_name",
                 new String[]{ writer.getDataType(), writer.getValue() },
                 new EventTypeMapper());
     }
