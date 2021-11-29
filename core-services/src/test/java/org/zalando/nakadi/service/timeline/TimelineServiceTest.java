@@ -2,8 +2,12 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -11,7 +15,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -31,6 +34,7 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.util.stream.IntStream.range;
@@ -40,23 +44,35 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class TimelineServiceTest {
 
-    private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
-    private final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
-    private final AdminService adminService = mock(AdminService.class);
-    private final TimelineDbRepository timelineDbRepository = mock(TimelineDbRepository.class);
-    private final TopicRepositoryHolder topicRepositoryHolder = mock(TopicRepositoryHolder.class);
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-    private final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    private final TimelineService timelineService = new TimelineService(eventTypeCache,
-            storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
-            topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            new DefaultStorage(new Storage()), adminService, featureToggleService, "compacted-storage",
-            auditLogPublisher);
+    @Mock
+    private EventTypeCache eventTypeCache;
+    @Mock
+    private StorageDbRepository storageDbRepository;
+    @Mock
+    private AdminService adminService;
+    @Mock
+    private TimelineDbRepository timelineDbRepository;
+    @Mock
+    private TopicRepositoryHolder topicRepositoryHolder;
+    @Mock
+    private FeatureToggleService featureToggleService;
+    @Mock
+    private NakadiAuditLogPublisher auditLogPublisher;
+    private TimelineService timelineService;
+
+    @Before
+    public void setupService() {
+        timelineService = new TimelineService(eventTypeCache,
+                storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
+                topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
+                adminService, featureToggleService, "compacted-storage", auditLogPublisher);
+    }
 
     @Test(expected = NotFoundException.class)
-    public void testGetTimelinesNotFound() throws Exception {
+    public void testGetTimelinesNotFound() {
         when(adminService.isAdmin(any())).thenReturn(true);
         when(eventTypeCache.getEventType(any())).thenThrow(new NoSuchEventTypeException(""));
 
@@ -64,7 +80,7 @@ public class TimelineServiceTest {
     }
 
     @Test(expected = TimelineException.class)
-    public void testGetTimelinesException() throws Exception {
+    public void testGetTimelinesException() {
         when(adminService.isAdmin(any())).thenReturn(true);
         when(eventTypeCache.getEventType(any())).thenThrow(new InternalNakadiException(""));
 
@@ -72,7 +88,7 @@ public class TimelineServiceTest {
     }
 
     @Test
-    public void testGetTimeline() throws Exception {
+    public void testGetTimeline() {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Timeline timeline = Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date());
         timeline.setSwitchedAt(new Date());
@@ -120,6 +136,7 @@ public class TimelineServiceTest {
         when(topicRepositoryHolder.getTopicRepository(any())).thenReturn(repository);
         when(timelineDbRepository.createTimeline(any()))
                 .thenThrow(new InconsistentStateException("shouldDeleteTopicWhenTimelineCreationFails"));
+        when(storageDbRepository.getDefaultStorage()).thenReturn(Optional.of(mock(Storage.class)));
         try {
             timelineService.createDefaultTimeline(buildDefaultEventType(), 1);
         } catch (final InconsistentStateException e) {

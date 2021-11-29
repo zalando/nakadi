@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -79,6 +80,7 @@ import static org.zalando.nakadi.domain.Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPT
 import static org.zalando.nakadi.domain.Feature.FORCE_EVENT_TYPE_AUTHZ;
 
 @Component
+@DependsOn({"storageService"})
 public class EventTypeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeService.class);
