@@ -2624,7 +2624,7 @@ definitions:
       number of clients by managing consumed event offsets and distributing load between instances.
       The key properties that identify subscription are 'owning_application', 'event_types' and 'consumer_group'.
       It's not possible to have two different subscriptions with these properties being the same.
-      Trying to create a subscription with these keys matching an existing one will just return that one, and
+      Creating a subscription with the keys matching existing subscription will neither create a new or change the existing subscription ignoring the remaining fields (e.g. `read_from`, `authorization`, etc.).
       ignore the remaining fields (e.g. `read_from`, `authorization`, etc.).
     properties:
       id:
