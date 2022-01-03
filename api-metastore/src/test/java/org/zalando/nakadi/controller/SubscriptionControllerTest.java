@@ -6,6 +6,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -32,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
@@ -102,6 +104,8 @@ public class SubscriptionControllerTest {
     private final CursorOperationsService cursorOperationsService;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final EventTypeRepository eventTypeRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public SubscriptionControllerTest() {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -126,13 +130,16 @@ public class SubscriptionControllerTest {
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
         subscriptionValidationService = mock(SubscriptionValidationService.class);
+        eventTypeRepository = mock(EventTypeRepository.class);
+        transactionTemplate = mock(TransactionTemplate .class);
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
-                null);
+                null,
+                transactionTemplate, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
