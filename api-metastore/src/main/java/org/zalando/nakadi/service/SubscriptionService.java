@@ -4,9 +4,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -43,6 +47,7 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -74,6 +79,7 @@ import static org.zalando.nakadi.service.SubscriptionsUriHelper.createSubscripti
 @Component
 public class SubscriptionService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionService.class);
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
 
     private final SubscriptionDbRepository subscriptionRepository;
@@ -90,6 +96,8 @@ public class SubscriptionService {
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeCache eventTypeCache;
     private final SubscriptionTokenLister subscriptionTokenLister;
+    private final TransactionTemplate transactionTemplate;
+    private final EventTypeRepository eventTypeRepository;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
@@ -105,7 +113,9 @@ public class SubscriptionService {
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
                                final EventTypeCache eventTypeCache,
-                               final SubscriptionTokenLister subscriptionTokenLister) {
+                               final SubscriptionTokenLister subscriptionTokenLister,
+                               final TransactionTemplate transactionTemplate,
+                               final EventTypeRepository eventTypeRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
@@ -120,6 +130,8 @@ public class SubscriptionService {
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
         this.subscriptionTokenLister = subscriptionTokenLister;
+        this.transactionTemplate = transactionTemplate;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -139,7 +151,7 @@ public class SubscriptionService {
             subscriptionBase.setLabels(new HashMap<>());
         }
 
-        final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
+        final Subscription subscription = createSubscriptionWithEventTypeLock(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
         nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
@@ -151,6 +163,31 @@ public class SubscriptionService {
                 subscription.getId());
 
         return subscription;
+    }
+
+    private Subscription createSubscriptionWithEventTypeLock(final SubscriptionBase subscriptionBase) {
+        try {
+            return transactionTemplate.execute(status -> {
+                final Set<String> dbEventTypeNames = eventTypeRepository.
+                        listEventTypesWithRowLock(subscriptionBase.getEventTypes(),
+                                EventTypeRepository.RowLockMode.KEY_SHARE).stream().
+                        map(EventType::getName).collect(Collectors.toSet());
+
+                final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream()
+                        .filter(name -> !dbEventTypeNames.contains(name))
+                        .collect(Collectors.toList());
+
+                if (!missingEventTypes.isEmpty()) {
+                    throw new NoSuchEventTypeException(String.format("Failed to create subscription, " +
+                            "event type(s) not found: %s", String.join(", ", missingEventTypes)));
+                }
+
+                return subscriptionRepository.createSubscription(subscriptionBase);
+            });
+        } catch (TransactionException e) {
+            LOGGER.error("Failed to create subscription, unable to obtain lock", e);
+            throw new InconsistentStateException("Failed to create subscription, unable to obtain lock");
+        }
     }
 
     private void checkFeatureTogglesForCreationAndUpdate(final SubscriptionBase subscription) {

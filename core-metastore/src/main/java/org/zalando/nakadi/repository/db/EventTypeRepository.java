@@ -22,7 +22,9 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @DB
 @Component
@@ -97,6 +99,16 @@ public class EventTypeRepository extends AbstractDbRepository {
         }
     }
 
+    public List<EventType> listEventTypesWithRowLock(final Set<String> eventTypes, final RowLockMode lock) {
+        final String whereClause = "WHERE zn_data.event_type.et_name in ( "
+                + String.join(",", Collections.nCopies(eventTypes.size(), "?") ) +")";
+        return jdbcTemplate.query(
+                "SELECT et_event_type_object FROM zn_data.event_type " + whereClause + " FOR " + lock.get(),
+                eventTypes.toArray(),
+                new EventTypeMapper());
+    }
+
+
     public List<EventType> list() {
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type ORDER BY et_name",
@@ -124,6 +136,20 @@ public class EventTypeRepository extends AbstractDbRepository {
             }
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
+        }
+    }
+
+    public enum RowLockMode {
+        UPDATE("UPDATE"), KEY_SHARE("KEY SHARE");
+
+        private String value;
+
+        RowLockMode(final String value){
+            this.value = value;
+        }
+
+        public String get(){
+            return value;
         }
     }
 }

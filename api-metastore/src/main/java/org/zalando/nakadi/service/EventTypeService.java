@@ -72,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -399,8 +400,12 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
+                eventTypeRepository.listEventTypesWithRowLock(Set.of(eventType),
+                        EventTypeRepository.RowLockMode.UPDATE);
+
                 SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
                         ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
+
                 while (null != listResult) {
                     listResult.getItems().forEach(s -> {
                         try {
