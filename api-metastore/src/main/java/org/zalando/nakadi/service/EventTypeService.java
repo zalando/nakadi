@@ -403,11 +403,11 @@ public class EventTypeService {
                 eventTypeRepository.listEventTypesWithRowLock(Set.of(eventType),
                         EventTypeRepository.RowLockMode.UPDATE);
 
-                SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
-                        ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), null, 100);
+                final List<Subscription> subscriptions =
+                        subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
+                                Optional.empty(), Optional.empty());
 
-                while (null != listResult) {
-                    listResult.getItems().forEach(s -> {
+                subscriptions.forEach(s -> {
                         try {
                             subscriptionRepository.deleteSubscription(s.getId());
                         } catch (final NoSuchSubscriptionException e) {
@@ -415,9 +415,6 @@ public class EventTypeService {
                             throw new InconsistentStateException("Subscription to be deleted is not found", e);
                         }
                     });
-                    listResult = null == listResult.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                            ImmutableSet.of(eventType), Optional.empty(), Optional.empty(), listResult.getNext(), 100);
-                }
                 return deleteEventType(eventType);
             });
         } catch (final TransactionException e) {
