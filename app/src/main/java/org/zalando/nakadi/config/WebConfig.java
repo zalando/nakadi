@@ -15,6 +15,7 @@ import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.xml.SourceHttpMessageConverter;
+import org.springframework.security.web.context.AbstractSecurityWebApplicationInitializer;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
@@ -75,6 +76,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
         return new TimeoutCallableProcessingInterceptor();
     }
 
+
+    // ==========================================================================================
+    // BEGIN FILTERS
+    //
+    // From the highest to the lowest precedence, in increments of 10 (SysV init-script style).
+    //
     @Bean
     public FilterRegistrationBean traceRequestFilter() {
         return createFilterRegistrationBean(
@@ -89,32 +96,46 @@ public class WebConfig extends WebMvcConfigurationSupport {
                 Ordered.HIGHEST_PRECEDENCE + 10);
     }
 
-    //
-    // Plugins may add more filters in the middle.
-    //
-    // In particular, the client id from the token is set by a plugin: therefore, put any filters
-    // that use AuthorizationService under this line.
-    //
+    @Bean
+    public FilterRegistrationBean requestRejectedFilter() {
+        return createFilterRegistrationBean(
+                new RequestRejectedFilter(),
+                Ordered.HIGHEST_PRECEDENCE + 20);
+    }
 
+    // MIDDLE POINT
+    @Bean
+    public FilterRegistrationBean securityFilterChain(
+            @Qualifier(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
+            final Filter securityFilter) {
+        //
+        // Override the order of the Spring's security filter, which by default has the lowest
+        // precedence.
+        //
+        // This is required so that the filters that are defined in the authz plugin are chained in
+        // the correct order.
+        //
+        final FilterRegistrationBean filterRegistrationBean = createFilterRegistrationBean(securityFilter, 0);
+        filterRegistrationBean.setName(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME);
+        return filterRegistrationBean;
+    }
+
+    //
+    // The authorization subject is populated by the authz plugin: therefore, set the order of any
+    // filters that use AuthorizationService to be greater than 2.
+    //
     @Bean
     public FilterRegistrationBean monitoringRequestFilter() {
         return createFilterRegistrationBean(
                 new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
-                Ordered.LOWEST_PRECEDENCE - 50);
+                10);
     }
 
     @Bean
     public FilterRegistrationBean loggingFilter() {
         return createFilterRegistrationBean(
                 new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
-                Ordered.LOWEST_PRECEDENCE - 40);
-    }
-
-    @Bean
-    public FilterRegistrationBean requestRejectedFilter() {
-        return createFilterRegistrationBean(
-                new RequestRejectedFilter(),
-                Ordered.LOWEST_PRECEDENCE - 30);
+                20);
     }
 
     @Bean
@@ -130,6 +151,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
                 new ExtraTracingFilter(authorizationService),
                 Ordered.LOWEST_PRECEDENCE - 10);
     }
+    // END FILTERS
+    // ==========================================================================================
 
     @Bean
     public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
