@@ -3,7 +3,6 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -213,10 +212,14 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            PaginationParameters that = (PaginationParameters) o;
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final PaginationParameters that = (PaginationParameters) o;
             return limit == that.limit && offset == that.offset;
         }
 
