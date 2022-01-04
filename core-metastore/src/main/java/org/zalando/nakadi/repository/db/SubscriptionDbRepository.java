@@ -139,6 +139,11 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
+        if (!clauses.isEmpty()) {
+            queryBuilder.append(" WHERE ");
+            queryBuilder.append(String.join(" AND ", clauses));
+        }
+
         queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC");
 
         paginationParams.ifPresent(pp -> {
