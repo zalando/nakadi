@@ -129,7 +129,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1"),
-                Optional.of(owningApp), Optional.empty(), 0, 10);
+                Optional.of(owningApp), Optional.empty(), Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -155,7 +156,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
-                Optional.empty(), Optional.empty(), 0, 10);
+                Optional.empty(), Optional.empty(),  Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -170,7 +172,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         testSubscriptions.subList(3, testSubscriptions.size()).clear();
 
         final List<Subscription> subscriptions = repository.listSubscriptions(
-                emptySet(), Optional.of(owningApp), Optional.empty(), 2, 3);
+                emptySet(), Optional.of(owningApp), Optional.empty(),  Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(3, 2)));
         assertThat(subscriptions, equalTo(testSubscriptions));
     }
 
