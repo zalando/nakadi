@@ -38,8 +38,7 @@ public class NakadiKpiPublisher {
                 return;
             }
 
-            eventsProcessor.queueEvent(etName,
-                    eventMetadata.addTo(eventSupplier.get()));
+            eventsProcessor.queueEvent(etName, eventMetadata.addTo(eventSupplier.get()));
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
