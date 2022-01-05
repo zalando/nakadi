@@ -70,7 +70,6 @@ import java.util.Set;
 
 import static java.text.MessageFormat.format;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -178,7 +177,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
@@ -188,13 +187,14 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null), 0, 20);
+                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null),  Optional.of(
+                        new SubscriptionDbRepository.PaginationParameters(20, 0)));
     }
 
     @Test
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
@@ -205,12 +205,13 @@ public class SubscriptionControllerTest {
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"),
-                        Optional.ofNullable(null), 0, 30);
+                        Optional.ofNullable(null),  Optional.of(new SubscriptionDbRepository.
+                                PaginationParameters(30, 0)));
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
@@ -234,7 +235,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
