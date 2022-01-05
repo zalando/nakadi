@@ -66,7 +66,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
     private MetricRegistry perPathMetricRegistry;
 
     @Autowired
-    @Qualifier("mvcAsyncTaskExecutor")
     private AsyncTaskExecutor asyncTaskExecutor;
 
     @Override

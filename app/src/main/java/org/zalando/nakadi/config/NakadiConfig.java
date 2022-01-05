@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
@@ -20,6 +22,7 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.StorageService;
 
+import java.util.concurrent.Executors;
 import java.util.Optional;
 
 @Configuration
@@ -27,6 +30,11 @@ import java.util.Optional;
 public class NakadiConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NakadiConfig.class);
+
+    @Bean
+    public AsyncTaskExecutor asyncTaskExecutor() {
+        return new ConcurrentTaskExecutor(Executors.newCachedThreadPool());
+    }
 
     @Bean
     @Qualifier("default_storage")
