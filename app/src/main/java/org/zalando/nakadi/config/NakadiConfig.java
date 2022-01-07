@@ -2,14 +2,17 @@ package org.zalando.nakadi.config;
 
 import com.google.common.base.Charsets;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.log4j.NDC;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
 import org.zalando.nakadi.domain.storage.DefaultStorage;
@@ -33,7 +36,22 @@ public class NakadiConfig {
 
     @Bean
     public AsyncTaskExecutor asyncTaskExecutor() {
-        return new ConcurrentTaskExecutor(Executors.newCachedThreadPool());
+        final ConcurrentTaskExecutor taskExecutor = new ConcurrentTaskExecutor(Executors.newCachedThreadPool());
+        taskExecutor.setTaskDecorator(new TaskDecorator() {
+                @Override
+                public Runnable decorate(final Runnable runnable) {
+                    return new Runnable() {
+                        @Override
+                        public void run() {
+                            NDC.clear();
+                            MDC.clear();
+
+                            runnable.run();
+                        }
+                    };
+                }
+            });
+        return taskExecutor;
     }
 
     @Bean
