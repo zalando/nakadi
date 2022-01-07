@@ -26,7 +26,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
 
     public static final String BASE_TIMELINE_QUERY = "SELECT " +
             "   tl_id, et_name, tl_order, t.st_id, tl_topic, tl_created_at, tl_switched_at, tl_cleanup_at, " +
-            "   tl_latest_position, tl_deleted, st_type, st_configuration " +
+            "   tl_latest_position, tl_deleted, st_type, st_configuration, st_default " +
             " FROM " +
             "   zn_data.timeline t " +
             "   JOIN zn_data.storage st USING (st_id) ";
@@ -147,7 +147,8 @@ public class TimelineDbRepository extends AbstractDbRepository {
                             jsonMapper,
                             rs.getString("st_id"),
                             rs.getString("st_type"),
-                            rs.getString("st_configuration")),
+                            rs.getString("st_configuration"),
+                            rs.getBoolean("st_default")),
                     rs.getString("tl_topic"),
                     rs.getTimestamp("tl_created_at")
             );

@@ -24,13 +24,20 @@ public class Storage {
     @JsonProperty("storage_type")
     private Type type;
     private Object configuration;
+    @JsonProperty("default")
+    private boolean isDefault;
 
     public Storage() {
     }
 
     public Storage(final String id, final Type type) {
+        this(id, type, false);
+    }
+
+    public Storage(final String id, final Type type, final boolean isDefault) {
         this.id = id;
         this.type = type;
+        this.isDefault = isDefault;
     }
 
     public String getId() {
@@ -47,6 +54,14 @@ public class Storage {
 
     public void setType(final Type type) {
         this.type = type;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public void setDefault(final boolean isDefault) {
+        this.isDefault = isDefault;
     }
 
     public KafkaConfiguration getKafkaConfiguration() {
@@ -90,7 +105,8 @@ public class Storage {
 
         return Objects.equals(id, that.id) &&
                 Objects.equals(type, that.type) &&
-                Objects.equals(configuration, that.configuration);
+                Objects.equals(configuration, that.configuration) &&
+                Objects.equals(isDefault, that.isDefault);
     }
 
     @Override
@@ -104,6 +120,7 @@ public class Storage {
                 "id='" + id + '\'' +
                 ", type=" + type +
                 ", configuration=" + configuration +
+                ", default=" + isDefault +
                 '}';
     }
 
