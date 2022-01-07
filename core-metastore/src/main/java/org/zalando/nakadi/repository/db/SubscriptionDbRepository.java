@@ -3,7 +3,6 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -28,6 +27,7 @@ import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -126,7 +126,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
                                                 final Optional<AuthorizationAttribute> reader,
-                                                final int offset, final int limit)
+                                                final Optional<PaginationParameters> paginationParams)
             throws ServiceTemporarilyUnavailableException {
 
         final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
@@ -139,14 +139,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         applyFilter(eventTypes, owningApplication, reader, clauses, params);
 
-        final String order = " ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ";
-        params.add(limit);
-        params.add(offset);
         if (!clauses.isEmpty()) {
             queryBuilder.append(" WHERE ");
-            queryBuilder.append(StringUtils.join(clauses, " AND "));
+            queryBuilder.append(String.join(" AND ", clauses));
         }
-        queryBuilder.append(order);
+
+        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC");
+
+        paginationParams.ifPresent(pp -> {
+            queryBuilder.append(" LIMIT ? OFFSET ?");
+            params.add(pp.limit);
+            params.add(pp.offset);
+        });
+
         try {
             return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
         } catch (final DataAccessException e) {
@@ -202,4 +207,38 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
+    public static class PaginationParameters {
+        public final int limit;
+        public final int offset;
+
+        public PaginationParameters(final int limit, final int offset){
+            this.limit = limit;
+            this.offset = offset;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final PaginationParameters that = (PaginationParameters) o;
+            return limit == that.limit && offset == that.offset;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(limit, offset);
+        }
+
+        @Override
+        public String toString() {
+            return "PaginationParameters{" +
+                    "limit=" + limit +
+                    ", offset=" + offset +
+                    '}';
+        }
+    }
 }

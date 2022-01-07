@@ -1076,7 +1076,7 @@ paths:
         The subscription is identified by its key parameters (owning_application, event_types, consumer_group). If
         this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
         not important) - the subscription will be created only once and for all other calls it will just return
-        the subscription that was already created.
+        the subscription that was already created (ignoring the other parts of the body – the subscription will not be updated).
       parameters:
         - name: subscription
           in: body
@@ -2624,6 +2624,8 @@ definitions:
       number of clients by managing consumed event offsets and distributing load between instances.
       The key properties that identify subscription are 'owning_application', 'event_types' and 'consumer_group'.
       It's not possible to have two different subscriptions with these properties being the same.
+      Creating a subscription with the keys matching an existing subscription will neither create a new one nor
+      change the existing subscription, ignoring the remaining fields (e.g. `read_from`, `authorization`, etc.).
     properties:
       id:
         type: string

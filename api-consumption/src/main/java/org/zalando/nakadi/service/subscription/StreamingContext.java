@@ -12,13 +12,13 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.ConsumptionKpiCollector;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -66,14 +66,11 @@ public class StreamingContext implements SubscriptionStreamer {
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
     private final Comparator<NakadiCursor> cursorComparator;
-    private final NakadiKpiPublisher kpiPublisher;
     private final AutocommitSupport autocommitSupport;
-    private final String kpiDataStreamedEventType;
     private final CursorOperationsService cursorOperationsService;
 
-    private final long kpiCollectionFrequencyMs;
-
     private final long streamMemoryLimitBytes;
+    private final ConsumptionKpiCollector kpiCollector;
 
     private State currentState = new DummyState();
     private ZkSubscription<List<String>> sessionListSubscription;
@@ -104,12 +101,14 @@ public class StreamingContext implements SubscriptionStreamer {
         this.authorizationValidator = builder.authorizationValidator;
         this.eventTypeChangeListener = builder.eventTypeChangeListener;
         this.cursorComparator = builder.cursorComparator;
-        this.kpiPublisher = builder.kpiPublisher;
         this.autocommitSupport = new AutocommitSupport(builder.cursorOperationsService, zkClient, cursorConverter);
-        this.kpiDataStreamedEventType = builder.kpiDataStremedEventType;
-        this.kpiCollectionFrequencyMs = builder.kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.cursorOperationsService = builder.cursorOperationsService;
+        this.kpiCollector = builder.kpiCollector;
+    }
+
+    public ConsumptionKpiCollector getKpiCollector() {
+        return kpiCollector;
     }
 
     public TimelineService getTimelineService() {
@@ -150,18 +149,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public EventStreamWriter getWriter() {
         return this.writer;
-    }
-
-    public NakadiKpiPublisher getKpiPublisher() {
-        return kpiPublisher;
-    }
-
-    public String getKpiDataStreamedEventType() {
-        return kpiDataStreamedEventType;
-    }
-
-    public long getKpiCollectionFrequencyMs() {
-        return kpiCollectionFrequencyMs;
     }
 
     public CursorOperationsService getCursorOperationsService() {
@@ -379,11 +366,9 @@ public class StreamingContext implements SubscriptionStreamer {
         private AuthorizationValidator authorizationValidator;
         private EventTypeChangeListener eventTypeChangeListener;
         private Comparator<NakadiCursor> cursorComparator;
-        private NakadiKpiPublisher kpiPublisher;
         private CursorOperationsService cursorOperationsService;
-        private String kpiDataStremedEventType;
-        private long kpiCollectionFrequencyMs;
         private long streamMemoryLimitBytes;
+        private ConsumptionKpiCollector kpiCollector;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -485,23 +470,13 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setKpiPublisher(final NakadiKpiPublisher kpiPublisher) {
-            this.kpiPublisher = kpiPublisher;
-            return this;
-        }
-
         public Builder setCursorOperationsService(final CursorOperationsService cursorOperationsService) {
             this.cursorOperationsService = cursorOperationsService;
             return this;
         }
 
-        public Builder setKpiDataStremedEventType(final String kpiDataStremedEventType) {
-            this.kpiDataStremedEventType = kpiDataStremedEventType;
-            return this;
-        }
-
-        public Builder setKpiCollectionFrequencyMs(final long kpiCollectionFrequencyMs) {
-            this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
+        public Builder setKpiCollector(final ConsumptionKpiCollector kpiCollector) {
+            this.kpiCollector = kpiCollector;
             return this;
         }
 

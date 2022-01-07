@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.ConsumptionKpiCollectorFactory;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -18,7 +19,6 @@ import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.NakadiCursorComparator;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -43,12 +43,10 @@ public class SubscriptionStreamerFactory {
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
     private final EventTypeCache eventTypeCache;
-    private final NakadiKpiPublisher nakadiKpiPublisher;
     private final CursorOperationsService cursorOperationsService;
     private final EventStreamChecks eventStreamChecks;
-    private final String kpiDataStreamedEventType;
-    private final long kpiCollectionFrequencyMs;
     private final long streamMemoryLimitBytes;
+    private final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -62,12 +60,10 @@ public class SubscriptionStreamerFactory {
             final AuthorizationValidator authorizationValidator,
             final EventTypeChangeListener eventTypeChangeListener,
             final EventTypeCache eventTypeCache,
-            final NakadiKpiPublisher nakadiKpiPublisher,
             final CursorOperationsService cursorOperationsService,
             final EventStreamChecks eventStreamChecks,
-            @Value("${nakadi.kpi.event-types.nakadiDataStreamed}") final String kpiDataStreamedEventType,
-            @Value("${nakadi.kpi.config.stream-data-collection-frequency-ms}") final long kpiCollectionFrequencyMs,
-            @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes) {
+            @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes,
+            final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -78,12 +74,10 @@ public class SubscriptionStreamerFactory {
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
         this.eventTypeCache = eventTypeCache;
-        this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.cursorOperationsService = cursorOperationsService;
         this.eventStreamChecks = eventStreamChecks;
-        this.kpiDataStreamedEventType = kpiDataStreamedEventType;
-        this.kpiCollectionFrequencyMs = kpiCollectionFrequencyMs;
         this.streamMemoryLimitBytes = streamMemoryLimitBytes;
+        this.consumptionKpiCollectorFactory = consumptionKpiCollectorFactory;
     }
 
     public SubscriptionStreamer build(
@@ -119,10 +113,9 @@ public class SubscriptionStreamerFactory {
                 .setAuthorizationValidator(authorizationValidator)
                 .setEventTypeChangeListener(eventTypeChangeListener)
                 .setCursorComparator(new NakadiCursorComparator(eventTypeCache))
-                .setKpiPublisher(nakadiKpiPublisher)
+                .setKpiCollector(consumptionKpiCollectorFactory.createForHiLA(
+                        subscription.getId(), streamParameters.getConsumingClient()))
                 .setCursorOperationsService(cursorOperationsService)
-                .setKpiDataStremedEventType(kpiDataStreamedEventType)
-                .setKpiCollectionFrequencyMs(kpiCollectionFrequencyMs)
                 .build();
     }
 

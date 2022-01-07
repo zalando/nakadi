@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceImpl;
@@ -14,6 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -38,6 +40,8 @@ public class SubscriptionServiceTest {
     private AuthorizationValidator authorizationValidator;
     private SubscriptionValidationService subscriptionValidationService;
     private SubscriptionTokenLister subscriptionTokenLister;
+    private EventTypeRepository eventTypeRepository;
+    private TransactionTemplate transactionTemplate;
 
     @Before
     public void setUp() throws Exception {
@@ -55,11 +59,14 @@ public class SubscriptionServiceTest {
         featureToggleService = Mockito.mock(FeatureToggleService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
         subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
+        eventTypeRepository = Mockito.mock(EventTypeRepository.class);
+        transactionTemplate = Mockito.mock(TransactionTemplate .class);
 
         subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister);
+                nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister,
+                transactionTemplate, eventTypeRepository);
     }
 
     @Test(expected = AuthorizationNotPresentException.class)
@@ -99,8 +106,7 @@ public class SubscriptionServiceTest {
                 .withId("my_subscription_id1")
                 .build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        Mockito.when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
-
+        Mockito.when(transactionTemplate.execute(any())).thenReturn(subscription);
         subscriptionService.createSubscription(subscriptionBase);
 
         TestKpiUtils.checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,

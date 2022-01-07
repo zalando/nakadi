@@ -9,12 +9,14 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.xml.SourceHttpMessageConverter;
+import org.springframework.security.web.context.AbstractSecurityWebApplicationInitializer;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
@@ -64,10 +66,14 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Qualifier("perPathMetricRegistry")
     private MetricRegistry perPathMetricRegistry;
 
+    @Autowired
+    private AsyncTaskExecutor asyncTaskExecutor;
+
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(nakadiStreamTimeout);
         configurer.registerCallableInterceptors(timeoutInterceptor());
+        configurer.setTaskExecutor(asyncTaskExecutor);
     }
 
     @Bean
@@ -75,6 +81,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
         return new TimeoutCallableProcessingInterceptor();
     }
 
+
+    // ==========================================================================================
+    // BEGIN FILTERS
+    //
+    // From the highest to the lowest precedence, in increments of 10 (SysV init-script style).
+    //
     @Bean
     public FilterRegistrationBean traceRequestFilter() {
         return createFilterRegistrationBean(
@@ -83,34 +95,53 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean monitoringRequestFilter() {
-        return createFilterRegistrationBean(
-                new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
-                Ordered.HIGHEST_PRECEDENCE + 10);
-    }
-
-    @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
         return createFilterRegistrationBean(
                 new FlowIdRequestFilter(),
-                Ordered.HIGHEST_PRECEDENCE + 20);
-    }
-
-    @Bean
-    public FilterRegistrationBean loggingFilter() {
-        return createFilterRegistrationBean(
-                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
-                Ordered.HIGHEST_PRECEDENCE + 30);
+                Ordered.HIGHEST_PRECEDENCE + 10);
     }
 
     @Bean
     public FilterRegistrationBean requestRejectedFilter() {
         return createFilterRegistrationBean(
                 new RequestRejectedFilter(),
-                Ordered.HIGHEST_PRECEDENCE + 40);
+                Ordered.HIGHEST_PRECEDENCE + 20);
     }
 
-    // <=== plugins may add more filters in the middle ===>
+    // MIDDLE POINT
+    @Bean
+    public FilterRegistrationBean securityFilterChain(
+            @Qualifier(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
+            final Filter securityFilter) {
+        //
+        // Override the order of the Spring's security filter, which by default has the lowest
+        // precedence.
+        //
+        // This is required so that the filters that are defined in the authz plugin are chained in
+        // the correct order.
+        //
+        final FilterRegistrationBean filterRegistrationBean = createFilterRegistrationBean(securityFilter, 0);
+        filterRegistrationBean.setName(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME);
+        return filterRegistrationBean;
+    }
+
+    //
+    // The authorization subject is populated by the authz plugin: therefore, set the order of any
+    // filters that use AuthorizationService to be greater than 2.
+    //
+    @Bean
+    public FilterRegistrationBean monitoringRequestFilter() {
+        return createFilterRegistrationBean(
+                new MonitoringRequestFilter(metricRegistry, perPathMetricRegistry, authorizationService),
+                10);
+    }
+
+    @Bean
+    public FilterRegistrationBean loggingFilter() {
+        return createFilterRegistrationBean(
+                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService, accessLogEventType),
+                20);
+    }
 
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
@@ -125,6 +156,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
                 new ExtraTracingFilter(authorizationService),
                 Ordered.LOWEST_PRECEDENCE - 10);
     }
+    // END FILTERS
+    // ==========================================================================================
 
     @Bean
     public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
