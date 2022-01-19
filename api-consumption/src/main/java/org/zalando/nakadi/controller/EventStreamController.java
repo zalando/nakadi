@@ -39,7 +39,6 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamChecks;
@@ -86,7 +85,6 @@ public class EventStreamController {
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
-    private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final EventStreamChecks eventStreamChecks;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
@@ -102,7 +100,6 @@ public class EventStreamController {
                                  final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
-                                 final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final EventStreamChecks eventStreamChecks,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
@@ -113,7 +110,6 @@ public class EventStreamController {
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.streamMetrics = streamMetrics;
-        this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.eventStreamChecks = eventStreamChecks;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
@@ -206,9 +202,6 @@ public class EventStreamController {
                 return;
             }
 
-            final AtomicBoolean connectionReady = new AtomicBoolean(true);
-            // Setting always true to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
-            //closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
@@ -258,7 +251,7 @@ public class EventStreamController {
 
                 outputStream.flush(); // Flush status code to client
 
-                eventStream.streamEvents(connectionReady, () -> {
+                eventStream.streamEvents(() -> {
                     if (needCheckAuthorization.getAndSet(false)) {
                         authorizeStreamRead(eventTypeName);
                     }
@@ -289,7 +282,6 @@ public class EventStreamController {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } finally {
-                connectionReady.set(false);
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }

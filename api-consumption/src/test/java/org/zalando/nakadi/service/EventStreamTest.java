@@ -96,7 +96,7 @@ public class EventStreamTest {
                 emptyConsumer(), outputStreamMock, config, mock(EventStreamChecks.class), cursorConverter,
                 BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
 
-        final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        final Thread thread = new Thread(() -> eventStream.streamEvents(() -> {
         }));
         thread.start();
 
@@ -108,34 +108,6 @@ public class EventStreamTest {
         waitFor(
                 () -> assertThat("The thread should be dead now, as we simulated that client closed connection",
                         thread.isAlive(), is(false)), 10000);
-        thread.join();
-    }
-
-    @Test(timeout = 10000)
-    public void whenCrutchWorkedThenStreamIsClosed() throws InterruptedException, IOException {
-        final EventStreamConfig config = EventStreamConfig
-                .builder()
-                .withCursors(ImmutableList.of(NakadiCursor.of(TIMELINE, "0", "0")))
-                .withBatchLimit(1)
-                .withBatchTimeout(1)
-                .withConsumingClient(mock(Client.class))
-                .build();
-        final EventStream eventStream = new EventStream(
-                emptyConsumer(), mock(OutputStream.class), config, mock(EventStreamChecks.class), cursorConverter,
-                BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        final AtomicBoolean streamOpen = new AtomicBoolean(true);
-        final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen, () -> {
-        }));
-        thread.start();
-
-        waitFor(() -> Assert.assertTrue(thread.isAlive()));
-
-        // simulation of client closing the connection using crutch
-        streamOpen.set(false);
-
-        waitFor(() -> Assert.assertFalse(thread.isAlive()), TimeUnit.SECONDS.toMillis(3));
-        assertThat("The thread should be dead now, as we simulated that client closed connection",
-                thread.isAlive(), is(false));
         thread.join();
     }
 
@@ -155,7 +127,7 @@ public class EventStreamTest {
         final AtomicBoolean accessDeniedTriggered = new AtomicBoolean(false);
         final Thread thread = new Thread(() -> {
             try {
-                eventStream.streamEvents(new AtomicBoolean(true), () -> {
+                eventStream.streamEvents(() -> {
                     if (triggerAuthChange.getAndSet(false)) {
                         throw new AccessDeniedException(null, null);
                     }
@@ -194,7 +166,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(EventStreamChecks.class), cursorConverter,
                 BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
         // if something goes wrong - the test should fail with a timeout
     }
@@ -211,7 +183,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
                 mock(EventStreamChecks.class), cursorConverter, BYTES_FLUSHED_METER, eventStreamWriter,
                 mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
         // if something goes wrong - the test should fail with a timeout
     }
@@ -229,7 +201,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(EventStreamChecks.class), cursorConverter,
                 BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
         // if something goes wrong - the test should fail with a timeout
     }
@@ -250,7 +222,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), out, config, mock(EventStreamChecks.class), cursorConverter, BYTES_FLUSHED_METER,
                 eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -277,7 +249,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(
                 nCountDummyConsumerForPartition(12, "0"), out, config, mock(EventStreamChecks.class),
                 cursorConverter, BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -315,7 +287,7 @@ public class EventStreamTest {
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(EventStreamChecks.class), cursorConverter,
                         BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -360,7 +332,7 @@ public class EventStreamTest {
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(EventStreamChecks.class), cursorConverter,
                         BYTES_FLUSHED_METER, eventStreamWriter, mock(ConsumptionKpiCollector.class));
-        eventStream.streamEvents(new AtomicBoolean(true), () -> {
+        eventStream.streamEvents(() -> {
         });
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);

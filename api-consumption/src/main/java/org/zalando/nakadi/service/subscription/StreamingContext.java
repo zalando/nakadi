@@ -39,7 +39,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
 public class StreamingContext implements SubscriptionStreamer {
@@ -51,7 +50,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final ZkSubscriptionClient zkClient;
     private final SubscriptionOutput out;
     private final long kafkaPollTimeout;
-    private final AtomicBoolean connectionReady;
     private final TimelineService timelineService;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
@@ -89,7 +87,6 @@ public class StreamingContext implements SubscriptionStreamer {
         this.zkClient = builder.zkClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
         this.log = LoggerFactory.getLogger(LogPathBuilder.build(builder.subscription.getId(), builder.session.getId()));
-        this.connectionReady = builder.connectionReady;
         this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
@@ -272,10 +269,6 @@ public class StreamingContext implements SubscriptionStreamer {
         timer.schedule(() -> this.addTask(task), timeout, unit);
     }
 
-    public boolean isConnectionReady() {
-        return connectionReady.get();
-    }
-
     public boolean isSubscriptionConsumptionBlocked() {
         return eventStreamChecks.isConsumptionBlocked(
                 subscription.getEventTypes(),
@@ -354,7 +347,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private ZkSubscriptionClient zkClient;
         private BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
-        private AtomicBoolean connectionReady;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
         private EventStreamChecks eventStreamChecks;
@@ -412,11 +404,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKafkaPollTimeout(final long kafkaPollTimeout) {
             this.kafkaPollTimeout = kafkaPollTimeout;
-            return this;
-        }
-
-        public Builder setConnectionReady(final AtomicBoolean connectionReady) {
-            this.connectionReady = connectionReady;
             return this;
         }
 

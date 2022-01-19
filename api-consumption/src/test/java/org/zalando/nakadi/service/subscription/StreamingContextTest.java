@@ -16,7 +16,6 @@ import org.zalando.nakadi.util.ThreadUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -60,7 +59,6 @@ public class StreamingContextTest {
                 .setZkClient(zkClient)
                 .setRebalancer(null)
                 .setKafkaPollTimeout(0)
-                .setConnectionReady(new AtomicBoolean(true))
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
                 .setEventStreamChecks(null)
@@ -183,7 +181,6 @@ public class StreamingContextTest {
                 .setSubscription(new Subscription())
                 .setZkClient(zkMock)
                 .setKafkaPollTimeout(0)
-                .setConnectionReady(new AtomicBoolean(true))
                 .build();
 
         doThrow(new NakadiRuntimeException(new Exception("Failed!"))).when(zkMock).registerSession(any());

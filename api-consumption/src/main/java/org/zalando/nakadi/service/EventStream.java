@@ -17,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -55,7 +54,7 @@ public class EventStream {
         this.kpiCollector = kpiCollector;
     }
 
-    public void streamEvents(final AtomicBoolean connectionReady, final Runnable checkAuthorization) {
+    public void streamEvents(final Runnable checkAuthorization) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -72,7 +71,7 @@ public class EventStream {
 
             long bytesInMemory = 0;
 
-            while (connectionReady.get()) {
+            while (true) {
 
                 if (eventStreamChecks.isConsumptionBlocked(
                         Collections.singleton(config.getEtName()),

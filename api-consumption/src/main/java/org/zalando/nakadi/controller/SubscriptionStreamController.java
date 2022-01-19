@@ -51,7 +51,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
@@ -217,9 +216,7 @@ public class SubscriptionStreamController {
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
-            // Setting always true to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
-            final AtomicBoolean connectionReady = new AtomicBoolean(true);
-            // closedConnectionsCrutch.listenForConnectionClose(request);
+
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
 
@@ -235,8 +232,7 @@ public class SubscriptionStreamController {
 
                 final Session session = Session.generate(1, streamParameters.getPartitions());
 
-                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output,
-                        connectionReady);
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output);
 
                 final Tracer.SpanBuilder spanBuilder =
                         TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())

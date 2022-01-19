@@ -92,7 +92,6 @@ public class StreamingStateTest {
         when(contextMock.getMetricRegistry()).thenReturn(mock(MetricRegistry.class));
         when(contextMock.getZkClient()).thenReturn(zkMock);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
-        when(contextMock.isConnectionReady()).thenReturn(true);
         when(contextMock.getCursorOperationsService())
                 .thenReturn(Mockito.mock(CursorOperationsService.class));
         when(contextMock.getKpiCollector()).thenReturn(mock(ConsumptionKpiCollector.class));

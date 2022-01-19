@@ -85,7 +85,7 @@ public class SettingsControllerAT extends BaseAT {
 
     @Test
     public void testInvalidFeatureToggle() throws Exception {
-        given().body("{\"feeeeeeeature\":\"close_crutch\",\"enabled\":false}")
+        given().body("{\"feeeeeeeature\":\"kpi_collection\",\"enabled\":false}")
                 .contentType(ContentType.JSON).post(FEATURES_URL).then().statusCode(HttpStatus.SC_BAD_REQUEST);
     }
 

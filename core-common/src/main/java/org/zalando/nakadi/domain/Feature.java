@@ -2,7 +2,6 @@ package org.zalando.nakadi.domain;
 
 public enum Feature {
 
-    CONNECTION_CLOSE_CRUTCH("close_crutch"),
     DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
     DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
     DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS("delete_event_type_with_subscriptions"),

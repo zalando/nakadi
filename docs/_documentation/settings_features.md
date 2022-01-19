@@ -8,12 +8,6 @@ position: 20
 Some features of the Nakadi can be enabled/disabled using the `settings/features` API.
 Following are some of the important features you should be aware about.
 
-### connection_close_crutch
-When a client closes the connection to Nakadi, it should do the TCP 4-way handshake for connection termination. 
-When there is a loadbalancer or proxy between Nakadi and client, the connection termination might not work as expected. 
-This result in an un-used connection that is kept open in Nakadi side, which is consuming resources. 
-The `connection_close_crutch` feature periodically checks for such connections and clean up them.
-
 ### disable_event_type_creation
 Sometimes we need to disable the creation of new event-types for operational reasons. 
 The `disable_event_type_creation` feature allows you to temporarily disable creation of new event types.
