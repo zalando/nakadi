@@ -36,7 +36,6 @@ import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -147,9 +146,6 @@ public class EventStreamControllerTest {
                 eq(KAFKA_CLIENT_ID), any()))
                 .thenReturn(eventConsumerMock);
 
-        final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
-        when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
-
         eventStreamChecks = Mockito.mock(EventStreamChecks.class);
         Mockito.when(eventStreamChecks.isConsumptionBlocked(any(), any())).thenReturn(false);
 
@@ -165,7 +161,7 @@ public class EventStreamControllerTest {
         when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeCache, timelineService, OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
-                streamMetrics, crutch, eventStreamChecks,
+                streamMetrics, eventStreamChecks,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
                 eventTypeChangeListener, null);
 

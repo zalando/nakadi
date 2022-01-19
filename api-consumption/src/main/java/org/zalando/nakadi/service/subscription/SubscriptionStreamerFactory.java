@@ -84,8 +84,7 @@ public class SubscriptionStreamerFactory {
             final Subscription subscription,
             final StreamParameters streamParameters,
             final Session session,
-            final SubscriptionOutput output,
-            final AtomicBoolean connectionReady)
+            final SubscriptionOutput output)
             throws InternalNakadiException, NoSuchEventTypeException {
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
@@ -101,7 +100,6 @@ public class SubscriptionStreamerFactory {
                 .setZkClient(zkClient)
                 .setRebalancer(new SubscriptionRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
-                .setConnectionReady(connectionReady)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
                 .setEventStreamChecks(eventStreamChecks)

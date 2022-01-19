@@ -162,7 +162,6 @@ nakadi:
   subscription:
     maxPartitions: 30
   features.defaultFeatures:
-    CONNECTION_CLOSE_CRUTCH: true
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
     DISABLE_SUBSCRIPTION_CREATION: false
@@ -186,7 +185,6 @@ spring:
 spring:
   profiles: local
 nakadi.features.defaultFeatures:
-  CONNECTION_CLOSE_CRUTCH: false
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false
   DISABLE_SUBSCRIPTION_CREATION: false

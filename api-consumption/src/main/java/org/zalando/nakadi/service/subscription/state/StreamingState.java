@@ -194,11 +194,6 @@ class StreamingState extends State {
             throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }
 
-        if (!isConnectionReady()) {
-            shutdownGracefully("Hila connection closed via crutch");
-            return;
-        }
-
         if (getContext().isSubscriptionConsumptionBlocked()) {
             final String message = "Consumption is blocked";
             sendMetadata(message);
