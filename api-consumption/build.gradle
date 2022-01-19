@@ -35,7 +35,6 @@ dependencies {
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
