@@ -60,7 +60,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -364,7 +363,7 @@ public class EventStreamControllerTest {
                 eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
-        verify(eventStreamMock, times(1)).streamEvents(any(), any());
+        verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
@@ -401,7 +400,7 @@ public class EventStreamControllerTest {
                 ThreadUtils.sleep(100);
             }
             return null;
-        }).when(eventStream).streamEvents(any(), any());
+        }).when(eventStream).streamEvents(any());
         when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server

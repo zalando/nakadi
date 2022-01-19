@@ -51,7 +51,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
