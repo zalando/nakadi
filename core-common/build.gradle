@@ -69,7 +69,7 @@ dependencies {
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion") {
         exclude module: "log4j"
     }
 
@@ -77,7 +77,7 @@ dependencies {
     compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
 
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile ("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
+    compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
         exclude module: 'spring-core'
     }
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
@@ -94,6 +94,9 @@ dependencies {
         exclude module: "json"
     }
     compile 'org.zalando:problem-spring-web:0.23.0'
+
+    // avro
+    compile "org.apache.avro:avro:1.10.2"
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
