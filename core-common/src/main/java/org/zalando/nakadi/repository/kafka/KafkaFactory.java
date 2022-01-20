@@ -30,10 +30,10 @@ public class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final Counter useCountMetric;
     private final Counter producerTerminations;
-    private final Map<Producer<String, String>, AtomicInteger> useCount = new ConcurrentHashMap<>();
+    private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount = new ConcurrentHashMap<>();
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
     @Nullable
-    private Producer<String, String> activeProducer;
+    private Producer<byte[], byte[]> activeProducer;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry) {
         this.kafkaLocationManager = kafkaLocationManager;
@@ -42,7 +42,7 @@ public class KafkaFactory {
     }
 
     @Nullable
-    private Producer<String, String> takeUnderLock(final boolean canCreate) {
+    private Producer<byte[], byte[]> takeUnderLock(final boolean canCreate) {
         final Lock lock = canCreate ? rwLock.writeLock() : rwLock.readLock();
         lock.lock();
         try {
@@ -62,7 +62,7 @@ public class KafkaFactory {
         }
     }
 
-    protected Producer<String, String> createProducerInstance() {
+    protected Producer<byte[], byte[]> createProducerInstance() {
         return new KafkaProducerCrutch(kafkaLocationManager.getKafkaProducerProperties(),
                 new KafkaCrutch(kafkaLocationManager));
     }
@@ -73,8 +73,8 @@ public class KafkaFactory {
      *
      * @return Initialized kafka producer instance.
      */
-    public Producer<String, String> takeProducer() {
-        Producer<String, String> result = takeUnderLock(false);
+    public Producer<byte[], byte[]> takeProducer() {
+        Producer<byte[], byte[]> result = takeUnderLock(false);
         if (null == result) {
             result = takeUnderLock(true);
         }
@@ -88,7 +88,7 @@ public class KafkaFactory {
      *
      * @param producer Producer to release.
      */
-    public void releaseProducer(final Producer<String, String> producer) {
+    public void releaseProducer(final Producer<byte[], byte[]> producer) {
         useCountMetric.dec();
         final AtomicInteger counter = useCount.get(producer);
         if (counter != null && 0 == counter.decrementAndGet()) {
@@ -123,7 +123,7 @@ public class KafkaFactory {
      *
      * @param producer Producer instance to terminate.
      */
-    public void terminateProducer(final Producer<String, String> producer) {
+    public void terminateProducer(final Producer<byte[], byte[]> producer) {
         LOG.info("Received signal to terminate producer " + producer);
         rwLock.writeLock().lock();
         try {
@@ -181,7 +181,7 @@ public class KafkaFactory {
         }
     }
 
-    public class KafkaProducerCrutch extends KafkaProducer<String, String> {
+    public class KafkaProducerCrutch extends KafkaProducer<byte[], byte[]> {
 
         private final KafkaCrutch kafkaCrutch;
 
@@ -191,7 +191,7 @@ public class KafkaFactory {
         }
 
         @Override
-        public Future<RecordMetadata> send(final ProducerRecord<String, String> record, final Callback callback) {
+        public Future<RecordMetadata> send(final ProducerRecord<byte[], byte[]> record, final Callback callback) {
             if (kafkaCrutch.brokerIpAddressChanged) {
                 throw new KafkaCrutchException("Kafka broker ip address changed, exiting");
             }

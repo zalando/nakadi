@@ -172,7 +172,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer,
+            final Producer<byte[], byte[]> producer,
             final String topicId,
             final String eventType,
             final BatchItem item,
@@ -180,11 +180,11 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+            final ProducerRecord<byte[], byte[]> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
-                    item.getEventKey(),
-                    delete ? null : item.dumpEventToString());
+                    item.getEventKeyBytes(),
+                    delete ? null : item.dumpEventToBytes());
             if (null != item.getOwner()) {
                 item.getOwner().serialize(kafkaRecord);
             }
@@ -261,7 +261,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
-            final Producer<String, String> producer = kafkaFactory.takeProducer();
+            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
             kafkaFactory.terminateProducer(producer);
             kafkaFactory.releaseProducer(producer);
         } catch (Exception e) {
@@ -335,7 +335,7 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
@@ -633,7 +633,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
                     .stream()
