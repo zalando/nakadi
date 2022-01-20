@@ -1,7 +1,7 @@
 {
   "name": "metadata",
   "type": "record",
-  "doc": "Event metadata defines data is not related to actual event payload data",
+  "doc": "Event metadata defines data that is not related to actual event payload data",
   "fields": [
     {
       "name": "occurred_at",
