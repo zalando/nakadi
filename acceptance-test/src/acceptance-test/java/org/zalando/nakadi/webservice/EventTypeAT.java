@@ -31,6 +31,7 @@ import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -418,13 +419,13 @@ public class EventTypeAT extends BaseAT {
 
         // assert that key was correctly propagated to event key in kafka
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
-        final KafkaConsumer<String, String> consumer = kafkaHelper.createConsumer();
+        final KafkaConsumer<byte[], byte[]> consumer = kafkaHelper.createConsumer();
         final TopicPartition tp = new TopicPartition(topic, 0);
         consumer.assign(ImmutableList.of(tp));
         consumer.seek(tp, 0);
-        final ConsumerRecords<String, String> records = consumer.poll(5000);
-        final ConsumerRecord<String, String> record = records.iterator().next();
-        assertThat(record.key(), equalTo("abc"));
+        final ConsumerRecords<byte[], byte[]> records = consumer.poll(5000);
+        final ConsumerRecord<byte[], byte[]> record = records.iterator().next();
+        assertThat(record.key(), equalTo("abc".getBytes(StandardCharsets.UTF_8)));
 
         // publish event with missing compaction key and expect 422
         given().body("[{\"metadata\":{" +

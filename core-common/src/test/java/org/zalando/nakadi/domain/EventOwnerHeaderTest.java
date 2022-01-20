@@ -6,6 +6,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+
 public class EventOwnerHeaderTest {
 
     private static final String NAME = "teams";
@@ -14,7 +16,9 @@ public class EventOwnerHeaderTest {
     @Test
     public void testEventOwnerHeaderSerialization() {
         final EventOwnerHeader eventOwnerHeader = new EventOwnerHeader(NAME, VALUE);
-        final ProducerRecord<String, String> record = new ProducerRecord<>("topic", "value");
+        final ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
+                "topic",
+                "value".getBytes(StandardCharsets.UTF_8));
         eventOwnerHeader.serialize(record);
 
         Assert.assertEquals(NAME,

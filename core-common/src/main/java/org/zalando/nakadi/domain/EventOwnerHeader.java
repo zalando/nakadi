@@ -24,7 +24,7 @@ public class EventOwnerHeader {
         this.value = value;
     }
 
-    public void serialize(final ProducerRecord<String, String> record) {
+    public void serialize(final ProducerRecord<byte[], byte[]> record) {
         record.headers().add(AUTH_PARAM_NAME, name.getBytes(Charsets.UTF_8));
         record.headers().add(AUTH_PARAM_VALUE, value.getBytes(Charsets.UTF_8));
     }

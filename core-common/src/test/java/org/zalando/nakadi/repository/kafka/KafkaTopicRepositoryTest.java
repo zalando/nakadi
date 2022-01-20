@@ -80,7 +80,7 @@ public class KafkaTopicRepositoryTest {
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @Captor
-    private ArgumentCaptor<ProducerRecord<String, String>> producerRecordArgumentCaptor;
+    private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -116,7 +116,7 @@ public class KafkaTopicRepositoryTest {
             cursor("5", "30"), cursor("9", "100"));
 
     private final KafkaTopicRepository kafkaTopicRepository;
-    private final KafkaProducer<String, String> kafkaProducer;
+    private final KafkaProducer<byte[], byte[]> kafkaProducer;
     private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
@@ -171,7 +171,7 @@ public class KafkaTopicRepositoryTest {
             kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
             fail();
         } catch (final EventPublishingException e) {
-            final ProducerRecord<String, String> recordSent = captureProducerRecordSent();
+            final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
             final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
                     .iterator().next();
             Assert.assertEquals(new String(nameHeader.value()), "retailer");
@@ -603,7 +603,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private ProducerRecord<String, String> captureProducerRecordSent() {
+    private ProducerRecord<byte[], byte[]> captureProducerRecordSent() {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
     }

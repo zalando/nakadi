@@ -260,7 +260,7 @@ public class KafkaRepositoryAT extends BaseAT {
     }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {
-        final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
+        final KafkaConsumer<byte[], byte[]> kafkaConsumer = kafkaHelper.createConsumer();
         return kafkaConsumer.listTopics();
     }
 
