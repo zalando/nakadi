@@ -32,6 +32,7 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -452,6 +453,43 @@ public class KafkaTopicRepository implements TopicRepository {
 
         LOG.info("Failed events in batch {}", sb.toString());
     }
+
+    public void syncPostEvent(final NakadiRecord nakadiRecord) {
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        try {
+            final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
+                    nakadiRecord.getTopic(),
+                    nakadiRecord.getPartition(),
+                    nakadiRecord.getEventKey(),
+                    nakadiRecord.getData());
+
+            // fixme avro do not forget EventOwnerHeader, set via metadata?
+            // for the internal KPI evnets it is fine not to have it
+
+            producerRecord.headers().add(
+                    NakadiRecord.HEADER_FORMAT,
+                    nakadiRecord.getFormat());
+
+            producer.send(producerRecord, ((metadata, exception) -> {
+                if (null != exception) {
+                    LOG.warn("Failed to publish to kafka topic '{}' event-type '{}'",
+                            nakadiRecord.getTopic(), nakadiRecord.getEventType(), exception);
+                    if (isExceptionShouldLeadToReset(exception)) {
+                        kafkaFactory.terminateProducer(producer);
+                    }
+                }
+            }));
+        } catch (final InterruptException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Error publishing message to kafka", e);
+        } catch (final RuntimeException e) {
+            kafkaFactory.terminateProducer(producer);
+            LOG.error("Error publishing message to kafka", e);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
+        }
+    }
+
 
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
