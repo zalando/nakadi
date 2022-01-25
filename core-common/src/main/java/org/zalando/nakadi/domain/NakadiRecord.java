@@ -29,14 +29,14 @@ public class NakadiRecord {
             final String eventType,
             final String topic,
             final Integer partition,
-            final byte[] format,
             final byte[] eventKey,
-            final byte[] data) {
+            final byte[] data,
+            final byte[] format) {
+        this.eventType = eventType;
         this.topic = topic;
         this.partition = partition;
         this.eventKey = eventKey;
         this.data = data;
-        this.eventType = eventType;
         this.format = format;
     }
 

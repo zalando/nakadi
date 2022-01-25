@@ -27,7 +27,7 @@ public class AvroEventPublisherTest extends EventPublisherTest {
 
         final GenericRecord event = new GenericData.Record(avroSchema.getNakadiAccessLogSchema());
         event.put("method", "POST");
-        event.put("path", "/evnet-types");
+        event.put("path", "/event-types");
         event.put("query", "");
         event.put("app", "nakadi");
         event.put("app_hashed", "hashed-app");

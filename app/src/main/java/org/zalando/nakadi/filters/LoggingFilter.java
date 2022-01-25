@@ -156,7 +156,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        if (featureToggleService.isFeatureEnabled(Feature.ENABLE_AVRO_FOR_KPI_EVENTS)) {
+        if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
             final GenericRecord event = new GenericData.Record(avroSchema.getNakadiAccessLogSchema());
             event.put("method", requestLogInfo.method);
             event.put("path", requestLogInfo.path);

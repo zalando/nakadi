@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.Envelop;
+import org.zalando.nakadi.domain.Envelope;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -65,12 +65,13 @@ public class AvroEventPublisher {
                             final GenericRecord event) {
         try {
             final GenericRecord metadata = new GenericData.Record(avroSchema.getMetadataSchema());
-            metadata.put("occurred_at", new DateTime(DateTimeZone.UTC).toString());
+            final DateTime dateTime = new DateTime(DateTimeZone.UTC);
+            metadata.put("occurred_at", dateTime);
             metadata.put("eid", uuidGenerator.randomUUID().toString());
             metadata.put("flow_id", FlowIdUtils.peek());
             metadata.put("event_type", etName);
             metadata.put("partition", 0); // fixme avro
-            metadata.put("received_at", new DateTime(DateTimeZone.UTC));
+            metadata.put("received_at", dateTime);
             metadata.put("schema_version", "0");  // fixme avro
             metadata.put("published_by", publishedBy);
 
@@ -116,23 +117,22 @@ public class AvroEventPublisher {
 
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
             final ByteArrayOutputStream eventOutputStream = new ByteArrayOutputStream();
-            final GenericDatumWriter genericDatumWriter = new GenericDatumWriter(eventMetadata.getSchema());
-            genericDatumWriter.setSchema(event.getSchema());
-            genericDatumWriter.write(event, EncoderFactory.get()
+            final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
+            eventWriter.write(event, EncoderFactory.get()
                     .directBinaryEncoder(eventOutputStream, null));
             final byte[] metadata = eventOutputStream.toByteArray();
+            eventOutputStream.reset();
 
-            genericDatumWriter.setSchema(event.getSchema());
-            genericDatumWriter.write(event, EncoderFactory.get()
+            eventWriter.setSchema(event.getSchema());
+            eventWriter.write(event, EncoderFactory.get()
                     .directBinaryEncoder(eventOutputStream, null));
             final byte[] payload = eventOutputStream.toByteArray();
-
-            final byte[] envelop = Envelop.serialize(
+            final byte[] envelope = Envelope.serialize(new Envelope(
                     AvroSchema.METADATA_VERSION,
                     metadata.length,
                     metadata,
                     payload.length,
-                    payload
+                    payload)
             );
 
             timelineService.getTopicRepository(eventType)
@@ -142,7 +142,7 @@ public class AvroEventPublisher {
                             null,
                             NakadiRecord.Format.AVRO.getFormat(),
                             null,
-                            envelop));
+                            envelope));
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

@@ -472,7 +472,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             producer.send(producerRecord, ((metadata, exception) -> {
                 if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic '{}' even type '{}'",
+                    LOG.warn("Failed to publish to kafka topic '{}' event-type '{}'",
                             nakadiRecord.getTopic(), nakadiRecord.getEventType(), exception);
                     if (isExceptionShouldLeadToReset(exception)) {
                         kafkaFactory.terminateProducer(producer);

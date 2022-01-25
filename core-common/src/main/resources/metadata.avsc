@@ -5,7 +5,8 @@
   "fields": [
     {
       "name": "occurred_at",
-      "type": "string"
+      "type": "long",
+      "logicalType": "timestamp"
     },
     {
       "name": "eid",
