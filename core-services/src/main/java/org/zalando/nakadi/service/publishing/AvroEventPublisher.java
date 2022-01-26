@@ -6,8 +6,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,13 +63,13 @@ public class AvroEventPublisher {
                             final GenericRecord event) {
         try {
             final GenericRecord metadata = new GenericData.Record(avroSchema.getMetadataSchema());
-            final DateTime dateTime = new DateTime(DateTimeZone.UTC);
-            metadata.put("occurred_at", dateTime);
+            final long now = System.currentTimeMillis();
+            metadata.put("occurred_at", now);
             metadata.put("eid", uuidGenerator.randomUUID().toString());
             metadata.put("flow_id", FlowIdUtils.peek());
             metadata.put("event_type", etName);
             metadata.put("partition", 0); // fixme avro
-            metadata.put("received_at", dateTime);
+            metadata.put("received_at", now);
             metadata.put("schema_version", "0");  // fixme avro
             metadata.put("published_by", publishedBy);
 
@@ -118,7 +116,7 @@ public class AvroEventPublisher {
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
             final ByteArrayOutputStream eventOutputStream = new ByteArrayOutputStream();
             final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
-            eventWriter.write(event, EncoderFactory.get()
+            eventWriter.write(eventMetadata, EncoderFactory.get()
                     .directBinaryEncoder(eventOutputStream, null));
             final byte[] metadata = eventOutputStream.toByteArray();
             eventOutputStream.reset();
@@ -139,6 +137,8 @@ public class AvroEventPublisher {
                     .syncPostEvent(new NakadiRecord(
                             eventTypeName,
                             topic,
+                            // partition is null, kafka will assign partition
+                            // org.apache.kafka.clients.producer.Partitioner
                             null,
                             NakadiRecord.Format.AVRO.getFormat(),
                             null,
