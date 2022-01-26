@@ -66,6 +66,9 @@ Content-Type: application/json;charset=UTF-8
 }
 ```
 
+If there is already a subscription with same `owning_application`, `event_types` and `consumer_group`,
+it is just returned (and not updated, all other parts of the request body are then ignored).
+
 ### Consuming Events from a Subscription
 
 Consuming events is done by sending a GET request to the Subscriptions's event resource (`/subscriptions/{subscription-id}/events`): 
