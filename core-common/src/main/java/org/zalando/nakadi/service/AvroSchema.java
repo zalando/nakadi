@@ -18,8 +18,10 @@ public class AvroSchema {
 
     @Autowired
     public AvroSchema(
-            @Value("${:classpath:metadata.avsc}") final Resource metadataRes,
-            @Value("${:classpath:nakadi.access.log.avsc}") final Resource nakadiAccessLogRes)
+            @Value("${nakadi.schema.metadata:classpath:metadata.avsc}")
+            final Resource metadataRes,
+            @Value("${nakadi.schema.nakadi-access-log:classpath:nakadi.access.log.avsc}")
+            final Resource nakadiAccessLogRes)
             throws IOException {
         this.metadataSchema = new Schema.Parser().parse(metadataRes.getInputStream());
         this.nakadiAccessLogSchema = new Schema.Parser().parse(nakadiAccessLogRes.getInputStream());
