@@ -127,7 +127,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, kafkaSettings.getBufferMemory());
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, kafkaSettings.getBatchSize());
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, kafkaSettings.getLingerMs());
-        producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
+        producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, kafkaSettings.getCompressionType());
         producerProps.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, kafkaSettings.getMaxRequestSize());
         producerProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, kafkaSettings.getDeliveryTimeoutMs());
         producerProps.put(ProducerConfig.RETRIES_CONFIG, 0);
