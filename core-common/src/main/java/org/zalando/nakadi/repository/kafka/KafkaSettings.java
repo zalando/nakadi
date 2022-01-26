@@ -22,6 +22,7 @@ public class KafkaSettings {
     private final int deliveryTimeoutMs;
     private final int maxBlockMs;
     private final String clientRack;
+    private final String compressionType;
 
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
@@ -32,7 +33,8 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize,
                          @Value("${nakadi.kafka.delivery.timeout.ms}") final int deliveryTimeoutMs,
                          @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs,
-                         @Value("${nakadi.kafka.client.rack:}") final String clientRack) {
+                         @Value("${nakadi.kafka.client.rack:}") final String clientRack,
+                         @Value("${nakadi.kafka.compression.type:lz4}") final String compressionType) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
@@ -42,6 +44,7 @@ public class KafkaSettings {
         this.deliveryTimeoutMs = deliveryTimeoutMs;
         this.maxBlockMs = maxBlockMs;
         this.clientRack = clientRack;
+        this.compressionType = compressionType;
     }
 
     public int getRequestTimeoutMs() {
@@ -78,5 +81,9 @@ public class KafkaSettings {
 
     public String getClientRack() {
         return clientRack;
+    }
+
+    public String getCompressionType() {
+        return compressionType;
     }
 }
