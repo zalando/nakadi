@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.repository.kafka.RecordDeserializer;
 
 import java.util.Collection;
 import java.util.List;
@@ -51,7 +52,8 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
             throws EventPublishingException;
 
-    default void syncPostEvent(final NakadiRecord nakadiRecord) throws EventPublishingException {}
+    default void syncPostEvent(final NakadiRecord nakadiRecord) throws EventPublishingException {
+    }
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;
@@ -85,8 +87,10 @@ public interface TopicRepository {
      */
     Map<TopicPartition, Long> getSizeStats();
 
-    EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
-            throws InvalidCursorException;
+    EventConsumer.LowLevelConsumer createEventConsumer(
+            String clientId,
+            List<NakadiCursor> positions,
+            RecordDeserializer recordDeserializer) throws InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceTemporarilyUnavailableException;
