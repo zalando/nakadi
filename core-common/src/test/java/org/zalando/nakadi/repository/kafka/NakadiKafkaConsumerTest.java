@@ -45,6 +45,7 @@ public class NakadiKafkaConsumerTest {
     private static final int PARTITION = randomUInt();
     private static final long POLL_TIMEOUT = randomULong();
     private static final Date CREATED_AT = new Date();
+    private final RecordDeserializer recordDeserializer = (f, e) -> e;
 
     private static KafkaCursor kafkaCursor(final String topic, final int partition, final long offset) {
         return new KafkaCursor(topic, partition, offset);
@@ -78,7 +79,8 @@ public class NakadiKafkaConsumerTest {
                 kafkaCursor(TOPIC, randomUInt(), randomULong()));
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(), POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(),
+                recordDeserializer, POLL_TIMEOUT);
 
         // ASSERT //
         final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
@@ -129,7 +131,7 @@ public class NakadiKafkaConsumerTest {
 
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
-                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT);
+                kafkaConsumerMock, cursors, createTpTimelineMap(), recordDeserializer, POLL_TIMEOUT);
         final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
@@ -167,7 +169,7 @@ public class NakadiKafkaConsumerTest {
 
                 // ACT //
                 final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                        ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                        ImmutableList.of(), createTpTimelineMap(), recordDeserializer, POLL_TIMEOUT);
                 consumer.readEvents();
 
                 // ASSERT //
@@ -188,7 +190,7 @@ public class NakadiKafkaConsumerTest {
         // ARRANGE //
         final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                ImmutableList.of(), createTpTimelineMap(), recordDeserializer, POLL_TIMEOUT);
         // ACT //
         nakadiKafkaConsumer.close();
         // ASSERT //
