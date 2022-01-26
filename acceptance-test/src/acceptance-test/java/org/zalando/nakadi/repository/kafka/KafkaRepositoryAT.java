@@ -57,6 +57,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_DELIVERY_TIMEOUT = 30000;
     private static final int KAFKA_MAX_BLOCK_TIMEOUT = 5000;
+    private static final String KAFKA_COMPRESSION_TYPE = "lz4";
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_BUFFER_MEMORY = KAFKA_BATCH_SIZE * 10L;
     private static final int KAFKA_LINGER_MS = 0;
@@ -107,7 +108,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
-                KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "");
+                KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "", KAFKA_COMPRESSION_TYPE);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, ZK_MAX_IN_FLIGHT_REQUESTS);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
