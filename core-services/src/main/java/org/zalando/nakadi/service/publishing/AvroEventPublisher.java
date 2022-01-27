@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.Envelope;
+import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -25,7 +25,6 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
@@ -114,24 +113,18 @@ public class AvroEventPublisher {
                 .start();
 
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            final ByteArrayOutputStream eventOutputStream = new ByteArrayOutputStream();
-            final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
-            eventWriter.write(eventMetadata, EncoderFactory.get()
-                    .directBinaryEncoder(eventOutputStream, null));
-            final byte[] metadata = eventOutputStream.toByteArray();
-            eventOutputStream.reset();
-
-            eventWriter.setSchema(event.getSchema());
-            eventWriter.write(event, EncoderFactory.get()
-                    .directBinaryEncoder(eventOutputStream, null));
-            final byte[] payload = eventOutputStream.toByteArray();
-            final byte[] envelope = Envelope.serialize(new Envelope(
+            final byte[] data = EnvelopeHolder.produceBytes(
                     AvroSchema.METADATA_VERSION,
-                    metadata.length,
-                    metadata,
-                    payload.length,
-                    payload)
-            );
+                    (outputStream -> {
+                        final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
+                        eventWriter.write(eventMetadata, EncoderFactory.get()
+                                .directBinaryEncoder(outputStream, null));
+                    }),
+                    (outputStream -> {
+                        final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
+                        eventWriter.write(event, EncoderFactory.get()
+                                .directBinaryEncoder(outputStream, null));
+                    }));
 
             timelineService.getTopicRepository(eventType)
                     .syncPostEvent(new NakadiRecord(
@@ -142,7 +135,7 @@ public class AvroEventPublisher {
                             null,
                             NakadiRecord.Format.AVRO.getFormat(),
                             null,
-                            envelope));
+                            data));
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;
