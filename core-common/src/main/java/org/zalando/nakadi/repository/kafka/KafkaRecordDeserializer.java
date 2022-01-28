@@ -1,34 +1,26 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DecoderFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.avro.AvroFactory;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
-import javax.annotation.concurrent.NotThreadSafe;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-// class is supposed to be used in a SINGLE thread!
-@NotThreadSafe
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
-    private final GenericDatumReader nakadiAccessLogReader;
-    private final GenericDatumReader metadataDatumReader;
-    private final ByteArrayOutputStream baos;
     private final AvroSchema schemas;
+    private final AvroFactory factory;
 
     public KafkaRecordDeserializer(final AvroSchema schemas) {
         this.schemas = schemas;
-        this.metadataDatumReader = new GenericDatumReader(
-                this.schemas.getMetadataSchema());
-        this.nakadiAccessLogReader = new GenericDatumReader(
-                this.schemas.getNakadiAccessLogSchema());
-        this.baos = new ByteArrayOutputStream();
+        this.factory = new AvroFactory();
+        this.factory.setCodec(new AvroMapper());
     }
 
     public byte[] deserialize(final byte[] eventFormat, final byte[] data) {
@@ -59,21 +51,19 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
     private byte[] deserializeAvro(final EnvelopeHolder envelop) throws RuntimeException {
         try {
             // fixme use schema registry later and cache
-            final GenericRecord metadataRecord = (GenericRecord) metadataDatumReader
-                    .read(null, DecoderFactory.get()
-                            .directBinaryDecoder(envelop.getMetadata(), null));
+            final JsonParser metadataParser = factory.createParser(envelop.getMetadata());
+            metadataParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
+                    AvroSchema(schemas.getMetadataSchema()));
+            final ObjectNode metadataNode = metadataParser.readValueAsTree();
 
-            final GenericRecord accessLogRecord = (GenericRecord) nakadiAccessLogReader
-                    .read(null, DecoderFactory.get()
-                            .directBinaryDecoder(envelop.getPayload(), null));
-            baos.reset();
-            baos.write("{\"metadata\":".getBytes(StandardCharsets.UTF_8));
-            baos.write(metadataRecord.toString().getBytes(StandardCharsets.UTF_8));
-            baos.write(',');
-            baos.write(accessLogRecord.toString().getBytes(StandardCharsets.UTF_8));
-            baos.write('}');
+            final JsonParser eventParser = factory.createParser(envelop.getPayload());
+            eventParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
+                    AvroSchema(schemas.getNakadiAccessLogSchema()));
+            eventParser.setCodec(new AvroMapper());
+            final ObjectNode eventNode = eventParser.readValueAsTree();
+            eventNode.set("metadata", metadataNode);
 
-            return baos.toByteArray();
+            return eventNode.toString().getBytes(StandardCharsets.UTF_8);
         } catch (final IOException io) {
             throw new RuntimeException("failed to deserialize avro event", io);
         }
