@@ -8,6 +8,7 @@ import java.io.OutputStream;
 
 public class EnvelopeHolder {
 
+    private static final byte[] FOUR_BYTE_ARRAY = new byte[4];
     private byte metadataVersion;
     private int metadataLength;
     private int payloadLength;
@@ -23,10 +24,10 @@ public class EnvelopeHolder {
             final EventWriter eventWriter) throws IOException {
         final ByteArrayOutputStream eventOutputStream = new ByteArrayOutputStream();
         eventOutputStream.write(metadataVersion);
-        eventOutputStream.write(new byte[4]);
+        eventOutputStream.write(FOUR_BYTE_ARRAY);
         metadataWriter.write(eventOutputStream);
         final int metadataLength = eventOutputStream.size() - 1 - 4;
-        eventOutputStream.write(new byte[4]);
+        eventOutputStream.write(FOUR_BYTE_ARRAY);
         eventWriter.write(eventOutputStream);
         final int payloadLength = eventOutputStream.size() - 1 - 4 - metadataLength - 4;
 
