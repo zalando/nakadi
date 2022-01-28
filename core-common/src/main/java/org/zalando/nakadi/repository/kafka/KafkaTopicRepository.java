@@ -684,7 +684,9 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
-            @Nullable final String clientId, final List<NakadiCursor> cursors)
+            @Nullable final String clientId,
+            final List<NakadiCursor> cursors,
+            final RecordDeserializer recordDeserializer)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
 
         final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
@@ -701,6 +703,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 kafkaFactory.getConsumer(clientId),
                 kafkaCursors,
                 timelineMap,
+                recordDeserializer,
                 nakadiSettings.getKafkaPollTimeoutMs());
 
     }

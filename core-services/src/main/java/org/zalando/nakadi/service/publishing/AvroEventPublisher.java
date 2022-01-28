@@ -6,15 +6,13 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.Envelope;
+import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -27,7 +25,6 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
@@ -65,13 +62,13 @@ public class AvroEventPublisher {
                             final GenericRecord event) {
         try {
             final GenericRecord metadata = new GenericData.Record(avroSchema.getMetadataSchema());
-            final DateTime dateTime = new DateTime(DateTimeZone.UTC);
-            metadata.put("occurred_at", dateTime);
+            final long now = System.currentTimeMillis();
+            metadata.put("occurred_at", now);
             metadata.put("eid", uuidGenerator.randomUUID().toString());
             metadata.put("flow_id", FlowIdUtils.peek());
             metadata.put("event_type", etName);
             metadata.put("partition", 0); // fixme avro
-            metadata.put("received_at", dateTime);
+            metadata.put("received_at", now);
             metadata.put("schema_version", "0");  // fixme avro
             metadata.put("published_by", publishedBy);
 
@@ -116,33 +113,29 @@ public class AvroEventPublisher {
                 .start();
 
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            final ByteArrayOutputStream eventOutputStream = new ByteArrayOutputStream();
-            final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
-            eventWriter.write(event, EncoderFactory.get()
-                    .directBinaryEncoder(eventOutputStream, null));
-            final byte[] metadata = eventOutputStream.toByteArray();
-            eventOutputStream.reset();
-
-            eventWriter.setSchema(event.getSchema());
-            eventWriter.write(event, EncoderFactory.get()
-                    .directBinaryEncoder(eventOutputStream, null));
-            final byte[] payload = eventOutputStream.toByteArray();
-            final byte[] envelope = Envelope.serialize(new Envelope(
+            final byte[] data = EnvelopeHolder.produceBytes(
                     AvroSchema.METADATA_VERSION,
-                    metadata.length,
-                    metadata,
-                    payload.length,
-                    payload)
-            );
+                    (outputStream -> {
+                        final GenericDatumWriter eventWriter = new GenericDatumWriter(eventMetadata.getSchema());
+                        eventWriter.write(eventMetadata, EncoderFactory.get()
+                                .directBinaryEncoder(outputStream, null));
+                    }),
+                    (outputStream -> {
+                        final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
+                        eventWriter.write(event, EncoderFactory.get()
+                                .directBinaryEncoder(outputStream, null));
+                    }));
 
             timelineService.getTopicRepository(eventType)
                     .syncPostEvent(new NakadiRecord(
                             eventTypeName,
                             topic,
+                            // partition is null, kafka will assign partition
+                            // org.apache.kafka.clients.producer.Partitioner
                             null,
                             NakadiRecord.Format.AVRO.getFormat(),
                             null,
-                            envelope));
+                            data));
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

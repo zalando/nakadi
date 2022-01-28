@@ -97,6 +97,7 @@ dependencies {
 
     // avro
     compile "org.apache.avro:avro:1.10.2"
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'

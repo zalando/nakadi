@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,12 +17,20 @@ public class AvroSchema {
     public static final byte METADATA_VERSION = 0;
     private final Schema metadataSchema;
     private final Schema nakadiAccessLogSchema;
+    private final AvroMapper avroMapper;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public AvroSchema(
-            @Value("${:classpath:metadata.avsc}") final Resource metadataRes,
-            @Value("${:classpath:nakadi.access.log.avsc}") final Resource nakadiAccessLogRes)
+            final AvroMapper avroMapper,
+            final ObjectMapper objectMapper,
+            @Value("${nakadi.schema.metadata:classpath:metadata.avsc}")
+            final Resource metadataRes,
+            @Value("${nakadi.schema.nakadi-access-log:classpath:nakadi.access.log.avsc}")
+            final Resource nakadiAccessLogRes)
             throws IOException {
+        this.avroMapper = avroMapper;
+        this.objectMapper = objectMapper;
         this.metadataSchema = new Schema.Parser().parse(metadataRes.getInputStream());
         this.nakadiAccessLogSchema = new Schema.Parser().parse(nakadiAccessLogRes.getInputStream());
     }
@@ -31,5 +41,13 @@ public class AvroSchema {
 
     public Schema getMetadataSchema() {
         return metadataSchema;
+    }
+
+    public AvroMapper getAvroMapper() {
+        return avroMapper;
+    }
+
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 }
