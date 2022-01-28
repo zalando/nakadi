@@ -65,38 +65,38 @@ import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
 
 public class EventPublisherTest {
 
-    private static final int NAKADI_SEND_TIMEOUT = 10000;
-    private static final int NAKADI_POLL_TIMEOUT = 10000;
-    private static final int NAKADI_EVENT_MAX_BYTES = 900;
-    private static final long TOPIC_RETENTION_TIME_MS = 150;
-    private static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
-    private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
+    protected static final int NAKADI_SEND_TIMEOUT = 10000;
+    protected static final int NAKADI_POLL_TIMEOUT = 10000;
+    protected static final int NAKADI_EVENT_MAX_BYTES = 900;
+    protected static final long TOPIC_RETENTION_TIME_MS = 150;
+    protected static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
+    protected static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
 
-    private final TopicRepository topicRepository = mock(TopicRepository.class);
-    private final EventTypeCache cache = mock(EventTypeCache.class);
-    private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
-    private final TimelineSync timelineSync = mock(TimelineSync.class);
-    private final Enrichment enrichment = mock(Enrichment.class);
-    private final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
-    private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
+    protected final TopicRepository topicRepository = mock(TopicRepository.class);
+    protected final EventTypeCache cache = mock(EventTypeCache.class);
+    protected final PartitionResolver partitionResolver = mock(PartitionResolver.class);
+    protected final TimelineSync timelineSync = mock(TimelineSync.class);
+    protected final Enrichment enrichment = mock(Enrichment.class);
+    protected final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
+    protected final TimelineService timelineService = Mockito.mock(TimelineService.class);
+    protected final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
             "nakadi_archiver", "nakadi_to_s3", 100, 10000);
-    private EventOwnerExtractorFactory eventOwnerExtractorFactory;
-    private EventPublisher publisher;
+    protected EventOwnerExtractorFactory eventOwnerExtractorFactory;
+    protected EventPublisher publisher;
 
     @Before
     public void before() {
 
-        final TimelineService ts = Mockito.mock(TimelineService.class);
-        Mockito.when(ts.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
-        Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
+        Mockito.when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
+        Mockito.when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
-        Mockito.when(ts.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
+        Mockito.when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
         eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
-        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
-                authzValidator, eventOwnerExtractorFactory);
+        publisher = new EventPublisher(timelineService, cache, partitionResolver, enrichment,
+                nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory);
     }
 
     @Test
