@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice;
 
 import org.apache.http.HttpStatus;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Test;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 public class AvroEventPublisherAT extends BaseAT {
 
@@ -36,9 +36,14 @@ public class AvroEventPublisherAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        TestUtils.waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(1)), 10000);
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(
+                client.getBatches(), Matchers.hasSize(1)), 10000);
         final List<Map> events = client.getBatches().get(0).getEvents();
         Assert.assertFalse(events.isEmpty());
-        Assert.assertEquals(path, events.get(0).get("path"));
+        // when tests are run in parallel it is hard to get specific event,
+        // that's why check that events are in the event type
+        Assert.assertEquals(
+                NAKADI_ACCESS_LOG,
+                ((Map) events.get(0).get("metadata")).get("event_type"));
     }
 }
