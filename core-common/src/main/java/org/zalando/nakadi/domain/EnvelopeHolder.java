@@ -39,11 +39,11 @@ public class EnvelopeHolder {
     private static void writeIntToArray(
             final byte[] data,
             final int offset,
-            final int metadataLength) {
-        data[offset + 0] = (byte) (metadataLength >> 24);
-        data[offset + 1] = (byte) (metadataLength >> 16);
-        data[offset + 2] = (byte) (metadataLength >> 8);
-        data[offset + 3] = (byte) (metadataLength >> 0);
+            final int value) {
+        data[offset + 0] = (byte) (value >> 24);
+        data[offset + 1] = (byte) (value >> 16);
+        data[offset + 2] = (byte) (value >> 8);
+        data[offset + 3] = (byte) (value >> 0);
     }
 
     public static EnvelopeHolder fromBytes(final byte[] data) throws IOException {
