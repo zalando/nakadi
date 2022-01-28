@@ -59,7 +59,6 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
             final JsonParser eventParser = factory.createParser(envelop.getPayload());
             eventParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
                     AvroSchema(schemas.getNakadiAccessLogSchema()));
-            eventParser.setCodec(new AvroMapper());
             final ObjectNode eventNode = eventParser.readValueAsTree();
             eventNode.set("metadata", metadataNode);
 
