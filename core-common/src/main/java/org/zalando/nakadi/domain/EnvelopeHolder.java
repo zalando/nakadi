@@ -36,7 +36,10 @@ public class EnvelopeHolder {
         return data;
     }
 
-    private static void writeIntToArray(byte[] data, int offset, int metadataLength) {
+    private static void writeIntToArray(
+            final byte[] data,
+            final int offset,
+            final int metadataLength) {
         data[offset + 0] = (byte) (metadataLength >> 24);
         data[offset + 1] = (byte) (metadataLength >> 16);
         data[offset + 2] = (byte) (metadataLength >> 8);
