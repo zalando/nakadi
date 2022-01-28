@@ -1,8 +1,11 @@
 package org.zalando.nakadi.service.publishing;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -19,7 +22,7 @@ public class AvroEventPublisherTest extends EventPublisherTest {
     public void testAvroEventWasSerialized() throws Exception {
         final Resource metadata = new DefaultResourceLoader().getResource("metadata.avsc");
         final Resource accessLog = new DefaultResourceLoader().getResource("nakadi.access.log.avsc");
-        final AvroSchema avroSchema = new AvroSchema(metadata, accessLog);
+        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadata, accessLog);
         final AvroEventPublisher eventPublisher = new AvroEventPublisher(timelineService,
                 cache, timelineSync, nakadiSettings, new UUIDGenerator(), avroSchema);
         final EventType eventType = buildDefaultEventType();

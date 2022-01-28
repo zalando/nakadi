@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -15,7 +16,6 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 public class KafkaRecordDeserializerTest {
 
@@ -26,7 +26,7 @@ public class KafkaRecordDeserializerTest {
                 .getResource("metadata.avsc");
         final Resource accessLog = new DefaultResourceLoader()
                 .getResource("nakadi.access.log.avsc");
-        avroSchema = new AvroSchema(metadata, accessLog);
+        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadata, accessLog);
     }
 
     @Test
@@ -44,7 +44,10 @@ public class KafkaRecordDeserializerTest {
                 data
         );
 
-        Assert.assertArrayEquals(expectedJsonEvent(), deserializedEvent);
+        Assert.assertEquals(
+                expectedJsonEvent(),
+                new ObjectMapper()
+                        .readValue(deserializedEvent, ObjectNode.class));
     }
 
     private EnvelopeHolder.EventWriter getEventWriter() {
@@ -83,7 +86,7 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private byte[] expectedJsonEvent() {
+    private ObjectNode expectedJsonEvent() {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode metadata = mapper.createObjectNode()
                 .put("occurred_at", 1643290232172l)
@@ -103,7 +106,6 @@ public class KafkaRecordDeserializerTest {
                 .put("status_code", 201)
                 .put("response_time_ms", 10)
                 .set("metadata", metadata);
-
-        return event.toString().getBytes(StandardCharsets.UTF_8);
+        return event;
     }
 }
