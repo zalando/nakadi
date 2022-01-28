@@ -133,9 +133,9 @@ public class AvroEventPublisher {
                             // partition is null, kafka will assign partition
                             // org.apache.kafka.clients.producer.Partitioner
                             null,
-                            NakadiRecord.Format.AVRO.getFormat(),
                             null,
-                            data));
+                            data,
+                            NakadiRecord.Format.AVRO.getFormat()));
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;
