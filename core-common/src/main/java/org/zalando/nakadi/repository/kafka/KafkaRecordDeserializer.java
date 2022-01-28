@@ -34,7 +34,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                 final EnvelopeHolder envelop = EnvelopeHolder.fromBytes(data);
                 if (envelop.getMetadataVersion() != AvroSchema.METADATA_VERSION) {
                     throw new RuntimeException(String.format(
-                            "metadata version is not supported: `%d`",
+                            "Metadata version is not supported: `%d`",
                             envelop.getMetadataVersion()));
                 }
                 return deserializeAvro(envelop);
