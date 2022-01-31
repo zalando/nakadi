@@ -24,9 +24,9 @@ public class AvroSchema {
     public AvroSchema(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
-            @Value("${nakadi.schema.metadata:classpath:metadata.avsc}")
+            @Value("${nakadi.avro.schema.metadata:classpath:metadata.avsc}")
             final Resource metadataRes,
-            @Value("${nakadi.schema.nakadi-access-log:classpath:nakadi.access.log.avsc}")
+            @Value("${nakadi.avro.schema.nakadi-access-log:classpath:nakadi.access.log.avsc}")
             final Resource nakadiAccessLogRes)
             throws IOException {
         this.avroMapper = avroMapper;
