@@ -89,10 +89,10 @@ public class KafkaRecordDeserializerTest {
     private ObjectNode expectedJsonEvent() {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode metadata = mapper.createObjectNode()
-                .put("occurred_at", 1643290232172l)
+                .put("occurred_at", "2022-01-27T13:30:32.172Z")
                 .put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab")
                 .put("flow_id", "hek")
-                .put("received_at", 1643290232172l)
+                .put("received_at", "2022-01-27T13:30:32.172Z")
                 .put("schema_version", "0")
                 .put("published_by", "nakadi-test")
                 .put("event_type", "test-et-name")
