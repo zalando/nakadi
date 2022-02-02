@@ -83,7 +83,7 @@ dependencies {
         exclude module: 'HikariCP'
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.2.14'
+    compile 'org.postgresql:postgresql:42.3.2'
 
     compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
 
