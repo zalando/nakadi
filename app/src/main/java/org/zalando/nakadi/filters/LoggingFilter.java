@@ -1,8 +1,6 @@
 package org.zalando.nakadi.filters;
 
 import com.google.common.net.HttpHeaders;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +9,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
+import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.publishing.AvroEventPublisher;
-import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -157,16 +155,13 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
         if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
-            final GenericRecord event = new GenericData.Record(avroSchema.getNakadiAccessLogSchema());
-            event.put("method", requestLogInfo.method);
-            event.put("path", requestLogInfo.path);
-            event.put("query", requestLogInfo.query);
-            event.put("app", requestLogInfo.user);
-            event.put("app_hashed", nakadiKpiPublisher.hash(requestLogInfo.user));
-            event.put("status_code", statusCode);
-            event.put("response_time_ms", timeSpentMs);
-
-            avroEventPublisher.publishAvro(accessLogEventType, requestLogInfo.user, event);
+            nakadiKpiPublisher.publish(accessLogEventType,
+                    requestLogInfo.method,
+                    requestLogInfo.path,
+                    requestLogInfo.query,
+                    requestLogInfo.user,
+                    statusCode,
+                    timeSpentMs);
         } else {
             nakadiKpiPublisher.publish(accessLogEventType, () -> new JSONObject()
                     .put("method", requestLogInfo.method)

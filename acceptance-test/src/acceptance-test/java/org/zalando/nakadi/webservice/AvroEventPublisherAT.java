@@ -37,7 +37,7 @@ public class AvroEventPublisherAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         TestUtils.waitFor(() -> MatcherAssert.assertThat(
-                client.getBatches(), Matchers.hasSize(1)), 10000);
+                client.getBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
         final List<Map> events = client.getBatches().get(0).getEvents();
         Assert.assertFalse(events.isEmpty());
         // when tests are run in parallel it is hard to get specific event,

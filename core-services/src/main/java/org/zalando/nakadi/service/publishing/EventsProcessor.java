@@ -1,17 +1,14 @@
 package org.zalando.nakadi.service.publishing;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -21,12 +18,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-@Component
-public class EventsProcessor {
+public abstract class EventsProcessor<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
 
-    private final EventPublisher eventPublisher;
     private final ExecutorService executorService;
 
     private final long batchCollectionTimeout;
@@ -35,24 +30,21 @@ public class EventsProcessor {
     private final BlockingQueue<EventToPublish> eventsQueue;
     private final Thread dispatcherThread;
 
-    private static class EventToPublish {
+    private static class EventToPublish<T> {
         private final String eventType;
-        private final JSONObject object;
+        private final T object;
 
-        private EventToPublish(final String eventType, final JSONObject object) {
+        private EventToPublish(final String eventType, final T object) {
             this.eventType = eventType;
             this.object = object;
         }
     }
 
-    @Autowired
-    public EventsProcessor(final EventPublisher eventPublisher,
-                           @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
-                           @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
-                           @Value("${nakadi.kpi.config.workers}") final int workers,
-                           @Value("${nakadi.kpi.config.batch-queue:100}") final int maxBatchQueue,
-                           @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
-        this.eventPublisher = eventPublisher;
+    public EventsProcessor(final long batchCollectionTimeout,
+                           final int maxBatchSize,
+                           final int workers,
+                           final int maxBatchQueue,
+                           final int eventsQueueSize) {
         this.batchCollectionTimeout = batchCollectionTimeout;
         this.maxBatchSize = maxBatchSize;
 
@@ -87,20 +79,20 @@ public class EventsProcessor {
         executorService.shutdown();
     }
 
-    private static class BatchedRequest {
+    private static class BatchedRequest<T> {
         private final String eventType;
         private final long finishCollectionAt;
-        private final JSONArray data;
+        private final List<T> data;
         private int size = 0;
 
         private BatchedRequest(final String eventType, final long finishCollectionAt) {
             this.eventType = eventType;
             this.finishCollectionAt = finishCollectionAt;
-            this.data = new JSONArray();
+            this.data = new LinkedList<>();
         }
 
-        public int add(final JSONObject obj) {
-            this.data.put(obj);
+        public int add(final T obj) {
+            this.data.add(obj);
             return ++size;
         }
 
@@ -114,12 +106,12 @@ public class EventsProcessor {
         final Runnable r = new Runnable() {
             @Override
             public void run() {
-                sendEventsDisabledAuthz(req.data.toString(), req.eventType);
+                sendEvents(req.eventType, req.data);
             }
 
             @Override
             public String toString() {
-                return "Batch to " + req.eventType + " of size " + req.data.length();
+                return "Batch to " + req.eventType + " of size " + req.data.size();
             }
         };
         executorService.submit(r);
@@ -166,7 +158,7 @@ public class EventsProcessor {
                     nextTimeCheck = currentTime + batchCollectionTimeout;
                     final Set<Map.Entry<String, BatchedRequest>> entries = batchesBeingAssembled.entrySet();
                     final Iterator<Map.Entry<String, BatchedRequest>> iterator = entries.iterator();
-                    while (iterator.hasNext()){
+                    while (iterator.hasNext()) {
                         final Map.Entry<String, BatchedRequest> entry = iterator.next();
                         if (entry.getValue().finishCollectionAt < currentTime) {
                             // If batch is to be sent
@@ -205,19 +197,12 @@ public class EventsProcessor {
         batchesBeingAssembled.clear();
     }
 
-    public void queueEvent(final String etName, final JSONObject event) {
+    public void queueEvent(final String etName, final T event) {
         if (!eventsQueue.offer(new EventToPublish(etName, event))) {
             LOG.warn("Rejecting events to be queued for {} due to queue overload", etName);
         }
     }
 
-    public void sendEventsDisabledAuthz(final String events, final String eventType) {
-        try {
-            // sending events batch with disabled authz check
-            eventPublisher.processInternal(events, eventType, false, false);
-        } catch (final RuntimeException ex) {
-            LOG.error("Failed to send single batch for unknown reason", ex);
-        }
-    }
+    public abstract void sendEvents(String etName, List<T> events);
 
 }

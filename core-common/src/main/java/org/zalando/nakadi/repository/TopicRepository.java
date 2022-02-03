@@ -4,6 +4,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordMetadata;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -19,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.kafka.RecordDeserializer;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,7 +54,9 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
             throws EventPublishingException;
 
-    default void syncPostEvent(final NakadiRecord nakadiRecord) throws EventPublishingException {
+
+    default List<NakadiRecordMetadata> sendEvents(String topic, List<NakadiRecord> nakadiRecords) {
+        return Collections.emptyList();
     }
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,

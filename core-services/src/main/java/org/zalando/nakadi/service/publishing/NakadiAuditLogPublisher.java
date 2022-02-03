@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +15,7 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import java.util.Collections;
 import java.util.Optional;
 
 @Component
@@ -24,7 +24,7 @@ public class NakadiAuditLogPublisher {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiAuditLogPublisher.class);
 
     private final FeatureToggleService featureToggleService;
-    private final EventsProcessor eventsProcessor;
+    private final JsonEventProcessor eventsProcessor;
     private final UsernameHasher usernameHasher;
     private final String auditEventType;
     private final ObjectMapper objectMapper;
@@ -33,7 +33,7 @@ public class NakadiAuditLogPublisher {
 
     @Autowired
     protected NakadiAuditLogPublisher(final FeatureToggleService featureToggleService,
-                                      final EventsProcessor eventsProcessor,
+                                      final JsonEventProcessor eventsProcessor,
                                       final EventMetadata eventMetadata,
                                       final ObjectMapper objectMapper,
                                       final UsernameHasher usernameHasher,
@@ -83,8 +83,8 @@ public class NakadiAuditLogPublisher {
                     .put("data_op", actionType.getShortname())
                     .put("data", payload);
 
-            eventsProcessor.sendEventsDisabledAuthz(
-                    new JSONArray().put(eventMetadata.addTo(dataEvent)).toString(), auditEventType);
+            eventsProcessor.sendEvents(auditEventType,
+                    Collections.singletonList(eventMetadata.addTo(dataEvent)));
         } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }
