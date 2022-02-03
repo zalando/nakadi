@@ -83,7 +83,7 @@ dependencies {
         exclude module: 'HikariCP'
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.2.14'
+    compile 'org.postgresql:postgresql:42.3.2'
 
     // misc
     compile 'org.apache.httpcomponents:httpclient'
