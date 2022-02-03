@@ -18,9 +18,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -36,7 +34,6 @@ import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -142,26 +139,6 @@ public class SubscriptionAT extends BaseAT {
         final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(gotSubscription, equalTo(subFirst));
 
-        //Check for update time of the subscription
-        final Subscription updateSub = subFirst;
-        updateSub.setAuthorization(new SubscriptionAuthorization(
-                Collections.singletonList(new ResourceAuthorizationAttribute("user", "me")),
-                Collections.singletonList(new ResourceAuthorizationAttribute("user", "me"))));
-        final String updatedSubscription = MAPPER.writeValueAsString(updateSub);
-
-        response = given()
-                .body(updatedSubscription)
-                .contentType(JSON)
-                .put(format(SUBSCRIPTION_URL, subFirst.getId()));
-
-        response
-                .then()
-                .statusCode(HttpStatus.SC_NO_CONTENT);
-
-        response = get(format(SUBSCRIPTION_URL, subFirst.getId()));
-        response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
-        final Subscription updatedSub = MAPPER.readValue(response.print(), Subscription.class);
-        assertThat(updatedSub.getUpdatedAt(), not(equalTo(subFirst.getUpdatedAt())));
     }
 
     @Test
@@ -428,11 +405,6 @@ public class SubscriptionAT extends BaseAT {
         when().delete("/subscriptions/{sid}", subscription.getId())
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
-
-        // check that we get 404
-        when().get("/subscriptions/{sid}", subscription.getId())
-                .then()
-                .statusCode(HttpStatus.SC_NOT_FOUND);
 
         // check that ZK nodes were removed
         assertThat(

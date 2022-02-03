@@ -1,11 +1,9 @@
 package org.zalando.nakadi.service.publishing;
 
-import org.hamcrest.MatcherAssert;
 import org.joda.time.DateTime;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.JsonConfig;
@@ -76,7 +74,8 @@ public class NakadiAuditLogPublisherTest {
         Assert.assertEquals(new JSONArray("[{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
                         "{\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\" " +
                         "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +
-                        "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[],\"annotations\":{}," +
+                        "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[]," +
+                        "\"annotations\":{}," +
                         "\"created_at\":\"2019-01-16T13:44:16.819Z\",\"cleanup_policy\":\"delete\"," +
                         "\"ordering_instance_ids\":[],\"authorization\":null,\"labels\":{}," +
                         "\"partition_key_fields\":[]," +

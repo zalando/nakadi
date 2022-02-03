@@ -56,7 +56,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -65,8 +64,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -93,7 +90,6 @@ public class KafkaTopicRepository implements TopicRepository {
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
     private final ZookeeperSettings zookeeperSettings;
-    private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final KafkaLocationManager kafkaLocationManager;
     private final MetricRegistry metricRegistry;
@@ -106,11 +102,6 @@ public class KafkaTopicRepository implements TopicRepository {
         this.zookeeperSettings = builder.zookeeperSettings;
         this.kafkaLocationManager = builder.kafkaLocationManager;
         this.kafkaTopicConfigFactory = builder.kafkaTopicConfigFactory;
-        if (builder.circuitBreakers == null) {
-            this.circuitBreakers = new ConcurrentHashMap<>();
-        } else {
-            this.circuitBreakers = builder.circuitBreakers;
-        }
         this.metricRegistry = builder.metricRegistry;
     }
 
@@ -120,7 +111,6 @@ public class KafkaTopicRepository implements TopicRepository {
         private NakadiSettings nakadiSettings;
         private KafkaSettings kafkaSettings;
         private ZookeeperSettings zookeeperSettings;
-        private ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
         private KafkaTopicConfigFactory kafkaTopicConfigFactory;
         private KafkaLocationManager kafkaLocationManager;
         private MetricRegistry metricRegistry;
@@ -150,11 +140,6 @@ public class KafkaTopicRepository implements TopicRepository {
             return this;
         }
 
-        public Builder setCircuitBreakers(final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers) {
-            this.circuitBreakers = circuitBreakers;
-            return this;
-        }
-
         public Builder setKafkaTopicConfigFactory(final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
             this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
             return this;
@@ -180,7 +165,6 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId,
             final String eventType,
             final BatchItem item,
-            final HystrixKafkaCircuitBreaker circuitBreaker,
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
@@ -193,32 +177,23 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.getOwner().serialize(kafkaRecord);
             }
 
-            circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    if (hasKafkaConnectionException(exception)) {
-                        circuitBreaker.markFailure();
-                    } else {
-                        circuitBreaker.markSuccessfully();
-                    }
                     result.complete(exception);
                 } else {
                     item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    circuitBreaker.markSuccessfully();
                     result.complete(null);
                 }
             }));
             return result;
         } catch (final InterruptException e) {
             Thread.currentThread().interrupt();
-            circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
-            circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         }
@@ -232,12 +207,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
                 UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
-    }
-
-    private static boolean hasKafkaConnectionException(final Exception exception) {
-        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
-                exception instanceof NetworkException ||
-                exception instanceof UnknownServerException;
     }
 
     public List<String> listTopics() throws TopicRepositoryException {
@@ -353,8 +322,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setBrokerId(partitionToBroker.get(item.getPartition()));
             });
 
-            int shortCircuited = 0;
-            final Set<String> shortCircuitedBrokerIds = new HashSet<>();
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
                 final String brokerId = item.getBrokerId();
@@ -366,25 +333,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     continue;
                 }
                 item.setStep(EventPublishingStep.PUBLISHING);
-                final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        brokerId, _id -> new HystrixKafkaCircuitBreaker(brokerId));
-                if (circuitBreaker.attemptExecution()) {
-                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, circuitBreaker, delete));
-                } else {
-                    shortCircuited++;
-                    shortCircuitedBrokerIds.add(brokerId);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
-                    metricRegistry
-                            .meter(String.format(HYSTRIX_SHORT_CIRCUIT_COUNTER, brokerId))
-                            .mark();
-                }
-            }
-            if (shortCircuited > 0) {
-                final String brokerIdsString = shortCircuitedBrokerIds.stream()
-                        .sorted()
-                        .collect(Collectors.joining(", "));
-                LOG.warn("Short circuiting request to Kafka broker(s) {}: {} time(s) due to timeout for topic {} / {}",
-                        brokerIdsString, shortCircuited, topicId, eventType);
+                sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));

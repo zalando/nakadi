@@ -33,8 +33,6 @@ dependencies {
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix:2.2.3.RELEASE'
-    //compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.4.5.RELEASE'
     compile "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
@@ -87,7 +85,7 @@ dependencies {
         exclude module: 'HikariCP'
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.2.14'
+    compile 'org.postgresql:postgresql:42.3.2'
 
     compile('commons-beanutils:commons-beanutils:1.9.4')
     compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
