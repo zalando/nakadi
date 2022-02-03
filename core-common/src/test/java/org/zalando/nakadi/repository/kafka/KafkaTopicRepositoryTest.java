@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -11,7 +10,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.header.Header;
 import org.junit.Assert;
 import org.junit.Test;
@@ -433,35 +431,6 @@ public class KafkaTopicRepositoryTest {
         }
     }
 
-    @Test
-    public void checkCircuitBreakerStateBasedOnKafkaResponse() {
-        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
-        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
-
-        //Timeout Exception should cause circuit breaker to open
-        List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
-
-        //No exception should close the circuit
-        batches = setResponseForSendingBatches(null, new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED &&
-                        item.getResponse().getDetail().equals(""))
-                .count() >= 1);
-
-        //Timeout Exception should cause circuit breaker to open again
-        batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
-
-    }
-
     private List<BatchItem> setResponseForSendingBatches(final Exception e, final MetricRegistry metricRegistry) {
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
@@ -519,21 +488,6 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(new Long(321L), result.get(new TopicPartition("t1", "1")));
         Assert.assertEquals(new Long(111L), result.get(new TopicPartition("t2", "0")));
         Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
-    }
-
-
-    @Test
-    public void whenPublishShortCircuitingIsRecorded() {
-        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
-        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "10.10.0.1", 9091), null, null)));
-
-        final MetricRegistry metricRegistry = new MetricRegistry();
-        setResponseForSendingBatches(new TimeoutException(), metricRegistry);
-        final String meterName = metricRegistry.getMeters().firstKey();
-        final Meter meter = metricRegistry.getMeters().get(meterName);
-        Assert.assertEquals(meterName, "hystrix.short.circuit.1_10.10.0.1");
-        Assert.assertTrue(meter.getCount() >= 1);
     }
 
     private static Cursor cursor(final String partition, final String offset) {
