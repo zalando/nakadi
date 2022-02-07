@@ -59,7 +59,7 @@ public class NakadiKpiPublisher {
         }
     }
 
-    public void publish(final String eventTypeName,
+    public void publishAccessLogEvent(
                         final String method,
                         final String path,
                         final String query,
