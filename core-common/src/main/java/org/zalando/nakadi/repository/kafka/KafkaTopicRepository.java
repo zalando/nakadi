@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +80,6 @@ import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
-    private static final String HYSTRIX_SHORT_CIRCUIT_COUNTER = "hystrix.short.circuit.%s";
 
     private final KafkaZookeeper kafkaZookeeper;
     private final KafkaFactory kafkaFactory;
