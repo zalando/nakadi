@@ -80,7 +80,6 @@ import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
-    private static final String HYSTRIX_SHORT_CIRCUIT_COUNTER = "hystrix.short.circuit.%s";
 
     private final KafkaZookeeper kafkaZookeeper;
     private final KafkaFactory kafkaFactory;
