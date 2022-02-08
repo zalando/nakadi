@@ -16,7 +16,7 @@ public class JettyConfig {
             @Value("${server.port:8080}") final String port,
             @Value("${jetty.threadPool.maxThreads:200}") final String maxThreads,
             @Value("${jetty.threadPool.minThreads:8}") final String minThreads,
-            @Value("${jetty.threadPool.idleTimeout:60000}") final String idleTimeout) {
+            @Value("${jetty.threadPool.idleTimeout:305000}") final String idleTimeout) {
         final JettyServletWebServerFactory factory =
                 new JettyServletWebServerFactory(Integer.valueOf(port));
         factory.addServerCustomizers((JettyServerCustomizer) server -> {
