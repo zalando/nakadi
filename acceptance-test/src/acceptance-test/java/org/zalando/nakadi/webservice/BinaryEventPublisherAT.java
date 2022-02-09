@@ -15,7 +15,7 @@ import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
 
-public class AvroEventPublisherAT extends BaseAT {
+public class BinaryEventPublisherAT extends BaseAT {
 
     private static final String NAKADI_ACCESS_LOG = "nakadi.access.log";
 

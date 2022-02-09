@@ -31,7 +31,7 @@ import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.AvroEventPublisher;
+import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
@@ -45,9 +45,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Value("${nakadi.stream.timeoutMs}")
     private long nakadiStreamTimeout;
-
-    @Value("${nakadi.kpi.event-types.nakadiAccessLog}")
-    private String accessLogEventType;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -75,7 +72,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     private AvroSchema avroSchema;
 
     @Autowired
-    private AvroEventPublisher avroEventPublisher;
+    private BinaryEventPublisher binaryEventPublisher;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -147,9 +144,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public FilterRegistrationBean loggingFilter() {
         return createFilterRegistrationBean(
-                new LoggingFilter(
-                        nakadiKpiPublisher, authorizationService,
-                        featureToggleService, avroEventPublisher, avroSchema, accessLogEventType),
+                new LoggingFilter(nakadiKpiPublisher, authorizationService, featureToggleService),
                 20);
     }
 

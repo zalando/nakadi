@@ -22,20 +22,21 @@ import java.util.UUID;
 
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
-public class AvroEventPublisherTest extends EventPublisherTest {
+public class BinaryEventPublisherTest extends EventPublisherTest {
 
     @Test
     public void testAvroEventWasSerialized() throws Exception {
         final Resource metadataRes = new DefaultResourceLoader().getResource("metadata.avsc");
         final Resource accessLog = new DefaultResourceLoader().getResource("nakadi.access.log.avsc");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, accessLog);
-        final AvroEventPublisher eventPublisher = new AvroEventPublisher(timelineService,
+        final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
                 cache, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
-        Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
+        final String eventTypeName = eventType.getName();
+        Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
         Mockito.when(timelineService.getActiveTimeline(eventType))
-                .thenReturn(new Timeline(eventType.getName(), 0, null, topic, null));
+                .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
 
         final long now = System.currentTimeMillis();
         final GenericRecord metadata = new GenericRecordBuilder(
@@ -43,7 +44,7 @@ public class AvroEventPublisherTest extends EventPublisherTest {
                 .set("occurred_at", now)
                 .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
                 .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", eventType.getName())
+                .set("event_type", eventTypeName)
                 .set("partition", 0)
                 .set("received_at", now)
                 .set("schema_version", "0")
@@ -61,9 +62,9 @@ public class AvroEventPublisherTest extends EventPublisherTest {
                 .build();
 
         final NakadiRecord nakadiRecord = NakadiRecord
-                .fromAvro(eventType.getName(), metadata, event);
+                .fromAvro(eventTypeName, metadata, event);
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
-        eventPublisher.publishAvro(records);
+        eventPublisher.publish(eventTypeName, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
     }
 

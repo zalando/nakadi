@@ -56,7 +56,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +63,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -416,11 +416,9 @@ public class KafkaTopicRepository implements TopicRepository {
                                                  final List<NakadiRecord> nakadiRecords) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
-        final List<NakadiRecordMetadata> errors = new LinkedList<>();
-        int publishingEventIdx = 0;
+        final Map<NakadiRecord, NakadiRecordMetadata> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
-                publishingEventIdx++;
                 final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
                         topic,
                         nakadiRecord.getPartition(),
@@ -435,49 +433,61 @@ public class KafkaTopicRepository implements TopicRepository {
                         nakadiRecord.getFormat());
                 producer.send(producerRecord, ((metadata, exception) -> {
                     latch.countDown();
-                    if (null != exception) {
-                        errors.add(new NakadiRecordMetadata(
+                    if (exception != null) {
+                        final NakadiRecordMetadata record = new NakadiRecordMetadata(
                                 nakadiRecord.getEventType(),
                                 nakadiRecord.getPartition(),
-                                nakadiRecord.getData(),
-                                exception));
-                        if (isExceptionShouldLeadToReset(exception)) {
-                            kafkaFactory.terminateProducer(producer);
-                        }
+                                exception);
+                        responses.put(
+                                nakadiRecord,
+                                record);
+                    } else {
+                        responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
                     }
                 }));
             }
-
             latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            final List<NakadiRecordMetadata> resps =
+                    prepareResponse(nakadiRecords, responses, null);
+            final boolean shouldResetProducer = resps.stream()
+                    .map(nrm -> nrm.getException())
+                    .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
+            if (shouldResetProducer) {
+                kafkaFactory.terminateProducer(producer);
+            }
+
+            return resps;
         } catch (final InterruptException | InterruptedException e) {
             Thread.currentThread().interrupt();
-            markUnpublishedWithError(
-                    nakadiRecords.listIterator(publishingEventIdx),
-                    errors, e);
+            return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
+            e.printStackTrace();
             kafkaFactory.terminateProducer(producer);
-            markUnpublishedWithError(
-                    nakadiRecords.listIterator(publishingEventIdx),
-                    errors, e);
+            return prepareResponse(nakadiRecords, responses, e);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
-
-        return errors;
     }
 
-    private void markUnpublishedWithError(
-            final Iterator<NakadiRecord> it,
-            final List<NakadiRecordMetadata> errors,
+    private List<NakadiRecordMetadata> prepareResponse(
+            final List<NakadiRecord> nakadiRecords,
+            final Map<NakadiRecord, NakadiRecordMetadata> recordStatuses,
             final Exception exception) {
-        while (it.hasNext()) {
-            final NakadiRecord record = it.next();
-            errors.add(new NakadiRecordMetadata(
-                    record.getEventType(),
-                    record.getPartition(),
-                    record.getData(),
-                    exception));
+        final List<NakadiRecordMetadata> errors = new LinkedList<>();
+        for (final NakadiRecord record : nakadiRecords) {
+            final NakadiRecordMetadata nakadiRecordMetadata = recordStatuses.get(record);
+            if (nakadiRecordMetadata == null) {
+                errors.add(new NakadiRecordMetadata(
+                        record.getEventType(),
+                        record.getPartition(),
+                        exception));
+            } else if (nakadiRecordMetadata != NakadiRecordMetadata.NULL_RECORD) {
+                errors.add(nakadiRecordMetadata);
+            }
         }
+
+        return errors;
     }
 
     @Override

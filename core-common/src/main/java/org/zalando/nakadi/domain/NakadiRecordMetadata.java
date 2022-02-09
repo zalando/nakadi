@@ -2,19 +2,21 @@ package org.zalando.nakadi.domain;
 
 public class NakadiRecordMetadata {
 
+    public static final NakadiRecordMetadata NULL_RECORD = new NakadiRecordMetadata(null, null, null);
+
     private final String eventType;
     private final Integer partition;
-    private final byte[] metadata;
+    //    private final byte[] metadata;
     private final Exception exception;
 
     public NakadiRecordMetadata(
             final String eventType,
             final Integer partition,
-            final byte[] metadata,
+//            final byte[] metadata,
             final Exception exception) {
         this.eventType = eventType;
         this.partition = partition;
-        this.metadata = metadata;
+//        this.metadata = metadata;
         this.exception = exception;
     }
 
@@ -26,9 +28,9 @@ public class NakadiRecordMetadata {
         return partition;
     }
 
-    public byte[] getMetadata() {
-        return metadata;
-    }
+//    public byte[] getMetadata() {
+//        return metadata;
+//    }
 
     public Exception getException() {
         return exception;

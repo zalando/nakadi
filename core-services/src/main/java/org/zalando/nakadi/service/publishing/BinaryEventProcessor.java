@@ -12,28 +12,28 @@ import java.util.List;
 
 @Component
 @Qualifier("avro-publisher")
-public class AvroEventProcessor extends EventsProcessor<NakadiRecord> {
+public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
 
-    private final AvroEventPublisher avroEventPublisher;
+    private final BinaryEventPublisher binaryEventPublisher;
 
-    public AvroEventProcessor(
-            final AvroEventPublisher avroEventPublisher,
+    public BinaryEventProcessor(
+            final BinaryEventPublisher binaryEventPublisher,
             @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
             @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
             @Value("${nakadi.kpi.config.workers}") final int workers,
             @Value("${nakadi.kpi.config.batch-queue:100}") final int maxBatchQueue,
             @Value("${nakadi.kpi.config.events-queue-size}") final int eventsQueueSize) {
         super(batchCollectionTimeout, maxBatchSize, workers, maxBatchQueue, eventsQueueSize);
-        this.avroEventPublisher = avroEventPublisher;
+        this.binaryEventPublisher = binaryEventPublisher;
     }
 
     @Override
     public void sendEvents(final String etName, final List<NakadiRecord> events) {
         try {
             final List<NakadiRecordMetadata> nakadiRecordMetadata =
-                    avroEventPublisher.publishAvro(events);
+                    binaryEventPublisher.publish(etName, events);
             if (!nakadiRecordMetadata.isEmpty()) {
                 LOG.warn("failed to publish events to {} {}",
                         etName, nakadiRecordMetadata.get(0).getException());

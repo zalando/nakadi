@@ -23,9 +23,9 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 @Service
-public class AvroEventPublisher {
+public class BinaryEventPublisher {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AvroEventPublisher.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BinaryEventPublisher.class);
 
     private final TimelineService timelineService;
     private final EventTypeCache eventTypeCache;
@@ -33,7 +33,7 @@ public class AvroEventPublisher {
     private final NakadiSettings nakadiSettings;
 
     @Autowired
-    public AvroEventPublisher(
+    public BinaryEventPublisher(
             final TimelineService timelineService,
             final EventTypeCache eventTypeCache,
             final TimelineSync timelineSync,
@@ -44,17 +44,14 @@ public class AvroEventPublisher {
         this.nakadiSettings = nakadiSettings;
     }
 
-    public List<NakadiRecordMetadata> publishAvro(final List<NakadiRecord> records) {
+    public List<NakadiRecordMetadata> publish(final String eventTypeName,
+                                              final List<NakadiRecord> records) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }
 
         Closeable publishingCloser = null;
         try {
-            // assume everyting for the same event type
-            final NakadiRecord nakadiRecord = records.get(0);
-            final String eventTypeName = nakadiRecord.getEventType();
-
             // publish under timeline lock
             publishingCloser = timelineSync.workWithEventType(
                     eventTypeName,
@@ -66,7 +63,7 @@ public class AvroEventPublisher {
                     .buildNewSpan("publishing_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                     .withTag("event_type", eventTypeName)
-                    .withTag("type", "avro")
+                    .withTag("type", "binary")
                     .start();
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
                 return timelineService.getTopicRepository(eventType).sendEvents(topic, records);

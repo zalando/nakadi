@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -23,6 +24,8 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordMetadata;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -37,12 +40,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -431,33 +433,6 @@ public class KafkaTopicRepositoryTest {
         }
     }
 
-    private List<BatchItem> setResponseForSendingBatches(final Exception e, final MetricRegistry metricRegistry) {
-        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
-            final Callback callback = (Callback) invocation.getArguments()[1];
-            if (callback != null) {
-                callback.onCompletion(null, e);
-            }
-            return null;
-        });
-        final List<BatchItem> batches = new LinkedList<>();
-        final KafkaTopicRepository kafkaTopicRepository = createKafkaRepository(kafkaFactory, metricRegistry);
-        for (int i = 0; i < 100; i++) {
-            try {
-                final BatchItem batchItem = new BatchItem("{}",
-                        BatchItem.EmptyInjectionConfiguration.build(1, true),
-                        new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                        Collections.emptyList());
-                batchItem.setPartition("1");
-                batches.add(batchItem);
-                TimeUnit.MILLISECONDS.sleep(5);
-                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(),
-                        ImmutableList.of(batchItem), "random", false);
-            } catch (final EventPublishingException | InterruptedException ex) {
-            }
-        }
-        return batches;
-    }
-
     @Test
     public void testGetSizeStatsWorksProperly() throws Exception {
         final KafkaZookeeper kz = mock(KafkaZookeeper.class);
@@ -488,6 +463,94 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(new Long(321L), result.get(new TopicPartition("t1", "1")));
         Assert.assertEquals(new Long(111L), result.get(new TopicPartition("t2", "0")));
         Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
+    }
+
+    @Test
+    public void testSendNakadiRecordsOk() {
+        final String eventType = UUID.randomUUID().toString();
+        final String topic = UUID.randomUUID().toString();
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
+                new NakadiRecord(eventType, 0, null, null, null),
+                new NakadiRecord(eventType, 0, null, null, null),
+                new NakadiRecord(eventType, 0, null, null, null)
+        );
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            callback.onCompletion(null, null);
+            return null;
+        });
+
+        final List<NakadiRecordMetadata> result =
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void testSendNakadiRecordsHalfPublished() {
+        final String eventType = UUID.randomUUID().toString();
+        final String topic = UUID.randomUUID().toString();
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
+                new NakadiRecord(eventType, 0, null, null, null),
+                new NakadiRecord(eventType, 1, null, null, null),
+                new NakadiRecord(eventType, 2, null, null, null),
+                new NakadiRecord(eventType, 3, null, null, null)
+
+        );
+
+        final Exception exception = new Exception();
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() % 2 == 0) {
+                callback.onCompletion(null, exception);
+            } else {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+
+        final List<NakadiRecordMetadata> result =
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(2, result.size());
+        Assert.assertEquals(exception, result.get(0).getException());
+        Assert.assertEquals(exception, result.get(1).getException());
+        Assert.assertEquals(Integer.valueOf(0), result.get(0).getPartition());
+        Assert.assertEquals(Integer.valueOf(2), result.get(1).getPartition());
+    }
+
+    @Test
+    public void testSendNakadiRecordsHalfSubmitted() {
+        final String eventType = UUID.randomUUID().toString();
+        final String topic = UUID.randomUUID().toString();
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
+                new NakadiRecord(eventType, 0, null, null, null),
+                new NakadiRecord(eventType, 1, null, null, null),
+                new NakadiRecord(eventType, 2, null, null, null),
+                new NakadiRecord(eventType, 3, null, null, null)
+
+        );
+
+        final KafkaException exception = new KafkaException();
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() <= 1) {
+                callback.onCompletion(null, null);
+            } else {
+                throw exception;
+            }
+            return null;
+        });
+
+        final List<NakadiRecordMetadata> result =
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(2, result.size());
+        Assert.assertEquals(exception, result.get(0).getException());
+        Assert.assertEquals(exception, result.get(1).getException());
+        Assert.assertEquals(Integer.valueOf(2), result.get(0).getPartition());
+        Assert.assertEquals(Integer.valueOf(3), result.get(1).getPartition());
     }
 
     private static Cursor cursor(final String partition, final String offset) {

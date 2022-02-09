@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -24,27 +25,31 @@ public class NakadiKpiPublisher {
 
     private final FeatureToggleService featureToggleService;
     private final JsonEventProcessor jsonEventsProcessor;
-    private final AvroEventProcessor avroEventsProcessor;
+    private final BinaryEventProcessor binaryEventsProcessor;
     private final UsernameHasher usernameHasher;
     private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
+    private final String accessLogEventType;
 
     @Autowired
-    protected NakadiKpiPublisher(final FeatureToggleService featureToggleService,
-                                 final JsonEventProcessor jsonEventsProcessor,
-                                 final AvroEventProcessor avroEventsProcessor,
-                                 final UsernameHasher usernameHasher,
-                                 final EventMetadata eventMetadata,
-                                 final UUIDGenerator uuidGenerator,
-                                 final AvroSchema avroSchema) {
+    protected NakadiKpiPublisher(
+            final FeatureToggleService featureToggleService,
+            final JsonEventProcessor jsonEventsProcessor,
+            final BinaryEventProcessor binaryEventsProcessor,
+            final UsernameHasher usernameHasher,
+            final EventMetadata eventMetadata,
+            final UUIDGenerator uuidGenerator,
+            final AvroSchema avroSchema,
+            @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
-        this.avroEventsProcessor = avroEventsProcessor;
+        this.binaryEventsProcessor = binaryEventsProcessor;
         this.usernameHasher = usernameHasher;
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
+        this.accessLogEventType = accessLogEventType;
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
@@ -59,21 +64,32 @@ public class NakadiKpiPublisher {
         }
     }
 
-    public void publishAccessLogEvent(
-                        final String method,
-                        final String path,
-                        final String query,
-                        final String user,
-                        final int statusCode,
-                        final Long timeSpentMs) {
+    public void publishAccessLogEvent(final String method,
+                                      final String path,
+                                      final String query,
+                                      final String user,
+                                      final int statusCode,
+                                      final Long timeSpentMs) {
         try {
+            if (!featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
+                publish(accessLogEventType, () -> new JSONObject()
+                        .put("method", method)
+                        .put("path", path)
+                        .put("query", query)
+                        .put("app", user)
+                        .put("app_hashed", hash(user))
+                        .put("status_code", statusCode)
+                        .put("response_time_ms", timeSpentMs));
+                return;
+            }
+
             final long now = System.currentTimeMillis();
             final GenericRecord metadata = new GenericRecordBuilder(
                     avroSchema.getMetadataSchema())
                     .set("occurred_at", now)
                     .set("eid", uuidGenerator.randomUUID().toString())
                     .set("flow_id", FlowIdUtils.peek())
-                    .set("event_type", eventTypeName)
+                    .set("event_type", accessLogEventType)
                     .set("partition", 0) // fixme avro
                     .set("received_at", now)
                     .set("schema_version", "0")  // fixme avro
@@ -91,8 +107,8 @@ public class NakadiKpiPublisher {
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(eventTypeName, metadata, event);
-            avroEventsProcessor.queueEvent(eventTypeName, nakadiRecord);
+                    .fromAvro(accessLogEventType, metadata, event);
+            binaryEventsProcessor.queueEvent(accessLogEventType, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
