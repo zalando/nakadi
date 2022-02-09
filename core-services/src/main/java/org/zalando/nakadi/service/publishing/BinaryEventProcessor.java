@@ -14,7 +14,7 @@ import java.util.List;
 @Qualifier("avro-publisher")
 public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BinaryEventProcessor.class);
 
     private final BinaryEventPublisher binaryEventPublisher;
 
