@@ -455,9 +455,7 @@ public class KafkaTopicRepository implements TopicRepository {
                                 nakadiRecord.getEventType(),
                                 nakadiRecord.getPartition(),
                                 exception);
-                        responses.put(
-                                nakadiRecord,
-                                record);
+                        responses.put(nakadiRecord, record);
                     } else {
                         responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
                     }
