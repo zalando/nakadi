@@ -1,5 +1,12 @@
 package org.zalando.nakadi.domain;
 
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.EncoderFactory;
+import org.zalando.nakadi.service.AvroSchema;
+
+import java.io.IOException;
+
 public class NakadiRecord {
 
     public static final String HEADER_FORMAT = new String(new byte[]{0});
@@ -19,7 +26,6 @@ public class NakadiRecord {
     }
 
     private final String eventType;
-    private final String topic;
     private final Integer partition;
     private final byte[] eventKey;
     private final byte[] data;
@@ -27,13 +33,11 @@ public class NakadiRecord {
 
     public NakadiRecord(
             final String eventType,
-            final String topic,
             final Integer partition,
             final byte[] eventKey,
             final byte[] data,
             final byte[] format) {
         this.eventType = eventType;
-        this.topic = topic;
         this.partition = partition;
         this.eventKey = eventKey;
         this.data = data;
@@ -42,10 +46,6 @@ public class NakadiRecord {
 
     public String getEventType() {
         return eventType;
-    }
-
-    public String getTopic() {
-        return topic;
     }
 
     public Integer getPartition() {
@@ -63,4 +63,28 @@ public class NakadiRecord {
     public byte[] getFormat() {
         return format;
     }
+
+    public static NakadiRecord fromAvro(final String eventTypeName,
+                                        final GenericRecord metadata,
+                                        final GenericRecord event) throws IOException {
+        final byte[] data = EnvelopeHolder.produceBytes(
+                AvroSchema.METADATA_VERSION,
+                (outputStream -> {
+                    final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
+                    eventWriter.write(metadata, EncoderFactory.get()
+                            .directBinaryEncoder(outputStream, null));
+                }),
+                (outputStream -> {
+                    final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
+                    eventWriter.write(event, EncoderFactory.get()
+                            .directBinaryEncoder(outputStream, null));
+                }));
+        return new NakadiRecord(
+                eventTypeName,
+                null,
+                null,
+                data,
+                NakadiRecord.Format.AVRO.getFormat());
+    }
+
 }

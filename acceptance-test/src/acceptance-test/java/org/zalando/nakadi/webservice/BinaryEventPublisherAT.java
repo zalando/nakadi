@@ -15,7 +15,7 @@ import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
 
-public class AvroEventPublisherAT extends BaseAT {
+public class BinaryEventPublisherAT extends BaseAT {
 
     private static final String NAKADI_ACCESS_LOG = "nakadi.access.log";
 
@@ -37,7 +37,7 @@ public class AvroEventPublisherAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         TestUtils.waitFor(() -> MatcherAssert.assertThat(
-                client.getBatches(), Matchers.hasSize(1)), 10000);
+                client.getBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
         final List<Map> events = client.getBatches().get(0).getEvents();
         Assert.assertFalse(events.isEmpty());
         // when tests are run in parallel it is hard to get specific event,

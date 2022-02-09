@@ -2,6 +2,8 @@ package org.zalando.nakadi.service.publishing;
 
 import org.joda.time.DateTime;
 import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.config.JsonConfig;
@@ -12,16 +14,15 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class NakadiAuditLogPublisherTest {
 
@@ -40,7 +41,7 @@ public class NakadiAuditLogPublisherTest {
 
     @Test
     public void testPublishAuditLog() {
-        final EventsProcessor eventsProcessor = mock(EventsProcessor.class);
+        final JsonEventProcessor eventsProcessor = mock(JsonEventProcessor.class);
         final FeatureToggleService toggle = mock(FeatureToggleService.class);
         final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
@@ -65,16 +66,18 @@ public class NakadiAuditLogPublisherTest {
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
                 NakadiAuditLogPublisher.ActionType.CREATED, "et-name");
 
-        final ArgumentCaptor<String> supplierCaptor = ArgumentCaptor.forClass(String.class);
-        verify(eventsProcessor, times(1)).sendEventsDisabledAuthz(
-                supplierCaptor.capture(),
-                eq("audit-event-type"));
-        assertThat(new JSONArray("[{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
+        final ArgumentCaptor<List<JSONObject>> supplierCaptor = ArgumentCaptor.forClass(List.class);
+        verify(eventsProcessor, times(1)).sendEvents(
+                eq("audit-event-type"),
+                supplierCaptor.capture());
+
+        Assert.assertEquals(new JSONArray("[{\"data_op\":\"C\",\"data\":{\"new_object\":{\"schema\":" +
                         "{\"schema\":\"{ \\\"properties\\\": { \\\"foo\\\": { \\\"type\\\": \\\"string\\\" " +
                         "} } }\",\"created_at\":\"2019-01-16T13:44:16.819Z\",\"type\":\"json_schema\"," +
                         "\"version\":\"1.0.0\"},\"compatibility_mode\":\"compatible\",\"ordering_key_fields\":[]," +
+                        "\"annotations\":{}," +
                         "\"created_at\":\"2019-01-16T13:44:16.819Z\",\"cleanup_policy\":\"delete\"," +
-                        "\"ordering_instance_ids\":[],\"authorization\":null,\"annotations\":{},\"labels\":{}," +
+                        "\"ordering_instance_ids\":[],\"authorization\":null,\"labels\":{}," +
                         "\"partition_key_fields\":[]," +
                         "\"updated_at\":\"2019-01-16T13:44:16.819Z\"," +
                         "\"default_statistic\":{\"read_parallelism\":1," +
@@ -101,7 +104,7 @@ public class NakadiAuditLogPublisherTest {
                         "\"user_hash\":\"89bc5f7398509d3ce86c013c138e11357ff7f589fca9d58cfce443c27f81956c\"," +
                         "\"resource_type\":\"event_type\",\"resource_id\":\"et-name\",\"user\":\"user-name\"}," +
                         "\"data_type\":\"event_type\"}]\n").toString(),
-                sameJSONAs(supplierCaptor.getValue().toString()));
+                new JSONArray(supplierCaptor.getValue()).toString());
     }
 
 }

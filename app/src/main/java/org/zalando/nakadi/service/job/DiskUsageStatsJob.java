@@ -14,6 +14,7 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SystemEventTypeInitializer;
 import org.zalando.nakadi.service.publishing.EventMetadata;
 import org.zalando.nakadi.service.publishing.EventsProcessor;
+import org.zalando.nakadi.service.publishing.JsonEventProcessor;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class DiskUsageStatsJob {
             final JobWrapperFactory jobWrapperFactory,
             final TimelineDbRepository timelineDbRepository,
             final TopicRepositoryHolder topicRepositoryHolder,
-            final EventsProcessor eventsProcessor,
+            final JsonEventProcessor eventsProcessor,
             final SystemEventTypeInitializer systemEventTypeInitializer,
             final DiskUsageStatsConfig config,
             final EventMetadata eventMetadata) {

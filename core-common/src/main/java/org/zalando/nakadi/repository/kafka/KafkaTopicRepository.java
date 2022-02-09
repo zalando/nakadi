@@ -33,6 +33,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordMetadata;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -62,6 +63,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -200,8 +203,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return false;
         }
         return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                        UnknownServerException.class)
+                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
@@ -420,42 +423,86 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public void syncPostEvent(final NakadiRecord nakadiRecord) {
+    /**
+     * The method sends list of events to Kafka and waiting for the result of each event.
+     *
+     * @param nakadiRecords list of the events to publish
+     * @return empty list if no errors otherwise list with the errored events
+     */
+    public List<NakadiRecordMetadata> sendEvents(final String topic,
+                                                 final List<NakadiRecord> nakadiRecords) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
+        final Map<NakadiRecord, NakadiRecordMetadata> responses = new ConcurrentHashMap<>();
         try {
-            final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
-                    nakadiRecord.getTopic(),
-                    nakadiRecord.getPartition(),
-                    nakadiRecord.getEventKey(),
-                    nakadiRecord.getData());
+            for (final NakadiRecord nakadiRecord : nakadiRecords) {
+                final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
+                        topic,
+                        nakadiRecord.getPartition(),
+                        nakadiRecord.getEventKey(),
+                        nakadiRecord.getData());
 
-            // fixme avro do not forget EventOwnerHeader, set via metadata?
-            // for the internal KPI evnets it is fine not to have it
+                // fixme avro do not forget EventOwnerHeader, set via metadata?
+                // for the internal KPI evnets it is fine not to have it
 
-            producerRecord.headers().add(
-                    NakadiRecord.HEADER_FORMAT,
-                    nakadiRecord.getFormat());
-
-            producer.send(producerRecord, ((metadata, exception) -> {
-                if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic '{}' event-type '{}'",
-                            nakadiRecord.getTopic(), nakadiRecord.getEventType(), exception);
-                    if (isExceptionShouldLeadToReset(exception)) {
-                        kafkaFactory.terminateProducer(producer);
+                producerRecord.headers().add(
+                        NakadiRecord.HEADER_FORMAT,
+                        nakadiRecord.getFormat());
+                producer.send(producerRecord, ((metadata, exception) -> {
+                    latch.countDown();
+                    if (exception != null) {
+                        final NakadiRecordMetadata record = new NakadiRecordMetadata(
+                                nakadiRecord.getEventType(),
+                                nakadiRecord.getPartition(),
+                                exception);
+                        responses.put(nakadiRecord, record);
+                    } else {
+                        responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
                     }
-                }
-            }));
-        } catch (final InterruptException e) {
+                }));
+            }
+            latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            final List<NakadiRecordMetadata> resps =
+                    prepareResponse(nakadiRecords, responses, null);
+            final boolean shouldResetProducer = resps.stream()
+                    .map(nrm -> nrm.getException())
+                    .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
+            if (shouldResetProducer) {
+                kafkaFactory.terminateProducer(producer);
+            }
+
+            return resps;
+        } catch (final InterruptException | InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Error publishing message to kafka", e);
+            return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
-            LOG.error("Error publishing message to kafka", e);
+            return prepareResponse(nakadiRecords, responses, e);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
     }
 
+    private List<NakadiRecordMetadata> prepareResponse(
+            final List<NakadiRecord> nakadiRecords,
+            final Map<NakadiRecord, NakadiRecordMetadata> recordStatuses,
+            final Exception exception) {
+        final List<NakadiRecordMetadata> errors = new LinkedList<>();
+        for (final NakadiRecord record : nakadiRecords) {
+            final NakadiRecordMetadata nakadiRecordMetadata = recordStatuses.get(record);
+            if (nakadiRecordMetadata == null) {
+                errors.add(new NakadiRecordMetadata(
+                        record.getEventType(),
+                        record.getPartition(),
+                        exception));
+            } else if (nakadiRecordMetadata != NakadiRecordMetadata.NULL_RECORD) {
+                errors.add(nakadiRecordMetadata);
+            }
+        }
+
+        return errors;
+    }
 
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)

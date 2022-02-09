@@ -14,7 +14,7 @@ public class EventsProcessorTest {
 
     @Test
     public void shouldSendEventWhenSubmitted() throws InterruptedException {
-        final EventsProcessor eventsProcessor = new EventsProcessor(eventPublisher, 100, 1, 1, 10, 10);
+        final EventsProcessor eventsProcessor = new JsonEventProcessor(eventPublisher, 100, 1, 1, 10, 10);
         eventsProcessor.start();
         try {
             final JSONObject event = new JSONObject().put("path", "/path/to/event").put("user", "adyachkov");

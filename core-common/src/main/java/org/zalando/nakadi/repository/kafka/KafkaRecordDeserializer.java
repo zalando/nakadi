@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
@@ -55,6 +57,18 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
             metadataParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
                     AvroSchema(schemas.getMetadataSchema()));
             final ObjectNode metadataNode = metadataParser.readValueAsTree();
+            metadataNode.put(
+                    "occurred_at",
+                    new DateTime(
+                            metadataNode.get("occurred_at").asLong(),
+                            DateTimeZone.UTC).toString()
+            );
+            metadataNode.put(
+                    "received_at",
+                    new DateTime(
+                            metadataNode.get("received_at").asLong(),
+                            DateTimeZone.UTC).toString()
+            );
 
             final JsonParser eventParser = avroMapper.createParser(envelop.getPayload());
             eventParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
