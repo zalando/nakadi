@@ -14,7 +14,7 @@ import java.util.List;
 @Qualifier("json-publisher")
 public class JsonEventProcessor extends EventsProcessor<JSONObject> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventsProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JsonEventProcessor.class);
 
     private final EventPublisher eventPublisher;
 
