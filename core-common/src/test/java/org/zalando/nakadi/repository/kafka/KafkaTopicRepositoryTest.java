@@ -122,23 +122,6 @@ public class KafkaTopicRepositoryTest {
 
     @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
-        //lower hystrix configs for tests to execute faster
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.metrics.healthSnapshot.intervalInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "10");
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.metrics.rollingStats.timeInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "500");
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.circuitBreaker.sleepWindowInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "500");
-
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])

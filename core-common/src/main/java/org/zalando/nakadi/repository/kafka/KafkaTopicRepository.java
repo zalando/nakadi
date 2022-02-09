@@ -52,10 +52,10 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +83,6 @@ import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
-    private static final String HYSTRIX_SHORT_CIRCUIT_COUNTER = "hystrix.short.circuit.%s";
 
     private final KafkaZookeeper kafkaZookeeper;
     private final KafkaFactory kafkaFactory;
@@ -351,14 +350,14 @@ public class KafkaTopicRepository implements TopicRepository {
             }
         } catch (final TimeoutException ex) {
             kafkaFactory.terminateProducer(producer);
-            failUnpublished(batch, "timed out");
+            failUnpublished(topicId, eventType, batch, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
-            failUnpublished(batch, "internal error");
+            failUnpublished(topicId, eventType, batch, "internal error");
             throw new EventPublishingException("Internal error publishing message to kafka", ex, topicId, eventType);
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
-            failUnpublished(batch, "interrupted");
+            failUnpublished(topicId, eventType, batch, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
             kafkaFactory.releaseProducer(producer);
@@ -366,7 +365,7 @@ public class KafkaTopicRepository implements TopicRepository {
         final boolean atLeastOneFailed = batch.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
         if (atLeastOneFailed) {
-            failUnpublished(batch, "internal error");
+            failUnpublished(topicId, eventType, batch, "internal error");
             throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
         }
     }
@@ -375,35 +374,53 @@ public class KafkaTopicRepository implements TopicRepository {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
     }
 
-    private void failUnpublished(final List<BatchItem> batch, final String reason) {
-        logFailedEvents(batch);
+    private void failUnpublished(final String topicId, final String eventType, final List<BatchItem> batch,
+                                 final String reason) {
+        logFailedEvents(topicId, eventType, batch);
         batch.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .filter(item -> item.getResponse().getDetail().isEmpty())
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
-    private void logFailedEvents(final List<BatchItem> batch) {
-        final Map<String, List<Integer>> result = new HashMap<>();
-        for (final BatchItem batchItem : batch) {
-            List<Integer> events = result.get(batchItem.getPartition());
-            if (events == null) {
-                events = new LinkedList<>();
-                result.put(batchItem.getPartition(), events);
-            }
-            if (batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED) {
-                events.add(1);
-            } else {
-                events.add(0);
-            }
+    private void logFailedEvents(final String topicId, final String eventType, final List<BatchItem> batch) {
+        final Map<String, List<BatchItem>> itemsPerPartition = new HashMap<>();
+        for (final BatchItem item : batch) {
+            itemsPerPartition.computeIfAbsent(item.getPartition(), (k) -> new LinkedList<>()).add(item);
         }
 
         final StringBuilder sb = new StringBuilder();
-        for (final Map.Entry<String, List<Integer>> entry : result.entrySet()) {
-            sb.append(entry.getKey()).append(":").append(Arrays.toString(entry.getValue().toArray())).append(" ");
+        for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
+            sb.append(entry.getKey())
+                .append(":[")
+                .append(entry.getValue().stream()
+                        .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
+                        .collect(Collectors.joining(", ")))
+                .append("] ");
         }
+        LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());
 
-        LOG.info("Failed events in batch {}", sb.toString());
+        for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
+            final Set<String> failedEventKeys = new HashSet<>();
+            final Set<String> loggedEventKeys = new HashSet<>();
+
+            for (final BatchItem item : entry.getValue()) {
+                final String itemKey = item.getEventKey(); // may be null, but that's OK
+
+                if (item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED) {
+                    failedEventKeys.add(itemKey);
+                } else {
+                    if (failedEventKeys.contains(itemKey) && !loggedEventKeys.contains(itemKey)) {
+                        // some event has failed, but another one succeeded after it: the publishing order is violated!
+                        LOG.warn("Event ordering violation in topic {} / {} partition {} for key {}!",
+                                 topicId, eventType, entry.getKey(), itemKey);
+
+                        // avoid logging the same key twice
+                        loggedEventKeys.add(itemKey);
+                    }
+                }
+            }
+        }
     }
 
     /**
