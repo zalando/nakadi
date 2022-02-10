@@ -449,15 +449,18 @@ public class KafkaTopicRepository implements TopicRepository {
                         NakadiRecord.HEADER_FORMAT,
                         nakadiRecord.getFormat());
                 producer.send(producerRecord, ((metadata, exception) -> {
-                    latch.countDown();
-                    if (exception != null) {
-                        final NakadiRecordMetadata record = new NakadiRecordMetadata(
-                                nakadiRecord.getEventType(),
-                                nakadiRecord.getPartition(),
-                                exception);
-                        responses.put(nakadiRecord, record);
-                    } else {
-                        responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
+                    try {
+                        if (exception != null) {
+                            final NakadiRecordMetadata record = new NakadiRecordMetadata(
+                                    nakadiRecord.getEventType(),
+                                    nakadiRecord.getPartition(),
+                                    exception);
+                            responses.put(nakadiRecord, record);
+                        } else {
+                            responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
+                        }
+                    } finally {
+                        latch.countDown();
                     }
                 }));
             }
