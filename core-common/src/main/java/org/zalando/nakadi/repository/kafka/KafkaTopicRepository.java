@@ -461,10 +461,11 @@ public class KafkaTopicRepository implements TopicRepository {
                     }
                 }));
             }
-            latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
-
-            final List<NakadiRecordMetadata> resps =
-                    prepareResponse(nakadiRecords, responses, null);
+            final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
+            final List<NakadiRecordMetadata> resps = prepareResponse(
+                    nakadiRecords, responses,
+                    recordsPublished ? null : new TimeoutException(
+                            "timeout waiting for events to be sent to kafka"));
             final boolean shouldResetProducer = resps.stream()
                     .map(nrm -> nrm.getException())
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
