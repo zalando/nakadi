@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class EnvelopeHolder {
 
@@ -32,47 +34,27 @@ public class EnvelopeHolder {
         final int payloadLength = eventOutputStream.size() - 1 - 4 - metadataLength - 4;
 
         final byte[] data = eventOutputStream.toByteArray();
-        writeIntToArray(data, 1, metadataLength);
-        writeIntToArray(data, 1 + 4 + metadataLength, payloadLength);
-        return data;
-    }
 
-    private static void writeIntToArray(
-            final byte[] data,
-            final int offset,
-            final int value) {
-        data[offset + 0] = (byte) (value >> 24);
-        data[offset + 1] = (byte) (value >> 16);
-        data[offset + 2] = (byte) (value >> 8);
-        data[offset + 3] = (byte) (value >> 0);
+        final ByteBuffer bb = ByteBuffer.wrap(data);
+        bb.put(metadataVersion);
+        bb.putInt(metadataLength);
+        bb.position(bb.position() + metadataLength);
+        bb.putInt(payloadLength);
+        return data;
     }
 
     public static EnvelopeHolder fromBytes(final byte[] data) throws IOException {
         final EnvelopeHolder envelopeHolder = new EnvelopeHolder();
         envelopeHolder.data = data;
-        final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        byte[] tmp = new byte[1];
-        bais.read(tmp);
-        envelopeHolder.metadataVersion = tmp[0];
-
-        tmp = new byte[4];
-        bais.read(tmp);
-        envelopeHolder.metadataLength = toInt(tmp);
-
-        bais.skip(envelopeHolder.metadataLength);
-        tmp = new byte[4];
-        bais.read(tmp);
-        envelopeHolder.payloadLength = toInt(tmp);
-
+        final ByteBuffer bb = ByteBuffer.wrap(data);
+        envelopeHolder.metadataVersion = bb.get();
+        envelopeHolder.metadataLength = bb.getInt();
+        // skip metadata
+        bb.position(bb.position() + envelopeHolder.metadataLength);
+        envelopeHolder.payloadLength = bb.getInt();
         return envelopeHolder;
     }
 
-    private static int toInt(final byte[] bytes) {
-        return ((bytes[0] & 0xFF) << 24) |
-                ((bytes[1] & 0xFF) << 16) |
-                ((bytes[2] & 0xFF) << 8) |
-                ((bytes[3] & 0xFF) << 0);
-    }
 
     private EnvelopeHolder() {
     }
