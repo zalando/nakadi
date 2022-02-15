@@ -13,6 +13,11 @@ public interface PartitionStrategy {
     String USER_DEFINED_STRATEGY = "user_defined";
     String RANDOM_STRATEGY = "random";
 
+    default List<String> extractEventKeys(EventType eventType, JSONObject event)
+            throws PartitioningException {
+        throw new PartitioningException("Not supported by partition strategy.");
+    }
+
     String calculatePartition(EventType eventType, JSONObject event, List<String> partitions)
             throws PartitioningException;
 }

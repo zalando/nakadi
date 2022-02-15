@@ -56,6 +56,19 @@ public class PartitionResolver {
         }
     }
 
+    public List<String> extractEventPartitionKeys(final EventType eventType, final JSONObject eventAsJson)
+            throws PartitioningException {
+
+        final String eventTypeStrategy = eventType.getPartitionStrategy();
+        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+        if (partitionStrategy == null) {
+            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
+                    eventTypeStrategy);
+        }
+
+        return partitionStrategy.extractEventKeys(eventType, eventAsJson);
+    }
+
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
 

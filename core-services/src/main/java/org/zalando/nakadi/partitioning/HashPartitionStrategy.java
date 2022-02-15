@@ -31,8 +31,9 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+    public List<String> extractEventKeys(final EventType eventType, final JSONObject event)
             throws InvalidPartitionKeyFieldsException {
+
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields.isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
@@ -40,28 +41,17 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
         try {
             final JsonPathAccess traversableJsonEvent = new JsonPathAccess(event);
-            final int hashValue = partitionKeyFields.stream()
-                    // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
-                    // a string first and then use hashCode()
+            return partitionKeyFields.stream()
                     .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
                     .map(Try.wrap(okf -> {
                         try {
-                            final String fieldValue = traversableJsonEvent.get(okf).toString();
-                            return stringHash.hashCode(fieldValue);
+                            return traversableJsonEvent.get(okf).toString();
                         } catch (final JsonPathAccessException e) {
                             throw new InvalidPartitionKeyFieldsException(e.getMessage());
                         }
                     }))
                     .map(Try::getOrThrow)
-                    .mapToInt(hc -> hc)
-                    .sum();
-
-
-            int partitionIndex = abs(hashValue) % partitions.size();
-            partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
-
-            final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
-            return sortedPartitions.get(partitionIndex);
+                    .collect(Collectors.toList());
 
         } catch (NakadiRuntimeException e) {
             final Exception original = e.getException();
@@ -73,4 +63,26 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
+    @Override
+    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+            throws InvalidPartitionKeyFieldsException {
+
+        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
+        if (partitionKeyFields.isEmpty()) {
+            throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
+                    "has no partition key fields configured.");
+        }
+
+        final int hashValue = extractEventKeys(eventType, event).stream()
+                .map(s -> s.hashCode())
+                .mapToInt(hc -> hc)
+                .sum();
+
+        int partitionIndex = abs(hashValue) % partitions.size();
+        partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
+
+        // TODO: pre-sort
+        final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
+        return sortedPartitions.get(partitionIndex);
+    }
 }

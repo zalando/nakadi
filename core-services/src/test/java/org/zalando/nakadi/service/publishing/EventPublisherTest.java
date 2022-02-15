@@ -456,45 +456,7 @@ public class EventPublisherTest {
     }
 
     @Test
-    public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-                .partitionKeyFields(ImmutableList.of("my_field"))
-                .build();
-
-        final JSONArray batch = buildDefaultBatch(1);
-        batch.getJSONObject(0).put("my_field", "my_key");
-
-        mockSuccessfulValidation(eventType);
-
-        publisher.publish(batch.toString(), eventType.getName());
-
-        final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
-    }
-
-    @Test
-    public void whenMultiplePartitioningKeyThenEventKeyIsNotSet() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-                .partitionKeyFields(ImmutableList.of("my_field", "other_field"))
-                .build();
-
-        final JSONArray batch = buildDefaultBatch(1);
-        final JSONObject event = batch.getJSONObject(0);
-        event.put("my_field", "my_key");
-        event.put("other_field", "other_value");
-
-        mockSuccessfulValidation(eventType);
-
-        publisher.publish(batch.toString(), eventType.getName());
-
-        final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
-    }
-
-    @Test
-    public void whenNoneHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
+    public void whenNotAHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
                 .build();
