@@ -68,6 +68,8 @@ public class NakadiKpiPublisher {
                                       final String path,
                                       final String query,
                                       final String user,
+                                      final String contentEncoding,
+                                      final String acceptEncoding,
                                       final int statusCode,
                                       final Long timeSpentMs) {
         try {
@@ -77,6 +79,8 @@ public class NakadiKpiPublisher {
                         .put("path", path)
                         .put("query", query)
                         .put("app", user)
+                        .put("accept_encoding", acceptEncoding)
+                        .put("content_encoding", contentEncoding)
                         .put("app_hashed", hash(user))
                         .put("status_code", statusCode)
                         .put("response_time_ms", timeSpentMs));
@@ -104,6 +108,8 @@ public class NakadiKpiPublisher {
                     .set("app_hashed", hash(user))
                     .set("status_code", statusCode)
                     .set("response_time_ms", timeSpentMs)
+                    .set("accept_encoding", acceptEncoding)
+                    .set("content_encoding", contentEncoding)
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord
