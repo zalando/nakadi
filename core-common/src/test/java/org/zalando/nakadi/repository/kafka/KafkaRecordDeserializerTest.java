@@ -60,6 +60,8 @@ public class KafkaRecordDeserializerTest {
             event.put("app_hashed", "hashed-app");
             event.put("status_code", 201);
             event.put("response_time_ms", 10);
+            event.put("accept_encoding", "-");
+            event.put("content_encoding", "--");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -105,6 +107,8 @@ public class KafkaRecordDeserializerTest {
                 .put("app_hashed", "hashed-app")
                 .put("status_code", 201)
                 .put("response_time_ms", 10)
+                .put("accept_encoding", "-")
+                .put("content_encoding", "--")
                 .set("metadata", metadata);
         return event;
     }
