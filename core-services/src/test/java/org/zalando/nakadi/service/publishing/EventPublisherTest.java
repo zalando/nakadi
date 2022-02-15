@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -452,6 +453,38 @@ public class EventPublisherTest {
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(ImmutableList.of("my_field"))
+                .build();
+
+        Mockito
+                .doReturn(ImmutableList.of("my_key"))
+                .when(partitionResolver)
+                .extractEventPartitionKeys(any(), any());
+
+        assertThat(publisher.calculateEventKey(eventType, new JSONObject()),
+                equalTo("my_key"));
+    }
+
+    @Test
+    public void whenMultiplePartitioningKeyThenEventKeyIsComposite() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(ImmutableList.of("my_field", "other_field"))
+                .build();
+
+        Mockito
+                .doReturn(ImmutableList.of("my_key", "other_value"))
+                .when(partitionResolver)
+                .extractEventPartitionKeys(any(), any());
+
+        assertThat(publisher.calculateEventKey(eventType, new JSONObject()),
+                equalTo("my_key, other_value"));
     }
 
     @Test

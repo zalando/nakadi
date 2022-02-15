@@ -105,6 +105,17 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
+    public void canExtractPartitionKeys() throws Exception {
+        final EventType eventType = loadEventType(
+                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
+        eventType.setPartitionStrategy(HASH_STRATEGY);
+
+        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
+        assertThat(strategy.extractEventKeys(eventType, event),
+                equalTo(ImmutableList.of("A1", "Super Shirt")));
+    }
+
+    @Test
     public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
         final EventType eventType = loadEventType(
                 "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");

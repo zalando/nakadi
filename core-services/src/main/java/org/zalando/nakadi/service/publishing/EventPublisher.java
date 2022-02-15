@@ -208,23 +208,24 @@ public class EventPublisher {
 
     private void assignKeys(final List<BatchItem> batch, final EventType eventType) {
         for (final BatchItem item : batch) {
-            setEventKey(item, eventType);
+            item.setEventKey(calculateEventKey(eventType, item.getEvent()));
         }
     }
 
-    private void setEventKey(final BatchItem item, final EventType eventType) {
+    String calculateEventKey(final EventType eventType, final JSONObject event) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
                  eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
 
-            final String compactionKey = item.getEvent()
+            return event
                     .getJSONObject("metadata")
                     .getString("partition_compaction_key");
-            item.setEventKey(compactionKey);
 
         } else if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
-            final List<String> partitionKeys = partitionResolver.extractEventPartitionKeys(eventType, item.getEvent());
-            item.setEventKey(Arrays.toString(partitionKeys.toArray()));
+
+            return partitionResolver.extractEventPartitionKeys(eventType, event).
+                    stream().collect(Collectors.joining(", "));
         }
+        return null;
     }
 
     private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
