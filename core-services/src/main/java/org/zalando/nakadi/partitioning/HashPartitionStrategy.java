@@ -67,14 +67,8 @@ public class HashPartitionStrategy implements PartitionStrategy {
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
             throws InvalidPartitionKeyFieldsException {
 
-        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
-        if (partitionKeyFields.isEmpty()) {
-            throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
-                    "has no partition key fields configured.");
-        }
-
         final int hashValue = extractEventKeys(eventType, event).stream()
-                .map(s -> s.hashCode())
+                .map(s -> stringHash.hashCode(s))
                 .mapToInt(hc -> hc)
                 .sum();
 
