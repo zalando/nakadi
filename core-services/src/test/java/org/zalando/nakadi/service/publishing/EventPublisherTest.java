@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
