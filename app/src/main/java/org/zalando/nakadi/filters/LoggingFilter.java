@@ -147,6 +147,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                     requestLogInfo.path,
                     requestLogInfo.query,
                     requestLogInfo.user,
+                    requestLogInfo.contentEncoding,
+                    requestLogInfo.acceptEncoding,
                     statusCode,
                     timeSpentMs);
     }

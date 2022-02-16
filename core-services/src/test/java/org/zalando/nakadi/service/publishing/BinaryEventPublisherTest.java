@@ -59,6 +59,8 @@ public class BinaryEventPublisherTest extends EventPublisherTest {
                 .set("app_hashed", "hashed-app")
                 .set("status_code", 201)
                 .set("response_time_ms", 10)
+                .set("accept_encoding", "-")
+                .set("content_encoding", "--")
                 .build();
 
         final NakadiRecord nakadiRecord = NakadiRecord
