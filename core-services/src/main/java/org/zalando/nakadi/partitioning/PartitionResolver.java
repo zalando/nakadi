@@ -59,29 +59,28 @@ public class PartitionResolver {
     public List<String> extractEventPartitionKeys(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
 
-        final String eventTypeStrategy = eventType.getPartitionStrategy();
-        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
-        if (partitionStrategy == null) {
-            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
-                    eventTypeStrategy);
-        }
-
-        return partitionStrategy.extractEventKeys(eventType, eventAsJson);
+        return resolveStrategy(eventType).extractEventKeys(eventType, eventAsJson);
     }
 
-    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
+    public String resolvePartition(
+            final EventType eventType, final JSONObject eventAsJson, final List<String> eventKeys)
             throws PartitioningException {
 
+        // TODO: cache and pre-sort
+        final List<String> partitions = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+
+        return resolveStrategy(eventType).calculatePartition(eventAsJson, eventKeys, partitions);
+    }
+
+    private PartitionStrategy resolveStrategy(final EventType eventType) {
+
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
         if (partitionStrategy == null) {
             throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
-
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        return partitionStrategy;
     }
-
 }

@@ -15,9 +15,9 @@ public interface PartitionStrategy {
 
     default List<String> extractEventKeys(EventType eventType, JSONObject event)
             throws PartitioningException {
-        throw new PartitioningException("Not supported by partition strategy.");
+        return null;
     }
 
-    String calculatePartition(EventType eventType, JSONObject event, List<String> partitions)
-            throws PartitioningException;
+    String calculatePartition(JSONObject event, List<String> eventKeys, List<String> partitions)
+        throws PartitioningException;
 }

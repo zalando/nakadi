@@ -64,11 +64,11 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
-            throws InvalidPartitionKeyFieldsException {
+    public String calculatePartition(
+            final JSONObject event, final List<String> eventKeys, final List<String> partitions) {
 
-        final int hashValue = extractEventKeys(eventType, event).stream()
-                .map(s -> stringHash.hashCode(s))
+        final int hashValue = eventKeys.stream()
+            .map(s -> stringHash.hashCode(s))
                 .mapToInt(hc -> hc)
                 .sum();
 

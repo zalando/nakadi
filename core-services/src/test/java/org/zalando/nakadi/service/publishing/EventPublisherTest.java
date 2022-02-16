@@ -200,7 +200,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(createBatchItem(event), eventType);
-        verify(partitionResolver, times(0)).resolvePartition(eventType, event);
+        verify(partitionResolver, times(0)).resolvePartition(eventType, event, null);
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -249,7 +249,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -330,7 +330,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any(), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -345,7 +345,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -360,7 +360,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -375,7 +375,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any(), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -420,7 +420,7 @@ public class EventPublisherTest {
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any(), any());
     }
 
     @Test
@@ -450,7 +450,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, times(1)).getValidator(eventType.getName());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any(), any());
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -467,8 +467,8 @@ public class EventPublisherTest {
                 .when(partitionResolver)
                 .extractEventPartitionKeys(any(), any());
 
-        assertThat(publisher.calculateEventKey(eventType, new JSONObject()),
-                equalTo("my_key"));
+        assertThat(publisher.getEventKeys(eventType, new JSONObject()),
+                equalTo(ImmutableList.of("my_key")));
     }
 
     @Test
@@ -483,8 +483,8 @@ public class EventPublisherTest {
                 .when(partitionResolver)
                 .extractEventPartitionKeys(any(), any());
 
-        assertThat(publisher.calculateEventKey(eventType, new JSONObject()),
-                equalTo("my_key, other_value"));
+        assertThat(publisher.getEventKeys(eventType, new JSONObject()),
+                equalTo(ImmutableList.of("my_key", "other_value")));
     }
 
     @Test
@@ -499,7 +499,7 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        assertThat(publishedBatch.get(0).getEventKeys(), equalTo(null));
     }
 
     @SuppressWarnings("unchecked")
@@ -584,7 +584,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
                 .when(partitionResolver)
-                .resolvePartition(any(), any());
+                .resolvePartition(any(), any(), any());
     }
 
     private void mockFaultEnrichment() throws EnrichmentException {

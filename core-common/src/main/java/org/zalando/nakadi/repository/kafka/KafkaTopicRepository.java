@@ -405,7 +405,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final Set<String> loggedEventKeys = new HashSet<>();
 
             for (final BatchItem item : entry.getValue()) {
-                final String itemKey = item.getEventKey(); // may be null, but that's OK
+                final String itemKey = item.getEventKeyString(); // may be null, but that's OK
 
                 if (item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED) {
                     failedEventKeys.add(itemKey);

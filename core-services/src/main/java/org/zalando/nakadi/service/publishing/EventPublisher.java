@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -196,7 +197,8 @@ public class EventPublisher {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
+                final String partitionId =
+                        partitionResolver.resolvePartition(eventType, item.getEvent(), item.getEventKeys());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
@@ -207,22 +209,22 @@ public class EventPublisher {
 
     private void assignKeys(final List<BatchItem> batch, final EventType eventType) {
         for (final BatchItem item : batch) {
-            item.setEventKey(calculateEventKey(eventType, item.getEvent()));
+            item.setEventKeys(getEventKeys(eventType, item.getEvent()));
         }
     }
 
-    String calculateEventKey(final EventType eventType, final JSONObject event) {
+    List<String> getEventKeys(final EventType eventType, final JSONObject event) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
                  eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
 
-            return event
+            return ImmutableList.of(
+                    event
                     .getJSONObject("metadata")
-                    .getString("partition_compaction_key");
+                    .getString("partition_compaction_key"));
 
         } else if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
 
-            return partitionResolver.extractEventPartitionKeys(eventType, event).
-                    stream().collect(Collectors.joining(", "));
+            return partitionResolver.extractEventPartitionKeys(eventType, event);
         }
         return null;
     }

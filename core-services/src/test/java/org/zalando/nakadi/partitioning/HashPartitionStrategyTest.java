@@ -33,7 +33,11 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.loadEventType;
@@ -50,6 +54,7 @@ public class HashPartitionStrategyTest {
     private static List<JSONObject> eventSamplesB = null;
     private static List<JSONObject> eventSamplesC = null;
 
+    private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final HashPartitionStrategy strategy;
     private final EventType simpleEventType;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
@@ -58,7 +63,7 @@ public class HashPartitionStrategyTest {
         simpleEventType = new EventType();
         simpleEventType.setPartitionKeyFields(asList("sku", "name"));
 
-        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
+        hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
         when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
                 .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
 
@@ -99,7 +104,8 @@ public class HashPartitionStrategyTest {
         final EventType eventType = new EventType();
         eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
-        final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
+        final List<String> keys = strategy.extractEventKeys(eventType, event);
+        final String partition = strategy.calculatePartition(null, keys, asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
     }
@@ -116,12 +122,27 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
-    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
-        final EventType eventType = loadEventType(
-                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
-        eventType.setPartitionStrategy(HASH_STRATEGY);
-        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-        assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")), equalTo("p0"));
+    public void usesProvidedStringHash() {
+        final StringHash hashMock = mock(StringHash.class);
+        when(hashMock.hashCode(anyString()))
+                .thenAnswer(invocation -> 1);
+
+        final HashPartitionStrategy mockedHashStrategy =
+                new HashPartitionStrategy(hashPartitioningCrutch, hashMock);
+
+        final List<String> partitionNames = asList(PARTITIONS);
+        assertThat(
+                ImmutableList.of(ImmutableList.of("key1"),
+                                 ImmutableList.of("key2"),
+                                 ImmutableList.of("key1", "key2"))
+                .stream()
+                .map(keys -> mockedHashStrategy.calculatePartition(null, keys, partitionNames))
+                .collect(Collectors.toList()),
+
+                equalTo(ImmutableList.of("1", "1", "2")));
+
+        verify(hashMock, times(2)).hashCode(eq("key1"));
+        verify(hashMock, times(2)).hashCode(eq("key2"));
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
@@ -188,9 +209,11 @@ public class HashPartitionStrategyTest {
 
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
                                           final List<JSONObject> events) {
+        final List<String> partitionNames = asList(PARTITIONS);
         events.stream()
                 .map(Try.<JSONObject, Void>wrap(event -> {
-                    final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
+                    final List<String> keys = strategy.extractEventKeys(eventType, event);
+                    final String partition = strategy.calculatePartition(null, keys, partitionNames);
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                     return null;

@@ -53,7 +53,7 @@ public class PartitionResolverTest {
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");
 
-        final String partition = partitionResolver.resolvePartition(eventType, event);
+        final String partition = partitionResolver.resolvePartition(eventType, event, null);
         assertThat(partition, notNullValue());
     }
 
@@ -62,7 +62,7 @@ public class PartitionResolverTest {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy("blah_strategy");
 
-        partitionResolver.resolvePartition(eventType, null);
+        partitionResolver.resolvePartition(eventType, null, null);
     }
 
     @Test(expected = NoSuchPartitionStrategyException.class)
