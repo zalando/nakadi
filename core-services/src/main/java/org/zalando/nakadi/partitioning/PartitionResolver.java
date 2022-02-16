@@ -66,11 +66,13 @@ public class PartitionResolver {
             final EventType eventType, final JSONObject eventAsJson, final List<String> eventKeys)
             throws PartitioningException {
 
+        final PartitionStrategy partitionStrategy = resolveStrategy(eventType);
+
         // TODO: cache and pre-sort
         final List<String> partitions = timelineService.getTopicRepository(eventType)
                 .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
 
-        return resolveStrategy(eventType).calculatePartition(eventAsJson, eventKeys, partitions);
+        return partitionStrategy.calculatePartition(eventAsJson, eventKeys, partitions);
     }
 
     private PartitionStrategy resolveStrategy(final EventType eventType) {
