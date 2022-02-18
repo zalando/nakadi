@@ -14,7 +14,8 @@
     "name"
   ],
   "schema": {
-    "type": "JSON_SCHEMA",
-    "schema": "{ \"Article\": { \"properties\": { \"name\": { \"type\": \"string\" } } } }"
+    "type": "json_schema",
+    "schema": "{ \"Article\": { \"properties\": { \"name\": { \"type\": \"string\" } } } }",
+    "version" : "1.0.0"
   }
 }

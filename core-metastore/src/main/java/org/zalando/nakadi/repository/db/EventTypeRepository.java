@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -39,7 +40,8 @@ public class EventTypeRepository extends AbstractDbRepository {
             DuplicatedEventTypeNameException {
         try {
             final DateTime now = new DateTime(DateTimeZone.UTC);
-            final EventType eventType = new EventType(eventTypeBase, "1.0.0", now, now);
+            final var version = eventTypeBase.getSchema().getType() == EventTypeSchemaBase.Type.JSON_SCHEMA? "1.0.0": "1";
+            final EventType eventType = new EventType(eventTypeBase, version, now, now);
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
                     eventTypeBase.getName(),
