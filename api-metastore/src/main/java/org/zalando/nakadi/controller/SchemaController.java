@@ -70,8 +70,13 @@ public class SchemaController {
         if(!schema.getType().equals(eventType.getSchema().getType()))
             throw new SchemaValidationException("schema type cannot be different");
 
+        final var toCompareEventTypeSchema = version.equals("latest")?
+                eventType.getSchema(): schemaService.getSchemaVersion(name, version);
+        eventType.setSchema(toCompareEventTypeSchema);
+
         final var newEventTypeBase = new EventTypeBase(eventType);
         newEventTypeBase.setSchema(schema);
+
         schemaService.getValidEvolvedEventType(eventType, newEventTypeBase);
 
         return ResponseEntity.status(HttpStatus.OK).build();

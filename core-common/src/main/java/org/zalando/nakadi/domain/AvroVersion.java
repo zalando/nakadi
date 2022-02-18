@@ -34,7 +34,10 @@ public class AvroVersion implements Version {
     }
 
     @Override
-    public Version bump(Level level) { // ignores level
-        return new AvroVersion(Short.toString((short) (this.version + 1)));
+    public Version bump(Level level) {
+        if(level == Level.MAJOR)
+            return new AvroVersion(Short.toString((short) (this.version + 1)));
+
+        return new AvroVersion(Short.toString((this.version)));
     }
 }

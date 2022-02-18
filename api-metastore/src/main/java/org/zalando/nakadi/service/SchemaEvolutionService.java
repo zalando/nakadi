@@ -135,10 +135,10 @@ public class SchemaEvolutionService {
             validateAvroSchema(Collections.singletonList(original.getSchema()), eventType.getSchema(), original.getCompatibilityMode());
         }
 
-        final String newVersion = original.getSchema().getVersion().bump(MAJOR).toString();
-        final DateTime now = new DateTime(DateTimeZone.UTC);
-        return new EventType(eventType, original.getCreatedAt(), now,
-                new EventTypeSchema(eventType.getSchema(), newVersion, now));
+        final var level = getParsedAvroSchema(original.getSchema().getSchema()).
+                equals(getParsedAvroSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;
+
+        return bumpVersion(original, eventType, level);
     }
 
     private void validateAvroSchema(final List<? extends EventTypeSchema> original,
