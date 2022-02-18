@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Before;
+import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -23,6 +24,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
@@ -30,6 +32,7 @@ import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
@@ -92,6 +95,8 @@ public class EventTypeControllerTestCase {
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
+    private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
+    private final SchemaRepository schemaRepository = Mockito.mock(SchemaRepository.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() {
@@ -117,7 +122,8 @@ public class EventTypeControllerTestCase {
 
         final SchemaEvolutionService ses = new SchemaValidatorConfig(
                 new CompatibilityModeChangeConstraint(adminService, authorizationService),
-                new PartitionStrategyConstraint(adminService)
+                new PartitionStrategyConstraint(adminService),
+                avroSchemaCompatibility, schemaRepository
         ).schemaEvolutionService();
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =

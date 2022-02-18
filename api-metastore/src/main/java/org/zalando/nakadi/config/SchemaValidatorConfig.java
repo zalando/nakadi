@@ -6,9 +6,12 @@ import com.google.common.io.Resources;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
+import org.zalando.nakadi.repository.db.SchemaRepository;
+import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CategoryChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
@@ -16,6 +19,7 @@ import org.zalando.nakadi.validation.schema.EnrichmentStrategyConstraint;
 import org.zalando.nakadi.validation.schema.PartitionKeyFieldsConstraint;
 import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
+import org.zalando.nakadi.validation.schema.SchemaTypeChangeConstraint;
 import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.io.IOException;
@@ -46,12 +50,18 @@ public class SchemaValidatorConfig {
 
     private final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint;
     private final PartitionStrategyConstraint partitionStrategyConstraint;
+    private final AvroSchemaCompatibility avroSchemaCompatibility;
+    private final SchemaRepository schemaRepository;
 
     public SchemaValidatorConfig(
             final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint,
-            final PartitionStrategyConstraint partitionStrategyConstraint) {
+            final PartitionStrategyConstraint partitionStrategyConstraint,
+            final AvroSchemaCompatibility avroSchemaCompatibility,
+            final SchemaRepository schemaRepository ) {
         this.compatibilityModeChangeConstraint = compatibilityModeChangeConstraint;
         this.partitionStrategyConstraint = partitionStrategyConstraint;
+        this.avroSchemaCompatibility = avroSchemaCompatibility;
+        this.schemaRepository = schemaRepository;
     }
 
     @Bean
@@ -61,6 +71,7 @@ public class SchemaValidatorConfig {
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
+                new SchemaTypeChangeConstraint(),
                 new CategoryChangeConstraint(),
                 compatibilityModeChangeConstraint,
                 new PartitionKeyFieldsConstraint(),
@@ -89,6 +100,6 @@ public class SchemaValidatorConfig {
 
         final SchemaDiff diff = new SchemaDiff();
 
-        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage);
+        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage, avroSchemaCompatibility, schemaRepository);
     }
 }

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.Before;
@@ -10,7 +11,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.JsonVersion;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.utils.TestUtils;
@@ -164,7 +165,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.getSchema().setVersion(new Version("1.1.0"));
+        eventType.getSchema().setVersion(new JsonVersion("1.1.0"));
 
         repository.update(eventType);
 
