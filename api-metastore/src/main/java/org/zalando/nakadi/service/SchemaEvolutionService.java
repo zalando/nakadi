@@ -3,7 +3,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.Lists;
 import org.apache.avro.AvroRuntimeException;
-import org.apache.avro.SchemaCompatibility;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -126,13 +125,13 @@ public class SchemaEvolutionService {
     }
 
     private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType) {
-
-        if (TRANSITIVE_MODES.contains(original.getCompatibilityMode())) {
+        final var compatibilityMode = eventType.getCompatibilityMode();
+        if (TRANSITIVE_MODES.contains(compatibilityMode)) {
             final var version = original.getSchema().getVersion().toString();
             final var schemaList = schemaRepository.listSchemas(original.getName(), version);
-            validateAvroSchema(schemaList, eventType.getSchema(), original.getCompatibilityMode());
+            validateAvroSchema(schemaList, eventType.getSchema(), compatibilityMode);
         } else {
-            validateAvroSchema(Collections.singletonList(original.getSchema()), eventType.getSchema(), original.getCompatibilityMode());
+            validateAvroSchema(Collections.singletonList(original.getSchema()), eventType.getSchema(), compatibilityMode);
         }
 
         final var level = getParsedAvroSchema(original.getSchema().getSchema()).

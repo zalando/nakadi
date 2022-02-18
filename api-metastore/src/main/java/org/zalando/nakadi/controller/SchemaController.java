@@ -25,12 +25,10 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
 
 import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class SchemaController {
