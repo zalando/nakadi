@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
@@ -23,10 +25,12 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
 
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class SchemaController {
@@ -51,6 +55,26 @@ public class SchemaController {
         schemaService.addSchema(name, schema);
 
         return status(HttpStatus.OK).build();
+    }
+
+    @RequestMapping(value = "/event-types/{name}/schemas/{version}", method = RequestMethod.PUT)
+    public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
+                                                @PathVariable("version") final String version,
+                                    @Valid @RequestBody final EventTypeSchemaBase schema,
+                                    final Errors errors) {
+        if (errors.hasErrors()) {
+            throw new ValidationException(errors);
+        }
+
+        final EventType eventType = eventTypeService.get(name);
+        if(!schema.getType().equals(eventType.getSchema().getType()))
+            throw new SchemaValidationException("schema type cannot be different");
+
+        final var newEventTypeBase = new EventTypeBase(eventType);
+        newEventTypeBase.setSchema(schema);
+        schemaService.getValidEvolvedEventType(eventType, newEventTypeBase);
+
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.GET)
