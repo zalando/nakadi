@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 
@@ -16,7 +17,7 @@ import java.util.Optional;
 
 @Service
 public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstraint {
-    final Map<CompatibilityMode, List<CompatibilityMode>> allowedChanges = ImmutableMap.of(
+    final Map<CompatibilityMode, List<CompatibilityMode>> allowedChangesJson = ImmutableMap.of(
             CompatibilityMode.COMPATIBLE, Lists.newArrayList(CompatibilityMode.COMPATIBLE),
             CompatibilityMode.FORWARD, Lists.newArrayList(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE),
             CompatibilityMode.NONE, Lists.newArrayList(CompatibilityMode.NONE, CompatibilityMode.FORWARD)
@@ -37,12 +38,14 @@ public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstra
         final boolean isNakadiAdmin = adminService.isAdmin(AuthorizationService.Operation.WRITE);
         final boolean isEventTypeAdmin = authorizationService
                 .isAuthorized(AuthorizationService.Operation.ADMIN, original.asResource());
-        final boolean isChangeValid = allowedChanges.get(original.getCompatibilityMode())
+        final boolean isChangeValid = original.getSchema().getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA ||
+                allowedChangesJson.get(original.getCompatibilityMode())
                 .contains(eventType.getCompatibilityMode());
         if (isEventTypeAdmin || isNakadiAdmin || isChangeValid) {
             return Optional.empty();
         } else {
             return Optional.of(new SchemaEvolutionIncompatibility("changing compatibility_mode is not allowed"));
         }
+
     }
 }
