@@ -1,6 +1,7 @@
 package org.zalando.nakadi.cache;
 
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -9,6 +10,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
@@ -154,6 +157,11 @@ public class EventTypeCacheTest {
         final EventTypeValidator validator2 = mock(EventTypeValidator.class);
         final List<Timeline> expectedTimelines2 = mock(List.class);
 
+        final var etSchema = new EventTypeSchema(new EventTypeSchemaBase(
+                EventTypeSchemaBase.Type.JSON_SCHEMA, ""),
+                "1.0.0", DateTime.now());
+        when(et1.getSchema()).thenReturn(etSchema);
+        when(et2.getSchema()).thenReturn(etSchema);
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
         when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
         when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
