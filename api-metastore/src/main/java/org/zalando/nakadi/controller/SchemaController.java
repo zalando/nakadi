@@ -65,8 +65,9 @@ public class SchemaController {
         }
 
         final EventType eventType = eventTypeService.get(name);
-        if(!schema.getType().equals(eventType.getSchema().getType()))
+        if(!schema.getType().equals(eventType.getSchema().getType())){
             throw new SchemaValidationException("schema type cannot be different");
+        }
 
         final var toCompareEventTypeSchema = version.equals("latest")?
                 eventType.getSchema(): schemaService.getSchemaVersion(name, version);

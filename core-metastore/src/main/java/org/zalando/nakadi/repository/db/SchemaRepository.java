@@ -30,10 +30,11 @@ public class SchemaRepository extends AbstractDbRepository {
                 new SchemaRowMapper());
     }
 
-    public List<EventTypeSchema> listSchemas(final String name, String version) {
+    public List<EventTypeSchema> listSchemas(final String name, final String version) {
         return jdbcTemplate.query(
                 "SELECT ets_schema_object FROM zn_data.event_type_schema " +
-                        "WHERE ets_event_type_name = ? AND ets_schema_object->>'version' <= ? ORDER BY ets_schema_object->>'created_at' DESC",
+                        "WHERE ets_event_type_name = ? AND ets_schema_object->>'version' <= ? " +
+                        "ORDER BY ets_schema_object->>'created_at' DESC",
                 new Object[]{name, version},
                 new SchemaRowMapper());
     }

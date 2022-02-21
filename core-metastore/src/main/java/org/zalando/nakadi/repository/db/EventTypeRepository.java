@@ -40,7 +40,7 @@ public class EventTypeRepository extends AbstractDbRepository {
             DuplicatedEventTypeNameException {
         try {
             final DateTime now = new DateTime(DateTimeZone.UTC);
-            final var version = eventTypeBase.getSchema().getType() == EventTypeSchemaBase.Type.JSON_SCHEMA? "1.0.0": "1";
+            final var version = constructVersionString(eventTypeBase);
             final EventType eventType = new EventType(eventTypeBase, version, now, now);
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
@@ -53,6 +53,11 @@ public class EventTypeRepository extends AbstractDbRepository {
         } catch (final DataIntegrityViolationException e) {
             throw new DuplicatedEventTypeNameException("EventType " + eventTypeBase.getName() + " already exists.", e);
         }
+    }
+
+    private String constructVersionString(final EventTypeBase eventTypeBase) {
+        return eventTypeBase.getSchema().getType() == EventTypeSchemaBase.Type.JSON_SCHEMA?
+                "1.0.0": "1";
     }
 
     public EventType findByName(final String name) throws NoSuchEventTypeException {

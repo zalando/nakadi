@@ -6,7 +6,6 @@ import com.google.common.io.Resources;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
@@ -100,6 +99,7 @@ public class SchemaValidatorConfig {
 
         final SchemaDiff diff = new SchemaDiff();
 
-        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage, avroSchemaCompatibility, schemaRepository);
+        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage,
+                avroSchemaCompatibility, schemaRepository);
     }
 }

@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import org.apache.avro.AvroRuntimeException;
-import org.apache.avro.SchemaParseException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -146,7 +144,7 @@ public class SchemaService {
         }
     }
 
-    public EventType getValidEvolvedEventType(EventType originalEventType, EventTypeBase updatedEventType) {
+    public EventType getValidEvolvedEventType(final EventType originalEventType, final EventTypeBase updatedEventType) {
         validateSchema(updatedEventType);
         return schemaEvolutionService.evolve(originalEventType, updatedEventType);
     }
@@ -186,7 +184,9 @@ public class SchemaService {
             else if (schemaType.equals(EventTypeSchemaBase.Type.AVRO_SCHEMA)){
                 validateAvroTypeSchema(eventTypeSchema);
             }
-            else throw new RuntimeException("undefined schema type");
+            else {
+                throw new IllegalArgumentException("undefined schema type");
+            }
 
         } catch (final com.google.re2j.PatternSyntaxException e) {
             throw new SchemaValidationException("invalid regex pattern in the schema: "
@@ -210,7 +210,7 @@ public class SchemaService {
         }
     }
 
-    private void validateJsonTypeSchema(EventTypeBase eventType, String eventTypeSchema) {
+    private void validateJsonTypeSchema(final EventTypeBase eventType, final String eventTypeSchema) {
         final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
 
         if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {

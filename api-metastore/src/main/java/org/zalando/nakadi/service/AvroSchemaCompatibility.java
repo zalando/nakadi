@@ -40,26 +40,29 @@ public class AvroSchemaCompatibility {
      * @return List of Incompatibilities
      */
     public List<AvroIncompatibility> validateSchema(final List<Schema> original, final Schema newSchema,
-                                                    final CompatibilityMode compatibilityMode) throws AvroRuntimeException {
-        if (original == null || original.isEmpty())
-            throw new RuntimeException("previous schema cannot be empty");
-        if (newSchema == null)
-            throw new RuntimeException("new schema cannot be null");
+                                                    final CompatibilityMode compatibilityMode)
+                                                    throws AvroRuntimeException {
+        if (original == null || original.isEmpty()){
+            throw new IllegalArgumentException("previous schemas cannot be empty");
+        }
+        if (newSchema == null){
+            throw new IllegalArgumentException("new schema cannot be null");
+        }
 
-        Supplier<Schema> getLastSchema = () -> original.get(original.size() - 1);
+        final Supplier<Schema> getLastSchema = () -> original.get(original.size() - 1);
 
-        Function<Stream<SchemaPairCompatibility>, List<AvroIncompatibility>> flatMapToIncompat =
-                inputStream -> inputStream.
-                        map(AvroSchemaCompatibility::toAvroIncompatibility).
+        final Function<Stream<SchemaPairCompatibility>, List<AvroIncompatibility>>
+                flatMapToIncompat = inputStream -> inputStream.
+                        map(this::toAvroIncompatibility).
                         flatMap(Collection::stream).collect(Collectors.toList());
 
         switch (compatibilityMode) {
             case FORWARD:
-                return forwardCompatibleFn.andThen(AvroSchemaCompatibility::toAvroIncompatibility).
+                return forwardCompatibleFn.andThen(this::toAvroIncompatibility).
                         apply(newSchema, getLastSchema.get());
 
             case BACKWARD:
-                return backwardCompatibleFn.andThen(AvroSchemaCompatibility::toAvroIncompatibility).
+                return backwardCompatibleFn.andThen(this::toAvroIncompatibility).
                         apply(newSchema, getLastSchema.get());
 
             case COMPATIBLE:
@@ -87,8 +90,8 @@ public class AvroSchemaCompatibility {
         }
     }
 
-    private static List<AvroIncompatibility> toAvroIncompatibility(final SchemaPairCompatibility schemaPairCompatibility) {
-        Function<Incompatibility, AvroIncompatibility> mapperFn = (incompat) ->
+    private List<AvroIncompatibility> toAvroIncompatibility(final SchemaPairCompatibility schemaPairCompatibility) {
+        final Function<Incompatibility, AvroIncompatibility> mapperFn = (incompat) ->
                 new AvroIncompatibility(incompat.getLocation(), incompat.getMessage(), incompat.getType());
 
         return schemaPairCompatibility.getResult().getIncompatibilities().stream().
@@ -100,7 +103,8 @@ public class AvroSchemaCompatibility {
         private final String message;
         private final SchemaCompatibility.SchemaIncompatibilityType mType;
 
-        public AvroIncompatibility(String location, String message, SchemaCompatibility.SchemaIncompatibilityType mType) {
+        public AvroIncompatibility(final String location, final String message,
+                                   final SchemaCompatibility.SchemaIncompatibilityType mType) {
             this.location = location;
             this.message = message;
             this.mType = mType;
@@ -119,11 +123,16 @@ public class AvroSchemaCompatibility {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            AvroIncompatibility that = (AvroIncompatibility) o;
-            return Objects.equals(location, that.location) && Objects.equals(message, that.message) && mType == that.mType;
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final AvroIncompatibility that = (AvroIncompatibility) o;
+            return Objects.equals(location, that.location) &&
+                    Objects.equals(message, that.message) && mType == that.mType;
         }
 
         @Override

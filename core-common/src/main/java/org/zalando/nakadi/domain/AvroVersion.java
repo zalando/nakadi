@@ -15,10 +15,14 @@ public class AvroVersion implements Version {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        AvroVersion that = (AvroVersion) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()){
+            return false;
+        }
+        final AvroVersion that = (AvroVersion) o;
         return version == that.version;
     }
 
@@ -34,9 +38,10 @@ public class AvroVersion implements Version {
     }
 
     @Override
-    public Version bump(Level level) {
-        if(level == Level.MAJOR)
+    public Version bump(final Level level) {
+        if(level != Level.NO_CHANGES){
             return new AvroVersion(Short.toString((short) (this.version + 1)));
+        }
 
         return new AvroVersion(Short.toString((this.version)));
     }

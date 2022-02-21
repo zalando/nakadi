@@ -4,7 +4,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +19,6 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
-import org.zalando.nakadi.validation.ValidationError;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -34,7 +32,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -307,7 +304,8 @@ public class EventTypeCache {
 
         final CachedValue result = new CachedValue(
                 eventType,
-                schemaType == EventTypeSchemaBase.Type.JSON_SCHEMA? eventValidatorBuilder.build(eventType) : noopValidator,
+                schemaType == EventTypeSchemaBase.Type.JSON_SCHEMA?
+                        eventValidatorBuilder.build(eventType) : noopValidator,
                 timelines
         );
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
