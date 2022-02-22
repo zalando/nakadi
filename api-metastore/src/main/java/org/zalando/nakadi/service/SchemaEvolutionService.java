@@ -20,6 +20,7 @@ import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
@@ -139,8 +140,8 @@ public class SchemaEvolutionService {
                     eventType.getSchema(), compatibilityMode);
         }
 
-        final var level = getParsedAvroSchema(original.getSchema().getSchema()).
-                equals(getParsedAvroSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;
+        final var level = AvroUtils.getParsedSchema(original.getSchema().getSchema()).
+                equals(AvroUtils.getParsedSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;
 
         return bumpVersion(original, eventType, level);
     }
@@ -149,9 +150,9 @@ public class SchemaEvolutionService {
                                     final EventTypeSchemaBase eventType, final CompatibilityMode compatibilityMode) {
         try {
             final var prevSchema =
-                    original.stream().map(schema -> getParsedAvroSchema(schema.getSchema())).
+                    original.stream().map(schema -> AvroUtils.getParsedSchema(schema.getSchema())).
                     collect(Collectors.toList());
-            final var newSchema = getParsedAvroSchema(eventType.getSchema());
+            final var newSchema = AvroUtils.getParsedSchema(eventType.getSchema());
             final var incompatibilities =
                     avroSchemaCompatibility.validateSchema(prevSchema, newSchema, compatibilityMode);
 
@@ -163,10 +164,6 @@ public class SchemaEvolutionService {
             throw new SchemaEvolutionException("Failed to evolve avro schema due to " + e.getMessage());
         }
 
-    }
-
-    private static org.apache.avro.Schema getParsedAvroSchema(final String schema) {
-        return new org.apache.avro.Schema.Parser().parse(schema);
     }
 
     private EventType evolveJsonSchema(final EventType original, final EventTypeBase eventType) {

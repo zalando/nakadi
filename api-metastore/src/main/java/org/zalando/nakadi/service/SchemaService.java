@@ -28,6 +28,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -198,13 +199,9 @@ public class SchemaService {
         }
     }
 
-    /**
-     * @param eventTypeSchema - Avro Payload Schema
-     */
     private void validateAvroTypeSchema(final String eventTypeSchema) {
-        final var avroSchemaParser = new org.apache.avro.Schema.Parser();
         try {
-            avroSchemaParser.parse(eventTypeSchema);
+            AvroUtils.getParsedSchema(eventTypeSchema);
         } catch (AvroRuntimeException e) {
             throw new SchemaValidationException("failed to parse avro schema " + e.getMessage());
         }
