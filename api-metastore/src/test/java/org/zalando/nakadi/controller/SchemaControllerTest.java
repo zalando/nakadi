@@ -126,7 +126,6 @@ public class SchemaControllerTest {
                                 eventTypeNew.getSchema(),
                                 new MapBindingResult(new HashMap<>(), "name"));
 
-        Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
 }
