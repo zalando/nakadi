@@ -28,43 +28,6 @@ public class AvroSchemaCompatibilityTest {
         this.avroSchemaCompatibility = new AvroSchemaCompatibility();
     }
 
-    @Test
-    public void testRemoveFieldIsBackwardCompatibleChange(){
-        final var original = List.of(AvroUtils.getParsedSchema(BASE_RECORD_JSON));
-        final var newSchema = AvroUtils.getParsedSchema(removeAndGetJson("baz", BASE_RECORD_JSON));
-        final var incompatibilities =
-                avroSchemaCompatibility.validateSchema(original, newSchema, CompatibilityMode.BACKWARD);
-        Assert.isTrue(incompatibilities.isEmpty(), "no incompatibilities should exist");
-    }
-
-    @Test
-    public void testAddFieldIsNotBackwardCompatibleChange(){
-        final var original = List.of(AvroUtils.getParsedSchema(BASE_RECORD_JSON));
-        final var newSchema = AvroUtils.getParsedSchema(
-                putAndGetJson(new JSONObject("{\"type\":\"string\",\"name\":\"saz\"}"), BASE_RECORD_JSON)
-        );
-        final var incompatibilities =
-                avroSchemaCompatibility.validateSchema(original, newSchema, CompatibilityMode.BACKWARD);
-        final var expected = new AvroSchemaCompatibility.
-                AvroIncompatibility("/fields/4", "saz", READER_FIELD_MISSING_DEFAULT_VALUE);
-
-        Assert.notEmpty(incompatibilities, "should not be empty");
-        Assertions.assertEquals(List.of(expected), incompatibilities);
-    }
-
-    @Test
-    public void testAddFieldWithDefaultIsBackwardCompatibleChange(){
-        final var original = List.of(AvroUtils.getParsedSchema(BASE_RECORD_JSON));
-        final var newSchema = AvroUtils.getParsedSchema(
-                putAndGetJson(
-                        new JSONObject("{\"type\":\"string\",\"name\":\"saz\",\"default\":\"value\"}"),
-                        BASE_RECORD_JSON)
-        );
-        final var incompatibilities =
-                avroSchemaCompatibility.validateSchema(original, newSchema, CompatibilityMode.BACKWARD);
-
-        Assert.isTrue(incompatibilities.isEmpty(), "should be empty");
-    }
 
     @Test
     public void testAddFieldIsForwardCompatibleChange(){
@@ -153,7 +116,7 @@ public class AvroSchemaCompatibilityTest {
         final var newSchema = AvroUtils.getParsedSchema(orderChangedJson);
 
         final var incompatibilities =
-                Stream.of(CompatibilityMode.BACKWARD, CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
+                Stream.of(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
                 map(mode -> avroSchemaCompatibility.validateSchema(original, newSchema, mode)).
                 flatMap(List::stream).collect(Collectors.toList());
 
@@ -170,7 +133,7 @@ public class AvroSchemaCompatibilityTest {
         final var newSchema = AvroUtils.getParsedSchema(typeChangedJson);
 
         final var incompatibilities =
-                Stream.of(CompatibilityMode.BACKWARD, CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
+                Stream.of(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
                 map(mode -> avroSchemaCompatibility.validateSchema(original, newSchema, mode)).
                 flatMap(List::stream).collect(Collectors.toList());
 
@@ -178,7 +141,7 @@ public class AvroSchemaCompatibilityTest {
 
         final var incompatType =
                 incompatibilities.stream().
-                map(incompat -> incompat.getmType()).collect(Collectors.toSet());
+                map(incompat -> incompat.getIncompatibilityType()).collect(Collectors.toSet());
 
         Assert.isTrue(incompatType.size() == 1);
         Assert.isTrue(incompatType.contains(TYPE_MISMATCH));
@@ -193,7 +156,7 @@ public class AvroSchemaCompatibilityTest {
         final var newSchema = AvroUtils.getParsedSchema(typeChangedJson);
 
         final var incompatibilities =
-                Stream.of(CompatibilityMode.BACKWARD, CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
+                Stream.of(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE).
                 map(mode -> avroSchemaCompatibility.validateSchema(original, newSchema, mode)).
                 flatMap(List::stream).collect(Collectors.toList());
 
@@ -201,7 +164,7 @@ public class AvroSchemaCompatibilityTest {
 
         final var incompatType =
                 incompatibilities.stream().
-                        map(incompat -> incompat.getmType()).collect(Collectors.toSet());
+                        map(incompat -> incompat.getIncompatibilityType()).collect(Collectors.toSet());
         Assert.isTrue(incompatType.size() == 1);
         Assert.isTrue(incompatType.contains(NAME_MISMATCH));
 

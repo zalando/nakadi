@@ -1,5 +1,5 @@
 package org.zalando.nakadi.domain;
 
 public enum CompatibilityMode {
-    FORWARD, COMPATIBLE, NONE, BACKWARD
+    FORWARD, COMPATIBLE, NONE
 }

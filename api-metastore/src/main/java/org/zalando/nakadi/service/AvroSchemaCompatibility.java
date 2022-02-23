@@ -61,10 +61,6 @@ public class AvroSchemaCompatibility {
                 return forwardCompatibleFn.andThen(this::toAvroIncompatibility).
                         apply(newSchema, getLastSchema.get());
 
-            case BACKWARD:
-                return backwardCompatibleFn.andThen(this::toAvroIncompatibility).
-                        apply(newSchema, getLastSchema.get());
-
             case COMPATIBLE:
                 return flatMapToIncompat.apply(
                         fullyCompatibleFn.apply(newSchema, getLastSchema.get()).stream()
@@ -85,21 +81,21 @@ public class AvroSchemaCompatibility {
     public static class AvroIncompatibility {
         private final String location;
         private final String message;
-        private final SchemaCompatibility.SchemaIncompatibilityType mType;
+        private final SchemaCompatibility.SchemaIncompatibilityType incompatibilityType;
 
         public AvroIncompatibility(final String location, final String message,
                                    final SchemaCompatibility.SchemaIncompatibilityType mType) {
             this.location = location;
             this.message = message;
-            this.mType = mType;
+            this.incompatibilityType = mType;
         }
 
         public String getLocation() {
             return location;
         }
 
-        public SchemaCompatibility.SchemaIncompatibilityType getmType() {
-            return mType;
+        public SchemaCompatibility.SchemaIncompatibilityType getIncompatibilityType() {
+            return incompatibilityType;
         }
 
         public String getMessage() {
@@ -116,17 +112,17 @@ public class AvroSchemaCompatibility {
             }
             final AvroIncompatibility that = (AvroIncompatibility) o;
             return Objects.equals(location, that.location) &&
-                    Objects.equals(message, that.message) && mType == that.mType;
+                    Objects.equals(message, that.message) && incompatibilityType == that.incompatibilityType;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(location, message, mType);
+            return Objects.hash(location, message, incompatibilityType);
         }
 
         @Override
         public String toString() {
-            return String.format("{ type:%s, location:%s, message:%s }", mType,
+            return String.format("{ type:%s, location:%s, message:%s }", incompatibilityType,
                     location, message);
         }
 
