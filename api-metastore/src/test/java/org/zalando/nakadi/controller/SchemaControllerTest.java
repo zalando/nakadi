@@ -1,17 +1,24 @@
 package org.zalando.nakadi.controller;
 
+import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.MapBindingResult;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import java.util.HashMap;
 
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
@@ -70,4 +77,56 @@ public class SchemaControllerTest {
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
         Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
     }
+
+    @Test
+    public void testCheckCompatibilityForValidEvolution() {
+        final EventType eventTypeOriginal = buildDefaultEventType();
+        final EventType eventTypeNew = buildDefaultEventType();
+
+        final var schemeBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA,
+                eventTypeOriginal.getSchema().getSchema());
+        eventTypeNew.setSchema(new EventTypeSchema(schemeBase, "1.1.0", DateTime.now()));
+
+        Mockito.when(eventTypeService.get(eventTypeOriginal.getName())).
+                thenReturn(eventTypeOriginal);
+        Mockito.when(schemaService.
+                        getValidEvolvedEventType(eventTypeOriginal, eventTypeNew)).
+                thenReturn(eventTypeNew);
+
+        final ResponseEntity<?> result =
+                new SchemaController(schemaService, eventTypeService).
+                        checkCompatibility(
+                                eventTypeOriginal.getName(),
+                                eventTypeOriginal.getSchema().getVersion().toString(),
+                                eventTypeNew.getSchema(),
+                                new MapBindingResult(new HashMap<>(), "name"));
+
+        Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test(expected = SchemaValidationException.class)
+    public void testCheckCompatibilityForMismatchTypeEvolution() {
+        final EventType eventTypeOriginal = buildDefaultEventType();
+        final EventType eventTypeNew = buildDefaultEventType();
+
+        final var schemeBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, "");
+        eventTypeNew.setSchema(new EventTypeSchema(schemeBase, "1", DateTime.now()));
+
+        Mockito.when(eventTypeService.get(eventTypeOriginal.getName())).
+                thenReturn(eventTypeOriginal);
+        Mockito.when(schemaService.
+                        getValidEvolvedEventType(eventTypeOriginal, eventTypeNew)).
+                thenReturn(eventTypeNew);
+
+        final ResponseEntity<?> result =
+                new SchemaController(schemaService, eventTypeService).
+                        checkCompatibility(
+                                eventTypeOriginal.getName(),
+                                eventTypeOriginal.getSchema().getVersion().toString(),
+                                eventTypeNew.getSchema(),
+                                new MapBindingResult(new HashMap<>(), "name"));
+
+        Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
 }

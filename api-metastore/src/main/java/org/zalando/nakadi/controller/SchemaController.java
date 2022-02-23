@@ -55,18 +55,20 @@ public class SchemaController {
         return status(HttpStatus.OK).build();
     }
 
-    @RequestMapping(value = "/event-types/{name}/schemas/{version}", method = RequestMethod.PUT)
+    @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
     public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
                                                 @PathVariable("version") final String version,
-                                    @Valid @RequestBody final EventTypeSchemaBase schema,
-                                    final Errors errors) {
+                                                @Valid @RequestBody final EventTypeSchemaBase schema,
+                                                final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
 
         final EventType eventType = eventTypeService.get(name);
         if(!schema.getType().equals(eventType.getSchema().getType())){
-            throw new SchemaValidationException("schema type cannot be different");
+            throw new SchemaValidationException(String.format("schema type cannot be " +
+                            "different: expected `%s`, but was `%s`"
+                    , eventType.getSchema().getType(), schema.getType()));
         }
 
         final var toCompareEventTypeSchema = version.equals("latest")?
