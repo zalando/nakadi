@@ -69,22 +69,6 @@ public class AvroSchemaCompatibility {
                 return flatMapToIncompat.apply(
                         fullyCompatibleFn.apply(newSchema, getLastSchema.get()).stream()
                 );
-
-            case FORWARD_TRANSITIVE:
-                return flatMapToIncompat.apply(
-                        original.stream().map(prevSchema -> forwardCompatibleFn.apply(newSchema, prevSchema))
-                );
-
-            case BACKWARD_TRANSITIVE:
-                return flatMapToIncompat.apply(
-                        original.stream().map(prevSchema -> backwardCompatibleFn.apply(newSchema, prevSchema))
-                );
-
-            case COMPATIBLE_TRANSITIVE:
-                return flatMapToIncompat.apply(
-                        original.stream().map(prevSchema -> fullyCompatibleFn.apply(newSchema, prevSchema)).
-                                flatMap(Collection::stream)
-                );
             default:
                 return Collections.emptyList();
         }

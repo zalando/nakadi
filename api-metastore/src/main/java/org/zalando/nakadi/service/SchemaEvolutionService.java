@@ -21,7 +21,6 @@ import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.util.AvroUtils;
-import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
@@ -33,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
@@ -47,10 +45,6 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
 import static org.zalando.nakadi.domain.Version.Level.PATCH;
-import static org.zalando.nakadi.domain.CompatibilityMode.BACKWARD_TRANSITIVE;
-import static org.zalando.nakadi.domain.CompatibilityMode.FORWARD_TRANSITIVE;
-import static org.zalando.nakadi.domain.CompatibilityMode.COMPATIBLE_TRANSITIVE;
-
 
 public class SchemaEvolutionService {
 
@@ -63,34 +57,28 @@ public class SchemaEvolutionService {
             ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
     private final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver;
     private final AvroSchemaCompatibility avroSchemaCompatibility;
-    private final SchemaRepository schemaRepository;
-    private static final Set<CompatibilityMode> TRANSITIVE_MODES =
-            Set.of(BACKWARD_TRANSITIVE, FORWARD_TRANSITIVE, COMPATIBLE_TRANSITIVE);
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
                                   final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver,
                                   final Map<SchemaChange.Type, String> errorMessages,
-                                  final AvroSchemaCompatibility avroSchemaCompatibility,
-                                  final SchemaRepository schemaRepository) {
+                                  final AvroSchemaCompatibility avroSchemaCompatibility) {
         this.metaSchema = metaSchema;
         this.schemaEvolutionConstraints = schemaEvolutionConstraints;
         this.schemaDiff = schemaDiff;
         this.levelResolver = levelResolver;
         this.errorMessages = errorMessages;
         this.avroSchemaCompatibility = avroSchemaCompatibility;
-        this.schemaRepository = schemaRepository;
     }
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
                                   final Map<SchemaChange.Type, String> errorMessages,
-                                  final AvroSchemaCompatibility avroSchemaCompatibility,
-                                  final SchemaRepository schemaRepository) {
+                                  final AvroSchemaCompatibility avroSchemaCompatibility) {
         this(metaSchema, schemaEvolutionConstraints, schemaDiff, SchemaChange.Type::getLevel, errorMessages,
-                avroSchemaCompatibility, schemaRepository);
+                avroSchemaCompatibility);
     }
 
     public List<SchemaIncompatibility> collectIncompatibilities(final JSONObject schemaJson) {
@@ -131,14 +119,8 @@ public class SchemaEvolutionService {
 
     private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType) {
         final var compatibilityMode = eventType.getCompatibilityMode();
-        if (TRANSITIVE_MODES.contains(compatibilityMode)) {
-            final var version = original.getSchema().getVersion().toString();
-            final var schemaList = schemaRepository.listSchemas(original.getName(), version);
-            validateAvroSchema(schemaList, eventType.getSchema(), compatibilityMode);
-        } else {
             validateAvroSchema(Collections.singletonList(original.getSchema()),
                     eventType.getSchema(), compatibilityMode);
-        }
 
         final var level = AvroUtils.getParsedSchema(original.getSchema().getSchema()).
                 equals(AvroUtils.getParsedSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;

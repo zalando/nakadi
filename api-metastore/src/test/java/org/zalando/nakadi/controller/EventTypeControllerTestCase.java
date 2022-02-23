@@ -123,7 +123,7 @@ public class EventTypeControllerTestCase {
         final SchemaEvolutionService ses = new SchemaValidatorConfig(
                 new CompatibilityModeChangeConstraint(adminService, authorizationService),
                 new PartitionStrategyConstraint(adminService),
-                avroSchemaCompatibility, schemaRepository
+                avroSchemaCompatibility
         ).schemaEvolutionService();
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =

@@ -9,7 +9,6 @@ import org.json.JSONObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
-import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CategoryChangeConstraint;
@@ -50,17 +49,14 @@ public class SchemaValidatorConfig {
     private final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint;
     private final PartitionStrategyConstraint partitionStrategyConstraint;
     private final AvroSchemaCompatibility avroSchemaCompatibility;
-    private final SchemaRepository schemaRepository;
 
     public SchemaValidatorConfig(
             final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint,
             final PartitionStrategyConstraint partitionStrategyConstraint,
-            final AvroSchemaCompatibility avroSchemaCompatibility,
-            final SchemaRepository schemaRepository ) {
+            final AvroSchemaCompatibility avroSchemaCompatibility) {
         this.compatibilityModeChangeConstraint = compatibilityModeChangeConstraint;
         this.partitionStrategyConstraint = partitionStrategyConstraint;
         this.avroSchemaCompatibility = avroSchemaCompatibility;
-        this.schemaRepository = schemaRepository;
     }
 
     @Bean
@@ -100,6 +96,6 @@ public class SchemaValidatorConfig {
         final SchemaDiff diff = new SchemaDiff();
 
         return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage,
-                avroSchemaCompatibility, schemaRepository);
+                avroSchemaCompatibility);
     }
 }
