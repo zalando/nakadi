@@ -40,8 +40,10 @@ public class CompressionBodyRequestFilter implements Filter {
     }
 
     @Override
-    public final void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
-                               final FilterChain chain) throws IOException, ServletException {
+    public final void doFilter(final ServletRequest servletRequest,
+                               final ServletResponse servletResponse,
+                               final FilterChain chain)
+            throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
 
@@ -53,18 +55,17 @@ public class CompressionBodyRequestFilter implements Filter {
         } else if (contentEncodingOpt.isPresent()) {
             final String contentEncoding = contentEncodingOpt.get();
             if (contentEncoding.contains("gzip")) {
-                request = new GzipServletRequestWrapper(request);
-            }
-
-            if (contentEncoding.contains("zstd")) {
-                request = new ZstdServletRequestWrapper(request);
+                request = new FilterServletRequestWrapper(request, GZIPInputStream::new);
+            } else if (contentEncoding.contains("zstd")) {
+                request = new FilterServletRequestWrapper(request, ZstdInputStream::new);
             }
         }
 
         chain.doFilter(request, servletResponse);
     }
 
-    private void reportNotAcceptableError(final HttpServletResponse response, final HttpServletRequest request)
+    private void reportNotAcceptableError(final HttpServletResponse response,
+                                          final HttpServletRequest request)
             throws IOException {
 
         response.setStatus(NOT_ACCEPTABLE.getStatusCode());
@@ -76,7 +77,7 @@ public class CompressionBodyRequestFilter implements Filter {
     }
 
     @Override
-    public void init(final FilterConfig filterConfig) throws ServletException {
+    public void init(final FilterConfig filterConfig) {
         // filter is stateless, nothing to init
     }
 
@@ -85,17 +86,24 @@ public class CompressionBodyRequestFilter implements Filter {
         // filter is stateless, nothing to destroy
     }
 
+    static class FilterServletRequestWrapper extends HttpServletRequestWrapper {
 
-    class GzipServletRequestWrapper extends HttpServletRequestWrapper {
+        private final StreamConverter streamConverter;
 
-        GzipServletRequestWrapper(final HttpServletRequest request) {
+        interface StreamConverter {
+            InputStream to(InputStream is) throws IOException;
+        }
+
+        FilterServletRequestWrapper(
+                final HttpServletRequest request,
+                final StreamConverter streamConverter) {
             super(request);
+            this.streamConverter = streamConverter;
         }
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            return new CompressionServletInputStream(
-                    new GZIPInputStream(super.getInputStream()));
+            return new ServletInputStreamWrapper(streamConverter.to(super.getInputStream()));
         }
 
         @Override
@@ -104,30 +112,11 @@ public class CompressionBodyRequestFilter implements Filter {
         }
     }
 
-    static class ZstdServletRequestWrapper extends HttpServletRequestWrapper {
-
-        ZstdServletRequestWrapper(final HttpServletRequest request) {
-            super(request);
-        }
-
-        @Override
-        public ServletInputStream getInputStream() throws IOException {
-            return new CompressionServletInputStream(
-                    new ZstdInputStream(super.getInputStream()));
-        }
-
-        @Override
-        public BufferedReader getReader() throws IOException {
-            return new BufferedReader(new InputStreamReader(this.getInputStream()));
-        }
-    }
-
-    static class CompressionServletInputStream extends ServletInputStream {
+    static class ServletInputStreamWrapper extends ServletInputStream {
 
         private final InputStream inputStream;
 
-        CompressionServletInputStream(final InputStream inputStream) throws IOException {
-            super();
+        ServletInputStreamWrapper(final InputStream inputStream) {
             this.inputStream = inputStream;
         }
 
@@ -161,6 +150,5 @@ public class CompressionBodyRequestFilter implements Filter {
             throw new UnsupportedOperationException("Not supported");
         }
     }
-
 
 }
