@@ -1,8 +1,10 @@
 package org.zalando.nakadi.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.luben.zstd.ZstdInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.zalando.problem.Problem;
 
 import javax.servlet.Filter;
@@ -25,16 +27,15 @@ import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
 import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
-import static org.springframework.http.HttpMethod.POST;
 import static org.zalando.problem.Status.NOT_ACCEPTABLE;
 
-public class GzipBodyRequestFilter implements Filter {
+public class CompressionBodyRequestFilter implements Filter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GzipBodyRequestFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CompressionBodyRequestFilter.class);
 
     private final ObjectMapper objectMapper;
 
-    public GzipBodyRequestFilter(final ObjectMapper objectMapper) {
+    public CompressionBodyRequestFilter(final ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -44,18 +45,22 @@ public class GzipBodyRequestFilter implements Filter {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
 
-        final boolean isGzipped = Optional
-                .ofNullable(request.getHeader(CONTENT_ENCODING))
-                .map(encoding -> encoding.contains("gzip"))
-                .orElse(false);
-
-        if (isGzipped && !POST.matches(request.getMethod())) {
+        final Optional<String> contentEncodingOpt = Optional.ofNullable(
+                request.getHeader(CONTENT_ENCODING));
+        if (contentEncodingOpt.isPresent() && !HttpMethod.POST.matches(request.getMethod())) {
             reportNotAcceptableError((HttpServletResponse) servletResponse, request);
             return;
+        } else if (contentEncodingOpt.isPresent()) {
+            final String contentEncoding = contentEncodingOpt.get();
+            if (contentEncoding.contains("gzip")) {
+                request = new GzipServletRequestWrapper(request);
+            }
+
+            if (contentEncoding.contains("zstd")) {
+                request = new ZstdServletRequestWrapper(request);
+            }
         }
-        else if (isGzipped) {
-            request = new GzipServletRequestWrapper(request);
-        }
+
         chain.doFilter(request, servletResponse);
     }
 
@@ -81,7 +86,7 @@ public class GzipBodyRequestFilter implements Filter {
     }
 
 
-    private class GzipServletRequestWrapper extends HttpServletRequestWrapper{
+    class GzipServletRequestWrapper extends HttpServletRequestWrapper {
 
         GzipServletRequestWrapper(final HttpServletRequest request) {
             super(request);
@@ -89,7 +94,8 @@ public class GzipBodyRequestFilter implements Filter {
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            return new GzipServletInputStream(super.getInputStream());
+            return new CompressionServletInputStream(
+                    new GZIPInputStream(super.getInputStream()));
         }
 
         @Override
@@ -98,14 +104,31 @@ public class GzipBodyRequestFilter implements Filter {
         }
     }
 
+    static class ZstdServletRequestWrapper extends HttpServletRequestWrapper {
 
-    private class GzipServletInputStream extends ServletInputStream {
+        ZstdServletRequestWrapper(final HttpServletRequest request) {
+            super(request);
+        }
+
+        @Override
+        public ServletInputStream getInputStream() throws IOException {
+            return new CompressionServletInputStream(
+                    new ZstdInputStream(super.getInputStream()));
+        }
+
+        @Override
+        public BufferedReader getReader() throws IOException {
+            return new BufferedReader(new InputStreamReader(this.getInputStream()));
+        }
+    }
+
+    static class CompressionServletInputStream extends ServletInputStream {
 
         private final InputStream inputStream;
 
-        GzipServletInputStream(final InputStream inputStream) throws IOException {
+        CompressionServletInputStream(final InputStream inputStream) throws IOException {
             super();
-            this.inputStream = new GZIPInputStream(inputStream);
+            this.inputStream = inputStream;
         }
 
         @Override
@@ -138,5 +161,6 @@ public class GzipBodyRequestFilter implements Filter {
             throw new UnsupportedOperationException("Not supported");
         }
     }
+
 
 }
