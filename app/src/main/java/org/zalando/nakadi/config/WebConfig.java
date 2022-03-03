@@ -35,7 +35,7 @@ import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.util.FlowIdRequestFilter;
-import org.zalando.nakadi.util.GzipBodyRequestFilter;
+import org.zalando.nakadi.util.CompressionBodyRequestFilter;
 
 import javax.servlet.Filter;
 import java.util.List;
@@ -151,7 +151,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
         return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(mapper),
+                new CompressionBodyRequestFilter(mapper),
                 Ordered.LOWEST_PRECEDENCE - 20);
     }
 
