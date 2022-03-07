@@ -10,8 +10,8 @@ import org.joda.time.DateTime;
 public class EventTypeSchema extends EventTypeSchemaBase {
     @JsonTypeInfo(use = Id.NAME, property = "type", include = As.EXTERNAL_PROPERTY)
     @JsonSubTypes(value = {
-            @JsonSubTypes.Type(value = JsonVersion.class, name = "json_schema"),
-            @JsonSubTypes.Type(value = AvroVersion.class, name = "avro_schema")
+            @JsonSubTypes.Type(value = JsonVersion.class, name = "JSON_SCHEMA"),
+            @JsonSubTypes.Type(value = AvroVersion.class, name = "AVRO_SCHEMA")
     })
     private Version version;
 

@@ -14,7 +14,7 @@
     "name"
   ],
   "schema": {
-    "type": "json_schema",
+    "type": "JSON_SCHEMA",
     "schema": "{ \"Article\": { \"properties\": { \"name\": { \"type\": \"string\" } } } }",
     "version" : "1.0.0"
   }

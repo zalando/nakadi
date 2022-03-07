@@ -6,7 +6,7 @@
     "sku", "name"
   ],
   "schema": {
-    "type": "json_schema",
+    "type": "JSON_SCHEMA",
     "schema": "{ \"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" }, \"name\": { \"type\": \"string\" }, \"color\": { \"type\": \"string\" } \"price\": { \"type\": \"number\" }} } }",
     "version" : "1.0.0"
 
