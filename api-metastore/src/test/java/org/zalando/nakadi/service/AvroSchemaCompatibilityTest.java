@@ -9,6 +9,7 @@ import org.springframework.util.Assert;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.util.AvroUtils;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -168,6 +169,20 @@ public class AvroSchemaCompatibilityTest {
         Assert.isTrue(incompatType.size() == 1);
         Assert.isTrue(incompatType.contains(NAME_MISMATCH));
 
+    }
+
+    @Test
+    public void testAllCompatibilityModesAreSupported() {
+        final var json = "{\"type\":[\"null\",\"string\"],\"name\":\"saz\",\"default\": null}";
+        final var newBase = putAndGetJson(new JSONObject(json), BASE_RECORD_JSON);
+
+        final var original = List.of(AvroUtils.getParsedSchema(newBase));
+        final var newSchema = AvroUtils.getParsedSchema(removeAndGetJson("saz", newBase));
+
+        //No exception is throw when below function is executed
+        final var incompatibilities =
+                Arrays.stream(CompatibilityMode.values()).
+                map(mode -> avroSchemaCompatibility.validateSchema(original, newSchema, mode));
     }
 
     private String removeAndGetJson(final String elementName, final String schemaJson){

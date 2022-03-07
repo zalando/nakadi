@@ -65,9 +65,13 @@ public class AvroSchemaCompatibility {
                 return flatMapToIncompat.apply(
                         fullyCompatibleFn.apply(newSchema, getLastSchema.get()).stream()
                 );
-            default:
+            case NONE:
                 return Collections.emptyList();
+            default:
+                throw new UnsupportedOperationException("Unsupported compatibility mode "+ compatibilityMode
+                        + " supplied for avro compatibility validation");
         }
+
     }
 
     private List<AvroIncompatibility> toAvroIncompatibility(final SchemaPairCompatibility schemaPairCompatibility) {

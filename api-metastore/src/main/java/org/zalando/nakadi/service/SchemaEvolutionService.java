@@ -117,7 +117,8 @@ public class SchemaEvolutionService {
         }
     }
 
-    private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType) {
+    private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType)
+            throws SchemaEvolutionException {
         final var compatibilityMode = eventType.getCompatibilityMode();
             validateAvroSchema(Collections.singletonList(original.getSchema()),
                     eventType.getSchema(), compatibilityMode);
@@ -129,7 +130,8 @@ public class SchemaEvolutionService {
     }
 
     private void validateAvroSchema(final List<? extends EventTypeSchema> original,
-                                    final EventTypeSchemaBase eventType, final CompatibilityMode compatibilityMode) {
+                                    final EventTypeSchemaBase eventType, final CompatibilityMode compatibilityMode)
+            throws SchemaEvolutionException {
         try {
             final var prevSchema =
                     original.stream().map(schema -> AvroUtils.getParsedSchema(schema.getSchema())).
