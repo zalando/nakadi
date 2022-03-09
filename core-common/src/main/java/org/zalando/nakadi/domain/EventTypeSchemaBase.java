@@ -17,17 +17,7 @@ public class EventTypeSchemaBase {
     }
 
     public enum Type {
-        JSON_SCHEMA("1.0.0"), AVRO_SCHEMA("1");
-
-        private String startVersion;
-
-        Type(final String startVersion){
-            this.startVersion = startVersion;
-        }
-
-        public String getStartVersion(){
-            return startVersion;
-        }
+        JSON_SCHEMA, AVRO_SCHEMA
     }
 
     @NotNull

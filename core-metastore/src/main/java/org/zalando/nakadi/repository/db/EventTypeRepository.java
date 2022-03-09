@@ -12,8 +12,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.annotations.DB;
+import org.zalando.nakadi.domain.AvroVersion;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.domain.JsonVersion;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -39,7 +42,7 @@ public class EventTypeRepository extends AbstractDbRepository {
             DuplicatedEventTypeNameException {
         try {
             final DateTime now = new DateTime(DateTimeZone.UTC);
-            final var version = eventTypeBase.getSchema().getType().getStartVersion();
+            final var version = getStartVersion(eventTypeBase.getSchema().getType());
             final EventType eventType = new EventType(eventTypeBase, version, now, now);
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
@@ -138,6 +141,11 @@ public class EventTypeRepository extends AbstractDbRepository {
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
         }
+    }
+
+    private String getStartVersion(final EventTypeSchemaBase.Type type){
+        return type == EventTypeSchemaBase.Type.JSON_SCHEMA?
+                new JsonVersion().toString(): new AvroVersion().toString();
     }
 
     public enum RowLockMode {

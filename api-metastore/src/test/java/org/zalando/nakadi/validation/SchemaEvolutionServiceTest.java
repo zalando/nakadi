@@ -14,7 +14,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.SchemaChange;
-import org.zalando.nakadi.domain.JsonVersion;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
@@ -63,7 +63,7 @@ public class SchemaEvolutionServiceTest {
     private SchemaEvolutionService service;
     private final SchemaEvolutionConstraint evolutionConstraint = Mockito.mock(SchemaEvolutionConstraint.class);
     private final Map<SchemaChange.Type, String> errorMessages = Mockito.mock(HashMap.class);
-    private final BiFunction<SchemaChange.Type, CompatibilityMode, JsonVersion.Level> levelResolver =
+    private final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver =
             Mockito.mock(BiFunction.class);
     private final SchemaDiff schemaDiff = Mockito.mock(SchemaDiff.class);
     private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
@@ -103,7 +103,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("1.0.0"))));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.0.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
@@ -118,7 +118,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("1.0.1"))));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.0.1")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
@@ -147,7 +147,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("1.0.1"))));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.0.1")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
@@ -165,7 +165,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("1.1.0"))));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.1.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
@@ -197,7 +197,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("2.0.0"))));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("2.0.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
@@ -242,7 +242,7 @@ public class SchemaEvolutionServiceTest {
             final EventType eventType;
             try {
                 eventType = service.evolve(oldEventType, newEventType);
-                Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo(new JsonVersion("1.1.0"))));
+                Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.1.0")));
             } catch (final SchemaEvolutionException e) {
                 Assert.fail();
             }

@@ -1,19 +1,10 @@
 package org.zalando.nakadi.domain;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.As;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
-
 import org.joda.time.DateTime;
 
 public class EventTypeSchema extends EventTypeSchemaBase {
-    @JsonTypeInfo(use = Id.NAME, property = "type", include = As.EXTERNAL_PROPERTY)
-    @JsonSubTypes(value = {
-            @JsonSubTypes.Type(value = JsonVersion.class, name = "JSON_SCHEMA"),
-            @JsonSubTypes.Type(value = AvroVersion.class, name = "AVRO_SCHEMA")
-    })
-    private Version version;
+
+    private String version;
 
     private DateTime createdAt;
 
@@ -23,11 +14,11 @@ public class EventTypeSchema extends EventTypeSchemaBase {
 
     public EventTypeSchema(final EventTypeSchemaBase schemaBase, final String version, final DateTime createdAt) {
         super(schemaBase);
-        this.version = this.getType().equals(Type.JSON_SCHEMA)? new JsonVersion(version) : new AvroVersion(version);
+        this.version = version;
         this.createdAt = createdAt;
     }
 
-    public Version getVersion() {
+    public String getVersion() {
         return version;
     }
 
@@ -35,7 +26,7 @@ public class EventTypeSchema extends EventTypeSchemaBase {
         return createdAt;
     }
 
-    public void setVersion(final Version version) {
+    public void setVersion(final String version) {
         this.version = version;
     }
 

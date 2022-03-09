@@ -9,6 +9,10 @@ public class AvroVersion implements Version {
 
     private final short version;
 
+    public AvroVersion(){
+        version = 1;
+    }
+
     @JsonCreator
     public AvroVersion(final String version){
         this.version = Short.parseShort(version);

@@ -164,7 +164,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.getSchema().setVersion(new JsonVersion("1.1.0"));
+        eventType.getSchema().setVersion("1.1.0");
 
         repository.update(eventType);
 

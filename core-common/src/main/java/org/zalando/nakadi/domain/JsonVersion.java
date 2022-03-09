@@ -9,6 +9,12 @@ public class JsonVersion implements Version {
     private final int minor;
     private final int patch;
 
+    public JsonVersion() {
+        this.major = 1;
+        this.minor = 0;
+        this.patch = 0;
+    }
+
     public JsonVersion(final int major, final int minor, final int patch) {
         this.major = major;
         this.minor = minor;
