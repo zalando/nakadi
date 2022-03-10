@@ -1,11 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
@@ -15,14 +9,10 @@ import java.util.Arrays;
 
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
-    private final AvroSchema schemas;
-    private final AvroMapper avroMapper;
-    private final ObjectMapper objectMapper;
+    private final AvroDeserializerWithSequenceDecoder decoder;
 
     public KafkaRecordDeserializer(final AvroSchema schemas) {
-        this.schemas = schemas;
-        this.avroMapper = schemas.getAvroMapper();
-        this.objectMapper = schemas.getObjectMapper();
+        this.decoder = new AvroDeserializerWithSequenceDecoder(schemas);
     }
 
     public byte[] deserialize(final byte[] eventFormat, final byte[] data) {
@@ -39,7 +29,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                             "Metadata version is not supported: `%d`",
                             envelop.getMetadataVersion()));
                 }
-                return deserializeAvro(envelop);
+                return decoder.deserializeAvro(envelop);
             } catch (IOException e) {
                 throw new RuntimeException("failed to deserialize avro event", e);
             }
@@ -49,38 +39,4 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                 "event format is not defined, provided format: `%s`",
                 Arrays.toString(eventFormat)));
     }
-
-    private byte[] deserializeAvro(final EnvelopeHolder envelop) throws RuntimeException {
-        try {
-            // fixme use schema registry later and cache
-            final JsonParser metadataParser = avroMapper.createParser(envelop.getMetadata());
-            metadataParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
-                    AvroSchema(schemas.getMetadataSchema()));
-            final ObjectNode metadataNode = metadataParser.readValueAsTree();
-            metadataNode.put(
-                    "occurred_at",
-                    new DateTime(
-                            metadataNode.get("occurred_at").asLong(),
-                            DateTimeZone.UTC).toString()
-            );
-            metadataNode.put(
-                    "received_at",
-                    new DateTime(
-                            metadataNode.get("received_at").asLong(),
-                            DateTimeZone.UTC).toString()
-            );
-
-            final JsonParser eventParser = avroMapper.createParser(envelop.getPayload());
-            eventParser.setSchema(new com.fasterxml.jackson.dataformat.avro.
-                    AvroSchema(schemas.getNakadiAccessLogSchema()));
-            final ObjectNode eventNode = eventParser.readValueAsTree();
-            eventNode.set("metadata", metadataNode);
-
-            // writes as UTF-8, avoiding string creation
-            return objectMapper.writeValueAsBytes(eventNode);
-        } catch (final IOException io) {
-            throw new RuntimeException("failed to deserialize avro event", io);
-        }
-    }
-
 }
