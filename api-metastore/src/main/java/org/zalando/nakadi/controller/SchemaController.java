@@ -24,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
+import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 
@@ -59,7 +60,7 @@ public class SchemaController {
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
     public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
                                                 @PathVariable("version") final String version,
-                                                @Valid @RequestBody final EventTypeSchemaBase schema,
+                                                @Valid @RequestBody final CompatibilitySchemaRequest schema,
                                                 final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
@@ -71,7 +72,8 @@ public class SchemaController {
         eventType.setSchema(toCompareEventTypeSchema);
 
         final var newEventTypeBase = new EventTypeBase(eventType);
-        newEventTypeBase.setSchema(schema);
+        newEventTypeBase.setSchema(
+                new EventTypeSchemaBase(eventType.getSchema().getType(), schema.getSchema()));
 
         return compatibilityResponse(eventType, newEventTypeBase);
     }

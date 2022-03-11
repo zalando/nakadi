@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.model.CompatibilityResponse;
+import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -101,7 +102,7 @@ public class SchemaControllerTest {
                         checkCompatibility(
                                 eventTypeOriginal.getName(),
                                 "latest",
-                                eventTypeNew.getSchema(),
+                                new CompatibilitySchemaRequest(eventTypeNew.getSchema().getSchema()),
                                 new MapBindingResult(new HashMap<>(), "name"));
 
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -147,7 +148,7 @@ public class SchemaControllerTest {
                         checkCompatibility(
                                 eventTypeOriginal.getName(),
                                 "latest",
-                                eventTypeNew.getSchema(),
+                                new CompatibilitySchemaRequest(eventTypeNew.getSchema().getSchema()),
                                 new MapBindingResult(new HashMap<>(), "name"));
 
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
