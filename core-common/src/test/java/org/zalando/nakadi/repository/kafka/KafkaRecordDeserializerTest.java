@@ -56,6 +56,7 @@ public class KafkaRecordDeserializerTest {
             event.put("method", "POST");
             event.put("path", "/event-types");
             event.put("query", "");
+            event.put("user_agent", "test-user-agent");
             event.put("app", "nakadi");
             event.put("app_hashed", "hashed-app");
             event.put("status_code", 201);
@@ -103,6 +104,7 @@ public class KafkaRecordDeserializerTest {
                 .put("method", "POST")
                 .put("path", "/event-types")
                 .put("query", "")
+                .put("user_agent", "test-user-agent")
                 .put("app", "nakadi")
                 .put("app_hashed", "hashed-app")
                 .put("status_code", 201)
