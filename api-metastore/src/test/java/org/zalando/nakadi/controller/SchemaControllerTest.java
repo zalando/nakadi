@@ -7,7 +7,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.MapBindingResult;
+import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
@@ -15,13 +17,14 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
-import java.io.IOException;
+import javax.validation.Validation;
 import java.util.HashMap;
 
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -31,12 +34,16 @@ public class SchemaControllerTest {
     private SchemaService schemaService;
     private NativeWebRequest nativeWebRequest;
     private EventTypeService eventTypeService;
+    private SpringValidatorAdapter validator;
 
     @Before
     public void setUp() {
         schemaService = Mockito.mock(SchemaService.class);
         nativeWebRequest = Mockito.mock(NativeWebRequest.class);
         eventTypeService = Mockito.mock(EventTypeService.class);
+        validator = new SpringValidatorAdapter(
+                Validation.buildDefaultValidatorFactory().getValidator()
+        );
     }
 
     @Test
@@ -83,7 +90,7 @@ public class SchemaControllerTest {
     }
 
     @Test
-    public void testCheckCompatibilityForValidEvolution() throws IOException {
+    public void testCheckCompatibilityForValidEvolution() {
         final EventType eventTypeOriginal = buildDefaultEventType();
         final EventType eventTypeNew = buildDefaultEventType();
 
@@ -113,7 +120,7 @@ public class SchemaControllerTest {
     }
 
     @Test
-    public void testCheckCompatibilityForIncompatibleEvolution() throws IOException {
+    public void testCheckCompatibilityForIncompatibleEvolution() {
         final var origSchema = "[{\"type\":\"record\",\"name\":\"NAME_PLACE_HOLDER\"," +
                 "\"fields\":[{\"name\":\"foo\",\"type\":\"string\"},{\"name\":\"bar\",\"type\":\"string\"}," +
                 "{\"name\":\"baz\",\"type\":\"int\"}]";
@@ -155,6 +162,40 @@ public class SchemaControllerTest {
         final var resp = (CompatibilityResponse) result.getBody();
         final var expected = new CompatibilityResponse(false, CompatibilityMode.FORWARD, errorMsg, "1");
         Assert.assertEquals(expected, resp);
+    }
+
+    @Test(expected = ValidationException.class)
+    public void testValidationExceptionOnSchemaNullWhenCompatibilityChecked() {
+        final var csr = new CompatibilitySchemaRequest(null);
+        final var errors = new BeanPropertyBindingResult(csr, "csr");
+        validator.validate(csr , errors);
+        new SchemaController(schemaService, eventTypeService).
+                checkCompatibility(
+                        "name",
+                        "latest",
+                        csr,
+                        errors
+                );
+    }
+
+    @Test(expected = ValidationException.class)
+    public void testValidationExceptionOnNullSchemaWhenSchemaCreated() {
+        final var etSchemaBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, null);
+        final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
+        validator.validate(etSchemaBase , errors);
+        new SchemaController(schemaService, eventTypeService).
+                create("test", etSchemaBase ,errors);
+
+    }
+
+    @Test(expected = ValidationException.class)
+    public void testValidationExceptionOnNullTypeWhenSchemaCreated()  {
+        final var etSchemaBase = new EventTypeSchemaBase(null, "");
+        final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
+        validator.validate(etSchemaBase , errors);
+        new SchemaController(schemaService, eventTypeService).
+                create("test", etSchemaBase ,errors);
+
     }
 
 }
