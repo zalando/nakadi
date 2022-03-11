@@ -16,6 +16,10 @@
       "type": "string"
     },
     {
+      "name": "user_agent",
+      "type": "string"
+    },
+    {
       "name": "app",
       "type": "string"
     },

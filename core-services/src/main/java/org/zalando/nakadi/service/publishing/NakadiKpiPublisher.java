@@ -67,6 +67,7 @@ public class NakadiKpiPublisher {
     public void publishAccessLogEvent(final String method,
                                       final String path,
                                       final String query,
+                                      final String userAgent,
                                       final String user,
                                       final String contentEncoding,
                                       final String acceptEncoding,
@@ -78,6 +79,7 @@ public class NakadiKpiPublisher {
                         .put("method", method)
                         .put("path", path)
                         .put("query", query)
+                        .put("user_agent", userAgent)
                         .put("app", user)
                         .put("accept_encoding", acceptEncoding)
                         .put("content_encoding", contentEncoding)
@@ -104,6 +106,7 @@ public class NakadiKpiPublisher {
                     .set("method", method)
                     .set("path", path)
                     .set("query", query)
+                    .set("user_agent", userAgent)
                     .set("app", user)
                     .set("app_hashed", hash(user))
                     .set("status_code", statusCode)

@@ -50,7 +50,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         private Long requestTime;
 
         private RequestLogInfo(final HttpServletRequest request, final long requestTime) {
-            this.userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
+            this.userAgent = Optional.ofNullable(request.getHeader(HttpHeaders.USER_AGENT)).orElse("-");
             this.user = authorizationService.getSubject().map(Subject::getName).orElse("-");
             this.method = request.getMethod();
             this.path = request.getRequestURI();
@@ -142,15 +142,16 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-            nakadiKpiPublisher.publishAccessLogEvent(
-                    requestLogInfo.method,
-                    requestLogInfo.path,
-                    requestLogInfo.query,
-                    requestLogInfo.user,
-                    requestLogInfo.contentEncoding,
-                    requestLogInfo.acceptEncoding,
-                    statusCode,
-                    timeSpentMs);
+        nakadiKpiPublisher.publishAccessLogEvent(
+                requestLogInfo.method,
+                requestLogInfo.path,
+                requestLogInfo.query,
+                requestLogInfo.userAgent,
+                requestLogInfo.user,
+                requestLogInfo.contentEncoding,
+                requestLogInfo.acceptEncoding,
+                statusCode,
+                timeSpentMs);
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
