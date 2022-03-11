@@ -156,29 +156,4 @@ public class SchemaControllerTest {
         Assert.assertEquals(expected, resp);
     }
 
-    @Test
-    public void testCheckCompatibilityForMismatchTypeEvolution() throws IOException {
-        final EventType eventTypeOriginal = buildDefaultEventType();
-        final EventType eventTypeNew = buildDefaultEventType();
-
-        final var schemeBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, "");
-        eventTypeNew.setSchema(new EventTypeSchema(schemeBase, "1", DateTime.now()));
-
-        Mockito.when(eventTypeService.get(eventTypeOriginal.getName())).
-                thenReturn(eventTypeOriginal);
-        Mockito.when(schemaService.
-                        getValidEvolvedEventType(eventTypeOriginal, eventTypeNew)).
-                thenReturn(eventTypeNew);
-
-        final ResponseEntity<?> result =
-                new SchemaController(schemaService, eventTypeService).
-                        checkCompatibility(
-                                eventTypeOriginal.getName(),
-                                "latest",
-                                eventTypeNew.getSchema(),
-                                new MapBindingResult(new HashMap<>(), "name"));
-
-        Assert.assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
-    }
-
 }

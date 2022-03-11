@@ -26,8 +26,6 @@ import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.problem.Problem;
-import org.zalando.problem.Status;
 
 import javax.validation.Valid;
 
@@ -68,16 +66,6 @@ public class SchemaController {
         }
 
         final EventType eventType = eventTypeService.get(name);
-
-        if(!schema.getType().equals(eventType.getSchema().getType())){
-            final var detail = String.format("schema type cannot be " +
-                            "different: expected `%s`, but was `%s`"
-                    , eventType.getSchema().getType(), schema.getType());
-
-            return status(HttpStatus.CONFLICT).
-                    body(Problem.valueOf(Status.CONFLICT, detail));
-        }
-
         final var toCompareEventTypeSchema = version.equals("latest")?
                 eventType.getSchema(): schemaService.getSchemaVersion(name, version);
         eventType.setSchema(toCompareEventTypeSchema);
