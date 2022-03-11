@@ -55,6 +55,7 @@ public class BinaryEventPublisherTest extends EventPublisherTest {
                 .set("method", "POST")
                 .set("path", "/event-types")
                 .set("query", "")
+                .set("user_agent", "test-user-agent")
                 .set("app", "nakadi")
                 .set("app_hashed", "hashed-app")
                 .set("status_code", 201)
