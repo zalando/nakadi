@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.util.AvroUtils;
 
 import java.io.IOException;
 
@@ -31,8 +32,8 @@ public class AvroSchema {
             throws IOException {
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
-        this.metadataSchema = new Schema.Parser().parse(metadataRes.getInputStream());
-        this.nakadiAccessLogSchema = new Schema.Parser().parse(nakadiAccessLogRes.getInputStream());
+        this.metadataSchema = AvroUtils.getParsedSchema(metadataRes.getInputStream());
+        this.nakadiAccessLogSchema = AvroUtils.getParsedSchema(nakadiAccessLogRes.getInputStream());
     }
 
     public Schema getNakadiAccessLogSchema() {

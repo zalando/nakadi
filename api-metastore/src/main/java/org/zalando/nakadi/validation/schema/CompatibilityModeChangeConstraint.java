@@ -44,5 +44,6 @@ public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstra
         } else {
             return Optional.of(new SchemaEvolutionIncompatibility("changing compatibility_mode is not allowed"));
         }
+
     }
 }

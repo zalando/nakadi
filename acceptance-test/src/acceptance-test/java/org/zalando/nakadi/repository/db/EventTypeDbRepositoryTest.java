@@ -10,7 +10,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.utils.TestUtils;
@@ -164,7 +163,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.getSchema().setVersion(new Version("1.1.0"));
+        eventType.getSchema().setVersion("1.1.0");
 
         repository.update(eventType);
 

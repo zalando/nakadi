@@ -12,15 +12,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
+import org.zalando.nakadi.model.CompatibilityResponse;
+import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 
@@ -51,6 +55,40 @@ public class SchemaController {
         schemaService.addSchema(name, schema);
 
         return status(HttpStatus.OK).build();
+    }
+
+    @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
+    public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
+                                                @PathVariable("version") final String version,
+                                                @Valid @RequestBody final CompatibilitySchemaRequest schema,
+                                                final Errors errors) {
+        if (errors.hasErrors()) {
+            throw new ValidationException(errors);
+        }
+
+        final EventType eventType = eventTypeService.get(name);
+        final var toCompareEventTypeSchema = version.equals("latest")?
+                eventType.getSchema(): schemaService.getSchemaVersion(name, version);
+        eventType.setSchema(toCompareEventTypeSchema);
+
+        final var newEventTypeBase = new EventTypeBase(eventType);
+        newEventTypeBase.setSchema(
+                new EventTypeSchemaBase(eventType.getSchema().getType(), schema.getSchema()));
+
+        return compatibilityResponse(eventType, newEventTypeBase);
+    }
+
+    private ResponseEntity<?> compatibilityResponse(final EventType eventType, final EventTypeBase newEventTypeBase) {
+        final var compatibilityMode = newEventTypeBase.getCompatibilityMode();
+        final var version = eventType.getSchema().getVersion().toString();
+        try {
+            schemaService.getValidEvolvedEventType(eventType, newEventTypeBase);
+        } catch (SchemaEvolutionException e) {
+            return status(HttpStatus.OK).
+                    body(new CompatibilityResponse(false, compatibilityMode, e.getMessage(), version));
+        }
+        return status(HttpStatus.OK).
+                body(new CompatibilityResponse(true, compatibilityMode, null, version));
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.GET)
