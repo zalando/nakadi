@@ -1,0 +1,36 @@
+{
+  "name": "NakadiBatchPublishedEventV01",
+  "namespace": "org.zalando.nakadi.domain.kpi",
+  "type": "record",
+  "doc": "Stores KPI event of type nakadi.batch.published",
+  "fields": [
+    {
+      "name": "event_type",
+      "type": "string"
+    },
+    {
+      "name": "app",
+      "type": "string"
+    },
+    {
+      "name": "app_hashed",
+      "type": "string"
+    },
+    {
+      "name": "token_realm",
+      "type": "string"
+    },
+    {
+      "name": "number_of_events",
+      "type": "int"
+    },
+    {
+      "name": "ms_spent",
+      "type": "long"
+    },
+    {
+      "name": "batch_size",
+      "type": "int"
+    }
+  ]
+}

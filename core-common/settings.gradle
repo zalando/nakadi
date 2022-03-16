@@ -1,1 +1,8 @@
 rootProject.name = 'core-common'
+
+pluginManagement{
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
