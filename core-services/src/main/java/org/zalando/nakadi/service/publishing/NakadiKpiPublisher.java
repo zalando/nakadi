@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.json.JSONObject;
@@ -16,6 +17,7 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.util.Map;
 import java.util.function.Supplier;
 
 @Component
@@ -90,19 +92,20 @@ public class NakadiKpiPublisher {
             }
 
             final long now = System.currentTimeMillis();
-            final GenericRecord metadata = new GenericRecordBuilder(
-                    avroSchema.getMetadataSchema())
+            final Map.Entry<String, Schema> latestSchema =
+                    avroSchema.getLatestEventTypeSchemaVersion(accessLogEventType);
+
+            final GenericRecord metadata = new GenericRecordBuilder(avroSchema.getMetadataSchema())
                     .set("occurred_at", now)
                     .set("eid", uuidGenerator.randomUUID().toString())
                     .set("flow_id", FlowIdUtils.peek())
                     .set("event_type", accessLogEventType)
                     .set("partition", 0) // fixme avro
                     .set("received_at", now)
-                    .set("schema_version", "0")  // fixme avro
+                    .set("schema_version", latestSchema.getKey())
                     .set("published_by", user)
                     .build();
-            final GenericRecord event = new GenericRecordBuilder(
-                    avroSchema.getNakadiAccessLogSchema())
+            final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("method", method)
                     .set("path", path)
                     .set("query", query)

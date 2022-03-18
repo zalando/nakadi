@@ -22,16 +22,16 @@ public class KafkaRecordDeserializerTest {
     private final AvroSchema avroSchema;
 
     public KafkaRecordDeserializerTest() throws IOException {
-        final Resource metadata = new DefaultResourceLoader()
-                .getResource("metadata.avsc");
-        final Resource accessLog = new DefaultResourceLoader()
-                .getResource("nakadi.access.log.avsc");
-        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadata, accessLog);
+        final Resource metadataRes = new DefaultResourceLoader()
+                .getResource("event-type-schema/metadata.avsc");
+        final Resource eventTypeRes = new DefaultResourceLoader()
+                .getResource("event-type-schema");
+        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
     }
 
     @Test
     public void testDeserializeAvro() throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema, "nakadi.access.log");
         // prepare the same bytes as we would put in Kafka record
         final byte[] data = EnvelopeHolder.produceBytes(
                 AvroSchema.METADATA_VERSION,
@@ -52,7 +52,8 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter() {
         return os -> {
-            final GenericRecord event = new GenericData.Record(avroSchema.getNakadiAccessLogSchema());
+            final GenericRecord event = new GenericData.Record(
+                    avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log").getValue());
             event.put("method", "POST");
             event.put("path", "/event-types");
             event.put("query", "");
@@ -80,7 +81,7 @@ public class KafkaRecordDeserializerTest {
             metadata.put("event_type", "test-et-name");
             metadata.put("partition", 0);
             metadata.put("received_at", someEqualTime);
-            metadata.put("schema_version", "0");
+            metadata.put("schema_version", avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log").getKey());
             metadata.put("published_by", "nakadi-test");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());

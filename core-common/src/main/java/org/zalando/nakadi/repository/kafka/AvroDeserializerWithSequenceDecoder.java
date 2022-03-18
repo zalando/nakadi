@@ -14,9 +14,10 @@ public class AvroDeserializerWithSequenceDecoder {
     private final SequenceDecoder metadataSequenceDecoder;
     private final SequenceDecoder eventSequenceDecoder;
 
-    public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas) {
+    public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas, final String eventTypeName) {
         this.metadataSequenceDecoder = new SequenceDecoder(schemas.getMetadataSchema());
-        this.eventSequenceDecoder = new SequenceDecoder(schemas.getNakadiAccessLogSchema());
+        this.eventSequenceDecoder =
+                new SequenceDecoder(schemas.getLatestEventTypeSchemaVersion(eventTypeName).getValue());
     }
 
     public byte[] deserializeAvro(final EnvelopeHolder envelop) throws RuntimeException {

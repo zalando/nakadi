@@ -1,8 +1,8 @@
 package org.zalando.nakadi.service.publishing;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.Test;
@@ -18,6 +18,7 @@ import org.zalando.nakadi.util.FlowIdUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -26,9 +27,9 @@ public class BinaryEventPublisherTest extends EventPublisherTest {
 
     @Test
     public void testAvroEventWasSerialized() throws Exception {
-        final Resource metadataRes = new DefaultResourceLoader().getResource("metadata.avsc");
-        final Resource accessLog = new DefaultResourceLoader().getResource("nakadi.access.log.avsc");
-        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, accessLog);
+        final Resource metadataRes = new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
+        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema");
+        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
                 cache, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();
@@ -39,19 +40,18 @@ public class BinaryEventPublisherTest extends EventPublisherTest {
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
 
         final long now = System.currentTimeMillis();
-        final GenericRecord metadata = new GenericRecordBuilder(
-                avroSchema.getMetadataSchema())
+        final Map.Entry<String, Schema> latestSchema = avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
+        final GenericRecord metadata = new GenericRecordBuilder(avroSchema.getMetadataSchema())
                 .set("occurred_at", now)
                 .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
                 .set("flow_id", FlowIdUtils.peek())
                 .set("event_type", eventTypeName)
                 .set("partition", 0)
                 .set("received_at", now)
-                .set("schema_version", "0")
+                .set("schema_version", latestSchema.getKey())
                 .set("published_by", "adyachkov")
                 .build();
-        final GenericRecord event = new GenericRecordBuilder(
-                avroSchema.getNakadiAccessLogSchema())
+        final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                 .set("method", "POST")
                 .set("path", "/event-types")
                 .set("query", "")
