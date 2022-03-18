@@ -2,22 +2,27 @@ package org.zalando.nakadi.service;
 
 
 import com.google.common.collect.Lists;
+import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.AvroVersion;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.domain.JsonVersion;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
@@ -25,6 +30,7 @@ import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,25 +58,29 @@ public class SchemaEvolutionService {
             DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, REQUIRED_ARRAY_EXTENDED,
             ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
     private final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver;
-
+    private final AvroSchemaCompatibility avroSchemaCompatibility;
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
                                   final BiFunction<SchemaChange.Type, CompatibilityMode, Version.Level> levelResolver,
-                                  final Map<SchemaChange.Type, String> errorMessages) {
+                                  final Map<SchemaChange.Type, String> errorMessages,
+                                  final AvroSchemaCompatibility avroSchemaCompatibility) {
         this.metaSchema = metaSchema;
         this.schemaEvolutionConstraints = schemaEvolutionConstraints;
         this.schemaDiff = schemaDiff;
         this.levelResolver = levelResolver;
         this.errorMessages = errorMessages;
+        this.avroSchemaCompatibility = avroSchemaCompatibility;
     }
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
-                                  final Map<SchemaChange.Type, String> errorMessages) {
-        this(metaSchema, schemaEvolutionConstraints, schemaDiff, SchemaChange.Type::getLevel, errorMessages);
+                                  final Map<SchemaChange.Type, String> errorMessages,
+                                  final AvroSchemaCompatibility avroSchemaCompatibility) {
+        this(metaSchema, schemaEvolutionConstraints, schemaDiff, SchemaChange.Type::getLevel, errorMessages,
+                avroSchemaCompatibility);
     }
 
     public List<SchemaIncompatibility> collectIncompatibilities(final JSONObject schemaJson) {
@@ -98,7 +108,53 @@ public class SchemaEvolutionService {
 
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
         checkEvolutionIncompatibilities(original, eventType);
+        final var version = original.getSchema().getVersion();
+        switch (eventType.getSchema().getType()) {
+            case JSON_SCHEMA:
+                return evolveJsonSchema(original, eventType, new JsonVersion(version));
+            case AVRO_SCHEMA:
+                return evolveAvroSchema(original, eventType, new AvroVersion(version));
+            default:
+                throw new RuntimeException("unsupported type for evolving " + eventType.getSchema().getType());
+        }
+    }
 
+    private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType,
+                                       final AvroVersion avroVersion)
+            throws SchemaEvolutionException {
+        final var compatibilityMode = eventType.getCompatibilityMode();
+            validateAvroSchema(Collections.singletonList(original.getSchema()),
+                    eventType.getSchema(), compatibilityMode);
+
+        final var level = AvroUtils.getParsedSchema(original.getSchema().getSchema()).
+                equals(AvroUtils.getParsedSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;
+
+        return bumpVersion(original, eventType, level, avroVersion);
+    }
+
+    private void validateAvroSchema(final List<? extends EventTypeSchema> original,
+                                    final EventTypeSchemaBase eventType, final CompatibilityMode compatibilityMode)
+            throws SchemaEvolutionException {
+        try {
+            final var prevSchema =
+                    original.stream().map(schema -> AvroUtils.getParsedSchema(schema.getSchema())).
+                    collect(Collectors.toList());
+            final var newSchema = AvroUtils.getParsedSchema(eventType.getSchema());
+            final var incompatibilities =
+                    avroSchemaCompatibility.validateSchema(prevSchema, newSchema, compatibilityMode);
+
+            if (!incompatibilities.isEmpty()) {
+                throw new SchemaEvolutionException("Failed to evolve avro schema due to " +
+                        incompatibilities);
+            }
+        } catch (AvroRuntimeException e) {
+            throw new SchemaEvolutionException("Failed to evolve avro schema due to " + e.getMessage());
+        }
+
+    }
+
+    private EventType evolveJsonSchema(final EventType original, final EventTypeBase eventType,
+                                       final JsonVersion jsonVersion) {
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
         final Version.Level changeLevel = semanticOfChange(original.getSchema().getSchema(),
@@ -110,7 +166,7 @@ public class SchemaEvolutionService {
             validateCompatibleChanges(original, changes, changeLevel);
         }
 
-        return bumpVersion(original, eventType, changeLevel);
+        return bumpVersion(original, eventType, changeLevel, jsonVersion);
     }
 
     private void checkEvolutionIncompatibilities(final EventType from, final EventTypeBase to)
@@ -215,9 +271,9 @@ public class SchemaEvolutionService {
     }
 
     private EventType bumpVersion(final EventType original, final EventTypeBase eventType,
-                                  final Version.Level changeLevel) {
+                                  final Version.Level changeLevel, final Version version) {
         final DateTime now = new DateTime(DateTimeZone.UTC);
-        final String newVersion = original.getSchema().getVersion().bump(changeLevel).toString();
+        final String newVersion = version.bump(changeLevel).toString();
 
         final EventTypeSchema schema = changeLevel == NO_CHANGES ? original.getSchema() :
                 new EventTypeSchema(eventType.getSchema(), newVersion, now);

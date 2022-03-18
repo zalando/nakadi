@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -298,9 +299,13 @@ public class EventTypeCache {
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
 
+        final var schemaType = eventType.getSchema().getType();
+        final EventTypeValidator noopValidator = (json) -> Optional.empty();
+
         final CachedValue result = new CachedValue(
                 eventType,
-                eventValidatorBuilder.build(eventType),
+                schemaType == EventTypeSchemaBase.Type.JSON_SCHEMA?
+                        eventValidatorBuilder.build(eventType) : noopValidator,
                 timelines
         );
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);

@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
-import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -33,9 +32,9 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<EventTypeSchema> schemas = repository.getSchemas(name, 0, 3);
         Assert.assertEquals(3, schemas.size());
-        Assert.assertEquals(new Version("10.0.0"), schemas.get(0).getVersion());
-        Assert.assertEquals(new Version("2.10.3"), schemas.get(1).getVersion());
-        Assert.assertEquals(new Version("1.0.2"), schemas.get(2).getVersion());
+        Assert.assertEquals("10.0.0", schemas.get(0).getVersion());
+        Assert.assertEquals("2.10.3", schemas.get(1).getVersion());
+        Assert.assertEquals("1.0.2", schemas.get(2).getVersion());
 
         final int count = repository.getSchemasCount(name);
         Assert.assertEquals(3, count);
@@ -46,7 +45,7 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
         final String name = randomUUID();
         buildEventWithMultipleSchemas(name);
         final EventTypeSchema schema = repository.getSchemaVersion(name, "10.0.0");
-        Assert.assertEquals("10.0.0", schema.getVersion().toString());
+        Assert.assertEquals("10.0.0", schema.getVersion());
         Assert.assertEquals("schema", schema.getSchema());
     }
 
@@ -55,7 +54,7 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
         final String name = randomUUID();
         buildEventWithMultipleSchemas(name);
         final EventTypeSchema schema = repository.getSchemaVersion(name, "1.0.2");
-        Assert.assertEquals("1.0.2", schema.getVersion().toString());
+        Assert.assertEquals("1.0.2", schema.getVersion());
         Assert.assertEquals("schema", schema.getSchema());
     }
 

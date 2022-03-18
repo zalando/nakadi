@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.util.AvroUtils;
 
 import java.io.InputStream;
 import java.io.IOException;
@@ -41,7 +42,7 @@ public class AvroSchema {
             throws IOException {
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
-        this.metadataSchema = new Schema.Parser().parse(metadataSchemaRes.getInputStream());
+        this.metadataSchema = AvroUtils.getParsedSchema(metadataSchemaRes.getInputStream());
         this.eventTypeSchema = new HashMap<>();
 
         for (final String eventTypeName : Set.of("nakadi.access.log")) {
@@ -60,7 +61,7 @@ public class AvroSchema {
             try {
                 final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
                 final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();
-                versionToSchema.put(String.valueOf(i), new Schema.Parser().parse(is));
+                versionToSchema.put(String.valueOf(i), AvroUtils.getParsedSchema(is));
             } catch (final IOException e) {
                 break;
             }

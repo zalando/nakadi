@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -27,6 +28,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -43,7 +45,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -109,10 +110,8 @@ public class SchemaService {
 
             final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
             updatedEventType.setSchema(newSchema);
-            validateSchema(updatedEventType);
 
-            final EventType eventType = schemaEvolutionService.evolve(originalEventType, updatedEventType);
-
+            final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
             eventTypeRepository.update(eventType);
 
             eventTypeCache.invalidate(eventType.getName());
@@ -146,6 +145,11 @@ public class SchemaService {
         }
     }
 
+    public EventType getValidEvolvedEventType(final EventType originalEventType, final EventTypeBase updatedEventType) {
+        validateSchema(updatedEventType);
+        return schemaEvolutionService.evolve(originalEventType, updatedEventType);
+    }
+
     public PaginationWrapper getSchemas(final String name, final int offset, final int limit)
             throws InvalidLimitException {
         if (limit < 1 || limit > 1000) {
@@ -164,10 +168,6 @@ public class SchemaService {
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
             throws NoSuchSchemaException, InvalidVersionNumberException {
-        final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
-        if (!versionMatcher.matches()) {
-            throw new InvalidVersionNumberException("Invalid version number");
-        }
         final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
         return schema;
     }
@@ -176,40 +176,19 @@ public class SchemaService {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
 
-            isStrictlyValidJson(eventTypeSchema);
 
-            final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
-
-            if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
-                throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
+            final EventTypeSchemaBase.Type schemaType = eventType.getSchema().getType();
+            if(schemaType.equals(EventTypeSchemaBase.Type.JSON_SCHEMA)) {
+                isStrictlyValidJson(eventTypeSchema);
+                validateJsonTypeSchema(eventType, eventTypeSchema);
+            }
+            else if (schemaType.equals(EventTypeSchemaBase.Type.AVRO_SCHEMA)){
+                validateAvroTypeSchema(eventTypeSchema);
+            }
+            else {
+                throw new IllegalArgumentException("undefined schema type");
             }
 
-            final Schema schema = SchemaLoader
-                    .builder()
-                    .httpClient(new BlockedHttpClient())
-                    .schemaJson(schemaAsJson)
-                    .build()
-                    .load()
-                    .build();
-
-            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
-                throw new SchemaValidationException("\"metadata\" property is reserved");
-            }
-
-            final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
-            final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
-            if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
-                throw new SchemaValidationException(
-                        "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
-            }
-            final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
-            final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
-            validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
-            validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
-
-            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-                validateJsonSchemaConstraints(schemaAsJson);
-            }
         } catch (final com.google.re2j.PatternSyntaxException e) {
             throw new SchemaValidationException("invalid regex pattern in the schema: "
                     + e.getDescription() + " \"" + e.getPattern() + "\"");
@@ -217,6 +196,49 @@ public class SchemaService {
             throw new SchemaValidationException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new SchemaValidationException("schema must be a valid json-schema");
+        }
+    }
+
+    private void validateAvroTypeSchema(final String eventTypeSchema) {
+        try {
+            AvroUtils.getParsedSchema(eventTypeSchema);
+        } catch (AvroRuntimeException e) {
+            throw new SchemaValidationException("failed to parse avro schema " + e.getMessage());
+        }
+    }
+
+    private void validateJsonTypeSchema(final EventTypeBase eventType, final String eventTypeSchema) {
+        final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
+
+        if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
+            throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
+        }
+
+        final Schema schema = SchemaLoader
+                .builder()
+                .httpClient(new BlockedHttpClient())
+                .schemaJson(schemaAsJson)
+                .build()
+                .load()
+                .build();
+
+        if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
+            throw new SchemaValidationException("\"metadata\" property is reserved");
+        }
+
+        final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
+        final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
+        if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
+            throw new SchemaValidationException(
+                    "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
+        }
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+        final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
+        validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
+        validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
+
+        if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+            validateJsonSchemaConstraints(schemaAsJson);
         }
     }
 
