@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
-//import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
@@ -595,8 +594,10 @@ public class EventPublisherTest {
 
     @Test
     public void testAvroEventWasSerialized() throws Exception {
-        final org.springframework.core.io.Resource metadataRes = new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
-        final org.springframework.core.io.Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
+        final org.springframework.core.io.Resource metadataRes =
+                new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
+        final org.springframework.core.io.Resource eventTypeRes =
+                new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
                 cache, timelineSync, nakadiSettings);

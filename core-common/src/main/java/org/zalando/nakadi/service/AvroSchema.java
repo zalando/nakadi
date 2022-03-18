@@ -58,8 +58,8 @@ public class AvroSchema {
 
         for (int i = 0; ; ++i) {
             try {
-                final InputStream is = eventTypeSchemaRes.createRelative(String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i))
-                    .getInputStream();
+                final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
+                final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();
                 versionToSchema.put(String.valueOf(i), new Schema.Parser().parse(is));
             } catch (final IOException e) {
                 break;
