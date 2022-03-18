@@ -74,7 +74,9 @@ public class NakadiKpiPublisher {
                                       final String contentEncoding,
                                       final String acceptEncoding,
                                       final int statusCode,
-                                      final Long timeSpentMs) {
+                                      final Long timeSpentMs,
+                                      final Long requestLength,
+                                      final Long responseLength) {
         try {
             if (!featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
                 publish(accessLogEventType, () -> new JSONObject()
@@ -87,7 +89,9 @@ public class NakadiKpiPublisher {
                         .put("content_encoding", contentEncoding)
                         .put("app_hashed", hash(user))
                         .put("status_code", statusCode)
-                        .put("response_time_ms", timeSpentMs));
+                        .put("response_time_ms", timeSpentMs)
+                        .put("request_length", requestLength)
+                        .put("response_length", responseLength));
                 return;
             }
 
@@ -116,6 +120,8 @@ public class NakadiKpiPublisher {
                     .set("response_time_ms", timeSpentMs)
                     .set("accept_encoding", acceptEncoding)
                     .set("content_encoding", contentEncoding)
+                    .set("request_length", requestLength)
+                    .set("response_length", responseLength)
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord

@@ -631,6 +631,8 @@ public class EventPublisherTest {
                 .set("response_time_ms", 10)
                 .set("accept_encoding", "-")
                 .set("content_encoding", "--")
+                .set("request_length", 123)
+                .set("response_length", 321)
                 .build();
 
         final NakadiRecord nakadiRecord = NakadiRecord

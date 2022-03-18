@@ -93,6 +93,8 @@ public class KafkaRecordDeserializerTest {
         return os -> {
             final GenericRecord event = getBaseRecord("1");
             event.put("user_agent", "test-user-agent");
+            event.put("request_length", 111);
+            event.put("response_length", 222);
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -151,6 +153,8 @@ public class KafkaRecordDeserializerTest {
     private ObjectNode getExpectedNode1() {
         final ObjectNode event = getBaseExpectedNode("1");
         event.put("user_agent", "test-user-agent");
+        event.put("request_length", 111);
+        event.put("response_length", 222);
         return event;
     }
 }

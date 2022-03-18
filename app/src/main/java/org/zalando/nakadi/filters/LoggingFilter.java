@@ -74,13 +74,13 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.requestLogInfo = new RequestLogInfo(request, startTime);
 
             if (isAccessLogEnabled()) {
-                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L);
+                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L, 0L);
             }
         }
 
         private void logOnEvent() {
             FlowIdUtils.push(this.flowId);
-            logRequest(this.requestLogInfo, this.response.getStatus());
+            logRequest(this.requestLogInfo, this.response);
             FlowIdUtils.clear();
         }
 
@@ -120,28 +120,34 @@ public class LoggingFilter extends OncePerRequestFilter {
             }
         } finally {
             if (!request.isAsyncStarted()) {
-                logRequest(requestLogInfo, response.getStatus());
+                logRequest(requestLogInfo, response);
             }
         }
     }
 
-    private void logRequest(final RequestLogInfo requestLogInfo, final int statusCode) {
+    private void logRequest(final RequestLogInfo requestLogInfo, final HttpServletResponse response) {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
+        final String responseLengthHeader = response.getHeader(HttpHeaders.CONTENT_LENGTH);
+        final Long responseLength = responseLengthHeader == null ? 0 : Long.valueOf(responseLengthHeader);
+
+        final int statusCode = response.getStatus();
         final boolean isServerSideError = statusCode >= 500 || statusCode == 207;
 
         if (isServerSideError || (isAccessLogEnabled() && !isPublishingRequest(requestLogInfo))) {
-            logToAccessLog(requestLogInfo, statusCode, timeSpentMs);
+            logToAccessLog(requestLogInfo, statusCode, responseLength, timeSpentMs);
         }
 
-        logToKpiPublisher(requestLogInfo, statusCode, timeSpentMs);
+        logToKpiPublisher(requestLogInfo, statusCode, responseLength, timeSpentMs);
     }
 
     private boolean isAccessLogEnabled() {
         return featureToggleService.isFeatureEnabled(Feature.ACCESS_LOG_ENABLED);
     }
 
-    private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
+    private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long responseLength,
+            final Long timeSpentMs) {
+
         nakadiKpiPublisher.publishAccessLogEvent(
                 requestLogInfo.method,
                 requestLogInfo.path,
@@ -151,11 +157,15 @@ public class LoggingFilter extends OncePerRequestFilter {
                 requestLogInfo.contentEncoding,
                 requestLogInfo.acceptEncoding,
                 statusCode,
-                timeSpentMs);
+                timeSpentMs,
+                requestLogInfo.contentLength,
+                responseLength);
     }
 
-    private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
-        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B",
+    private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long responseLength,
+            final Long timeSpentMs) {
+
+        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B -> {}B",
                 requestLogInfo.method,
                 requestLogInfo.path,
                 requestLogInfo.query,
@@ -165,7 +175,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                 timeSpentMs,
                 requestLogInfo.contentEncoding,
                 requestLogInfo.acceptEncoding,
-                requestLogInfo.contentLength);
+                requestLogInfo.contentLength,
+                responseLength);
     }
 
     private boolean isPublishingRequest(final RequestLogInfo requestLogInfo) {
