@@ -46,8 +46,12 @@ public class AvroSchema {
         this.eventTypeSchema = new HashMap<>();
 
         for (final String eventTypeName : Set.of("nakadi.access.log")) {
-            eventTypeSchema.put(eventTypeName,
-                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName));
+            final TreeMap<String, Schema> versionToSchema =
+                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName);
+            if (versionToSchema.isEmpty()) {
+                throw new NoSuchSchemaException("Not any avro schema found for: " + eventTypeName);
+            }
+            eventTypeSchema.put(eventTypeName, versionToSchema);
         }
     }
 
@@ -82,11 +86,7 @@ public class AvroSchema {
     }
 
     public Map.Entry<String, Schema> getLatestEventTypeSchemaVersion(final String eventTypeName) {
-        final Map.Entry<String, Schema> latestVersion = getEventTypeSchemaVersions(eventTypeName).lastEntry();
-        if (latestVersion == null) {
-            throw new NoSuchSchemaException("Not any avro schema found for: " + eventTypeName);
-        }
-        return latestVersion;
+        return getEventTypeSchemaVersions(eventTypeName).lastEntry();
     }
 
     public Schema getEventTypeSchema(final String eventTypeName, final String schemaVersion) {
