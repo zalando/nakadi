@@ -8,16 +8,22 @@ import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
 
+    private final AvroSchema schemas;
+    private final String eventTypeName;
     private final SequenceDecoder metadataSequenceDecoder;
-    private final SequenceDecoder eventSequenceDecoder;
+    private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
     public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas, final String eventTypeName) {
+        this.schemas = schemas;
+        this.eventTypeName = eventTypeName;
+
         this.metadataSequenceDecoder = new SequenceDecoder(schemas.getMetadataSchema());
-        this.eventSequenceDecoder =
-                new SequenceDecoder(schemas.getLatestEventTypeSchemaVersion(eventTypeName).getValue());
+        this.eventSequenceDecoders = new HashMap<>();
     }
 
     public byte[] deserializeAvro(final EnvelopeHolder envelop) throws RuntimeException {
@@ -29,7 +35,11 @@ public class AvroDeserializerWithSequenceDecoder {
             metadata.put("received_at", new DateTime(
                     (long) metadata.get("received_at"), DateTimeZone.UTC).toString());
 
-            final GenericRecord event = eventSequenceDecoder.read(envelop.getPayload());
+            final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
+                    metadata.get("schema_version").toString(),
+                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(eventTypeName, v)));
+
+            final GenericRecord event = eventDecoder.read(envelop.getPayload());
 
             final StringBuilder sEvent = new StringBuilder(event.toString());
             sEvent.deleteCharAt(sEvent.length() - 1).append(", \"metadata\":").append(metadata).append('}');

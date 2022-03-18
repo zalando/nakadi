@@ -31,28 +31,58 @@ public class KafkaRecordDeserializerTest {
     @Test
     public void testDeserializeAvro() throws IOException {
         final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema, "nakadi.access.log");
+
         // prepare the same bytes as we would put in Kafka record
-        final byte[] data = EnvelopeHolder.produceBytes(
+        final byte[] data0 = EnvelopeHolder.produceBytes(
                 AvroSchema.METADATA_VERSION,
-                getMetadataWriter(),
-                getEventWriter());
+                getMetadataWriter("0"),
+                getEventWriter0());
+
+        final byte[] data1 = EnvelopeHolder.produceBytes(
+                AvroSchema.METADATA_VERSION,
+                getMetadataWriter("1"),
+                getEventWriter1());
 
         // try to deserialize that data when we would read Kafka record
-        final byte[] deserializedEvent = deserializer.deserialize(
+        final byte[] deserializedEvent0 = deserializer.deserialize(
                 NakadiRecord.Format.AVRO.getFormat(),
-                data
+                data0
+        );
+        final byte[] deserializedEvent1 = deserializer.deserialize(
+                NakadiRecord.Format.AVRO.getFormat(),
+                data1
         );
 
         Assert.assertEquals(
-                expectedJsonEvent(),
+                expectedJsonEvent1(),
                 new ObjectMapper()
-                        .readValue(deserializedEvent, ObjectNode.class));
+                        .readValue(deserializedEvent1, ObjectNode.class));
     }
 
-    private EnvelopeHolder.EventWriter getEventWriter() {
+    private EnvelopeHolder.EventWriter getEventWriter0() {
         return os -> {
             final GenericRecord event = new GenericData.Record(
-                    avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log").getValue());
+                    avroSchema.getEventTypeSchema("nakadi.access.log", "0"));
+            event.put("method", "POST");
+            event.put("path", "/event-types");
+            event.put("query", "");
+            event.put("app", "nakadi");
+            event.put("app_hashed", "hashed-app");
+            event.put("status_code", 201);
+            event.put("response_time_ms", 10);
+            event.put("accept_encoding", "-");
+            event.put("content_encoding", "--");
+
+            final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
+            eventWriter.write(event, EncoderFactory.get()
+                    .directBinaryEncoder(os, null));
+        };
+    }
+
+    private EnvelopeHolder.EventWriter getEventWriter1() {
+        return os -> {
+            final GenericRecord event = new GenericData.Record(
+                    avroSchema.getEventTypeSchema("nakadi.access.log", "1"));
             event.put("method", "POST");
             event.put("path", "/event-types");
             event.put("query", "");
@@ -70,7 +100,7 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private EnvelopeHolder.EventWriter getMetadataWriter() {
+    private EnvelopeHolder.EventWriter getMetadataWriter(final String schemaVersion) {
         return os -> {
             final GenericRecord metadata = new GenericData.Record(avroSchema.getMetadataSchema());
             final long someEqualTime = 1643290232172l;
@@ -80,7 +110,7 @@ public class KafkaRecordDeserializerTest {
             metadata.put("event_type", "test-et-name");
             metadata.put("partition", 0);
             metadata.put("received_at", someEqualTime);
-            metadata.put("schema_version", avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log").getKey());
+            metadata.put("schema_version", schemaVersion);
             metadata.put("published_by", "nakadi-test");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
@@ -89,7 +119,7 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private ObjectNode expectedJsonEvent() {
+    private ObjectNode expectedJsonEvent1() {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode metadata = mapper.createObjectNode()
                 .put("occurred_at", "2022-01-27T13:30:32.172Z")
