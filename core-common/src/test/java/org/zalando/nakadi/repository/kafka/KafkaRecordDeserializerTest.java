@@ -22,10 +22,9 @@ public class KafkaRecordDeserializerTest {
     private final AvroSchema avroSchema;
 
     public KafkaRecordDeserializerTest() throws IOException {
-        final Resource metadataRes = new DefaultResourceLoader()
-                .getResource("event-type-schema/metadata.avsc");
-        final Resource eventTypeRes = new DefaultResourceLoader()
-                .getResource("event-type-schema");
+        final Resource metadataRes = new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
+        // FIXME: doesn't work without the trailing slash
+        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
     }
 
@@ -97,7 +96,7 @@ public class KafkaRecordDeserializerTest {
                 .put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab")
                 .put("flow_id", "hek")
                 .put("received_at", "2022-01-27T13:30:32.172Z")
-                .put("schema_version", "0")
+                .put("schema_version", "1")
                 .put("published_by", "nakadi-test")
                 .put("event_type", "test-et-name")
                 .put("partition", 0);

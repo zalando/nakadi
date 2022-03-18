@@ -56,13 +56,12 @@ public class AvroSchema {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 
-        final Resource eventTypeRes = eventTypeSchemaRes.createRelative(eventTypeName);
         for (int i = 0; ; ++i) {
             try {
-                final InputStream is = eventTypeRes.createRelative(String.format("%s.%d.avsc", eventTypeName, i))
+                final InputStream is = eventTypeSchemaRes.createRelative(String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i))
                     .getInputStream();
                 versionToSchema.put(String.valueOf(i), new Schema.Parser().parse(is));
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 break;
             }
         }
@@ -82,7 +81,11 @@ public class AvroSchema {
     }
 
     public Map.Entry<String, Schema> getLatestEventTypeSchemaVersion(final String eventTypeName) {
-        return getEventTypeSchemaVersions(eventTypeName).lastEntry();
+        final Map.Entry<String, Schema> latestVersion = getEventTypeSchemaVersions(eventTypeName).lastEntry();
+        if (latestVersion == null) {
+            throw new NoSuchSchemaException("Not any avro schema found for: " + eventTypeName);
+        }
+        return latestVersion;
     }
 
     public Schema getEventTypeSchema(final String eventTypeName, final String schemaVersion) {

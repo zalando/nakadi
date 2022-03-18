@@ -1,22 +1,31 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.Schema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
+import org.springframework.core.io.DefaultResourceLoader;
+//import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
-import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -29,8 +38,10 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
@@ -39,9 +50,12 @@ import org.zalando.nakadi.view.EventOwnerSelector;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.Collections;
 import java.util.concurrent.TimeoutException;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -577,6 +591,52 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName());
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
+    }
+
+    @Test
+    public void testAvroEventWasSerialized() throws Exception {
+        final org.springframework.core.io.Resource metadataRes = new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
+        final org.springframework.core.io.Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
+        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
+        final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
+                cache, timelineSync, nakadiSettings);
+        final EventType eventType = buildDefaultEventType();
+        final String topic = UUID.randomUUID().toString();
+        final String eventTypeName = eventType.getName();
+        Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
+        Mockito.when(timelineService.getActiveTimeline(eventType))
+                .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
+
+        final long now = System.currentTimeMillis();
+        final Map.Entry<String, Schema> latestSchema = avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
+        final GenericRecord metadata = new GenericRecordBuilder(avroSchema.getMetadataSchema())
+                .set("occurred_at", now)
+                .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
+                .set("flow_id", FlowIdUtils.peek())
+                .set("event_type", eventTypeName)
+                .set("partition", 0)
+                .set("received_at", now)
+                .set("schema_version", latestSchema.getKey())
+                .set("published_by", "adyachkov")
+                .build();
+        final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
+                .set("method", "POST")
+                .set("path", "/event-types")
+                .set("query", "")
+                .set("user_agent", "test-user-agent")
+                .set("app", "nakadi")
+                .set("app_hashed", "hashed-app")
+                .set("status_code", 201)
+                .set("response_time_ms", 10)
+                .set("accept_encoding", "-")
+                .set("content_encoding", "--")
+                .build();
+
+        final NakadiRecord nakadiRecord = NakadiRecord
+                .fromAvro(eventTypeName, metadata, event);
+        final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
+        eventPublisher.publish(eventTypeName, records);
+        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
     }
 
     private void mockFailedPublishing() throws Exception {
