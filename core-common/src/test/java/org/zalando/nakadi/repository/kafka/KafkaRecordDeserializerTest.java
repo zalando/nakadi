@@ -54,24 +54,34 @@ public class KafkaRecordDeserializerTest {
         );
 
         Assert.assertEquals(
-                expectedJsonEvent1(),
+                getExpectedNode0(),
+                new ObjectMapper()
+                        .readValue(deserializedEvent0, ObjectNode.class));
+
+        Assert.assertEquals(
+                getExpectedNode1(),
                 new ObjectMapper()
                         .readValue(deserializedEvent1, ObjectNode.class));
     }
 
+    private GenericRecord getBaseRecord(final String schemaVersion) {
+        final GenericRecord event = new GenericData.Record(
+                avroSchema.getEventTypeSchema("nakadi.access.log", schemaVersion));
+        event.put("method", "POST");
+        event.put("path", "/event-types");
+        event.put("query", "");
+        event.put("app", "nakadi");
+        event.put("app_hashed", "hashed-app");
+        event.put("status_code", 201);
+        event.put("response_time_ms", 10);
+        event.put("accept_encoding", "-");
+        event.put("content_encoding", "--");
+        return event;
+    }
+
     private EnvelopeHolder.EventWriter getEventWriter0() {
         return os -> {
-            final GenericRecord event = new GenericData.Record(
-                    avroSchema.getEventTypeSchema("nakadi.access.log", "0"));
-            event.put("method", "POST");
-            event.put("path", "/event-types");
-            event.put("query", "");
-            event.put("app", "nakadi");
-            event.put("app_hashed", "hashed-app");
-            event.put("status_code", 201);
-            event.put("response_time_ms", 10);
-            event.put("accept_encoding", "-");
-            event.put("content_encoding", "--");
+            final GenericRecord event = getBaseRecord("0");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -81,18 +91,8 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter1() {
         return os -> {
-            final GenericRecord event = new GenericData.Record(
-                    avroSchema.getEventTypeSchema("nakadi.access.log", "1"));
-            event.put("method", "POST");
-            event.put("path", "/event-types");
-            event.put("query", "");
+            final GenericRecord event = getBaseRecord("1");
             event.put("user_agent", "test-user-agent");
-            event.put("app", "nakadi");
-            event.put("app_hashed", "hashed-app");
-            event.put("status_code", 201);
-            event.put("response_time_ms", 10);
-            event.put("accept_encoding", "-");
-            event.put("content_encoding", "--");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -119,14 +119,14 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private ObjectNode expectedJsonEvent1() {
+    private ObjectNode getBaseExpectedNode(final String schemaVersion) {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode metadata = mapper.createObjectNode()
                 .put("occurred_at", "2022-01-27T13:30:32.172Z")
                 .put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab")
                 .put("flow_id", "hek")
                 .put("received_at", "2022-01-27T13:30:32.172Z")
-                .put("schema_version", "1")
+                .put("schema_version", schemaVersion)
                 .put("published_by", "nakadi-test")
                 .put("event_type", "test-et-name")
                 .put("partition", 0);
@@ -134,7 +134,6 @@ public class KafkaRecordDeserializerTest {
                 .put("method", "POST")
                 .put("path", "/event-types")
                 .put("query", "")
-                .put("user_agent", "test-user-agent")
                 .put("app", "nakadi")
                 .put("app_hashed", "hashed-app")
                 .put("status_code", 201)
@@ -142,6 +141,16 @@ public class KafkaRecordDeserializerTest {
                 .put("accept_encoding", "-")
                 .put("content_encoding", "--")
                 .set("metadata", metadata);
+        return event;
+    }
+
+    private ObjectNode getExpectedNode0() {
+        return getBaseExpectedNode("0");
+    }
+
+    private ObjectNode getExpectedNode1() {
+        final ObjectNode event = getBaseExpectedNode("1");
+        event.put("user_agent", "test-user-agent");
         return event;
     }
 }
