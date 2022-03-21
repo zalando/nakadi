@@ -3,7 +3,6 @@ package org.zalando.nakadi.domain;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
-import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
 
@@ -65,10 +64,12 @@ public class NakadiRecord {
     }
 
     public static NakadiRecord fromAvro(final String eventTypeName,
+                                        final byte metadataVersion,
                                         final GenericRecord metadata,
                                         final GenericRecord event) throws IOException {
+
         final byte[] data = EnvelopeHolder.produceBytes(
-                AvroSchema.METADATA_VERSION,
+                metadataVersion,
                 (outputStream -> {
                     final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
                     eventWriter.write(metadata, EncoderFactory.get()

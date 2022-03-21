@@ -33,13 +33,13 @@ public class KafkaRecordDeserializerTest {
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
-                AvroSchema.METADATA_VERSION,
-                getMetadataWriter("0"),
+                (byte) 1, // metadata version
+                getMetadataWriter("1", "0"),
                 getEventWriter0());
 
         final byte[] data1 = EnvelopeHolder.produceBytes(
-                AvroSchema.METADATA_VERSION,
-                getMetadataWriter("1"),
+                (byte) 0, // metadata version
+                getMetadataWriter("0", "1"),
                 getEventWriter1());
 
         // try to deserialize that data when we would read Kafka record
@@ -101,9 +101,11 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private EnvelopeHolder.EventWriter getMetadataWriter(final String schemaVersion) {
+    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion, final String schemaVersion) {
         return os -> {
-            final GenericRecord metadata = new GenericData.Record(avroSchema.getMetadataSchema());
+            final GenericRecord metadata =
+                    new GenericData.Record(avroSchema.getEventTypeSchema(AvroSchema.METADATA_KEY, metadataVersion));
+
             final long someEqualTime = 1643290232172l;
             metadata.put("occurred_at", someEqualTime);
             metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");

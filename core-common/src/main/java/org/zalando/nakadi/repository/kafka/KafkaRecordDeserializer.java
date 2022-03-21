@@ -23,13 +23,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
 
         if (Arrays.equals(eventFormat, NakadiRecord.Format.AVRO.getFormat())) {
             try {
-                final EnvelopeHolder envelop = EnvelopeHolder.fromBytes(data);
-                if (envelop.getMetadataVersion() != AvroSchema.METADATA_VERSION) {
-                    throw new RuntimeException(String.format(
-                            "Metadata version is not supported: `%d`",
-                            envelop.getMetadataVersion()));
-                }
-                return decoder.deserializeAvro(envelop);
+                return decoder.deserializeAvro(EnvelopeHolder.fromBytes(data));
             } catch (IOException e) {
                 throw new RuntimeException("failed to deserialize avro event", e);
             }

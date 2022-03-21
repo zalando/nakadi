@@ -24,12 +24,11 @@ import java.util.TreeMap;
 @Service
 public class AvroSchema {
 
-    public static final byte METADATA_VERSION = 0;
-    public static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
+    public static final String METADATA_KEY = "_metadata";
 
-    public static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of("nakadi.access.log");
+    private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
+    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(METADATA_KEY, "nakadi.access.log");
 
-    private final Schema metadataSchema;
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;
     private final ObjectMapper objectMapper;
@@ -44,8 +43,6 @@ public class AvroSchema {
 
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
-        this.metadataSchema = AvroUtils.getParsedSchema(
-                eventTypeSchemaRes.createRelative("metadata.avsc").getInputStream());
 
         this.eventTypeSchema = new HashMap<>();
 
@@ -83,10 +80,6 @@ public class AvroSchema {
 
     public ObjectMapper getObjectMapper() {
         return objectMapper;
-    }
-
-    public Schema getMetadataSchema() {
-        return metadataSchema;
     }
 
     public Map.Entry<String, Schema> getLatestEventTypeSchemaVersion(final String eventTypeName) {
