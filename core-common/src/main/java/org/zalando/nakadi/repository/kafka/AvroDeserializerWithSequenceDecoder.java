@@ -14,13 +14,11 @@ import java.util.Map;
 public class AvroDeserializerWithSequenceDecoder {
 
     private final AvroSchema schemas;
-    private final String eventTypeName;
     private final SequenceDecoder metadataSequenceDecoder;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas, final String eventTypeName) {
+    public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas) {
         this.schemas = schemas;
-        this.eventTypeName = eventTypeName;
 
         this.metadataSequenceDecoder = new SequenceDecoder(schemas.getMetadataSchema());
         this.eventSequenceDecoders = new HashMap<>();
@@ -37,7 +35,7 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
                     metadata.get("schema_version").toString(),
-                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(eventTypeName, v)));
+                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(metadata.get("event_type").toString(), v)));
 
             final GenericRecord event = eventDecoder.read(envelop.getPayload());
 

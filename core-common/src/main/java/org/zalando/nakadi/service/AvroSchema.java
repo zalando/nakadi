@@ -40,6 +40,7 @@ public class AvroSchema {
             @Value("${nakadi.avro.schema.internal-event-types:classpath:event-type-schema/}")
             final Resource eventTypeSchemaRes)
             throws IOException {
+
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
         this.metadataSchema = AvroUtils.getParsedSchema(metadataSchemaRes.getInputStream());

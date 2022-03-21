@@ -30,7 +30,7 @@ public class KafkaRecordDeserializerTest {
 
     @Test
     public void testDeserializeAvro() throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema, "nakadi.access.log");
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
@@ -109,7 +109,7 @@ public class KafkaRecordDeserializerTest {
             metadata.put("occurred_at", someEqualTime);
             metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");
             metadata.put("flow_id", "hek");
-            metadata.put("event_type", "test-et-name");
+            metadata.put("event_type", "nakadi.access.log");
             metadata.put("partition", 0);
             metadata.put("received_at", someEqualTime);
             metadata.put("schema_version", schemaVersion);
@@ -130,7 +130,7 @@ public class KafkaRecordDeserializerTest {
                 .put("received_at", "2022-01-27T13:30:32.172Z")
                 .put("schema_version", schemaVersion)
                 .put("published_by", "nakadi-test")
-                .put("event_type", "test-et-name")
+                .put("event_type", "nakadi.access.log")
                 .put("partition", 0);
         final ObjectNode event = mapper.createObjectNode()
                 .put("method", "POST")

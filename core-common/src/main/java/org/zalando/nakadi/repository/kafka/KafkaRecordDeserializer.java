@@ -11,8 +11,8 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
 
     private final AvroDeserializerWithSequenceDecoder decoder;
 
-    public KafkaRecordDeserializer(final AvroSchema schemas, final String eventTypeName) {
-        this.decoder = new AvroDeserializerWithSequenceDecoder(schemas, eventTypeName);
+    public KafkaRecordDeserializer(final AvroSchema schemas) {
+        this.decoder = new AvroDeserializerWithSequenceDecoder(schemas);
     }
 
     public byte[] deserialize(final byte[] eventFormat, final byte[] data) {
