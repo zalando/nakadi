@@ -7,17 +7,30 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.util.AvroUtils;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeMap;
 
 // temporarily storage for event type avro schemas untill schema repository supports them
 @Service
 public class AvroSchema {
 
     public static final byte METADATA_VERSION = 0;
+    public static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
+
+    public static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of("nakadi.access.log");
+
     private final Schema metadataSchema;
-    private final Schema nakadiAccessLogSchema;
+    private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;
     private final ObjectMapper objectMapper;
 
@@ -25,23 +38,43 @@ public class AvroSchema {
     public AvroSchema(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
-            @Value("${nakadi.avro.schema.metadata:classpath:metadata.avsc}")
-            final Resource metadataRes,
-            @Value("${nakadi.avro.schema.nakadi-access-log:classpath:nakadi.access.log.avsc}")
-            final Resource nakadiAccessLogRes)
+            @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}")
+            final Resource eventTypeSchemaRes)
             throws IOException {
+
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
-        this.metadataSchema = AvroUtils.getParsedSchema(metadataRes.getInputStream());
-        this.nakadiAccessLogSchema = AvroUtils.getParsedSchema(nakadiAccessLogRes.getInputStream());
+        this.metadataSchema = AvroUtils.getParsedSchema(
+                eventTypeSchemaRes.createRelative("metadata.avsc").getInputStream());
+
+        this.eventTypeSchema = new HashMap<>();
+
+        for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
+            final TreeMap<String, Schema> versionToSchema =
+                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName);
+            if (versionToSchema.isEmpty()) {
+                throw new NoSuchSchemaException("No avro schema found for: " + eventTypeName);
+            }
+            eventTypeSchema.put(eventTypeName, versionToSchema);
+        }
     }
 
-    public Schema getNakadiAccessLogSchema() {
-        return nakadiAccessLogSchema;
-    }
+    private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
+            final Resource eventTypeSchemaRes, final String eventTypeName)
+        throws IOException {
 
-    public Schema getMetadataSchema() {
-        return metadataSchema;
+        final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
+
+        for (int i = 0; ; ++i) {
+            try {
+                final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
+                final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();
+                versionToSchema.put(String.valueOf(i), AvroUtils.getParsedSchema(is));
+            } catch (final IOException e) {
+                break;
+            }
+        }
+        return versionToSchema;
     }
 
     public AvroMapper getAvroMapper() {
@@ -50,5 +83,30 @@ public class AvroSchema {
 
     public ObjectMapper getObjectMapper() {
         return objectMapper;
+    }
+
+    public Schema getMetadataSchema() {
+        return metadataSchema;
+    }
+
+    public Map.Entry<String, Schema> getLatestEventTypeSchemaVersion(final String eventTypeName) {
+        return getEventTypeSchemaVersions(eventTypeName).lastEntry();
+    }
+
+    public Schema getEventTypeSchema(final String eventTypeName, final String schemaVersion) {
+        final Schema schema = getEventTypeSchemaVersions(eventTypeName).get(schemaVersion);
+        if (schema == null) {
+            throw new NoSuchSchemaException(
+                    "Avro schema not found for: " + eventTypeName + ", version " + schemaVersion);
+        }
+        return schema;
+    }
+
+    private TreeMap<String, Schema> getEventTypeSchemaVersions(final String eventTypeName) {
+        final TreeMap<String, Schema> versionToSchema = eventTypeSchema.get(eventTypeName);
+        if (versionToSchema == null) {
+            throw new NoSuchEventTypeException("Avro event type not found: " + eventTypeName);
+        }
+        return versionToSchema;
     }
 }

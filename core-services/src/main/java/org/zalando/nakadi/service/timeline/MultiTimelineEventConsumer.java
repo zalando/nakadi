@@ -252,6 +252,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 final TopicRepository repo = entry.getKey();
                 LOG.info("Creating underlying consumer for client id {} and cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
+
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
                         clientId, entry.getValue(), new KafkaRecordDeserializer(avroSchema));
                 eventConsumers.put(repo, consumer);
