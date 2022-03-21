@@ -74,7 +74,9 @@ public class LoggingFilter extends OncePerRequestFilter {
             this.requestLogInfo = new RequestLogInfo(request, startTime);
 
             if (isAccessLogEnabled()) {
-                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), 0L, 0L);
+                final Long responseLength = 0L;
+                final Long timeSpentMs = 0L;
+                logToAccessLog(this.requestLogInfo, HttpStatus.PROCESSING.value(), responseLength, timeSpentMs);
             }
         }
 
@@ -129,7 +131,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         final Long timeSpentMs = System.currentTimeMillis() - requestLogInfo.requestTime;
 
         final String responseLengthHeader = response.getHeader(HttpHeaders.CONTENT_LENGTH);
-        final Long responseLength = responseLengthHeader == null ? 0 : Long.valueOf(responseLengthHeader);
+        final Long responseLength = responseLengthHeader == null ? 0L : Long.valueOf(responseLengthHeader);
 
         final int statusCode = response.getStatus();
         final boolean isServerSideError = statusCode >= 500 || statusCode == 207;
@@ -165,7 +167,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long responseLength,
             final Long timeSpentMs) {
 
-        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B -> {}B",
+        ACCESS_LOGGER.info("{} \"{}{}\" \"{}\" \"{}\" {} {}ms \"{}\" \"{}\" {}B {}B",
                 requestLogInfo.method,
                 requestLogInfo.path,
                 requestLogInfo.query,

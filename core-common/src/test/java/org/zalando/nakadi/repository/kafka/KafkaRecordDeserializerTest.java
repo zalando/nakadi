@@ -22,10 +22,9 @@ public class KafkaRecordDeserializerTest {
     private final AvroSchema avroSchema;
 
     public KafkaRecordDeserializerTest() throws IOException {
-        final Resource metadataRes = new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
+        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
     }
 
     @Test

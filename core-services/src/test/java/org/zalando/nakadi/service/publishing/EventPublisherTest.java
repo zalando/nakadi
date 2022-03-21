@@ -594,11 +594,9 @@ public class EventPublisherTest {
 
     @Test
     public void testAvroEventWasSerialized() throws Exception {
-        final org.springframework.core.io.Resource metadataRes =
-                new DefaultResourceLoader().getResource("event-type-schema/metadata.avsc");
         final org.springframework.core.io.Resource eventTypeRes =
                 new DefaultResourceLoader().getResource("event-type-schema/");
-        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), metadataRes, eventTypeRes);
+        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
                 cache, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();

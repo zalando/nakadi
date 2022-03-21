@@ -13,6 +13,7 @@ import org.zalando.nakadi.util.AvroUtils;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.HashMap;
@@ -26,6 +27,8 @@ public class AvroSchema {
     public static final byte METADATA_VERSION = 0;
     public static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
 
+    public static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of("nakadi.access.log");
+
     private final Schema metadataSchema;
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;
@@ -35,22 +38,22 @@ public class AvroSchema {
     public AvroSchema(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
-            @Value("${nakadi.avro.schema.metadata:classpath:event-type-schema/metadata.avsc}")
-            final Resource metadataSchemaRes,
-            @Value("${nakadi.avro.schema.internal-event-types:classpath:event-type-schema/}")
+            @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}")
             final Resource eventTypeSchemaRes)
             throws IOException {
 
         this.avroMapper = avroMapper;
         this.objectMapper = objectMapper;
-        this.metadataSchema = AvroUtils.getParsedSchema(metadataSchemaRes.getInputStream());
+        this.metadataSchema = AvroUtils.getParsedSchema(
+                eventTypeSchemaRes.createRelative("metadata.avsc").getInputStream());
+
         this.eventTypeSchema = new HashMap<>();
 
-        for (final String eventTypeName : Set.of("nakadi.access.log")) {
+        for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
             final TreeMap<String, Schema> versionToSchema =
                     loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName);
             if (versionToSchema.isEmpty()) {
-                throw new NoSuchSchemaException("Not any avro schema found for: " + eventTypeName);
+                throw new NoSuchSchemaException("No avro schema found for: " + eventTypeName);
             }
             eventTypeSchema.put(eventTypeName, versionToSchema);
         }
