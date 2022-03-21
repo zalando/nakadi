@@ -607,8 +607,15 @@ public class EventPublisherTest {
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
 
         final long now = System.currentTimeMillis();
-        final Map.Entry<String, Schema> latestSchema = avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
-        final GenericRecord metadata = new GenericRecordBuilder(avroSchema.getMetadataSchema())
+
+        final Map.Entry<String, Schema> latestMeta =
+                avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+        final Map.Entry<String, Schema> latestSchema =
+                avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
+
+        final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+
+        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getValue())
                 .set("occurred_at", now)
                 .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
                 .set("flow_id", FlowIdUtils.peek())
@@ -634,7 +641,7 @@ public class EventPublisherTest {
                 .build();
 
         final NakadiRecord nakadiRecord = NakadiRecord
-                .fromAvro(eventTypeName, metadata, event);
+                .fromAvro(eventTypeName, metadataVersion, metadata, event);
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventTypeName, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));

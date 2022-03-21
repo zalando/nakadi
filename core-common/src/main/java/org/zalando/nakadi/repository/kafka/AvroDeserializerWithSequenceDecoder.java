@@ -14,19 +14,23 @@ import java.util.Map;
 public class AvroDeserializerWithSequenceDecoder {
 
     private final AvroSchema schemas;
-    private final SequenceDecoder metadataSequenceDecoder;
+    private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
     public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas) {
         this.schemas = schemas;
 
-        this.metadataSequenceDecoder = new SequenceDecoder(schemas.getMetadataSchema());
+        this.metadataSequenceDecoders = new HashMap<>();
         this.eventSequenceDecoders = new HashMap<>();
     }
 
-    public byte[] deserializeAvro(final EnvelopeHolder envelop) throws RuntimeException {
+    public byte[] deserializeAvro(final EnvelopeHolder envelope) throws RuntimeException {
         try {
-            final GenericRecord metadata = metadataSequenceDecoder.read(envelop.getMetadata());
+            final SequenceDecoder metadataDecoder = metadataSequenceDecoders.computeIfAbsent(
+                    String.valueOf(envelope.getMetadataVersion()),
+                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(AvroSchema.METADATA_KEY, v)));
+
+            final GenericRecord metadata = metadataDecoder.read(envelope.getMetadata());
 
             metadata.put("occurred_at", new DateTime(
                     (long) metadata.get("occurred_at"), DateTimeZone.UTC).toString());
@@ -37,7 +41,7 @@ public class AvroDeserializerWithSequenceDecoder {
                     metadata.get("schema_version").toString(),
                     (v) -> new SequenceDecoder(schemas.getEventTypeSchema(metadata.get("event_type").toString(), v)));
 
-            final GenericRecord event = eventDecoder.read(envelop.getPayload());
+            final GenericRecord event = eventDecoder.read(envelope.getPayload());
 
             final StringBuilder sEvent = new StringBuilder(event.toString());
             sEvent.deleteCharAt(sEvent.length() - 1).append(", \"metadata\":").append(metadata).append('}');

@@ -96,10 +96,15 @@ public class NakadiKpiPublisher {
             }
 
             final long now = System.currentTimeMillis();
+
+            final Map.Entry<String, Schema> latestMeta =
+                    avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
             final Map.Entry<String, Schema> latestSchema =
                     avroSchema.getLatestEventTypeSchemaVersion(accessLogEventType);
 
-            final GenericRecord metadata = new GenericRecordBuilder(avroSchema.getMetadataSchema())
+            final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+
+            final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getValue())
                     .set("occurred_at", now)
                     .set("eid", uuidGenerator.randomUUID().toString())
                     .set("flow_id", FlowIdUtils.peek())
@@ -125,7 +130,7 @@ public class NakadiKpiPublisher {
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(accessLogEventType, metadata, event);
+                    .fromAvro(accessLogEventType, metadataVersion, metadata, event);
             binaryEventsProcessor.queueEvent(accessLogEventType, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
