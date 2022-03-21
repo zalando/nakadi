@@ -612,7 +612,7 @@ public class EventPublisherTest {
                 .set("occurred_at", now)
                 .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
                 .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", eventTypeName)
+                .set("event_type", "nakadi.access.log")
                 .set("partition", 0)
                 .set("received_at", now)
                 .set("schema_version", latestSchema.getKey())
