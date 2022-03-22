@@ -97,7 +97,7 @@ public class AuthorizationValidator {
         } catch (AuthorizationInvalidException e) {
             throw new UnprocessableEntityException(e.getMessage());
         } catch (PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "+ e.getMessage(), e);
         }
     }
 
@@ -144,7 +144,7 @@ public class AuthorizationValidator {
                 }
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "+ e.getMessage(), e);
         }
     }
 
@@ -155,7 +155,7 @@ public class AuthorizationValidator {
                 throw new AccessDeniedException(AuthorizationService.Operation.VIEW, resource);
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "+ e.getMessage(), e);
         }
     }
 
@@ -219,7 +219,7 @@ public class AuthorizationValidator {
                 throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "+ e.getMessage(), e);
         }
     }
 
