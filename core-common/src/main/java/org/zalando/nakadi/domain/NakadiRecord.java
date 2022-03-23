@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.io.EncoderFactory;
 
 import java.io.IOException;
@@ -66,7 +67,7 @@ public class NakadiRecord {
     public static NakadiRecord fromAvro(final String eventTypeName,
                                         final byte metadataVersion,
                                         final GenericRecord metadata,
-                                        final GenericRecord event) throws IOException {
+                                        final IndexedRecord event) throws IOException {
 
         final byte[] data = EnvelopeHolder.produceBytes(
                 metadataVersion,

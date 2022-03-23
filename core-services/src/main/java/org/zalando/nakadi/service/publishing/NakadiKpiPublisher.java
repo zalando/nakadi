@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.publishing;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.generic.IndexedRecord;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -24,7 +26,6 @@ import java.util.function.Supplier;
 public class NakadiKpiPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiPublisher.class);
-
     private final FeatureToggleService featureToggleService;
     private final JsonEventProcessor jsonEventsProcessor;
     private final BinaryEventProcessor binaryEventsProcessor;
@@ -32,6 +33,7 @@ public class NakadiKpiPublisher {
     private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
+    private final String kpiBatchPublishedEventType;
     private final String accessLogEventType;
 
     @Autowired
@@ -43,6 +45,7 @@ public class NakadiKpiPublisher {
             final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
             final AvroSchema avroSchema,
+            @Value("${nakadi.kpi.event-types.nakadiBatchPublished}") final String kpiBatchPublishedEventType,
             @Value("${nakadi.kpi.event-types.nakadiAccessLog}") final String accessLogEventType) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
@@ -51,6 +54,7 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
+        this.kpiBatchPublishedEventType = kpiBatchPublishedEventType;
         this.accessLogEventType = accessLogEventType;
     }
 
@@ -64,6 +68,53 @@ public class NakadiKpiPublisher {
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
+    }
+
+    public void publishBatchPublishedEvent(final Supplier<BatchPublishedEvent> eventSupplier) {
+        try {
+            if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
+                return;
+            }
+            final BatchPublishedEvent batchPublishedEvent = eventSupplier.get();
+            if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
+
+                final Map.Entry<String, Schema> latestMeta =
+                        avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+
+                final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+
+                final GenericRecord metadata = buildMetaData(latestMeta.getValue(), latestMeta.getKey());
+                final IndexedRecord event = batchPublishedEvent.mapToAvroRecordV01();
+
+                final NakadiRecord nakadiRecord = NakadiRecord
+                        .fromAvro(kpiBatchPublishedEventType, metadataVersion, metadata, event);
+                binaryEventsProcessor.queueEvent(kpiBatchPublishedEventType, nakadiRecord);
+            } else {
+                jsonEventsProcessor.queueEvent(
+                        kpiBatchPublishedEventType,
+                        eventMetadata.addTo(new JSONObject(batchPublishedEvent)));
+            }
+        } catch (final Exception e) {
+            LOG.error("Error occurred when submitting KPI event for publishing", e);
+        }
+    }
+
+    private GenericRecord buildMetaData(final Schema schema, final String version) {
+        return buildMetaData(schema, version, "unknown");
+    }
+
+    private GenericRecord buildMetaData(final Schema schema, final String version, final String user) {
+        final long now = System.currentTimeMillis();
+        return new GenericRecordBuilder(schema)
+                .set("occurred_at", now)
+                .set("eid", uuidGenerator.randomUUID().toString())
+                .set("flow_id", FlowIdUtils.peek())
+                .set("event_type", accessLogEventType)
+                .set("partition", 0) // fixme avro
+                .set("received_at", now)
+                .set("schema_version", version)
+                .set("published_by", user)
+                .build();
     }
 
     public void publishAccessLogEvent(final String method,
@@ -95,8 +146,6 @@ public class NakadiKpiPublisher {
                 return;
             }
 
-            final long now = System.currentTimeMillis();
-
             final Map.Entry<String, Schema> latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
             final Map.Entry<String, Schema> latestSchema =
@@ -104,16 +153,7 @@ public class NakadiKpiPublisher {
 
             final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
 
-            final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getValue())
-                    .set("occurred_at", now)
-                    .set("eid", uuidGenerator.randomUUID().toString())
-                    .set("flow_id", FlowIdUtils.peek())
-                    .set("event_type", accessLogEventType)
-                    .set("partition", 0) // fixme avro
-                    .set("received_at", now)
-                    .set("schema_version", latestSchema.getKey())
-                    .set("published_by", user)
-                    .build();
+            final GenericRecord metadata = buildMetaData(latestMeta.getValue(), latestMeta.getKey(), user);
             final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("method", method)
                     .set("path", path)
