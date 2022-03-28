@@ -32,6 +32,7 @@ import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -106,7 +107,7 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
-    public void whenStringHashKeyIsNegativeThenItWorks() throws Exception {
+    public void whenStringHashCodeIsIntMinThenItWorks() throws Exception {
         final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
 
         final EventType eventType = new EventType();
@@ -121,10 +122,10 @@ public class HashPartitionStrategyTest {
 
         final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
 
-        final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+        final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
-        final String part = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
-        System.out.println(part);
+        final String partition = strategy.calculatePartition(eventType, event, asList(partitions));
+        assertEquals("8", partition);
     }
 
     @Test
