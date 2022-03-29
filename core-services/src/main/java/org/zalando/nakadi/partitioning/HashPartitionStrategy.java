@@ -57,7 +57,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     .sum();
 
 
-            int partitionIndex = abs(hashValue) % partitions.size();
+            int partitionIndex = abs(hashValue % partitions.size());
             partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
 
             final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());

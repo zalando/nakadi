@@ -32,7 +32,9 @@ import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
@@ -102,6 +104,28 @@ public class HashPartitionStrategyTest {
         final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
+    }
+
+    @Test
+    public void whenStringHashCodeIsIntMinThenItWorks() throws Exception {
+        final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
+
+        final EventType eventType = new EventType();
+        eventType.setPartitionKeyFields(asList("details.detail_a.detail_a_a"));
+
+        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
+        when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
+
+        final StringHash stringHash = mock(StringHash.class);
+        when(stringHash.hashCode(anyString())).thenReturn(Integer.MIN_VALUE);
+
+        final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
+
+        final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+
+        final String partition = strategy.calculatePartition(eventType, event, asList(partitions));
+        assertEquals("8", partition);
     }
 
     @Test
