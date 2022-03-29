@@ -1,12 +1,9 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
-import org.hamcrest.CoreMatchers;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,7 +32,6 @@ import org.zalando.nakadi.utils.TestUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
@@ -53,7 +49,6 @@ import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
 import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 public class EventPublishingControllerTest {
 
@@ -86,8 +81,7 @@ public class EventPublishingControllerTest {
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher,
-                        "kpiEventTypeName");
+                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
@@ -203,23 +197,14 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH);
 
-        final ArgumentCaptor<String> etNameCaptor = ArgumentCaptor.forClass(String.class);
-        final ArgumentCaptor<Supplier> eventGeneratorCaptor = ArgumentCaptor.forClass(Supplier.class);
 
-        Mockito.verify(kpiPublisher, Mockito.times(1)).publish(etNameCaptor.capture(),
-                eventGeneratorCaptor.capture());
-
-        assertThat(etNameCaptor.getValue(), CoreMatchers.equalTo("kpiEventTypeName"));
-
-        final JSONObject kpi = (JSONObject) eventGeneratorCaptor.getValue().get();
-        assertThat(kpi,
-                CoreMatchers.is(sameJSONObjectAs(new JSONObject().put("app", "adminClientId")
-                        .put("app_hashed", "hashed-application-name")
-                        .put("event_type", "my-topic")
-                        .put("batch_size", 33)
-                        .put("number_of_events", 3)).allowingExtraUnexpectedFields()));
-
-        assertThat(kpi.getInt("ms_spent"), CoreMatchers.is(CoreMatchers.notNullValue()));
+        Mockito.verify(kpiPublisher, Mockito.times(1)).publishNakadiBatchPublishedEvent(
+                "my-topic",
+                "adminClientId",
+                "",
+                3,
+                0L,
+                33);
     }
 
     private List<BatchItemResponse> responses() {

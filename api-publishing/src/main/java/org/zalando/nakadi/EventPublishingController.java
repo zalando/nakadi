@@ -2,9 +2,7 @@ package org.zalando.nakadi;
 
 import com.google.common.base.Charsets;
 import io.opentracing.tag.Tags;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,9 +21,9 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.TracingService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
@@ -43,20 +41,16 @@ public class EventPublishingController {
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
     private final BlacklistService blacklistService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
-    private final String kpiBatchPublishedEventType;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
                                      final BlacklistService blacklistService,
-                                     final NakadiKpiPublisher nakadiKpiPublisher,
-                                     @Value("${nakadi.kpi.event-types.nakadiBatchPublished}") final
-                                     String kpiBatchPublishedEventType) {
+                                     final NakadiKpiPublisher nakadiKpiPublisher) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
-        this.kpiBatchPublishedEventType = kpiBatchPublishedEventType;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -148,14 +142,8 @@ public class EventPublishingController {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
             final String applicationName = client.getClientId();
 
-            nakadiKpiPublisher.publish(kpiBatchPublishedEventType, () -> new JSONObject()
-                    .put("event_type", eventTypeName)
-                    .put("app", applicationName)
-                    .put("app_hashed", nakadiKpiPublisher.hash(applicationName))
-                    .put("token_realm", client.getRealm())
-                    .put("number_of_events", eventCount)
-                    .put("ms_spent", msSpent)
-                    .put("batch_size", totalSizeBytes));
+            nakadiKpiPublisher.publishNakadiBatchPublishedEvent(
+                    eventTypeName, applicationName, client.getRealm(), eventCount, msSpent, totalSizeBytes);
         }
     }
 

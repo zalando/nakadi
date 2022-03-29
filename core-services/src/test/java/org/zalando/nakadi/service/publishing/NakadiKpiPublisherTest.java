@@ -24,7 +24,6 @@ public class NakadiKpiPublisherTest {
     private final AvroSchema avroSchema = Mockito.mock(AvroSchema.class);
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
-    private final String nakadiAccessLog = "nakadi.access.log";
 
     @Test
     public void testPublishWithFeatureToggleOn() throws Exception {
@@ -33,7 +32,7 @@ public class NakadiKpiPublisherTest {
         final Supplier<JSONObject> dataSupplier = () -> null;
         new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, nakadiAccessLog)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema)
                 .publish("test_et_name", dataSupplier);
 
         verify(jsonProcessor).queueEvent("test_et_name", dataSupplier.get());
@@ -46,7 +45,7 @@ public class NakadiKpiPublisherTest {
         final Supplier<JSONObject> dataSupplier = () -> null;
         new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, nakadiAccessLog)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema)
                 .publish("test_et_name", dataSupplier);
 
         verify(jsonProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
@@ -56,7 +55,7 @@ public class NakadiKpiPublisherTest {
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, nakadiAccessLog);
+                new EventMetadataTestStub(), uuidGenerator, avroSchema);
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }
