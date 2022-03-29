@@ -7,17 +7,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.config.KPIEvents;
+import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.util.AvroUtils;
 
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -30,8 +30,8 @@ public class AvroSchema {
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
             METADATA_KEY,
-            KPIEvents.ACCESS_LOG,
-            KPIEvents.BATCH_PUBLISHED);
+            KPIEventTypes.ACCESS_LOG,
+            KPIEventTypes.BATCH_PUBLISHED);
 
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;

@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.config.KPIEvents;
+import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.security.UsernameHasher;
@@ -72,7 +72,7 @@ public class NakadiKpiPublisher {
             final int totalSizeBytes
     ) {
         if (!featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
-            publish(KPIEvents.BATCH_PUBLISHED, () -> new JSONObject()
+            publish(KPIEventTypes.BATCH_PUBLISHED, () -> new JSONObject()
                     .put("event_type", eventTypeName)
                     .put("app", applicationName)
                     .put("app_hashed", hash(applicationName))
@@ -86,12 +86,12 @@ public class NakadiKpiPublisher {
             final Map.Entry<String, Schema> latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
             final Map.Entry<String, Schema> latestSchema =
-                    avroSchema.getLatestEventTypeSchemaVersion(KPIEvents.BATCH_PUBLISHED);
+                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.BATCH_PUBLISHED);
 
             final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEvents.BATCH_PUBLISHED, latestSchema.getValue(), latestSchema.getKey());
+                    KPIEventTypes.BATCH_PUBLISHED, latestSchema.getValue(), latestSchema.getKey());
             final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("event_type", eventTypeName)
                     .set("app", applicationName)
@@ -103,8 +103,8 @@ public class NakadiKpiPublisher {
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(KPIEvents.BATCH_PUBLISHED, metadataVersion, metadata, event);
-            binaryEventsProcessor.queueEvent(KPIEvents.BATCH_PUBLISHED, nakadiRecord);
+                    .fromAvro(KPIEventTypes.BATCH_PUBLISHED, metadataVersion, metadata, event);
+            binaryEventsProcessor.queueEvent(KPIEventTypes.BATCH_PUBLISHED, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
@@ -123,7 +123,7 @@ public class NakadiKpiPublisher {
                                       final Long responseLength) {
         try {
             if (!featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
-                publish(KPIEvents.ACCESS_LOG, () -> new JSONObject()
+                publish(KPIEventTypes.ACCESS_LOG, () -> new JSONObject()
                         .put("method", method)
                         .put("path", path)
                         .put("query", query)
@@ -142,12 +142,12 @@ public class NakadiKpiPublisher {
             final Map.Entry<String, Schema> latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
             final Map.Entry<String, Schema> latestSchema =
-                    avroSchema.getLatestEventTypeSchemaVersion(KPIEvents.ACCESS_LOG);
+                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.ACCESS_LOG);
 
             final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEvents.ACCESS_LOG, latestSchema.getValue(), latestSchema.getKey(), user);
+                    KPIEventTypes.ACCESS_LOG, latestSchema.getValue(), latestSchema.getKey(), user);
             final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("method", method)
                     .set("path", path)
@@ -164,8 +164,8 @@ public class NakadiKpiPublisher {
                     .build();
 
             final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(KPIEvents.ACCESS_LOG, metadataVersion, metadata, event);
-            binaryEventsProcessor.queueEvent(KPIEvents.ACCESS_LOG, nakadiRecord);
+                    .fromAvro(KPIEventTypes.ACCESS_LOG, metadataVersion, metadata, event);
+            binaryEventsProcessor.queueEvent(KPIEventTypes.ACCESS_LOG, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
