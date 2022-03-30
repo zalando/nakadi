@@ -85,13 +85,13 @@ public class NakadiKpiPublisher {
         try {
             final Map.Entry<String, Schema> latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-            final Map.Entry<String, Schema> latestSchema =
-                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.BATCH_PUBLISHED);
-
             final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEventTypes.BATCH_PUBLISHED, latestSchema.getValue(), latestSchema.getKey());
+                    KPIEventTypes.BATCH_PUBLISHED, latestMeta.getValue(), latestMeta.getKey());
+
+            final Map.Entry<String, Schema> latestSchema =
+                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.BATCH_PUBLISHED);
             final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("event_type", eventTypeName)
                     .set("app", applicationName)
@@ -141,13 +141,14 @@ public class NakadiKpiPublisher {
 
             final Map.Entry<String, Schema> latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-            final Map.Entry<String, Schema> latestSchema =
-                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.ACCESS_LOG);
-
             final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEventTypes.ACCESS_LOG, latestSchema.getValue(), latestSchema.getKey(), user);
+                    KPIEventTypes.ACCESS_LOG, latestMeta.getValue(), latestMeta.getKey(), user);
+
+
+            final Map.Entry<String, Schema> latestSchema =
+                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.ACCESS_LOG);
             final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
                     .set("method", method)
                     .set("path", path)
