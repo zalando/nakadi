@@ -81,10 +81,11 @@ public class NakadiAuditLogPublisher {
             final JSONObject dataEvent = new JSONObject()
                     .put("data_type", resourceType.name().toLowerCase())
                     .put("data_op", actionType.getShortname())
-                    .put("data", payload);
+                    .put("data", payload)
+                    .put(EventMetadata.METADATA_FIELD, eventMetadata.generateMetadata().asJson());
 
             eventsProcessor.sendEvents(auditEventType,
-                    Collections.singletonList(eventMetadata.addTo(dataEvent)));
+                    Collections.singletonList(dataEvent));
         } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }

@@ -45,7 +45,8 @@ public class NakadiKpiPublisherTest {
     public void testPublishWithFeatureToggleOn() throws Exception {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
                 .thenReturn(true);
-        final Supplier<JSONObject> dataSupplier = () -> null;
+        final var testKpiEvent = new JSONObject();
+        final Supplier<JSONObject> dataSupplier = () -> testKpiEvent;
         new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), uuidGenerator, avroSchema)
@@ -85,7 +86,7 @@ public class NakadiKpiPublisherTest {
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema);
+                new EventMetadata(new UUIDGenerator()), new UUIDGenerator(), avroSchema);
         publisher.publishAccessLogEvent("POST",
                 "/test", "", "", "", "",
                 "", 200, 1L, 1L, 1L);

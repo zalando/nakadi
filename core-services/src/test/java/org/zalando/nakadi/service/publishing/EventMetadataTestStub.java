@@ -12,4 +12,14 @@ public class EventMetadataTestStub extends EventMetadata {
     public JSONObject addTo(final JSONObject event) {
         return event;
     }
+
+    @Override
+    public Builder generateMetadata() {
+        return new Builder() {
+            @Override
+            public JSONObject asJson() {
+                return null;
+            }
+        };
+    }
 }

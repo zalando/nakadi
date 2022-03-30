@@ -14,9 +14,9 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -56,8 +56,9 @@ public class NakadiKpiPublisher {
             if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
                 return;
             }
-
-            jsonEventsProcessor.queueEvent(etName, eventMetadata.addTo(eventSupplier.get()));
+            final var event = eventSupplier.get();
+            event.put(EventMetadata.METADATA_FIELD, eventMetadata.generateMetadata().asJson());
+            jsonEventsProcessor.queueEvent(etName, event);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
@@ -182,17 +183,13 @@ public class NakadiKpiPublisher {
 
     private GenericRecord buildMetaDataGenericRecord(
             final String eventType, final Schema schema, final String version, final String user) {
-        final long now = System.currentTimeMillis();
-        return new GenericRecordBuilder(schema)
-                .set("occurred_at", now)
-                .set("eid", uuidGenerator.randomUUID().toString())
-                .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", eventType)
-                .set("partition", 0) // fixme avro
-                .set("received_at", now)
-                .set("schema_version", version)
-                .set("published_by", user)
-                .build();
+        return eventMetadata.generateMetadata()
+                .setEventType(eventType)
+                .setPartition(0) // fixme avro
+                .setReceivedAt(Instant.now())
+                .setSchemaVersion(version)
+                .setPublishedBy(user)
+                .asAvroGenericRecord(schema);
     }
 
     public String hash(final String value) {

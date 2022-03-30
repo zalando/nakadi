@@ -120,7 +120,8 @@ public class DiskUsageStatsJob {
                     final JSONObject event = new JSONObject();
                     event.put("event_type", x.getKey());
                     event.put("size_bytes", x.getValue() * 1024);
-                    return eventMetadata.addTo(event);
+                    event.put(EventMetadata.METADATA_FIELD, eventMetadata.generateMetadata().asJson());
+                    return event;
                 })
                 .forEach(item -> eventsProcessor.queueEvent(config.getEventTypeName(), item));
     }
