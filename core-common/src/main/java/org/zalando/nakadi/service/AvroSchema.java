@@ -7,16 +7,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.util.AvroUtils;
 
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -27,7 +28,10 @@ public class AvroSchema {
     public static final String METADATA_KEY = "_metadata";
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
-    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(METADATA_KEY, "nakadi.access.log");
+    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
+            METADATA_KEY,
+            KPIEventTypes.ACCESS_LOG,
+            KPIEventTypes.BATCH_PUBLISHED);
 
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;
@@ -37,8 +41,7 @@ public class AvroSchema {
     public AvroSchema(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
-            @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}")
-            final Resource eventTypeSchemaRes)
+            @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}") final Resource eventTypeSchemaRes)
             throws IOException {
 
         this.avroMapper = avroMapper;
@@ -58,7 +61,7 @@ public class AvroSchema {
 
     private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
             final Resource eventTypeSchemaRes, final String eventTypeName)
-        throws IOException {
+            throws IOException {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 
