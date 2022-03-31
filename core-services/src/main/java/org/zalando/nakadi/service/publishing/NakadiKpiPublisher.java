@@ -14,7 +14,6 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.time.Instant;
 import java.util.Map;
@@ -30,7 +29,6 @@ public class NakadiKpiPublisher {
     private final BinaryEventProcessor binaryEventsProcessor;
     private final UsernameHasher usernameHasher;
     private final EventMetadata eventMetadata;
-    private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
 
     @Autowired
@@ -40,14 +38,12 @@ public class NakadiKpiPublisher {
             final BinaryEventProcessor binaryEventsProcessor,
             final UsernameHasher usernameHasher,
             final EventMetadata eventMetadata,
-            final UUIDGenerator uuidGenerator,
             final AvroSchema avroSchema) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
         this.binaryEventsProcessor = binaryEventsProcessor;
         this.usernameHasher = usernameHasher;
         this.eventMetadata = eventMetadata;
-        this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
     }
 

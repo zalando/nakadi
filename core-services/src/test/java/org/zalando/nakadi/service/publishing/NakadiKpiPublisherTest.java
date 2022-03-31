@@ -49,7 +49,7 @@ public class NakadiKpiPublisherTest {
         final Supplier<JSONObject> dataSupplier = () -> testKpiEvent;
         new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
+                new EventMetadataTestStub(), avroSchema)
                 .publish("test_et_name", dataSupplier);
 
         verify(jsonProcessor).queueEvent("test_et_name", dataSupplier.get());
@@ -62,7 +62,7 @@ public class NakadiKpiPublisherTest {
         final Supplier<JSONObject> dataSupplier = () -> null;
         new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
+                new EventMetadataTestStub(), avroSchema)
                 .publish("test_et_name", dataSupplier);
 
         verify(jsonProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
@@ -72,7 +72,7 @@ public class NakadiKpiPublisherTest {
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema);
+                new EventMetadataTestStub(), avroSchema);
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }
@@ -86,7 +86,7 @@ public class NakadiKpiPublisherTest {
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadata(new UUIDGenerator()), new UUIDGenerator(), avroSchema);
+                new EventMetadata(new UUIDGenerator()), avroSchema);
         publisher.publishAccessLogEvent("POST",
                 "/test", "", "", "", "",
                 "", 200, 1L, 1L, 1L);
