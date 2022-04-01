@@ -31,7 +31,10 @@ public class AvroSchema {
     private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
             METADATA_KEY,
             KPIEventTypes.ACCESS_LOG,
-            KPIEventTypes.BATCH_PUBLISHED);
+            KPIEventTypes.BATCH_PUBLISHED,
+            KPIEventTypes.DATA_STREAMED,
+            KPIEventTypes.EVENT_TYPE_LOG,
+            KPIEventTypes.SUBSCRIPTION_LOG);
 
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
     private final AvroMapper avroMapper;
