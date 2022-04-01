@@ -81,7 +81,7 @@ nakadi:
     tokenInfoUrl: https://example.com/tokeninfo
     localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
     clientId: stups_aruha-event-store-poc
-    realms: '/arealm, /anotherone'
+    realms: "/arealm', '/anotherone"
     scopes:
       uid: uid
       nakadiAdmin: nakadi.config.write
