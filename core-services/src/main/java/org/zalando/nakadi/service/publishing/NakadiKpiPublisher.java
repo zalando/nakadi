@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -49,6 +50,40 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
+    }
+
+    public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
+        try {
+            if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
+                return;
+            }
+            final var kpiEvent = kpiEventSupplier.get();
+            final var eventType = kpiEvent.eventTypeOfThisKPIEvent();
+
+            if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
+
+                final var metaSchemaEntry = avroSchema
+                        .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+                final var metadataVersion = Byte.parseByte(metaSchemaEntry.getKey());
+
+                final var eventSchemaEntry = avroSchema
+                        .getLatestEventTypeSchemaVersion(eventType);
+
+                final GenericRecord metadata = buildMetaDataGenericRecord(
+                        eventType, metaSchemaEntry.getValue(), eventSchemaEntry.getKey());
+
+                final GenericRecord event = kpiEvent.asGenericRecord(eventSchemaEntry.getValue());
+
+                final NakadiRecord nakadiRecord = NakadiRecord
+                        .fromAvro(eventType, metadataVersion, metadata, event);
+                binaryEventsProcessor.queueEvent(eventType, nakadiRecord);
+            } else {
+                jsonEventsProcessor.queueEvent(eventType, eventMetadata.addTo(kpiEvent.asJsonObject()));
+            }
+
+        } catch (final Exception e) {
+            LOG.error("Error occurred when submitting KPI event for publishing", e);
+        }
     }
 
     public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
