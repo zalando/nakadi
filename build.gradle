@@ -1,7 +1,7 @@
 subprojects {
     buildscript {
         ext {
-            springBootVersion = '2.3.1.RELEASE'
+            springBootVersion = '2.5.12'
         }
         repositories {
             mavenCentral()
@@ -54,6 +54,8 @@ subprojects {
         finalizedBy jacocoTestReport
     }
     dependencies {
+        implementation 'junit:junit:4.13.1'
+
         ext {
             kafkaClientVersion = '2.7.1'
             dropwizardVersion = '3.1.3'
