@@ -95,6 +95,8 @@ dependencies {
     testRuntime 'org.pegdown:pegdown:1.6.0'
     testCompile project(path: ':core-common', configuration: 'testOutput')
     testCompile project(path: ':core-services', configuration: 'testOutput')
+
+    testCompile 'junit:junit:4.13.1'
 }
 
 task acceptanceTest(type: Test) {
