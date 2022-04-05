@@ -37,6 +37,9 @@ public class KPIEventMapper {
 
     private final Map<Class<? extends KPIEvent>, Set<KPIGetter>> fieldGetterCache = new HashMap<>();
 
+    public KPIEventMapper() {
+    }
+
     public KPIEventMapper(final Set<Class<? extends KPIEvent>> mappedClasses) {
         for (final Class<? extends KPIEvent> mappedClass : mappedClasses) {
             fieldGetterCache.put(mappedClass, findGettersOfKPIFields(mappedClass));
@@ -69,7 +72,7 @@ public class KPIEventMapper {
 
     public GenericRecord mapToGenericRecord(final KPIEvent kpiEvent, final Schema schema) {
         final var recordBuilder = new GenericRecordBuilder(schema);
-        this.fieldGetterCache.get(kpiEvent.getClass()).forEach(kpiGetter -> {
+        gettersOf(kpiEvent.getClass()).forEach(kpiGetter -> {
             try {
                 recordBuilder.set(kpiGetter.name, kpiGetter.getter.invoke(kpiEvent));
             } catch (final IllegalAccessException | InvocationTargetException iae) {
@@ -82,7 +85,7 @@ public class KPIEventMapper {
 
     public JSONObject mapToJsonObject(final KPIEvent kpiEvent) {
         final var jsonObject = new JSONObject();
-        this.fieldGetterCache.get(kpiEvent.getClass()).forEach(kpiGetter -> {
+        gettersOf(kpiEvent.getClass()).forEach(kpiGetter -> {
             try {
                 jsonObject.put(kpiGetter.name, kpiGetter.getter.invoke(kpiEvent));
             } catch (final IllegalAccessException | InvocationTargetException iae) {
@@ -91,5 +94,16 @@ public class KPIEventMapper {
             }
         });
         return jsonObject;
+    }
+
+    private Set<KPIGetter> gettersOf(final Class<? extends KPIEvent> clazz) {
+        if (!this.fieldGetterCache.containsKey(clazz)) {
+            synchronized (this) {
+                if (!this.fieldGetterCache.containsKey(clazz)) {
+                    fieldGetterCache.put(clazz, findGettersOfKPIFields(clazz));
+                }
+            }
+        }
+        return this.fieldGetterCache.get(clazz);
     }
 }

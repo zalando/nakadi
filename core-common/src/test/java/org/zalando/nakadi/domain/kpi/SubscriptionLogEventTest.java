@@ -9,7 +9,6 @@ import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.KPIEventMapper;
 
 import java.io.IOException;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,7 +20,7 @@ public class SubscriptionLogEventTest {
     public SubscriptionLogEventTest() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        this.eventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
+        this.eventMapper = new KPIEventMapper();
     }
 
     @Test
