@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.KPIEventTypes;
+import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.util.AvroUtils;
@@ -88,8 +89,9 @@ public class AvroSchema {
         return objectMapper;
     }
 
-    public Map.Entry<String, Schema> getLatestEventTypeSchemaVersion(final String eventTypeName) {
-        return getEventTypeSchemaVersions(eventTypeName).lastEntry();
+    public VersionedAvroSchema getLatestEventTypeSchemaVersion(final String eventTypeName) {
+        final var entry = getEventTypeSchemaVersions(eventTypeName).lastEntry();
+        return new VersionedAvroSchema(entry.getValue(), entry.getKey());
     }
 
     public Schema getEventTypeSchema(final String eventTypeName, final String schemaVersion) {

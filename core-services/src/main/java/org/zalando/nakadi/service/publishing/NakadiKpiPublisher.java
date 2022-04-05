@@ -12,13 +12,15 @@ import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
+import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.KPIEventMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 @Component
@@ -33,6 +35,7 @@ public class NakadiKpiPublisher {
     private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
+    private final KPIEventMapper kpiEventMapper;
 
     @Autowired
     protected NakadiKpiPublisher(
@@ -50,6 +53,7 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
+        this.kpiEventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
@@ -64,21 +68,22 @@ public class NakadiKpiPublisher {
 
                 final var metaSchemaEntry = avroSchema
                         .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-                final var metadataVersion = Byte.parseByte(metaSchemaEntry.getKey());
+                final var metadataVersion = Byte.parseByte(metaSchemaEntry.getVersion());
 
                 final var eventSchemaEntry = avroSchema
                         .getLatestEventTypeSchemaVersion(eventType);
 
                 final GenericRecord metadata = buildMetaDataGenericRecord(
-                        eventType, metaSchemaEntry.getValue(), eventSchemaEntry.getKey());
+                        eventType, metaSchemaEntry.getSchema(), eventSchemaEntry.getVersion());
 
-                final GenericRecord event = kpiEvent.asGenericRecord(eventSchemaEntry.getValue());
+                final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
 
                 final NakadiRecord nakadiRecord = NakadiRecord
                         .fromAvro(eventType, metadataVersion, metadata, event);
                 binaryEventsProcessor.queueEvent(eventType, nakadiRecord);
             } else {
-                jsonEventsProcessor.queueEvent(eventType, eventMetadata.addTo(kpiEvent.asJsonObject()));
+                final JSONObject eventObject = kpiEventMapper.mapToJsonObject(kpiEvent);
+                jsonEventsProcessor.queueEvent(eventType, eventMetadata.addTo(eventObject));
             }
 
         } catch (final Exception e) {
@@ -118,17 +123,17 @@ public class NakadiKpiPublisher {
             return;
         }
         try {
-            final Map.Entry<String, Schema> latestMeta =
+            final var latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-            final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+            final byte metadataVersion = Byte.parseByte(latestMeta.getVersion());
 
-            final Map.Entry<String, Schema> latestSchema =
+            final var latestSchema =
                     avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.BATCH_PUBLISHED);
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEventTypes.BATCH_PUBLISHED, latestMeta.getValue(), latestSchema.getKey());
+                    KPIEventTypes.BATCH_PUBLISHED, latestMeta.getSchema(), latestSchema.getVersion());
 
-            final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
+            final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
                     .set("event_type", eventTypeName)
                     .set("app", applicationName)
                     .set("app_hashed", hash(applicationName))
@@ -175,18 +180,18 @@ public class NakadiKpiPublisher {
                 return;
             }
 
-            final Map.Entry<String, Schema> latestMeta =
+            final var latestMeta =
                     avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-            final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+            final byte metadataVersion = Byte.parseByte(latestMeta.getVersion());
 
-            final Map.Entry<String, Schema> latestSchema =
+            final var latestSchema =
                     avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.ACCESS_LOG);
 
             final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEventTypes.ACCESS_LOG, latestMeta.getValue(), latestSchema.getKey(), user);
+                    KPIEventTypes.ACCESS_LOG, latestMeta.getSchema(), latestSchema.getVersion(), user);
 
 
-            final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
+            final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
                     .set("method", method)
                     .set("path", path)
                     .set("query", query)

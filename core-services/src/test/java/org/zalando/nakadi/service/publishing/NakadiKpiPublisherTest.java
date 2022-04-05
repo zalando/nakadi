@@ -124,7 +124,7 @@ public class NakadiKpiPublisherTest {
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
         final var schemaEntry = avroSchema
                 .getLatestEventTypeSchemaVersion(subscriptionLogEvent.eventTypeOfThisKPIEvent());
-        final var sequenceDecoder = new SequenceDecoder(schemaEntry.getValue());
+        final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
         final var record = sequenceDecoder.read(envelopeHolder.getPayload());
 
         // Verify values in GenericRecord
