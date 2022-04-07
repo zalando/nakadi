@@ -119,7 +119,7 @@ public class KafkaRecordDeserializerTest {
 
             //new optional fields
             gr.put("partition_keys", List.of("1","2"));
-            gr.put("parent_eids", List.of("1","2"));
+            gr.put("parent_eids", List.of("32f5dae5-4fc4-4cda-be07-b313b58490ac","32f5dae5-4fc4-4cda-be07-b313b58490ad"));
             gr.put("span_ctx", "sek");
         };
         checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);

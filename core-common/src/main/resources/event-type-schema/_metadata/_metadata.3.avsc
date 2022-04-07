@@ -77,13 +77,17 @@
       },
       {
          "name":"parent_eids",
-         "type":[
+          "type":[
             "null",
             {
-            "type":"array",
-            "items":"string"
-         }],
-         "default": null
+              "type":"array",
+              "items":{
+                "type":"string",
+                "logicalType":"uuid"
+              }
+            }
+          ],
+          "default":null
       },
       {
          "name":"span_ctx",
