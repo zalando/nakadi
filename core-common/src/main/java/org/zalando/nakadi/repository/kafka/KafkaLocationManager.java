@@ -125,6 +125,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
         producerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 
+        producerProps.put(ProducerConfig.RETRIES_CONFIG, kafkaSettings.getRetries());
         producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaSettings.getRequestTimeoutMs());
         producerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, kafkaSettings.getBufferMemory());
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, kafkaSettings.getBatchSize());
