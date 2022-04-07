@@ -30,7 +30,9 @@ import org.zalando.stups.oauth2.spring.security.expression.ExtendedOAuth2WebSecu
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
@@ -55,7 +57,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     private String uidScope;
 
     @Value("${nakadi.oauth2.realms}")
-    private String realms;
+    private String[] realms;
 
     @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
     private String nakadiAdminScope;
@@ -73,8 +75,11 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
     }
 
-    public static String hasUidScopeAndAnyRealm(final String realms) {
-        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm(''{0}'')", realms);
+    public static String hasUidScopeAndAnyRealm(final String[] realms) {
+        final String formattedRealms = Arrays.stream(realms)
+                .map(r -> MessageFormat.format("''{0}''", r))
+                .collect(Collectors.joining(","));
+        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm({0})", formattedRealms);
     }
 
     @Override

@@ -214,7 +214,6 @@ public class NakadiKpiPublisher {
         }
     }
 
-
     private GenericRecord buildMetaDataGenericRecord(
             final String eventType, final Schema schema, final String version) {
         return buildMetaDataGenericRecord(eventType, schema, version, "unknown");
@@ -228,7 +227,7 @@ public class NakadiKpiPublisher {
                 .set("eid", uuidGenerator.randomUUID().toString())
                 .set("flow_id", FlowIdUtils.peek())
                 .set("event_type", eventType)
-                .set("partition", 0) // fixme avro
+                .set("partition", "0") // fixme avro
                 .set("received_at", now)
                 .set("schema_version", version)
                 .set("published_by", user)

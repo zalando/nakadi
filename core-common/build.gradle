@@ -115,6 +115,7 @@ dependencies {
         exclude module: "hamcrest-library"
     }
     testCompile 'com.jayway.jsonpath:json-path'
+    testCompile 'junit:junit:4.13.1'
     testRuntime 'org.pegdown:pegdown:1.6.0'
 }
 // end::dependencies[]
