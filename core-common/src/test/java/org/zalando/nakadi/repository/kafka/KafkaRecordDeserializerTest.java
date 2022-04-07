@@ -133,6 +133,7 @@ public class KafkaRecordDeserializerTest {
                     "32f5dae5-4fc4-4cda-be07-b313b58490ad")
             );
             gr.put("span_ctx", "sek");
+            gr.put("partition_compaction_key", "some_key");
         };
         checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
     }
