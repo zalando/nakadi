@@ -3,11 +3,9 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang.StringUtils;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -28,6 +26,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -92,7 +91,6 @@ public class SubscriptionService {
     private final CursorOperationsService cursorOperationsService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final FeatureToggleService featureToggleService;
-    private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
@@ -112,7 +110,6 @@ public class SubscriptionService {
                                final NakadiKpiPublisher nakadiKpiPublisher,
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
-                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
                                final EventTypeCache eventTypeCache,
@@ -129,7 +126,6 @@ public class SubscriptionService {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.featureToggleService = featureToggleService;
         this.subscriptionTimeLagService = subscriptionTimeLagService;
-        this.subLogEventType = subLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
@@ -158,9 +154,9 @@ public class SubscriptionService {
         final Subscription subscription = createSubscriptionWithEventTypeLock(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
-        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
-                .put("subscription_id", subscription.getId())
-                .put("status", "created"));
+        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+                .setSubscriptionId(subscription.getId())
+                .setStatus("created"));
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(subscription),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -345,9 +341,9 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         }
 
-        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
-                .put("subscription_id", subscriptionId)
-                .put("status", "deleted"));
+        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+                .setSubscriptionId(subscriptionId)
+                .setStatus("deleted"));
 
         nakadiAuditLogPublisher.publish(Optional.of(subscription), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -482,9 +478,9 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         final List<String> partitionsList = subscriptionNode.map(
-                node -> node.getPartitions().stream()
-                        .map(Partition::getPartition)
-                        .collect(Collectors.toList()))
+                        node -> node.getPartitions().stream()
+                                .map(Partition::getPartition)
+                                .collect(Collectors.toList()))
                 .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {

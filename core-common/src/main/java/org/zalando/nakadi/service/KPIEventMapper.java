@@ -37,9 +37,6 @@ public class KPIEventMapper {
 
     private final Map<Class<? extends KPIEvent>, Set<KPIGetter>> fieldGetterCache = new HashMap<>();
 
-    public KPIEventMapper() {
-    }
-
     public KPIEventMapper(final Set<Class<? extends KPIEvent>> mappedClasses) {
         for (final Class<? extends KPIEvent> mappedClass : mappedClasses) {
             fieldGetterCache.put(mappedClass, findGettersOfKPIFields(mappedClass));
@@ -97,13 +94,9 @@ public class KPIEventMapper {
     }
 
     private Set<KPIGetter> gettersOf(final Class<? extends KPIEvent> clazz) {
-        if (!this.fieldGetterCache.containsKey(clazz)) {
-            synchronized (this) {
-                if (!this.fieldGetterCache.containsKey(clazz)) {
-                    fieldGetterCache.put(clazz, findGettersOfKPIFields(clazz));
-                }
-            }
+        if (this.fieldGetterCache.containsKey(clazz)) {
+            return this.fieldGetterCache.get(clazz);
         }
-        return this.fieldGetterCache.get(clazz);
+        throw new InternalNakadiException("KPIEvent " + clazz + " is not added to KPIEventMapper");
     }
 }

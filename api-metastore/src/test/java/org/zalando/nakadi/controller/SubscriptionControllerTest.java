@@ -140,7 +140,7 @@ public class SubscriptionControllerTest {
                 subscriptionCache,
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
+                nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
                 null,
                 transactionTemplate, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
