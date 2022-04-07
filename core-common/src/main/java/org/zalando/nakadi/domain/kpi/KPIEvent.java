@@ -12,10 +12,13 @@ public abstract class KPIEvent {
         String getter() default "";
     }
 
-    /*
-        Implementation of this method should return the event-type name of the specific KPI event.
-        This method should not be confused with the getter "getEventType()" in some specific KPI events;
-        which is why this method is named "eventTypeOfThisKPIEvent()
-     */
-    public abstract String eventTypeOfThisKPIEvent();
+    private final String eventTypeOfThisKPIEvent;
+
+    protected KPIEvent(final String eventTypeOfThisKPIEvent) {
+        this.eventTypeOfThisKPIEvent = eventTypeOfThisKPIEvent;
+    }
+
+    public final String eventTypeOfThisKPIEvent() {
+        return this.eventTypeOfThisKPIEvent;
+    }
 }

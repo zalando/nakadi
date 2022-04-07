@@ -1,11 +1,9 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.Multimap;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
@@ -20,6 +18,7 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exception.SchemaValidationException;
@@ -98,7 +97,6 @@ public class EventTypeService {
     private final NakadiSettings nakadiSettings;
     private final TransactionTemplate transactionTemplate;
     private final NakadiKpiPublisher nakadiKpiPublisher;
-    private final String etLogEventType;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final AdminService adminService;
@@ -123,7 +121,6 @@ public class EventTypeService {
             final TransactionTemplate transactionTemplate,
             final NakadiSettings nakadiSettings,
             final NakadiKpiPublisher nakadiKpiPublisher,
-            @Value("${nakadi.kpi.event-types.nakadiEventTypeLog}") final String etLogEventType,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
             final EventTypeCache eventTypeCache,
@@ -144,7 +141,6 @@ public class EventTypeService {
         this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
-        this.etLogEventType = etLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.adminService = adminService;
@@ -234,12 +230,12 @@ public class EventTypeService {
                 throw new InternalNakadiException("Failed to create event type: " + ex.getMessage(), ex);
             }
         }
-        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                .put("event_type", eventType.getName())
-                .put("status", "created")
-                .put("category", eventType.getCategory())
-                .put("authz", identifyAuthzState(eventType))
-                .put("compatibility_mode", eventType.getCompatibilityMode()));
+        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                .setEventType(eventType.getName())
+                .setStatus("created")
+                .setCategory(eventType.getCategory().toString())
+                .setAuthz(identifyAuthzState(eventType))
+                .setCompatibilityMode(eventType.getCompatibilityMode().toString()));
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -381,12 +377,12 @@ public class EventTypeService {
                 }
             }
         }
-        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                .put("event_type", eventTypeName)
-                .put("status", "deleted")
-                .put("category", eventType.getCategory())
-                .put("authz", identifyAuthzState(eventType))
-                .put("compatibility_mode", eventType.getCompatibilityMode()));
+        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                .setEventType(eventTypeName)
+                .setStatus("deleted")
+                .setCategory(eventType.getCategory().toString())
+                .setAuthz(identifyAuthzState(eventType))
+                .setCompatibilityMode(eventType.getCompatibilityMode().toString()));
 
         nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -410,13 +406,13 @@ public class EventTypeService {
                 }
 
                 subscriptions.forEach(s -> {
-                        try {
-                            subscriptionRepository.deleteSubscription(s.getId());
-                        } catch (final NoSuchSubscriptionException e) {
-                            // should not happen as we are inside transaction
-                            throw new InconsistentStateException("Subscription to be deleted is not found", e);
-                        }
-                    });
+                    try {
+                        subscriptionRepository.deleteSubscription(s.getId());
+                    } catch (final NoSuchSubscriptionException e) {
+                        // should not happen as we are inside transaction
+                        throw new InconsistentStateException("Subscription to be deleted is not found", e);
+                    }
+                });
                 return deleteEventType(eventType);
             });
         } catch (final TransactionException e) {
@@ -502,12 +498,12 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        nakadiKpiPublisher.publish(etLogEventType, () -> new JSONObject()
-                .put("event_type", eventTypeName)
-                .put("status", "updated")
-                .put("category", eventTypeBase.getCategory())
-                .put("authz", identifyAuthzState(eventTypeBase))
-                .put("compatibility_mode", eventTypeBase.getCompatibilityMode()));
+        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                .setEventType(eventTypeName)
+                .setStatus("updated")
+                .setCategory(eventTypeBase.getCategory().toString())
+                .setAuthz(identifyAuthzState(eventTypeBase))
+                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().toString()));
 
         nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,

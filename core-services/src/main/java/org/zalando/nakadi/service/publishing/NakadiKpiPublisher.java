@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.security.UsernameHasher;
@@ -53,7 +54,9 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
-        this.kpiEventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
+        this.kpiEventMapper = new KPIEventMapper(Set.of(
+                SubscriptionLogEvent.class,
+                EventTypeLogEvent.class));
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {

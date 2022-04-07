@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -72,9 +73,9 @@ public class KPIEventMapper {
         gettersOf(kpiEvent.getClass()).forEach(kpiGetter -> {
             try {
                 recordBuilder.set(kpiGetter.name, kpiGetter.getter.invoke(kpiEvent));
-            } catch (final IllegalAccessException | InvocationTargetException iae) {
+            } catch (final IllegalAccessException | InvocationTargetException | AvroRuntimeException ex) {
                 throw new KPIEventMappingException("Cannot map KPIEvent " + kpiEvent.getClass().getName()
-                        + "to GenericRecord. Unable to read " + kpiGetter.name, iae);
+                        + " to GenericRecord. Unable to read " + kpiGetter.name, ex);
             }
         });
         return recordBuilder.build();
