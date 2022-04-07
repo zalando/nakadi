@@ -145,10 +145,13 @@ nakadi:
 twintip:
   mapping: /api
   yaml: "file:api/nakadi-event-bus-api.yaml"
----
 
+---
 spring:
-  profiles: acceptanceTest
+  config:
+    activate:
+      on-profile: acceptanceTest
+
 nakadi:
   stream:
     maxStreamMemoryBytes: 10_000 # ~10 Kb
@@ -171,14 +174,17 @@ kpi:
     stream-data-collection-frequency-ms: 100
 
 ---
-
 spring:
-  profiles: test
+  config:
+    activate:
+      on-profile: test
 
 ---
-
 spring:
-  profiles: local
+  config:
+    activate:
+      on-profile: local
+
 nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false
