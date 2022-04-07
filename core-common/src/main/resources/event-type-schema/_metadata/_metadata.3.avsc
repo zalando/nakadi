@@ -43,7 +43,11 @@
       },
       {
          "name":"published_by",
-         "type":"string"
+         "type":[
+             "null",
+             "string"
+             ],
+         "default": null
       },
       {
          "name":"event_type",

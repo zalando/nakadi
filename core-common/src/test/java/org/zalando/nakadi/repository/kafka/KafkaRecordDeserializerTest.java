@@ -38,6 +38,7 @@ public class KafkaRecordDeserializerTest {
             gr.put("flow_id", "hek");
             gr.put("partition", 0);
             gr.put("received_at", SOME_TIME);
+            gr.put("published_by", "nakadi-test");
         };
 
         // prepare the same bytes as we would put in Kafka record
@@ -79,6 +80,8 @@ public class KafkaRecordDeserializerTest {
             gr.put("flow_id", "hek");
             gr.put("partition", 0);
             gr.put("received_at", SOME_TIME);
+            gr.put("published_by", "nakadi-test");
+
         };
         checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
     }
@@ -90,6 +93,7 @@ public class KafkaRecordDeserializerTest {
             gr.put("flow_id", "hek");
             gr.put("partition", 0);
             gr.put("received_at", SOME_TIME);
+            gr.put("published_by", "nakadi-test");
         };
         checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
     }
@@ -102,6 +106,7 @@ public class KafkaRecordDeserializerTest {
             gr.put("partition", "0");
             gr.put("flow_id", "hek");
             gr.put("received_at", SOME_TIME);
+            gr.put("published_by", "nakadi-test");
         };
         checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
     }
@@ -111,9 +116,13 @@ public class KafkaRecordDeserializerTest {
         final var metadataVersion = "3";
         final Consumer<GenericRecord> modifyMetadata = (gr) -> {
 
-            //fields changed to optional
+            //changed to optional
             gr.put("partition", "0");
             gr.put("flow_id", "hek");
+
+            //changed to optional bt always filled by nakadi
+            gr.put("published_by", "nakadi-test");
+
             //optional but filled & required by nakadi
             gr.put("received_at", SOME_TIME);
 
@@ -130,6 +139,10 @@ public class KafkaRecordDeserializerTest {
         final var metadataVersion = "3";
         final Consumer<GenericRecord> modifyMetadata = (gr) -> {
             gr.put("partition", "0");
+
+            //changed to optional bt always filled by nakadi
+            gr.put("published_by", "nakadi-test");
+
             //optional but filled & required by nakadi
             gr.put("received_at", SOME_TIME);
         };
@@ -204,7 +217,6 @@ public class KafkaRecordDeserializerTest {
             metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");
             metadata.put("event_type", "nakadi.access.log");
             metadata.put("schema_version", schemaVersion);
-            metadata.put("published_by", "nakadi-test");
 
             Optional.ofNullable(overWrite).ifPresent(fn -> fn.accept(metadata));
 
