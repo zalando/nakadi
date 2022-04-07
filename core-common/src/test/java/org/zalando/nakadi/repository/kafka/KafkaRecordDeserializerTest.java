@@ -16,10 +16,14 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 public class KafkaRecordDeserializerTest {
 
     private final AvroSchema avroSchema;
+    private static final long SOME_TIME = 1643290232172l;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
@@ -30,16 +34,21 @@ public class KafkaRecordDeserializerTest {
     @Test
     public void testDeserializeAvro() throws IOException {
         final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+            gr.put("flow_id", "hek");
+            gr.put("partition", 0);
+            gr.put("received_at", SOME_TIME);
+        };
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
                 (byte) 1, // metadata version
-                getMetadataWriter("1", "0"),
+                getMetadataWriter("1", "0", modifyMetadata),
                 getEventWriter0());
 
         final byte[] data1 = EnvelopeHolder.produceBytes(
                 (byte) 0, // metadata version
-                getMetadataWriter("0", "1"),
+                getMetadataWriter("0", "1", modifyMetadata),
                 getEventWriter1());
 
         // try to deserialize that data when we would read Kafka record
@@ -62,6 +71,89 @@ public class KafkaRecordDeserializerTest {
                 new ObjectMapper()
                         .readValue(deserializedEvent1, ObjectNode.class));
     }
+
+    @Test
+    public void testDeserializeAvroMetadata0() throws IOException {
+        final var metadataVersion = "0";
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+            gr.put("flow_id", "hek");
+            gr.put("partition", 0);
+            gr.put("received_at", SOME_TIME);
+        };
+        checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata1() throws IOException {
+        final var metadataVersion = "1";
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+            gr.put("flow_id", "hek");
+            gr.put("partition", 0);
+            gr.put("received_at", SOME_TIME);
+        };
+        checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
+    }
+
+
+    @Test
+    public void testDeserializeAvroMetadata2() throws IOException {
+        final var metadataVersion = "2";
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+            gr.put("partition", "0");
+            gr.put("flow_id", "hek");
+            gr.put("received_at", SOME_TIME);
+        };
+        checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata3WithoutDefaults() throws IOException {
+        final var metadataVersion = "3";
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+
+            //fields changed to optional
+            gr.put("partition", "0");
+            gr.put("flow_id", "hek");
+            //optional but filled & required by nakadi
+            gr.put("received_at", SOME_TIME);
+
+            //new optional fields
+            gr.put("partition_keys", List.of("1","2"));
+            gr.put("parent_eids", List.of("1","2"));
+            gr.put("span_ctx", "sek");
+        };
+        checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata3WithDefaults() throws IOException {
+        final var metadataVersion = "3";
+        final Consumer<GenericRecord> modifyMetadata = (gr) -> {
+            gr.put("partition", "0");
+            //optional but filled & required by nakadi
+            gr.put("received_at", SOME_TIME);
+        };
+        checkMetadataSerializeDeserialize(metadataVersion, modifyMetadata);
+    }
+
+
+    private void checkMetadataSerializeDeserialize(final String metadataVersion,
+                                                   final Consumer<GenericRecord> modifyMetadata) throws IOException {
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
+        final var eventWriter = getEventWriter1();
+        // prepare the same bytes as we would put in Kafka record
+        final byte[] data = EnvelopeHolder.produceBytes(
+                Byte.parseByte(metadataVersion),
+                getMetadataWriter(metadataVersion, "1", modifyMetadata),
+                eventWriter);
+
+        // try to deserialize that data when we would read Kafka record
+        final byte[] deserializedEvent = deserializer.deserialize(
+                NakadiRecord.Format.AVRO.getFormat(),
+                data
+        );
+    }
+
 
     private GenericRecord getBaseRecord(final String schemaVersion) {
         final GenericRecord event = new GenericData.Record(
@@ -101,20 +193,20 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion, final String schemaVersion) {
+    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion,
+                                                         final String schemaVersion,
+                                                         final Consumer<GenericRecord> overWrite) {
         return os -> {
             final GenericRecord metadata =
                     new GenericData.Record(avroSchema.getEventTypeSchema(AvroSchema.METADATA_KEY, metadataVersion));
 
-            final long someEqualTime = 1643290232172l;
-            metadata.put("occurred_at", someEqualTime);
+            metadata.put("occurred_at", SOME_TIME);
             metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");
-            metadata.put("flow_id", "hek");
             metadata.put("event_type", "nakadi.access.log");
-            metadata.put("partition", 0);
-            metadata.put("received_at", someEqualTime);
             metadata.put("schema_version", schemaVersion);
             metadata.put("published_by", "nakadi-test");
+
+            Optional.ofNullable(overWrite).ifPresent(fn -> fn.accept(metadata));
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
             eventWriter.write(metadata, EncoderFactory.get()
