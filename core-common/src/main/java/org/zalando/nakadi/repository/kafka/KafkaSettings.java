@@ -26,7 +26,7 @@ public class KafkaSettings {
     private final String compressionType;
 
     @Autowired
-    public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retires,
+    public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retries,
                          @Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
