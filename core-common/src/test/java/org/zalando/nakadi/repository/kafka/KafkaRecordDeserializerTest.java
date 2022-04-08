@@ -6,7 +6,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,6 +16,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -162,6 +162,34 @@ public class KafkaRecordDeserializerTest {
         Assert.assertTrue(expectedJson.similar(actualJson));
     }
 
+    @Test
+    public void testMetadataJsonHasOnlyNonNullValues() throws IOException {
+        final var metadataVersion = "3";
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("partition", "0");
+        //changed to optional bt always filled by nakadi
+        jsonObject.put("published_by", "nakadi-test");
+        jsonObject.put("flow_id", "hek");
+
+        //optional but filled & required by nakadi
+        jsonObject.put("received_at", SOME_TIME);
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+
+        final var metadataObj = actualJson.getJSONObject("metadata");
+
+        final List<String> nullKeys = new ArrayList<>();
+        metadataObj.toMap().forEach((k, v) -> {
+            if(v == null){
+                nullKeys.add(k);
+            }
+        });
+
+        Assert.assertTrue("No keys with null values should " +
+                "be present in metadata", nullKeys.isEmpty());
+    }
+
 
     private JSONObject getSerializedJsonObject(final String metadataVersion,
                                                final JSONObject toOverWriteMetadata) throws IOException {
@@ -235,28 +263,14 @@ public class KafkaRecordDeserializerTest {
             metadata.put("schema_version", schemaVersion);
 
 
-            Optional.ofNullable(toOverWriteMetadata).ifPresent(fn -> {
-                final var iterator = toOverWriteMetadata.keys();
-                while (iterator.hasNext()){
-                    final var key = iterator.next();
-                    final Object value = fromJsonToObjectValue(toOverWriteMetadata.get(key));
-                    metadata.put(key, value);
-                }
-            });
+            Optional.ofNullable(toOverWriteMetadata).ifPresent(fn ->
+                toOverWriteMetadata.toMap().forEach(metadata::put)
+            );
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
             eventWriter.write(metadata, EncoderFactory.get()
                     .directBinaryEncoder(os, null));
         };
-    }
-
-    private Object fromJsonToObjectValue(final Object value) {
-        if (value == JSONObject.NULL){
-            return null;
-        }else if(value instanceof JSONArray){
-            return ((JSONArray) value).toList();
-        }
-        return value;
     }
 
     private JSONObject getBaseExpectedNode(final String schemaVersion,

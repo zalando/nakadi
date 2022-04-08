@@ -53,7 +53,6 @@ public class AvroDeserializerWithSequenceDecoder {
         }
     }
 
-
     private static JSONObject getJsonWithNonNullValues(final String json){
         final var metadataObj = new JSONObject(json);
         final var iterator = metadataObj.keys();
