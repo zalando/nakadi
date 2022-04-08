@@ -2,7 +2,7 @@
   "name": "Metadata",
   "type": "record",
   "namespace": "org.zalando.nakadi.generated.avro",
-  "doc": "Event metadata defines data is not related to actual event payload data",
+  "doc": "Event metadata defines data about the payload and additional information for Nakadi operations",
   "fields": [
     {
       "name": "occurred_at",
