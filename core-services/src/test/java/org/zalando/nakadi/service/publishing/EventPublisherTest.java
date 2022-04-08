@@ -5,7 +5,6 @@ import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.avro.Schema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -19,9 +18,9 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -50,11 +49,10 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.TimeoutException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,9 +60,9 @@ import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -608,24 +606,24 @@ public class EventPublisherTest {
 
         final long now = System.currentTimeMillis();
 
-        final Map.Entry<String, Schema> latestMeta =
+        final var latestMeta =
                 avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-        final Map.Entry<String, Schema> latestSchema =
+        final var latestSchema =
                 avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
-        final byte metadataVersion = Byte.parseByte(latestMeta.getKey());
+        final byte metadataVersion = Byte.parseByte(latestMeta.getVersion());
 
-        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getValue())
+        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getSchema())
                 .set("occurred_at", now)
                 .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
                 .set("flow_id", FlowIdUtils.peek())
                 .set("event_type", "nakadi.access.log")
                 .set("partition", "0")
                 .set("received_at", now)
-                .set("schema_version", latestSchema.getKey())
+                .set("schema_version", latestSchema.getVersion())
                 .set("published_by", "adyachkov")
                 .build();
-        final GenericRecord event = new GenericRecordBuilder(latestSchema.getValue())
+        final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
                 .set("method", "POST")
                 .set("path", "/event-types")
                 .set("query", "")
