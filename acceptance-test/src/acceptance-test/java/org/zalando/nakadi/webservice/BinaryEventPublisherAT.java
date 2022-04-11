@@ -93,7 +93,6 @@ public class BinaryEventPublisherAT extends BaseAT {
         Assert.assertEquals(
                 NAKADI_EVENT_TYPE_LOG,
                 ((Map) event.get("metadata")).get("event_type"));
-        Assert.assertEquals("created", event.get("status"));
     }
 
     @Test
