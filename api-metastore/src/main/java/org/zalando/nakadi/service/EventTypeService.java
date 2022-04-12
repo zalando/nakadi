@@ -233,9 +233,9 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
                 .setEventType(eventType.getName())
                 .setStatus("created")
-                .setCategory(eventType.getCategory().toString())
+                .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().toString()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -380,9 +380,9 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
                 .setEventType(eventTypeName)
                 .setStatus("deleted")
-                .setCategory(eventType.getCategory().toString())
+                .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().toString()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
 
         nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -501,9 +501,9 @@ public class EventTypeService {
         nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
                 .setEventType(eventTypeName)
                 .setStatus("updated")
-                .setCategory(eventTypeBase.getCategory().toString())
+                .setCategory(eventTypeBase.getCategory().name())
                 .setAuthz(identifyAuthzState(eventTypeBase))
-                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().toString()));
+                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().name()));
 
         nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,

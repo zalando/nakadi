@@ -156,7 +156,6 @@ public class BinaryEventPublisherAT extends BaseAT {
                 NAKADI_DATA_STREAMED,
                 ((Map) event.get("metadata")).get("event_type"));
         Assert.assertNotNull(event.get("api"));
-        Assert.assertNotNull(event.get("subscription"));
         Assert.assertNotNull(event.get("event_type"));
         Assert.assertNotNull(event.get("app"));
         Assert.assertNotNull(event.get("app_hashed"));
