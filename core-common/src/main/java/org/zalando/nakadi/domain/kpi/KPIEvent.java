@@ -12,13 +12,13 @@ public abstract class KPIEvent {
         String getter() default "";
     }
 
-    private final String eventTypeOfThisKPIEvent;
+    private final String name;
 
-    protected KPIEvent(final String eventTypeOfThisKPIEvent) {
-        this.eventTypeOfThisKPIEvent = eventTypeOfThisKPIEvent;
+    protected KPIEvent(final String name) {
+        this.name = name;
     }
 
-    public final String eventTypeOfThisKPIEvent() {
-        return this.eventTypeOfThisKPIEvent;
+    public final String getName() {
+        return this.name;
     }
 }

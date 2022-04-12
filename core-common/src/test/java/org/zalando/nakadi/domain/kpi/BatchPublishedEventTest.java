@@ -44,7 +44,7 @@ public class BatchPublishedEventTest {
         final var eventTypeLogEvent = getRandomBatchPublishedEventObject();
 
         final var latestSchemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.eventTypeOfThisKPIEvent());
+                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.getName());
 
         final var eventTypeLogGenericRecord = eventMapper
                 .mapToGenericRecord(eventTypeLogEvent, latestSchemaEntry.getSchema());

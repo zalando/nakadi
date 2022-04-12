@@ -41,7 +41,7 @@ public class EventTypeLogEventTest {
         final var eventTypeLogEvent = getRandomEventTypeLogEvent();
 
         final var latestSchemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.eventTypeOfThisKPIEvent());
+                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.getName());
 
         final var eventTypeLogGenericRecord = eventMapper
                 .mapToGenericRecord(eventTypeLogEvent, latestSchemaEntry.getSchema());

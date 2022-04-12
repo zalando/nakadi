@@ -67,7 +67,7 @@ public class NakadiKpiPublisher {
                 return;
             }
             final var kpiEvent = kpiEventSupplier.get();
-            final var eventType = kpiEvent.eventTypeOfThisKPIEvent();
+            final var eventType = kpiEvent.getName();
 
             if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
 

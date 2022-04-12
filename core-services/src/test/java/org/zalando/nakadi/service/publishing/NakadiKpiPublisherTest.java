@@ -90,7 +90,7 @@ public class NakadiKpiPublisherTest {
 
         verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
 
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), eventTypeCaptor.getValue());
+        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
         assertEquals("test-subscription-id", jsonObjectCaptor.getValue().get("subscription_id"));
         assertEquals("created", jsonObjectCaptor.getValue().get("status"));
         verifyNoInteractions(binaryProcessor, avroSchema);
@@ -116,14 +116,14 @@ public class NakadiKpiPublisherTest {
 
         //Verify the event-type and NakadiRecord
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), eventTypeCaptor.getValue());
+        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
         final var nakadiRecord = nakadiRecordCaptor.getValue();
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), nakadiRecord.getEventType());
+        assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
         final var schemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.eventTypeOfThisKPIEvent());
+                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
         final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
         final var record = sequenceDecoder.read(envelopeHolder.getPayload());
 
