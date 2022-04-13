@@ -44,7 +44,7 @@ public class SubscriptionLogEventTest {
                 .setStatus("created");
 
         final var latestSchemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.eventTypeOfThisKPIEvent());
+                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
 
         final var subscriptionLogGenericRecord = eventMapper
                 .mapToGenericRecord(subscriptionLogEvent, latestSchemaEntry.getSchema());

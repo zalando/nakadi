@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
+import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.security.UsernameHasher;
@@ -53,7 +55,10 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
-        this.kpiEventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
+        this.kpiEventMapper = new KPIEventMapper(Set.of(
+                SubscriptionLogEvent.class,
+                EventTypeLogEvent.class,
+                BatchPublishedEvent.class));
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
@@ -62,7 +67,7 @@ public class NakadiKpiPublisher {
                 return;
             }
             final var kpiEvent = kpiEventSupplier.get();
-            final var eventType = kpiEvent.eventTypeOfThisKPIEvent();
+            final var eventType = kpiEvent.getName();
 
             if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
 
@@ -98,54 +103,6 @@ public class NakadiKpiPublisher {
             }
 
             jsonEventsProcessor.queueEvent(etName, eventMetadata.addTo(eventSupplier.get()));
-        } catch (final Exception e) {
-            LOG.error("Error occurred when submitting KPI event for publishing", e);
-        }
-    }
-
-    public void publishNakadiBatchPublishedEvent(
-            final String eventTypeName,
-            final String applicationName,
-            final String tokenRealm,
-            final int eventCount,
-            final long msSpent,
-            final int totalSizeBytes
-    ) {
-        if (!featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
-            publish(KPIEventTypes.BATCH_PUBLISHED, () -> new JSONObject()
-                    .put("event_type", eventTypeName)
-                    .put("app", applicationName)
-                    .put("app_hashed", hash(applicationName))
-                    .put("token_realm", tokenRealm)
-                    .put("number_of_events", eventCount)
-                    .put("ms_spent", msSpent)
-                    .put("batch_size", totalSizeBytes));
-            return;
-        }
-        try {
-            final var latestMeta =
-                    avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-            final byte metadataVersion = Byte.parseByte(latestMeta.getVersion());
-
-            final var latestSchema =
-                    avroSchema.getLatestEventTypeSchemaVersion(KPIEventTypes.BATCH_PUBLISHED);
-
-            final GenericRecord metadata = buildMetaDataGenericRecord(
-                    KPIEventTypes.BATCH_PUBLISHED, latestMeta.getSchema(), latestSchema.getVersion());
-
-            final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
-                    .set("event_type", eventTypeName)
-                    .set("app", applicationName)
-                    .set("app_hashed", hash(applicationName))
-                    .set("token_realm", tokenRealm)
-                    .set("number_of_events", eventCount)
-                    .set("ms_spent", msSpent)
-                    .set("batch_size", totalSizeBytes)
-                    .build();
-
-            final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(KPIEventTypes.BATCH_PUBLISHED, metadataVersion, metadata, event);
-            binaryEventsProcessor.queueEvent(KPIEventTypes.BATCH_PUBLISHED, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }
