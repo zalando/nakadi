@@ -12,6 +12,7 @@ import org.zalando.nakadi.config.KPIEventTypes;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
+import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
 import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
@@ -58,7 +59,8 @@ public class NakadiKpiPublisher {
         this.kpiEventMapper = new KPIEventMapper(Set.of(
                 SubscriptionLogEvent.class,
                 EventTypeLogEvent.class,
-                BatchPublishedEvent.class));
+                BatchPublishedEvent.class,
+                DataStreamedEvent.class));
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
@@ -96,7 +98,7 @@ public class NakadiKpiPublisher {
         }
     }
 
-    public void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
+    private void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
         try {
             if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
                 return;

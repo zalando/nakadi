@@ -50,32 +50,6 @@ public class NakadiKpiPublisherTest {
     private ArgumentCaptor<JSONObject> jsonObjectCaptor;
 
     @Test
-    public void testPublishWithFeatureToggleOn() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(true);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
-    public void testPublishWithFeatureToggleOff() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(false);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
     public void testPublishJsonKPIEventWithFeatureToggleOn() {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(false);
