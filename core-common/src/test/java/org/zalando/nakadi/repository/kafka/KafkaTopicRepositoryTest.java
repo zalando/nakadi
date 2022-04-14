@@ -453,9 +453,9 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 0, null, null, null)
+                new NakadiRecord().setEventType(eventType).setPartition(0),
+                new NakadiRecord().setEventType(eventType).setPartition(0),
+                new NakadiRecord().setEventType(eventType).setPartition(0)
         );
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -475,11 +475,10 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 1, null, null, null),
-                new NakadiRecord(eventType, 2, null, null, null),
-                new NakadiRecord(eventType, 3, null, null, null)
-
+                new NakadiRecord().setEventType(eventType).setPartition(0),
+                new NakadiRecord().setEventType(eventType).setPartition(1),
+                new NakadiRecord().setEventType(eventType).setPartition(2),
+                new NakadiRecord().setEventType(eventType).setPartition(3)
         );
 
         final Exception exception = new Exception();
@@ -508,11 +507,10 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 1, null, null, null),
-                new NakadiRecord(eventType, 2, null, null, null),
-                new NakadiRecord(eventType, 3, null, null, null)
-
+                new NakadiRecord().setEventType(eventType).setPartition(0),
+                new NakadiRecord().setEventType(eventType).setPartition(1),
+                new NakadiRecord().setEventType(eventType).setPartition(2),
+                new NakadiRecord().setEventType(eventType).setPartition(3)
         );
 
         final KafkaException exception = new KafkaException();

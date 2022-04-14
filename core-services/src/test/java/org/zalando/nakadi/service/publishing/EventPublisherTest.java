@@ -134,7 +134,7 @@ public class EventPublisherTest {
 
         // invoked once for a batch
         Mockito.verify(eventOwnerExtractorFactory, Mockito.times(1)).createExtractor(eq(eventType));
-        Mockito.verify(authzValidator, Mockito.times(0)).authorizeEventWrite(any());
+        Mockito.verify(authzValidator, Mockito.times(0)).authorizeEventWrite(any(BatchItem.class));
     }
 
     @Test
@@ -148,7 +148,7 @@ public class EventPublisherTest {
                         new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi")));
 
         publisher.publish(batch.toString(), eventType.getName());
-        Mockito.verify(authzValidator, Mockito.times(3)).authorizeEventWrite(any());
+        Mockito.verify(authzValidator, Mockito.times(3)).authorizeEventWrite(any(BatchItem.class));
     }
 
     @Test(expected = AccessDeniedException.class)
@@ -561,7 +561,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(new AccessDeniedException(Mockito.mock(Resource.class)))
                 .when(authzValidator)
-                .authorizeEventWrite(any());
+                .authorizeEventWrite(any(BatchItem.class));
 
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
@@ -577,7 +577,7 @@ public class EventPublisherTest {
         assertThat(second.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(second.getDetail(), is(isEmptyString()));
 
-        verify(authzValidator, times(1)).authorizeEventWrite(any());
+        verify(authzValidator, times(1)).authorizeEventWrite(any(BatchItem.class));
     }
 
     @Test
@@ -596,7 +596,7 @@ public class EventPublisherTest {
                 new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
-                cache, timelineSync, nakadiSettings);
+                cache, timelineSync, nakadiSettings, null, null, null);
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
         final String eventTypeName = eventType.getName();

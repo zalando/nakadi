@@ -25,6 +25,7 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
@@ -81,7 +82,8 @@ public class EventPublishingControllerTest {
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher);
+                new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
+                        eventTypeMetricRegistry, blacklistService, kpiPublisher);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

@@ -442,8 +442,9 @@ public class KafkaTopicRepository implements TopicRepository {
                         nakadiRecord.getEventKey(),
                         nakadiRecord.getData());
 
-                // fixme avro do not forget EventOwnerHeader, set via metadata?
-                // for the internal KPI evnets it is fine not to have it
+                if (null != nakadiRecord.getOwner()) {
+                    nakadiRecord.getOwner().serialize(producerRecord);
+                }
 
                 producerRecord.headers().add(
                         NakadiRecord.HEADER_FORMAT,
