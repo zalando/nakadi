@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -8,7 +7,6 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
