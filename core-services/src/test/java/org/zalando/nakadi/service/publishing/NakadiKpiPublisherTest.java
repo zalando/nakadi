@@ -50,32 +50,6 @@ public class NakadiKpiPublisherTest {
     private ArgumentCaptor<JSONObject> jsonObjectCaptor;
 
     @Test
-    public void testPublishWithFeatureToggleOn() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(true);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
-    public void testPublishWithFeatureToggleOff() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(false);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
     public void testPublishJsonKPIEventWithFeatureToggleOn() {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(false);
@@ -150,22 +124,4 @@ public class NakadiKpiPublisherTest {
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }
-
-    @Test
-    public void testPublishingAccessLogWithAvro() throws IOException {
-        when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS))
-                .thenReturn(true);
-        // FIXME: doesn't work without the trailing slash
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema);
-        publisher.publishAccessLogEvent("POST",
-                "/test", "", "", "", "",
-                "", 200, 1L, 1L, 1L);
-
-        verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
-    }
-
 }
