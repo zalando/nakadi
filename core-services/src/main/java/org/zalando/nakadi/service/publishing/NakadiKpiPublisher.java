@@ -96,6 +96,7 @@ public class NakadiKpiPublisher {
 
                 final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
                         metadataVersion, metadata, event);
+
                 binaryEventsProcessor.queueEvent(eventTypeName, nakadiRecord);
             } else {
                 final JSONObject eventObject = kpiEventMapper.mapToJsonObject(kpiEvent);
@@ -120,7 +121,7 @@ public class NakadiKpiPublisher {
                 .set("eid", uuidGenerator.randomUUID().toString())
                 .set("flow_id", FlowIdUtils.peek())
                 .set("event_type", eventType)
-                .set("partition", String.valueOf(partition)) // fixme avro
+                .set("partition", String.valueOf(partition))
                 .set("received_at", now)
                 .set("schema_version", version)
                 .set("published_by", user)

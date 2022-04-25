@@ -101,15 +101,24 @@ public class NakadiKpiPublisherTest {
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
+
         final var schemaEntry = avroSchema
                 .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
         final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
-
         final var record = sequenceDecoder.read(envelopeHolder.getPayload());
+
+        final var metaSchemaEntry = avroSchema
+                .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+        final var metadataDecoder = new SequenceDecoder(metaSchemaEntry.getSchema());
+        final var metadata = metadataDecoder.read(envelopeHolder.getMetadata());
 
         // Verify values in GenericRecord
         assertEquals("test-subscription-id", record.get("subscription_id").toString());
         assertEquals("created", record.get("status").toString());
+
+        // Verify that partition number is the same in metadata and in the publishing DTO
+        assertEquals(1, nakadiRecord.getPartition());
+        assertEquals("1", metadata.get("partition").toString());
     }
 
     @Test

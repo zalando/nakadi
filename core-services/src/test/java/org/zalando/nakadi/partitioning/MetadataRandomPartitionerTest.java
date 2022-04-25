@@ -20,7 +20,7 @@ public class MetadataRandomPartitionerTest {
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
 
     @Test
-    public void testItGeneratesPartitionsRandomly(){
+    public void testItGeneratesPartitionsRandomly() {
         final var topicRepositoryMock = Mockito.mock(TopicRepository.class);
         final var timelineMock = Mockito.mock(Timeline.class);
         final var eventTypeName = "some-event-type";
@@ -31,10 +31,10 @@ public class MetadataRandomPartitionerTest {
         when(timelineMock.getTopic()).thenReturn("some-topic-id");
         when(timelineService.getActiveTimeline(ArgumentMatchers.any(EventType.class))).thenReturn(timelineMock);
         when(topicRepositoryMock.listPartitionNames(ArgumentMatchers.anyString())).thenReturn(List.of("1", "2", "3"));
-        when(random.nextInt(2)).thenReturn(1);
+        when(random.nextInt(3)).thenReturn(1);
 
         final var metadataRandomPartitioner = new MetadataRandomPartitioner(eventTypeCache, timelineService, random);
 
-        assertEquals(1, metadataRandomPartitioner.calculatePartition(eventTypeName));
+        assertEquals(2, metadataRandomPartitioner.calculatePartition(eventTypeName));
     }
 }
