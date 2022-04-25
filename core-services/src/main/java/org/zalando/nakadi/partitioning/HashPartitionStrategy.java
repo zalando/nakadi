@@ -31,7 +31,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+    public String calculatePartition(final EventType eventType, final PartitionData event, final List<String> partitions)
             throws InvalidPartitionKeyFieldsException {
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields.isEmpty()) {
@@ -39,23 +39,11 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     "has no partition key fields configured.");
         }
         try {
-            final JsonPathAccess traversableJsonEvent = new JsonPathAccess(event);
-            final int hashValue = partitionKeyFields.stream()
-                    // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
-                    // a string first and then use hashCode()
-                    .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
-                    .map(Try.wrap(okf -> {
-                        try {
-                            final String fieldValue = traversableJsonEvent.get(okf).toString();
-                            return stringHash.hashCode(fieldValue);
-                        } catch (final JsonPathAccessException e) {
-                            throw new InvalidPartitionKeyFieldsException(e.getMessage());
-                        }
-                    }))
+            final int hashValue = event.getPartitionKeys().stream()
+                    .map(Try.wrap(pkf -> stringHash.hashCode(pkf)))
                     .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)
                     .sum();
-
 
             int partitionIndex = abs(hashValue % partitions.size());
             partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());

@@ -2,6 +2,7 @@ package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.avro.generic.GenericRecord;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -68,7 +69,21 @@ public class PartitionResolver {
 
         final List<String> partitions = timelineService.getTopicRepository(eventType)
                 .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        return partitionStrategy.calculatePartition(eventType, PartitionData.fromJson(eventType, eventAsJson), partitions);
     }
 
+    public String resolvePartition(final EventType eventType, final GenericRecord eventAsBinary) {
+        final String eventTypeStrategy = eventType.getPartitionStrategy();
+        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+        if (partitionStrategy == null) {
+            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
+                    eventTypeStrategy);
+        }
+
+        final List<String> partitions = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+        return partitionStrategy.calculatePartition(eventType, PartitionData.fromAvro(eventAsBinary), partitions);
+    }
 }
+
+

@@ -15,7 +15,7 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) {
+    public String calculatePartition(final EventType eventType, final PartitionData event, final List<String> partitions) {
         if (partitions.size() == 1) {
             return partitions.get(0);
         }
