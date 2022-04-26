@@ -2,35 +2,36 @@ package org.zalando.nakadi.domain;
 
 public class NakadiRecordMetadata {
 
-    public static final NakadiRecordMetadata NULL_RECORD = new NakadiRecordMetadata(null, null, null);
+    public enum Status {
+        SUCCEEDED, FAILED, NOT_ATTEMPTED
+    }
 
-    private final String eventType;
-    private final Integer partition;
-    //    private final byte[] metadata;
+    private final NakadiMetadata metadata;
+    private final Status status;
     private final Exception exception;
 
     public NakadiRecordMetadata(
-            final String eventType,
-            final Integer partition,
-//            final byte[] metadata,
+            final NakadiMetadata metadata,
+            final Status status,
             final Exception exception) {
-        this.eventType = eventType;
-        this.partition = partition;
-//        this.metadata = metadata;
+        this.metadata = metadata;
+        this.status = status;
         this.exception = exception;
     }
 
-    public String getEventType() {
-        return eventType;
+    public NakadiRecordMetadata(
+            final NakadiMetadata metadata,
+            final Status status) {
+        this(metadata, status, null);
     }
 
-    public Integer getPartition() {
-        return partition;
+    public NakadiMetadata getMetadata() {
+        return metadata;
     }
 
-//    public byte[] getMetadata() {
-//        return metadata;
-//    }
+    public Status getStatus() {
+        return status;
+    }
 
     public Exception getException() {
         return exception;

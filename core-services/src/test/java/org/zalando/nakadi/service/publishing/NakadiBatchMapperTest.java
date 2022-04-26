@@ -29,13 +29,13 @@ public class NakadiBatchMapperTest {
         final byte[] secondRecord = generateRecord(avroSchema);
         final byte[] input = Bytes.concat(firstRecord, secondRecord);
 
-        final NakadiBatchMapper mapper = new NakadiBatchMapper(avroSchema);
+        final NakadiRecordMapper mapper = new NakadiRecordMapper(avroSchema);
         final List<NakadiRecord> records = mapper.map(input);
 
         Assert.assertEquals(2, records.size());
 
-        Assert.assertNotNull(records.get(0).getEventMetadata());
-        Assert.assertNotNull(records.get(1).getEventMetadata());
+        Assert.assertNotNull(records.get(0).getMetadata());
+        Assert.assertNotNull(records.get(1).getMetadata());
 
         Assert.assertArrayEquals(firstRecord, records.get(0).getData());
         Assert.assertArrayEquals(secondRecord, records.get(1).getData());

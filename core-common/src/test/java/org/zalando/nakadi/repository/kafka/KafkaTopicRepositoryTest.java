@@ -467,7 +467,10 @@ public class KafkaTopicRepositoryTest {
 
         final List<NakadiRecordMetadata> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertTrue(result.isEmpty());
+        Assert.assertEquals(3, result.size());
+        result.forEach(r -> {
+            Assert.assertTrue(r.getStatus() == NakadiRecordMetadata.Status.SUCCEEDED);
+        });
     }
 
     @Test
@@ -495,11 +498,15 @@ public class KafkaTopicRepositoryTest {
 
         final List<NakadiRecordMetadata> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertEquals(2, result.size());
+        Assert.assertEquals(4, result.size());
         Assert.assertEquals(exception, result.get(0).getException());
-        Assert.assertEquals(exception, result.get(1).getException());
-        Assert.assertEquals(Integer.valueOf(0), result.get(0).getPartition());
-        Assert.assertEquals(Integer.valueOf(2), result.get(1).getPartition());
+        Assert.assertEquals(NakadiRecordMetadata.Status.FAILED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.FAILED, result.get(2).getStatus());
+        Assert.assertEquals(null, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(3).getStatus());
     }
 
     @Test
@@ -527,11 +534,15 @@ public class KafkaTopicRepositoryTest {
 
         final List<NakadiRecordMetadata> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertEquals(2, result.size());
-        Assert.assertEquals(exception, result.get(0).getException());
-        Assert.assertEquals(exception, result.get(1).getException());
-        Assert.assertEquals(Integer.valueOf(2), result.get(0).getPartition());
-        Assert.assertEquals(Integer.valueOf(3), result.get(1).getPartition());
+        Assert.assertEquals(4, result.size());
+        Assert.assertEquals(null, result.get(0).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.NOT_ATTEMPTED, result.get(2).getStatus());
+        Assert.assertEquals(exception, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordMetadata.Status.NOT_ATTEMPTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {

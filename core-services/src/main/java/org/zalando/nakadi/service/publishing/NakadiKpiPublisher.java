@@ -36,6 +36,7 @@ public class NakadiKpiPublisher {
     private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
     private final KPIEventMapper kpiEventMapper;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     @Autowired
     protected NakadiKpiPublisher(
@@ -45,7 +46,8 @@ public class NakadiKpiPublisher {
             final UsernameHasher usernameHasher,
             final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
-            final AvroSchema avroSchema) {
+            final AvroSchema avroSchema,
+            final NakadiRecordMapper nakadiRecordMapper) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
         this.binaryEventsProcessor = binaryEventsProcessor;
@@ -54,6 +56,7 @@ public class NakadiKpiPublisher {
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
         this.kpiEventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
+        this.nakadiRecordMapper = nakadiRecordMapper;
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
@@ -78,8 +81,8 @@ public class NakadiKpiPublisher {
 
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
 
-                final NakadiRecord nakadiRecord = NakadiRecord
-                        .fromAvro(eventType, metadataVersion, metadata, event);
+                final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
+                        eventType, metadataVersion, metadata, event);
                 binaryEventsProcessor.queueEvent(eventType, nakadiRecord);
             } else {
                 final JSONObject eventObject = kpiEventMapper.mapToJsonObject(kpiEvent);
@@ -143,8 +146,8 @@ public class NakadiKpiPublisher {
                     .set("batch_size", totalSizeBytes)
                     .build();
 
-            final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(KPIEventTypes.BATCH_PUBLISHED, metadataVersion, metadata, event);
+            final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
+                    KPIEventTypes.BATCH_PUBLISHED, metadataVersion, metadata, event);
             binaryEventsProcessor.queueEvent(KPIEventTypes.BATCH_PUBLISHED, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
@@ -206,8 +209,8 @@ public class NakadiKpiPublisher {
                     .set("response_length", responseLength)
                     .build();
 
-            final NakadiRecord nakadiRecord = NakadiRecord
-                    .fromAvro(KPIEventTypes.ACCESS_LOG, metadataVersion, metadata, event);
+            final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
+                    KPIEventTypes.ACCESS_LOG, metadataVersion, metadata, event);
             binaryEventsProcessor.queueEvent(KPIEventTypes.ACCESS_LOG, nakadiRecord);
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);

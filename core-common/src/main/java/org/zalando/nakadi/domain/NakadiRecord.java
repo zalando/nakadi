@@ -1,13 +1,9 @@
 package org.zalando.nakadi.domain;
 
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.EncoderFactory;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +16,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
     // todo maybe use a dedicated resource object
     @Override
     public String getName() {
-        return metadata.get("eid").toString();
+        return metadata.getEid();
     }
 
     @Override
@@ -68,8 +64,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
     private byte[] format;
     private EventOwnerHeader owner;
     private byte metadataVersion;
-    // fixme should be some generic type to support other formats eg proto
-    private GenericRecord metadata;
+    private NakadiMetadata metadata;
 
     public String getEventType() {
         return eventType;
@@ -95,7 +90,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         return owner;
     }
 
-    public GenericRecord getEventMetadata() {
+    public NakadiMetadata getMetadata() {
         return metadata;
     }
 
@@ -133,38 +128,14 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         return this;
     }
 
-    public NakadiRecord setEventMetadata(final GenericRecord metadata) {
+    public NakadiRecord setMetadata(final NakadiMetadata metadata) {
         this.metadata = metadata;
         return this;
     }
 
-    public NakadiRecord setEventMetadataVersion(final byte version) {
+    public NakadiRecord setMetadataVersion(final byte version) {
         this.metadataVersion = version;
         return this;
-    }
-
-    public static NakadiRecord fromAvro(final String eventTypeName,
-                                        final byte metadataVersion,
-                                        final GenericRecord metadata,
-                                        final GenericRecord event) throws IOException {
-        final byte[] data = EnvelopeHolder.produceBytes(
-                metadataVersion,
-                (outputStream -> {
-                    final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
-                    eventWriter.write(metadata, EncoderFactory.get()
-                            .directBinaryEncoder(outputStream, null));
-                }),
-                (outputStream -> {
-                    final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
-                    eventWriter.write(event, EncoderFactory.get()
-                            .directBinaryEncoder(outputStream, null));
-                }));
-        return new NakadiRecord()
-                .setEventType(eventTypeName)
-                .setPartition(null)
-                .setEventKey(null)
-                .setData(data)
-                .setFormat(NakadiRecord.Format.AVRO.getFormat());
     }
 
 }
