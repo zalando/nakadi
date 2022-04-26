@@ -56,7 +56,7 @@ public class PartitionResolver {
         }
     }
 
-    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
+    public int resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
 
         final String eventTypeStrategy = eventType.getPartitionStrategy();
@@ -66,9 +66,11 @@ public class PartitionResolver {
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        // TODO: getPartitionsNumber
+        final int partitionsNumber = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic())
+                .size();
+        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitionsNumber);
     }
 
 }

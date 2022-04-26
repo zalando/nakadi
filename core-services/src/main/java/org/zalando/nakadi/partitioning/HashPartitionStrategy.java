@@ -12,7 +12,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.util.JsonPathAccess;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
 import static org.zalando.nakadi.validation.JsonSchemaEnrichment.DATA_PATH_PREFIX;
@@ -31,8 +30,9 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+    public int calculatePartition(final EventType eventType, final JSONObject event, final int partitionsNumber)
             throws InvalidPartitionKeyFieldsException {
+
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields.isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
@@ -56,12 +56,8 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     .mapToInt(hc -> hc)
                     .sum();
 
-
-            int partitionIndex = abs(hashValue % partitions.size());
-            partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
-
-            final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
-            return sortedPartitions.get(partitionIndex);
+            final int partitionIndex = abs(hashValue % partitionsNumber);
+            return hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitionsNumber);
 
         } catch (NakadiRuntimeException e) {
             final Exception original = e.getException();
@@ -72,5 +68,4 @@ public class HashPartitionStrategy implements PartitionStrategy {
             }
         }
     }
-
 }

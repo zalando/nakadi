@@ -21,6 +21,7 @@ import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
+import static org.zalando.nakadi.utils.TestUtils.randomUInt;
 
 public class MetadataEnrichmentStrategyTest {
     private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
@@ -143,13 +144,14 @@ public class MetadataEnrichmentStrategyTest {
     public void setPartition() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
-        final String partition = randomString();
-        final BatchItem batch = createBatchItem(event);
-        batch.setPartition(partition);
+        final Integer partition = randomUInt();
+        final BatchItem item = createBatchItem(event);
+        item.setPartition(partition);
 
-        strategy.enrich(batch, eventType);
+        strategy.enrich(item, eventType);
 
-        assertThat(batch.getEvent().getJSONObject("metadata").getString("partition"), equalTo(partition));
+        final String metaPartition = item.getEvent().getJSONObject("metadata").getString("partition");
+        assertThat(Integer.valueOf(metaPartition), equalTo(partition));
     }
 
     @Test
@@ -157,13 +159,13 @@ public class MetadataEnrichmentStrategyTest {
         when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "test-user-123"));
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
-        final String partition = randomString();
-        final BatchItem batch = createBatchItem(event);
-        batch.setPartition(partition);
+        final Integer partition = randomUInt();
+        final BatchItem item = createBatchItem(event);
+        item.setPartition(partition);
 
-        strategy.enrich(batch, eventType);
+        strategy.enrich(item, eventType);
 
-        assertEquals("test-user-123", batch.getEvent().getJSONObject("metadata").getString("published_by"));
+        assertEquals("test-user-123", item.getEvent().getJSONObject("metadata").getString("published_by"));
     }
 
 }

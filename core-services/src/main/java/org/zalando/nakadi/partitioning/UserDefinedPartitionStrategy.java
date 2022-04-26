@@ -4,17 +4,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-
-import java.util.List;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 public class UserDefinedPartitionStrategy implements PartitionStrategy {
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+    public int calculatePartition(final EventType eventType, final JSONObject event, final int partitionsNumber)
             throws PartitioningException {
         try {
-            final String partition = event.getJSONObject("metadata").getString("partition");
-            if (partitions.contains(partition)) {
+            final int partition = KafkaCursor.toKafkaPartition(event.getJSONObject("metadata").getString("partition"));
+            if (0 <= partition && partition < partitionsNumber) {
                 return partition;
             } else {
                 throw new PartitioningException("Failed to resolve partition. " +
@@ -26,6 +25,4 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
                     "Failed to get partition from event metadata", e);
         }
     }
-
-
 }

@@ -4,8 +4,6 @@ import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
-import java.util.List;
-
 @FunctionalInterface
 public interface PartitionStrategy {
 
@@ -13,6 +11,6 @@ public interface PartitionStrategy {
     String USER_DEFINED_STRATEGY = "user_defined";
     String RANDOM_STRATEGY = "random";
 
-    String calculatePartition(EventType eventType, JSONObject event, List<String> partitions)
+    int calculatePartition(EventType eventType, JSONObject event, int partitionsNumber)
             throws PartitioningException;
 }

@@ -20,21 +20,21 @@ public class RandomPartitionStrategyTest {
 
     @Test
     public void whenCalculatePartitionThenRandomGeneratorIsUsedCorrectly() {
-        final List<String> partitions = ImmutableList.of("a", "b", "c", "d", "e", "f", "g", "h");
+        final int partitions = 8;
 
         final Random randomMock = mock(Random.class);
         when(randomMock.nextInt(anyInt())).thenReturn(3, 0, 4, 1, 7);
         final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
 
-        final List<String> resolvedPartitions = newArrayList();
+        final List<Integer> resolvedPartitions = newArrayList();
         final int numberOfRuns = 5;
         for (int run = 0; run < numberOfRuns; run++) {
-            final String resolvedPartition = strategy.calculatePartition(null, null, partitions);
+            final int resolvedPartition = strategy.calculatePartition(null, null, partitions);
             resolvedPartitions.add(resolvedPartition);
         }
 
-        assertThat(resolvedPartitions, equalTo(ImmutableList.of("d", "a", "e", "b", "h")));
-        verify(randomMock, times(5)).nextInt(partitions.size());
+        assertThat(resolvedPartitions, equalTo(ImmutableList.of(3, 0, 4, 1, 7)));
+        verify(randomMock, times(5)).nextInt(partitions);
     }
 
     @Test
@@ -42,8 +42,8 @@ public class RandomPartitionStrategyTest {
         final Random randomMock = mock(Random.class);
         final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
 
-        final String resolvedPartition = strategy.calculatePartition(null, null, ImmutableList.of("a"));
-        assertThat(resolvedPartition, equalTo("a"));
+        final int resolvedPartition = strategy.calculatePartition(null, null, 1);
+        assertThat(resolvedPartition, equalTo(0));
 
         verify(randomMock, Mockito.never()).nextInt(anyInt());
     }

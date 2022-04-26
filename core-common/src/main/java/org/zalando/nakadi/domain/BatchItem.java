@@ -64,7 +64,7 @@ public class BatchItem implements Resource<BatchItem> {
     private final InjectionConfiguration[] injections;
     private String[] injectionValues;
     private final List<Integer> skipCharacters;
-    private String partition;
+    private Integer partition;
     private String brokerId;
     private String eventKey;
     private int eventSize;
@@ -107,11 +107,11 @@ public class BatchItem implements Resource<BatchItem> {
     }
 
     @Nullable
-    public String getPartition() {
+    public Integer getPartition() {
         return partition;
     }
 
-    public void setPartition(final String partition) {
+    public void setPartition(final Integer partition) {
         this.partition = partition;
     }
 

@@ -13,12 +13,11 @@ import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertTrue;
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
@@ -53,8 +52,8 @@ public class PartitionResolverTest {
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");
 
-        final String partition = partitionResolver.resolvePartition(eventType, event);
-        assertThat(partition, notNullValue());
+        final int partition = partitionResolver.resolvePartition(eventType, event);
+        assertTrue(partition >= 0);
     }
 
     @Test(expected = PartitioningException.class)

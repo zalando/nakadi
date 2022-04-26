@@ -3,7 +3,6 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
 
-import java.util.List;
 import java.util.Random;
 
 public class RandomPartitionStrategy implements PartitionStrategy {
@@ -15,15 +14,12 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) {
-        if (partitions.size() == 1) {
-            return partitions.get(0);
+    public int calculatePartition(final EventType eventType, final JSONObject event, final int partitionsNumber) {
+        if (partitionsNumber == 1) {
+            return 0;
         }
         else {
-            final int partitionIndex = random.nextInt(partitions.size());
-            return partitions.get(partitionIndex);
+            return random.nextInt(partitionsNumber);
         }
     }
-
-
 }

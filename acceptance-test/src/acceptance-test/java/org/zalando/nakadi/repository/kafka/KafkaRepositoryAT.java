@@ -231,7 +231,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
-            item.setPartition("0");
+            item.setPartition(0);
             items.add(item);
         }
 
@@ -250,7 +250,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = BatchFactory.from("[{}]").get(0);
-            item.setPartition("0");
+            item.setPartition(0);
             item.setOwner(new EventOwnerHeader("unit", "Nakadi"));
             items.add(item);
         }

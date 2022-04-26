@@ -169,7 +169,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
             final ProducerRecord<byte[], byte[]> kafkaRecord = new ProducerRecord<>(
                     topicId,
-                    KafkaCursor.toKafkaPartition(item.getPartition()),
+                    item.getPartition(),
                     item.getEventKeyBytes(),
                     delete ? null : item.dumpEventToBytes());
             if (null != item.getOwner()) {
@@ -309,11 +309,11 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+            final Map<Integer, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
                     .collect(
                             Collectors.toMap(
-                                    p -> String.valueOf(p.partition()),
+                                    p -> p.partition(),
                                     p -> p.leader().idString() + "_" + p.leader().host()));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
@@ -384,14 +384,14 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private void logFailedEvents(final String topicId, final String eventType, final List<BatchItem> batch) {
-        final Map<String, List<BatchItem>> itemsPerPartition = new HashMap<>();
+        final Map<Integer, List<BatchItem>> itemsPerPartition = new HashMap<>();
         for (final BatchItem item : batch) {
             itemsPerPartition.computeIfAbsent(item.getPartition(), (k) -> new LinkedList<>()).add(item);
         }
 
         final StringBuilder sb = new StringBuilder();
-        for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
-            sb.append(entry.getKey())
+        for (final Map.Entry<Integer, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
+            sb.append(String.valueOf(entry.getKey()))
                 .append(":[")
                 .append(entry.getValue().stream()
                         .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
@@ -400,7 +400,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
         LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());
 
-        for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
+        for (final Map.Entry<Integer, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
             final Set<String> failedEventKeys = new HashSet<>();
             final Set<String> loggedEventKeys = new HashSet<>();
 
@@ -687,7 +687,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public List<String> listPartitionNamesInternal(final String topicId) {
+    private List<String> listPartitionNamesInternal(final String topicId) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)

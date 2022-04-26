@@ -144,7 +144,7 @@ public class KafkaTopicRepositoryTest {
         final BatchItem item = new BatchItem("{}", null,
                 null,
                 Collections.emptyList());
-        item.setPartition("1");
+        item.setPartition(1);
         item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
         final List<BatchItem> batch = ImmutableList.of(item);
 
@@ -289,7 +289,7 @@ public class KafkaTopicRepositoryTest {
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        item.setPartition("1");
+        item.setPartition(1);
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
@@ -317,14 +317,14 @@ public class KafkaTopicRepositoryTest {
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        firstItem.setPartition("1");
+        firstItem.setPartition(1);
 
         final BatchItem secondItem = new BatchItem(
                 "{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        secondItem.setPartition("2");
+        secondItem.setPartition(2);
 
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(firstItem);
@@ -356,7 +356,7 @@ public class KafkaTopicRepositoryTest {
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        item.setPartition("1");
+        item.setPartition(1);
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
@@ -383,11 +383,11 @@ public class KafkaTopicRepositoryTest {
         final BatchItem firstItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        firstItem.setPartition("1");
+        firstItem.setPartition(1);
         final BatchItem secondItem = new BatchItem("{}", BatchItem.EmptyInjectionConfiguration.build(1, true),
                 new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
                 Collections.emptyList());
-        secondItem.setPartition("2");
+        secondItem.setPartition(2);
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(

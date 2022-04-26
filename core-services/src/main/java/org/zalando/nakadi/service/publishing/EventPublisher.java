@@ -201,8 +201,8 @@ public class EventPublisher {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
-                item.setPartition(partitionId);
+                final int partition = partitionResolver.resolvePartition(eventType, item.getEvent());
+                item.setPartition(partition);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;

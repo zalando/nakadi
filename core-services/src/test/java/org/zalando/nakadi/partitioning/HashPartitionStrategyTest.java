@@ -1,6 +1,5 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -18,7 +17,6 @@ import java.util.Random;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.Math.pow;
 import static java.util.Arrays.asList;
@@ -28,11 +26,11 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.generate;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -46,7 +44,7 @@ public class HashPartitionStrategyTest {
 
     private static final Random RANDOM = new Random();
     private static final String DELIMITER = "#";
-    private static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
+    private static final int PARTITIONS = 8;
 
     private static List<JSONObject> eventSamplesA = null;
     private static List<JSONObject> eventSamplesB = null;
@@ -54,7 +52,7 @@ public class HashPartitionStrategyTest {
 
     private final HashPartitionStrategy strategy;
     private final EventType simpleEventType;
-    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
+    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS);
 
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
@@ -101,9 +99,9 @@ public class HashPartitionStrategyTest {
         final EventType eventType = new EventType();
         eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
-        final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
+        final int partition = strategy.calculatePartition(eventType, event, PARTITIONS);
 
-        assertThat(partition, isIn(PARTITIONS));
+        assertTrue(0 <= partition && partition < PARTITIONS);
     }
 
     @Test
@@ -122,10 +120,8 @@ public class HashPartitionStrategyTest {
 
         final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
 
-        final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
-
-        final String partition = strategy.calculatePartition(eventType, event, asList(partitions));
-        assertEquals("8", partition);
+        final int partition = strategy.calculatePartition(eventType, event, 10);
+        assertEquals(8, partition);
     }
 
     @Test
@@ -134,7 +130,7 @@ public class HashPartitionStrategyTest {
                 "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
         eventType.setPartitionStrategy(HASH_STRATEGY);
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-        assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")), equalTo("p0"));
+        assertThat(strategy.calculatePartition(eventType, event, 1), equalTo(0));
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
@@ -203,8 +199,7 @@ public class HashPartitionStrategyTest {
                                           final List<JSONObject> events) {
         events.stream()
                 .map(Try.<JSONObject, Void>wrap(event -> {
-                    final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
-                    final int partitionNo = parseInt(partition);
+                    final int partitionNo = strategy.calculatePartition(eventType, event, PARTITIONS);
                     partitions.get(partitionNo).add(event);
                     return null;
                 }).andThen(Try::getOrThrow)).collect(Collectors.toSet());

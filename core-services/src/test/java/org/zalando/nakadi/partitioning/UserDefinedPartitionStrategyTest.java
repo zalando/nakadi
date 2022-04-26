@@ -1,11 +1,8 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-
-import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -13,13 +10,13 @@ import static org.hamcrest.Matchers.equalTo;
 public class UserDefinedPartitionStrategyTest {
 
     private static final UserDefinedPartitionStrategy STRATEGY = new UserDefinedPartitionStrategy();
-    private static final List<String> PARTITIONS = ImmutableList.of("a", "b", "c");
+    private static final int PARTITIONS = 3;
 
     @Test
     public void whenCorrectPartitionThenOk() throws PartitioningException {
-        final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"b\"}}");
-        final String partition = STRATEGY.calculatePartition(null, event, PARTITIONS);
-        assertThat(partition, equalTo("b"));
+        final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"1\"}}");
+        final int partition = STRATEGY.calculatePartition(null, event, PARTITIONS);
+        assertThat(partition, equalTo(1));
     }
 
     @Test(expected = PartitioningException.class)
@@ -30,7 +27,7 @@ public class UserDefinedPartitionStrategyTest {
 
     @Test(expected = PartitioningException.class)
     public void whenUnknownPartitionThenPartitioningException() throws PartitioningException {
-        final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"z\"}}");
+        final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"5\"}}");
         STRATEGY.calculatePartition(null, event, PARTITIONS);
     }
 
