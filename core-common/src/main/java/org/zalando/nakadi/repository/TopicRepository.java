@@ -82,6 +82,8 @@ public interface TopicRepository {
     List<PartitionEndStatistics> loadTopicEndStatistics(Collection<Timeline> topics)
             throws ServiceTemporarilyUnavailableException;
 
+    int getPartitionsNumber(String topicId);
+
     List<String> listPartitionNames(String topicId);
 
     /**

@@ -653,13 +653,29 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public List<String> listPartitionNames(final String topicId) {
+    public int getPartitionsNumber(final String topicId) {
         return Retryer.executeWithRetry(() -> {
-                    return listPartitionNamesInternal(topicId);
+                    return getPartitionsNumberInternal(topicId);
                 },
                 new RetryForSpecifiedCountStrategy(3)
                         .withWaitBetweenEachTry(5000)
                         .withExceptionsThatForceRetry(org.apache.kafka.common.errors.TimeoutException.class));
+    }
+
+    @Override
+    public List<String> listPartitionNames(final String topicId) {
+        return unmodifiableList(IntStream.range(0, getPartitionsNumber(topicId))
+                .mapToObj(i -> KafkaCursor.toNakadiPartition(i))
+                .collect(toList()));
+    }
+
+    private int getPartitionsNumberInternal(final String topicId) {
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        try {
+            return producer.partitionsFor(topicId).size();
+        } finally {
+            kafkaFactory.releaseProducer(producer);
+        }
     }
 
     @Override
@@ -684,18 +700,6 @@ public class KafkaTopicRepository implements TopicRepository {
             return result;
         } catch (Exception e) {
             throw new RuntimeException("Failed to acquire size statistics", e);
-        }
-    }
-
-    private List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
-        try {
-            return unmodifiableList(producer.partitionsFor(topicId)
-                    .stream()
-                    .map(partitionInfo -> KafkaCursor.toNakadiPartition(partitionInfo.partition()))
-                    .collect(toList()));
-        } finally {
-            kafkaFactory.releaseProducer(producer);
         }
     }
 

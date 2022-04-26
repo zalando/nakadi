@@ -81,8 +81,8 @@ public class RepartitioningService {
         eventType.setDefaultStatistic(Optional.ofNullable(eventType.getDefaultStatistic())
                 .orElse(new EventTypeStatistics(1, 1)));
         final int currentPartitionsNumber =
-                timelineService.getTopicRepository(eventType).listPartitionNames(
-                        timelineService.getActiveTimeline(eventType).getTopic()).size();
+                timelineService.getTopicRepository(eventType).getPartitionsNumber(
+                        timelineService.getActiveTimeline(eventType).getTopic());
         if (partitions < currentPartitionsNumber) {
             // It is fine if user asks to set partition count to the same value several times,
             // as it may happen that the first request was not really successful

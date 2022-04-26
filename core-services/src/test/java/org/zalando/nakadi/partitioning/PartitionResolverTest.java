@@ -1,6 +1,5 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +31,7 @@ public class PartitionResolverTest {
     @Before
     public void before() {
         final TopicRepository topicRepository = Mockito.mock(TopicRepository.class);
-        when(topicRepository.listPartitionNames(any(String.class))).thenReturn(ImmutableList.of("0"));
+        when(topicRepository.getPartitionsNumber(any(String.class))).thenReturn(1);
         timelineService = Mockito.mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);

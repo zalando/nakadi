@@ -66,10 +66,9 @@ public class PartitionResolver {
                     eventTypeStrategy);
         }
 
-        // TODO: getPartitionsNumber
         final int partitionsNumber = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic())
-                .size();
+                .getPartitionsNumber(timelineService.getActiveTimeline(eventType).getTopic());
+
         return partitionStrategy.calculatePartition(eventType, eventAsJson, partitionsNumber);
     }
 
