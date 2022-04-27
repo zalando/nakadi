@@ -30,7 +30,7 @@ public class NakadiBatchMapperTest {
         final byte[] input = Bytes.concat(firstRecord, secondRecord);
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(avroSchema);
-        final List<NakadiRecord> records = mapper.map(input);
+        final List<NakadiRecord> records = mapper.fromBytesBatch(input);
 
         Assert.assertEquals(2, records.size());
 

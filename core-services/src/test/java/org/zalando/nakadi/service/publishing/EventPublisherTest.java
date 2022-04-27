@@ -596,7 +596,7 @@ public class EventPublisherTest {
                 new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
-                cache, timelineSync, nakadiSettings, null, null, null);
+                cache, timelineSync, nakadiSettings, null, null);
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
         final String eventTypeName = eventType.getName();
@@ -638,8 +638,8 @@ public class EventPublisherTest {
                 .set("response_length", 321)
                 .build();
 
-        final NakadiRecord nakadiRecord = NakadiRecord
-                .fromAvro(eventTypeName, metadataVersion, metadata, event);
+        final NakadiRecord nakadiRecord = new NakadiRecordMapper(avroSchema)
+                .fromAvroGenericRecord(eventTypeName, metadataVersion, metadata, event);
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventTypeName, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));

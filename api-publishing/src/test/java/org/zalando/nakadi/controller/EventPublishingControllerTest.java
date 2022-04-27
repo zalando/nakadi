@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.EventPublishingController;
 import org.zalando.nakadi.EventPublishingExceptionHandler;
+import org.zalando.nakadi.PublishingResultConverter;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -28,6 +29,7 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
@@ -83,7 +85,8 @@ public class EventPublishingControllerTest {
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
-                        eventTypeMetricRegistry, blacklistService, kpiPublisher);
+                        eventTypeMetricRegistry, blacklistService, kpiPublisher,
+                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

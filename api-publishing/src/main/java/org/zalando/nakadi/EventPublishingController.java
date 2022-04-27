@@ -9,10 +9,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordMetadata;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -34,7 +32,6 @@ import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -53,6 +50,7 @@ public class EventPublishingController {
     private final BlacklistService blacklistService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final NakadiRecordMapper nakadiRecordMapper;
+    private final PublishingResultConverter publishingResultConverter;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -60,13 +58,15 @@ public class EventPublishingController {
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
                                      final BlacklistService blacklistService,
                                      final NakadiKpiPublisher nakadiKpiPublisher,
-                                     final NakadiRecordMapper nakadiRecordMapper) {
+                                     final NakadiRecordMapper nakadiRecordMapper,
+                                     final PublishingResultConverter publishingResultConverter) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.nakadiRecordMapper = nakadiRecordMapper;
+        this.publishingResultConverter = publishingResultConverter;
     }
 
     @RequestMapping(
@@ -133,11 +133,11 @@ public class EventPublishingController {
                 final List<Check.RecordResult> recordResults = binaryPublisher
                         .checkEvents(eventTypeName, nakadiRecords);
                 if (!recordResults.isEmpty()) {
-                    result = mapFromCheck(recordResults);
+                    result = publishingResultConverter.mapCheckResultToView(recordResults);
                 } else {
                     final List<NakadiRecordMetadata> nakadiRecordsMetadata =
                             binaryPublisher.publish(eventTypeName, nakadiRecords);
-                    result = mapFromRecordMetadata(nakadiRecordsMetadata);
+                    result = publishingResultConverter.mapPublishingResultToView(nakadiRecordsMetadata);
                 }
 
                 final int eventCount = result.getResponses().size();
@@ -161,77 +161,6 @@ public class EventPublishingController {
         } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
-        }
-    }
-
-    private EventPublishResult mapFromCheck(final List<Check.RecordResult> recordResults) {
-        final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
-        EventPublishingStep step = null;
-        EventPublishingStatus status = null;
-        for (final Check.RecordResult recordResult : recordResults) {
-            status = mapPublishingStatus(recordResult.getStatus());
-            step = mapPublishingStep(recordResult.getStep());
-            batchItemResponses.add(new BatchItemResponse()
-                    .setPublishingStatus(status)
-                    .setEid(recordResult.getEid())
-                    .setDetail(recordResult.getError())
-                    .setStep(step));
-        }
-
-        return new EventPublishResult(status, step, batchItemResponses);
-    }
-
-    private EventPublishingStep mapPublishingStep(final Check.Step step) {
-        switch (step) {
-            case ENRICHMENT:
-                return EventPublishingStep.ENRICHING;
-            case VALIDATION:
-                return EventPublishingStep.VALIDATING;
-            case PARTITIONING:
-                return EventPublishingStep.PARTITIONING;
-            default:
-                throw new RuntimeException("publishing step is not defined");
-        }
-    }
-
-    private EventPublishingStatus mapPublishingStatus(final Check.Status status) {
-        switch (status) {
-            case FAILED:
-                return EventPublishingStatus.FAILED;
-            case ABORTED:
-                return EventPublishingStatus.ABORTED;
-            default:
-                throw new RuntimeException(String.format(
-                        "publishing status from check is not defined: `%s`", status));
-        }
-    }
-
-    private EventPublishResult mapFromRecordMetadata(final List<NakadiRecordMetadata> recordsMetadata) {
-        final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
-        EventPublishingStep step = null;
-        EventPublishingStatus status = null;
-        for (final NakadiRecordMetadata recordMetadata : recordsMetadata) {
-            batchItemResponses.add(new BatchItemResponse()
-                    .setStep(EventPublishingStep.PUBLISHING)
-                    .setPublishingStatus(mapPublishingStatus(recordMetadata.getStatus()))
-                    .setEid(recordMetadata.getMetadata().getEid())
-                    .setDetail(recordMetadata.getException().getMessage()));
-        }
-
-        return new EventPublishResult(status, step, batchItemResponses);
-    }
-
-    private EventPublishingStatus mapPublishingStatus(final NakadiRecordMetadata.Status status) {
-        switch (status) {
-            case FAILED:
-                return EventPublishingStatus.FAILED;
-            case SUCCEEDED:
-                return EventPublishingStatus.SUBMITTED;
-            case NOT_ATTEMPTED:
-                return EventPublishingStatus.ABORTED;
-            default:
-                throw new RuntimeException(String.format(
-                        "publishing status from record is not defined: `%s`", status));
         }
     }
 
