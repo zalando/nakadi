@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
+import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -244,8 +245,14 @@ public class EventPublishingController {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
             final String applicationName = client.getClientId();
 
-            nakadiKpiPublisher.publishNakadiBatchPublishedEvent(
-                    eventTypeName, applicationName, client.getRealm(), eventCount, msSpent, totalSizeBytes);
+            nakadiKpiPublisher.publish(() -> new BatchPublishedEvent()
+                    .setEventTypeName(eventTypeName)
+                    .setApplicationName(applicationName)
+                    .setHashedApplicationName(nakadiKpiPublisher.hash(applicationName))
+                    .setTokenRealm(client.getRealm())
+                    .setEventCount(eventCount)
+                    .setMsSpent(msSpent)
+                    .setTotalSizeBytes(totalSizeBytes));
         }
     }
 

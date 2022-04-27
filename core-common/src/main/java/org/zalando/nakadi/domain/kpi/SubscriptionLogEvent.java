@@ -9,6 +9,10 @@ public class SubscriptionLogEvent extends KPIEvent {
     @KPIField("status")
     protected String status;
 
+    public SubscriptionLogEvent() {
+        super(KPIEventTypes.SUBSCRIPTION_LOG);
+    }
+
     public String getSubscriptionId() {
         return subscriptionId;
     }
@@ -27,8 +31,4 @@ public class SubscriptionLogEvent extends KPIEvent {
         return this;
     }
 
-    @Override
-    public String eventTypeOfThisKPIEvent() {
-        return KPIEventTypes.SUBSCRIPTION_LOG;
-    }
 }

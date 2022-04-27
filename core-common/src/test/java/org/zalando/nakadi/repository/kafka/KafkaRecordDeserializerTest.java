@@ -1,12 +1,12 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
+import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -16,10 +16,15 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 public class KafkaRecordDeserializerTest {
 
     private final AvroSchema avroSchema;
+    private static final long SOME_TIME = 1643290232172l;
+    private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
@@ -30,16 +35,21 @@ public class KafkaRecordDeserializerTest {
     @Test
     public void testDeserializeAvro() throws IOException {
         final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
+        final JSONObject jsonObject = new JSONObject()
+        .put("flow_id", "hek")
+        .put("partition", 0)
+        .put("received_at", SOME_TIME)
+        .put("published_by", "nakadi-test");
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
                 (byte) 1, // metadata version
-                getMetadataWriter("1", "0"),
+                getMetadataWriter("1", "0", jsonObject),
                 getEventWriter0());
 
         final byte[] data1 = EnvelopeHolder.produceBytes(
                 (byte) 0, // metadata version
-                getMetadataWriter("0", "1"),
+                getMetadataWriter("0", "1", jsonObject),
                 getEventWriter1());
 
         // try to deserialize that data when we would read Kafka record
@@ -52,16 +62,154 @@ public class KafkaRecordDeserializerTest {
                 data1
         );
 
-        Assert.assertEquals(
-                getExpectedNode0(),
-                new ObjectMapper()
-                        .readValue(deserializedEvent0, ObjectNode.class));
+        Assert.assertTrue(
+                getExpectedNode0(null).similar(new JSONObject(new String(deserializedEvent0))));
 
-        Assert.assertEquals(
-                getExpectedNode1(),
-                new ObjectMapper()
-                        .readValue(deserializedEvent1, ObjectNode.class));
+        Assert.assertTrue(
+                getExpectedNode1().similar(new JSONObject(new String(deserializedEvent1))));
     }
+
+    @Test
+    public void testDeserializeAvroMetadata0() throws IOException {
+        final var metadataVersion = "0";
+
+        final JSONObject jsonObject = new JSONObject()
+        .put("flow_id", "hek")
+        .put("partition", 0)
+        .put("received_at", SOME_TIME)
+        .put("published_by", "nakadi-test");
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var expectedJson = getExpectedNode0(jsonObject.put("received_at", SOME_TIME_DATE_STRING));
+        Assert.assertTrue(expectedJson.similar(actualJson));
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata1() throws IOException {
+        final var metadataVersion = "1";
+
+        final JSONObject jsonObject = new JSONObject()
+                .put("flow_id", "hek")
+                .put("partition", 0)
+                .put("received_at", SOME_TIME)
+                .put("published_by", "nakadi-test");
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var expectedJson = getExpectedNode0(jsonObject.put("received_at", SOME_TIME_DATE_STRING));
+        Assert.assertTrue(expectedJson.similar(actualJson));
+    }
+
+
+    @Test
+    public void testDeserializeAvroMetadata2() throws IOException {
+        final var metadataVersion = "2";
+        final JSONObject jsonObject = new JSONObject()
+                .put("partition", "0")
+                .put("flow_id", "hek")
+                .put("received_at", SOME_TIME)
+                .put("published_by", "nakadi-test");
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var expectedJson = getExpectedNode0(jsonObject.put("received_at", SOME_TIME_DATE_STRING));
+        Assert.assertTrue(expectedJson.similar(actualJson));
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata3WithoutDefaults() throws IOException {
+        final var metadataVersion = "3";
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("partition", "0");
+        jsonObject.put("flow_id", "hek");
+
+        //changed to optional bt always filled by nakadi
+        jsonObject.put("published_by", "nakadi-test");
+        jsonObject.put("flow_id", "hek");
+
+        //optional but filled & required by nakadi
+        jsonObject.put("received_at", SOME_TIME);
+
+        //new optional fields
+        jsonObject.put("partition_keys", List.of("1","2"));
+        jsonObject.put("parent_eids", List.of(
+                "32f5dae5-4fc4-4cda-be07-b313b58490ac",
+                "32f5dae5-4fc4-4cda-be07-b313b58490ad")
+        );
+        jsonObject.put("span_ctx", "sek");
+        jsonObject.put("partition_compaction_key", "some_key");
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var expectedJson = getExpectedNode0(jsonObject.put("received_at", SOME_TIME_DATE_STRING));
+
+        Assert.assertTrue(expectedJson.similar(actualJson));
+    }
+
+    @Test
+    public void testDeserializeAvroMetadata3WithDefaults() throws IOException {
+        final var metadataVersion = "3";
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("partition", "0");
+        //changed to optional bt always filled by nakadi
+        jsonObject.put("published_by", "nakadi-test");
+        jsonObject.put("flow_id", "hek");
+
+        //optional but filled & required by nakadi
+        jsonObject.put("received_at", SOME_TIME);
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var expectedJson = getExpectedNode0(jsonObject.put("received_at", SOME_TIME_DATE_STRING));
+        Assert.assertTrue(expectedJson.similar(actualJson));
+    }
+
+    @Test
+    public void testMetadataJsonHasOnlyNonNullValues() throws IOException {
+        final var metadataVersion = "3";
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("partition", "0");
+        //changed to optional bt always filled by nakadi
+        jsonObject.put("published_by", "nakadi-test");
+        jsonObject.put("flow_id", "hek");
+
+        //optional but filled & required by nakadi
+        jsonObject.put("received_at", SOME_TIME);
+
+        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+
+        final var metadataObj = actualJson.getJSONObject("metadata");
+
+        final List<String> nullKeys = new ArrayList<>();
+        metadataObj.toMap().forEach((k, v) -> {
+            if(v == null){
+                nullKeys.add(k);
+            }
+        });
+
+        Assert.assertTrue("No keys with null values should " +
+                "be present in metadata", nullKeys.isEmpty());
+    }
+
+
+    private JSONObject getSerializedJsonObject(final String metadataVersion,
+                                               final JSONObject toOverWriteMetadata) throws IOException {
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(avroSchema);
+        final var eventWriter = getEventWriter0();
+        // prepare the same bytes as we would put in Kafka record
+        final byte[] data = EnvelopeHolder.produceBytes(
+                Byte.parseByte(metadataVersion),
+                getMetadataWriter(metadataVersion, "0", toOverWriteMetadata),
+                eventWriter);
+
+        // try to deserialize that data when we would read Kafka record
+        final byte[] deserializedEvent = deserializer.deserialize(
+                NakadiRecord.Format.AVRO.getFormat(),
+                data
+        );
+
+        return new JSONObject(new String(deserializedEvent));
+    }
+
 
     private GenericRecord getBaseRecord(final String schemaVersion) {
         final GenericRecord event = new GenericData.Record(
@@ -101,20 +249,23 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion, final String schemaVersion) {
+    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion,
+                                                         final String schemaVersion,
+                                                         final JSONObject toOverWriteMetadata) {
         return os -> {
             final GenericRecord metadata =
                     new GenericData.Record(avroSchema.getEventTypeSchema(AvroSchema.METADATA_KEY, metadataVersion));
 
-            final long someEqualTime = 1643290232172l;
-            metadata.put("occurred_at", someEqualTime);
+            metadata.put("occurred_at", SOME_TIME);
+            metadata.put("received_at", SOME_TIME);
             metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");
-            metadata.put("flow_id", "hek");
             metadata.put("event_type", "nakadi.access.log");
-            metadata.put("partition", 0);
-            metadata.put("received_at", someEqualTime);
             metadata.put("schema_version", schemaVersion);
-            metadata.put("published_by", "nakadi-test");
+
+
+            Optional.ofNullable(toOverWriteMetadata).ifPresent(fn ->
+                toOverWriteMetadata.toMap().forEach(metadata::put)
+            );
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(metadata.getSchema());
             eventWriter.write(metadata, EncoderFactory.get()
@@ -122,18 +273,27 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private ObjectNode getBaseExpectedNode(final String schemaVersion) {
-        final ObjectMapper mapper = new ObjectMapper();
-        final ObjectNode metadata = mapper.createObjectNode()
-                .put("occurred_at", "2022-01-27T13:30:32.172Z")
+    private JSONObject getBaseExpectedNode(final String schemaVersion,
+                                           final JSONObject toOverWriteMetadata) {
+        final JSONObject metadata = new JSONObject().
+                 put("occurred_at", SOME_TIME_DATE_STRING)
                 .put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab")
                 .put("flow_id", "hek")
-                .put("received_at", "2022-01-27T13:30:32.172Z")
+                .put("received_at", SOME_TIME_DATE_STRING)
                 .put("schema_version", schemaVersion)
                 .put("published_by", "nakadi-test")
                 .put("event_type", "nakadi.access.log")
                 .put("partition", 0);
-        final ObjectNode event = mapper.createObjectNode()
+
+        Optional.ofNullable(toOverWriteMetadata).ifPresent(fn -> {
+            final var iterator = toOverWriteMetadata.keys();
+            while (iterator.hasNext()){
+                final var key = iterator.next();
+                metadata.put(key, toOverWriteMetadata.get(key));
+            }
+        });
+
+        final JSONObject event = new JSONObject()
                 .put("method", "POST")
                 .put("path", "/event-types")
                 .put("query", "")
@@ -143,16 +303,16 @@ public class KafkaRecordDeserializerTest {
                 .put("response_time_ms", 10)
                 .put("accept_encoding", "-")
                 .put("content_encoding", "--")
-                .set("metadata", metadata);
+                .put("metadata", metadata);
         return event;
     }
 
-    private ObjectNode getExpectedNode0() {
-        return getBaseExpectedNode("0");
+    private JSONObject getExpectedNode0(final JSONObject toOverWriteMetadata) {
+        return getBaseExpectedNode("0", toOverWriteMetadata);
     }
 
-    private ObjectNode getExpectedNode1() {
-        final ObjectNode event = getBaseExpectedNode("1");
+    private JSONObject getExpectedNode1() {
+        final JSONObject event = getBaseExpectedNode("1", null);
         event.put("user_agent", "test-user-agent");
         event.put("request_length", 111);
         event.put("response_length", 222);

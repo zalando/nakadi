@@ -51,32 +51,6 @@ public class NakadiKpiPublisherTest {
     private ArgumentCaptor<JSONObject> jsonObjectCaptor;
 
     @Test
-    public void testPublishWithFeatureToggleOn() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(true);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
-    public void testPublishWithFeatureToggleOff() throws Exception {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION))
-                .thenReturn(false);
-        final Supplier<JSONObject> dataSupplier = () -> null;
-        new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper)
-                .publish("test_et_name", dataSupplier);
-
-        verify(jsonProcessor, Mockito.never()).queueEvent("test_et_name", dataSupplier.get());
-    }
-
-    @Test
     public void testPublishJsonKPIEventWithFeatureToggleOn() {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(false);
@@ -91,7 +65,7 @@ public class NakadiKpiPublisherTest {
 
         verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
 
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), eventTypeCaptor.getValue());
+        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
         assertEquals("test-subscription-id", jsonObjectCaptor.getValue().get("subscription_id"));
         assertEquals("created", jsonObjectCaptor.getValue().get("status"));
         verifyNoInteractions(binaryProcessor, avroSchema);
@@ -117,14 +91,14 @@ public class NakadiKpiPublisherTest {
 
         //Verify the event-type and NakadiRecord
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), eventTypeCaptor.getValue());
+        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
         final var nakadiRecord = nakadiRecordCaptor.getValue();
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), nakadiRecord.getMetadata().getEventType());
+        assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getMetadata().getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
         final var schemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.eventTypeOfThisKPIEvent());
+                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
         final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
         final var record = sequenceDecoder.read(envelopeHolder.getPayload());
 
@@ -151,22 +125,4 @@ public class NakadiKpiPublisherTest {
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }
-
-    @Test
-    public void testPublishingAccessLogWithAvro() throws IOException {
-        when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS))
-                .thenReturn(true);
-        // FIXME: doesn't work without the trailing slash
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema, recordMapper);
-        publisher.publishAccessLogEvent("POST",
-                "/test", "", "", "", "",
-                "", 200, 1L, 1L, 1L);
-
-        verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
-    }
-
 }

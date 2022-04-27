@@ -3,10 +3,11 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.transaction.support.TransactionCallback;
@@ -16,6 +17,8 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
+import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
@@ -41,8 +44,10 @@ import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -54,12 +59,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.util.TestKpiUtils.checkKPIEventSubmitted;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EventTypeServiceTest {
 
-    private static final String KPI_ET_LOG_EVENT_TYPE = "et-log";
     protected static final long TOPIC_RETENTION_MIN_MS = 10800000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
     public static final String DELETABLE_OWNING_APP = "nakadi_archiver";
@@ -106,6 +109,9 @@ public class EventTypeServiceTest {
 
     private EventTypeService eventTypeService;
 
+    @Captor
+    private ArgumentCaptor<Supplier<KPIEvent>> kpiEventCaptor;
+
     @Before
     public void setUp() {
         final EventTypeOptionsValidator eventTypeOptionsValidator =
@@ -113,7 +119,7 @@ public class EventTypeServiceTest {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
-                KPI_ET_LOG_EVENT_TYPE, nakadiAuditLogPublisher, eventTypeOptionsValidator,
+                nakadiAuditLogPublisher, eventTypeOptionsValidator,
                 eventTypeCache, schemaService, adminService, subscriptionTokenLister, applicationService);
 
         when(nakadiSettings.getDeletableSubscriptionConsumerGroup()).thenReturn(DELETABLE_CONSUMER_GROUP);
@@ -302,13 +308,13 @@ public class EventTypeServiceTest {
     public void whenEventTypeCreatedThenKPIEventSubmitted() {
         final EventType et = TestUtils.buildDefaultEventType();
         eventTypeService.create(et, true);
-        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
-                new JSONObject()
-                        .put("event_type", et.getName())
-                        .put("status", "created")
-                        .put("category", et.getCategory())
-                        .put("authz", "disabled")
-                        .put("compatibility_mode", et.getCompatibilityMode()));
+        verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
+        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        assertEquals(et.getName(), kpiEvent.getEventType());
+        assertEquals("created", kpiEvent.getStatus());
+        assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
+        assertEquals("disabled", kpiEvent.getAuthz());
+        assertEquals(et.getCompatibilityMode().toString(), kpiEvent.getCompatibilityMode());
     }
 
     @Test
@@ -317,13 +323,13 @@ public class EventTypeServiceTest {
         when(eventTypeRepository.findByName(et.getName())).thenReturn(et);
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
         eventTypeService.update(et.getName(), et);
-        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
-                new JSONObject()
-                        .put("event_type", et.getName())
-                        .put("status", "updated")
-                        .put("category", et.getCategory())
-                        .put("authz", "disabled")
-                        .put("compatibility_mode", et.getCompatibilityMode()));
+        verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
+        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        assertEquals(et.getName(), kpiEvent.getEventType());
+        assertEquals("updated", kpiEvent.getStatus());
+        assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
+        assertEquals("disabled", kpiEvent.getAuthz());
+        assertEquals(et.getCompatibilityMode().toString(), kpiEvent.getCompatibilityMode());
     }
 
     @Test
@@ -380,12 +386,12 @@ public class EventTypeServiceTest {
         when(eventTypeCache.getEventTypeIfExists(et.getName())).thenReturn(Optional.of(et));
 
         eventTypeService.delete(et.getName());
-        checkKPIEventSubmitted(nakadiKpiPublisher, KPI_ET_LOG_EVENT_TYPE,
-                new JSONObject()
-                        .put("event_type", et.getName())
-                        .put("status", "deleted")
-                        .put("category", et.getCategory())
-                        .put("authz", "disabled")
-                        .put("compatibility_mode", et.getCompatibilityMode()));
+        verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
+        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        assertEquals(et.getName(), kpiEvent.getEventType());
+        assertEquals("deleted", kpiEvent.getStatus());
+        assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
+        assertEquals("disabled", kpiEvent.getAuthz());
+        assertEquals(et.getCompatibilityMode().toString(), kpiEvent.getCompatibilityMode());
     }
 }
