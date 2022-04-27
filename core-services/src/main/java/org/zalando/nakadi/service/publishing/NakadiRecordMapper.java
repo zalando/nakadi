@@ -49,8 +49,7 @@ public class NakadiRecordMapper {
                     DecoderFactory.get().directBinaryDecoder(
                             new ByteArrayInputStream(metadata), null));
             records.add(new NakadiRecord()
-                    .setMetadataVersion(metadataVersion)
-                    .setMetadata(new GenericRecordMetadata(genericRecord))
+                    .setMetadata(new GenericRecordMetadata(genericRecord, metadataVersion))
                     .setData(wholeRecord));
         }
 
@@ -74,8 +73,7 @@ public class NakadiRecordMapper {
                             .directBinaryEncoder(outputStream, null));
                 }));
         return new NakadiRecord()
-                .setEventType(eventTypeName)
-                .setPartition(null)
+                .setMetadata(new GenericRecordMetadata(metadata, metadataVersion))
                 .setEventKey(null)
                 .setData(data)
                 .setFormat(NakadiRecord.Format.AVRO.getFormat());

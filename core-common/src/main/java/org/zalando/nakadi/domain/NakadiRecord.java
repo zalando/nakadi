@@ -57,22 +57,11 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         }
     }
 
-    private String eventType;
-    private Integer partition;
     private byte[] eventKey;
     private byte[] data;
     private byte[] format;
     private EventOwnerHeader owner;
-    private byte metadataVersion;
     private NakadiMetadata metadata;
-
-    public String getEventType() {
-        return eventType;
-    }
-
-    public Integer getPartition() {
-        return partition;
-    }
 
     public byte[] getEventKey() {
         return eventKey;
@@ -92,20 +81,6 @@ public class NakadiRecord implements Resource<NakadiRecord> {
 
     public NakadiMetadata getMetadata() {
         return metadata;
-    }
-
-    public byte getMetadataVersion() {
-        return metadataVersion;
-    }
-
-    public NakadiRecord setEventType(final String eventType) {
-        this.eventType = eventType;
-        return this;
-    }
-
-    public NakadiRecord setPartition(final Integer partition) {
-        this.partition = partition;
-        return this;
     }
 
     public NakadiRecord setEventKey(final byte[] eventKey) {
@@ -130,11 +105,6 @@ public class NakadiRecord implements Resource<NakadiRecord> {
 
     public NakadiRecord setMetadata(final NakadiMetadata metadata) {
         this.metadata = metadata;
-        return this;
-    }
-
-    public NakadiRecord setMetadataVersion(final byte version) {
-        this.metadataVersion = version;
         return this;
     }
 

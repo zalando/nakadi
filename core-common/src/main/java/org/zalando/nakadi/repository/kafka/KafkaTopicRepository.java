@@ -33,7 +33,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -429,16 +429,16 @@ public class KafkaTopicRepository implements TopicRepository {
      * @param nakadiRecords list of the events to publish
      * @return empty list if no errors otherwise list with the errored events
      */
-    public List<NakadiRecordMetadata> sendEvents(final String topic,
-                                                 final List<NakadiRecord> nakadiRecords) {
+    public List<NakadiRecordResult> sendEvents(final String topic,
+                                               final List<NakadiRecord> nakadiRecords) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
-        final Map<NakadiRecord, NakadiRecordMetadata> responses = new ConcurrentHashMap<>();
+        final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
                 final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
                         topic,
-                        nakadiRecord.getPartition(),
+                        nakadiRecord.getMetadata().getPartitionInt(),
                         nakadiRecord.getEventKey(),
                         nakadiRecord.getData());
 
@@ -451,18 +451,18 @@ public class KafkaTopicRepository implements TopicRepository {
                         nakadiRecord.getFormat());
                 producer.send(producerRecord, ((metadata, exception) -> {
                     try {
-                        final NakadiRecordMetadata record;
+                        final NakadiRecordResult result;
                         if (exception != null) {
-                            record = new NakadiRecordMetadata(
+                            result = new NakadiRecordResult(
                                     nakadiRecord.getMetadata(),
-                                    NakadiRecordMetadata.Status.FAILED,
+                                    NakadiRecordResult.Status.FAILED,
                                     exception);
                         } else {
-                            record = new NakadiRecordMetadata(
+                            result = new NakadiRecordResult(
                                     nakadiRecord.getMetadata(),
-                                    NakadiRecordMetadata.Status.SUCCEEDED);
+                                    NakadiRecordResult.Status.SUCCEEDED);
                         }
-                        responses.put(nakadiRecord, record);
+                        responses.put(nakadiRecord, result);
                     } finally {
                         latch.countDown();
                     }
@@ -470,8 +470,8 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
             final boolean shouldResetProducer = responses.values().stream()
-                    .filter(nrm -> nrm.getStatus() == NakadiRecordMetadata.Status.FAILED)
-                    .map(NakadiRecordMetadata::getException)
+                    .filter(nrm -> nrm.getStatus() == NakadiRecordResult.Status.FAILED)
+                    .map(NakadiRecordResult::getException)
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
             if (shouldResetProducer) {
                 kafkaFactory.terminateProducer(producer);
@@ -490,21 +490,21 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private List<NakadiRecordMetadata> prepareResponse(
+    private List<NakadiRecordResult> prepareResponse(
             final List<NakadiRecord> nakadiRecords,
-            final Map<NakadiRecord, NakadiRecordMetadata> recordStatuses,
+            final Map<NakadiRecord, NakadiRecordResult> recordStatuses,
             final Exception exception) {
-        final List<NakadiRecordMetadata> resps = new LinkedList<>();
+        final List<NakadiRecordResult> resps = new LinkedList<>();
         for (final NakadiRecord record : nakadiRecords) {
-            final NakadiRecordMetadata nakadiRecordMetadata = recordStatuses.get(record);
-            if (nakadiRecordMetadata == null) {
+            final NakadiRecordResult nakadiRecordResult = recordStatuses.get(record);
+            if (nakadiRecordResult == null) {
                 // in case kafka producer send method threw exception, the record was not attempted for publishing
-                resps.add(new NakadiRecordMetadata(
+                resps.add(new NakadiRecordResult(
                         record.getMetadata(),
-                        NakadiRecordMetadata.Status.NOT_ATTEMPTED,
+                        NakadiRecordResult.Status.NOT_ATTEMPTED,
                         exception));
             } else {
-                resps.add(nakadiRecordMetadata);
+                resps.add(nakadiRecordResult);
             }
         }
 

@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 
 import java.util.List;
 
@@ -32,11 +32,11 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
     @Override
     public void sendEvents(final String etName, final List<NakadiRecord> events) {
         try {
-            final List<NakadiRecordMetadata> nakadiRecordMetadata =
+            final List<NakadiRecordResult> eventRecordMetadata =
                     binaryEventPublisher.publish(etName, events);
-            if (!nakadiRecordMetadata.isEmpty()) {
+            if (!eventRecordMetadata.isEmpty()) {
                 LOG.warn("failed to publish events to {} {}",
-                        etName, nakadiRecordMetadata.get(0).getException());
+                        etName, eventRecordMetadata.get(0).getException());
             }
         } catch (final RuntimeException ex) {
             LOG.error("failed to send single batch for unknown reason", ex);

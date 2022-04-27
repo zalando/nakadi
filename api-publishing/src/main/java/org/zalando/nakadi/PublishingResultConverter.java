@@ -5,7 +5,7 @@ import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import java.util.LinkedList;
@@ -33,6 +33,8 @@ public class PublishingResultConverter {
 
     private EventPublishingStep mapPublishingStep(final Check.Step step) {
         switch (step) {
+            case NONE:
+                return EventPublishingStep.NONE;
             case ENRICHMENT:
                 return EventPublishingStep.ENRICHING;
             case VALIDATION:
@@ -56,11 +58,11 @@ public class PublishingResultConverter {
         }
     }
 
-    public EventPublishResult mapPublishingResultToView(final List<NakadiRecordMetadata> recordsMetadata) {
+    public EventPublishResult mapPublishingResultToView(final List<NakadiRecordResult> recordsMetadata) {
         final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
         EventPublishingStep step = null;
         EventPublishingStatus status = null;
-        for (final NakadiRecordMetadata recordMetadata : recordsMetadata) {
+        for (final NakadiRecordResult recordMetadata : recordsMetadata) {
             batchItemResponses.add(new BatchItemResponse()
                     .setStep(EventPublishingStep.PUBLISHING)
                     .setPublishingStatus(mapPublishingStatus(recordMetadata.getStatus()))
@@ -71,7 +73,7 @@ public class PublishingResultConverter {
         return new EventPublishResult(status, step, batchItemResponses);
     }
 
-    private EventPublishingStatus mapPublishingStatus(final NakadiRecordMetadata.Status status) {
+    private EventPublishingStatus mapPublishingStatus(final NakadiRecordResult.Status status) {
         switch (status) {
             case FAILED:
                 return EventPublishingStatus.FAILED;

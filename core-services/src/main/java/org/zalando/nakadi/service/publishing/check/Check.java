@@ -62,6 +62,7 @@ public abstract class Check {
     }
 
     public enum Step {
+        NONE,
         VALIDATION,
         ENRICHMENT,
         PARTITIONING

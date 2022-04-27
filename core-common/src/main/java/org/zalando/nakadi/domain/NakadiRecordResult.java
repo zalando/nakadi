@@ -1,6 +1,6 @@
 package org.zalando.nakadi.domain;
 
-public class NakadiRecordMetadata {
+public class NakadiRecordResult {
 
     public enum Status {
         SUCCEEDED, FAILED, NOT_ATTEMPTED
@@ -10,7 +10,7 @@ public class NakadiRecordMetadata {
     private final Status status;
     private final Exception exception;
 
-    public NakadiRecordMetadata(
+    public NakadiRecordResult(
             final NakadiMetadata metadata,
             final Status status,
             final Exception exception) {
@@ -19,7 +19,7 @@ public class NakadiRecordMetadata {
         this.exception = exception;
     }
 
-    public NakadiRecordMetadata(
+    public NakadiRecordResult(
             final NakadiMetadata metadata,
             final Status status) {
         this(metadata, status, null);

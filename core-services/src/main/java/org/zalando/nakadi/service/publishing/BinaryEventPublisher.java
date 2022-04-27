@@ -11,7 +11,7 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -54,8 +54,8 @@ public class BinaryEventPublisher {
         this.prePublishingChecks = prePublishingChecks;
     }
 
-    public List<NakadiRecordMetadata> publish(final String eventTypeName,
-                                              final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> publish(final String eventTypeName,
+                                            final List<NakadiRecord> records) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }

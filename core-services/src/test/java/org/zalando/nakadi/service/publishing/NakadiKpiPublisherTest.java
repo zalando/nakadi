@@ -119,7 +119,7 @@ public class NakadiKpiPublisherTest {
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
         assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), eventTypeCaptor.getValue());
         final var nakadiRecord = nakadiRecordCaptor.getValue();
-        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), nakadiRecord.getEventType());
+        assertEquals(subscriptionLogEvent.eventTypeOfThisKPIEvent(), nakadiRecord.getMetadata().getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());

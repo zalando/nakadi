@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.TracingService;
@@ -95,11 +96,13 @@ public class EventPublishingController {
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
-        try {
-            return postBinaryEvents(eventTypeName, batch, request, client, false);
-        } catch (IOException e) {
-            throw new InternalNakadiException("failed to parse batch", e);
-        }
+
+        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
+//        try {
+//            return postBinaryEvents(eventTypeName, batch, request, client, false);
+//        } catch (IOException e) {
+//            throw new InternalNakadiException("failed to parse batch", e);
+//        }
     }
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
@@ -135,7 +138,7 @@ public class EventPublishingController {
                 if (!recordResults.isEmpty()) {
                     result = publishingResultConverter.mapCheckResultToView(recordResults);
                 } else {
-                    final List<NakadiRecordMetadata> nakadiRecordsMetadata =
+                    final List<NakadiRecordResult> nakadiRecordsMetadata =
                             binaryPublisher.publish(eventTypeName, nakadiRecords);
                     result = publishingResultConverter.mapPublishingResultToView(nakadiRecordsMetadata);
                 }

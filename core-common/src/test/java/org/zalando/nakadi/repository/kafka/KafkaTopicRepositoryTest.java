@@ -24,8 +24,9 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -453,9 +454,9 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setEventType(eventType).setPartition(0),
-                new NakadiRecord().setEventType(eventType).setPartition(0),
-                new NakadiRecord().setEventType(eventType).setPartition(0)
+                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(0, eventType))
         );
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -465,11 +466,11 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
+        final List<NakadiRecordResult> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
         Assert.assertEquals(3, result.size());
         result.forEach(r -> {
-            Assert.assertTrue(r.getStatus() == NakadiRecordMetadata.Status.SUCCEEDED);
+            Assert.assertTrue(r.getStatus() == NakadiRecordResult.Status.SUCCEEDED);
         });
     }
 
@@ -478,10 +479,10 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setEventType(eventType).setPartition(0),
-                new NakadiRecord().setEventType(eventType).setPartition(1),
-                new NakadiRecord().setEventType(eventType).setPartition(2),
-                new NakadiRecord().setEventType(eventType).setPartition(3)
+                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(1, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(2, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(3, eventType))
         );
 
         final Exception exception = new Exception();
@@ -496,17 +497,17 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
+        final List<NakadiRecordResult> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(exception, result.get(0).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.FAILED, result.get(0).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(0).getStatus());
         Assert.assertEquals(null, result.get(1).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
         Assert.assertEquals(exception, result.get(2).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.FAILED, result.get(2).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(2).getStatus());
         Assert.assertEquals(null, result.get(3).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(3).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(3).getStatus());
     }
 
     @Test
@@ -514,10 +515,10 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setEventType(eventType).setPartition(0),
-                new NakadiRecord().setEventType(eventType).setPartition(1),
-                new NakadiRecord().setEventType(eventType).setPartition(2),
-                new NakadiRecord().setEventType(eventType).setPartition(3)
+                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(1, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(2, eventType)),
+                new NakadiRecord().setMetadata(new TestMetadata(3, eventType))
         );
 
         final KafkaException exception = new KafkaException();
@@ -532,17 +533,17 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
+        final List<NakadiRecordResult> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(null, result.get(0).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(0).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(0).getStatus());
         Assert.assertEquals(null, result.get(1).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
         Assert.assertEquals(exception, result.get(2).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.NOT_ATTEMPTED, result.get(2).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(2).getStatus());
         Assert.assertEquals(exception, result.get(3).getException());
-        Assert.assertEquals(NakadiRecordMetadata.Status.NOT_ATTEMPTED, result.get(3).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {
@@ -634,5 +635,37 @@ public class KafkaTopicRepositoryTest {
     private ProducerRecord<byte[], byte[]> captureProducerRecordSent() {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
+    }
+
+    private class TestMetadata implements NakadiMetadata {
+
+        private final Integer partition;
+        private final String eventType;
+
+        private TestMetadata(final Integer partition,
+                             final String eventType) {
+            this.partition = partition;
+            this.eventType = eventType;
+        }
+
+        @Override
+        public String getEid() {
+            return null;
+        }
+
+        @Override
+        public String getPartitionStr() {
+            return String.valueOf(partition);
+        }
+
+        @Override
+        public Integer getPartitionInt() {
+            return partition;
+        }
+
+        @Override
+        public String getEventType() {
+            return eventType;
+        }
     }
 }
