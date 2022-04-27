@@ -123,7 +123,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
-        producerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        producerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false);
 
         producerProps.put(ProducerConfig.RETRIES_CONFIG, kafkaSettings.getRetries());
         producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaSettings.getRequestTimeoutMs());
