@@ -3,8 +3,8 @@ package org.zalando.nakadi.service.publishing.check;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 
+import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public abstract class Check {
 
@@ -18,11 +18,30 @@ public abstract class Check {
             final List<NakadiRecord> records,
             final NakadiRecord failedRecord,
             final String error) {
-        return records.stream().map(nakadiRecord -> new RecordResult(
-                failedRecord == nakadiRecord ? Status.FAILED : Status.ABORTED,
-                nakadiRecord.getMetadata().getEid(),
-                error)
-        ).collect(Collectors.toList());
+        final List<RecordResult> recordResults = new LinkedList<>();
+        boolean metFailedRecord = false;
+        for (final NakadiRecord nakadiRecord : records) {
+            if (failedRecord == nakadiRecord) {
+                recordResults.add(new RecordResult(
+                        Status.FAILED,
+                        nakadiRecord.getMetadata().getEid(),
+                        error));
+                metFailedRecord = true;
+            } else if (!metFailedRecord) {
+                recordResults.add(new RecordResult(
+                        Status.ABORTED,
+                        nakadiRecord.getMetadata().getEid(),
+                        ""));
+            } else {
+                recordResults.add(new RecordResult(
+                        Status.ABORTED,
+                        Step.NONE,
+                        nakadiRecord.getMetadata().getEid(),
+                        ""));
+            }
+        }
+
+        return recordResults;
     }
 
     public class RecordResult {
@@ -32,12 +51,19 @@ public abstract class Check {
         private final String error;
 
         public RecordResult(final Status status,
+                            final Step step,
                             final String eid,
                             final String error) {
             this.status = status;
+            this.step = step;
             this.eid = eid;
             this.error = error;
-            this.step = getCurrentStep();
+        }
+
+        public RecordResult(final Status status,
+                            final String eid,
+                            final String error) {
+            this(status, getCurrentStep(), eid, error);
         }
 
         public Status getStatus() {

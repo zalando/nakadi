@@ -56,8 +56,7 @@ public class NakadiRecordMapper {
         return records;
     }
 
-    public NakadiRecord fromAvroGenericRecord(final String eventTypeName,
-                                              final byte metadataVersion,
+    public NakadiRecord fromAvroGenericRecord(final byte metadataVersion,
                                               final GenericRecord metadata,
                                               final GenericRecord event) throws IOException {
         final byte[] data = EnvelopeHolder.produceBytes(

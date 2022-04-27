@@ -639,7 +639,7 @@ public class EventPublisherTest {
                 .build();
 
         final NakadiRecord nakadiRecord = new NakadiRecordMapper(avroSchema)
-                .fromAvroGenericRecord(eventTypeName, metadataVersion, metadata, event);
+                .fromAvroGenericRecord(metadataVersion, metadata, event);
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventTypeName, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));

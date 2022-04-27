@@ -41,7 +41,7 @@ public class NakadiKpiPublisherTest {
     private final AvroSchema avroSchema = Mockito.mock(AvroSchema.class);
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
-    private final NakadiRecordMapper recordMapper = Mockito.mock(NakadiRecordMapper.class);
+    private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(avroSchema);
 
     @Captor
     private ArgumentCaptor<String> eventTypeCaptor;
