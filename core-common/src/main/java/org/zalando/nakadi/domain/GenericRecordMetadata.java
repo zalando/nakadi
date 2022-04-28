@@ -140,6 +140,4 @@ public class GenericRecordMetadata implements NakadiMetadata {
     public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
         this.metadata.put(PARTITION_COMPACTION_KEYS, partitionCompactionKeys.toArray(new String[0]));
     }
-
-
 }

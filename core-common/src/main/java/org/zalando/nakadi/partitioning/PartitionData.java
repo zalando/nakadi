@@ -3,6 +3,7 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
@@ -54,5 +55,9 @@ public class PartitionData {
         }
 
         return new PartitionData(partition, partitionKeys);
+    }
+
+    public static PartitionData fromNakadiMetadata(final NakadiMetadata metadata) {
+        return new PartitionData(metadata.getPartitionStr(), metadata.getPartitionKeys());
     }
 }
