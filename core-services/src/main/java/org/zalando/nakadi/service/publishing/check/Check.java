@@ -89,6 +89,7 @@ public abstract class Check {
 
     public enum Step {
         NONE,
+        // TODO : Maybe reuse EventPublishingStep
         VALIDATION,
         ENRICHMENT,
         PARTITIONING
