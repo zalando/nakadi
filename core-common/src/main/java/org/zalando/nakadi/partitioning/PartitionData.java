@@ -41,7 +41,9 @@ public class PartitionData {
             if (!partitionKeyFields.isEmpty()) {
                 final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
                 partitionKeys = partitionKeyFields.stream()
-                        .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? EventType.DATA_PATH_PREFIX + pkf : pkf)
+                        .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
+                                ? EventType.DATA_PATH_PREFIX + pkf
+                                : pkf)
                         .map(Try.wrap(okf -> {
                             try {
                                 return traversableJsonEvent.get(okf).toString();

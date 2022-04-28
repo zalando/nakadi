@@ -12,7 +12,11 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -85,13 +89,15 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(true);
 
         when(eventTypeCache.getEventType(any())).thenReturn(new EventType());
-        when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class))).thenReturn(String.valueOf(partitionNumber));
+        when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class)))
+                .thenReturn(String.valueOf(partitionNumber));
 
         // Publish the above KPIEvent and capture it.
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema, recordMapper, partitionResolver, eventTypeCache)
+                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema, recordMapper,
+                partitionResolver, eventTypeCache)
                 .publish(() -> subscriptionLogEvent);
 
         verifyNoInteractions(jsonProcessor);
@@ -138,7 +144,8 @@ public class NakadiKpiPublisherTest {
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper, partitionResolver, eventTypeCache);
+                new EventMetadataTestStub(), uuidGenerator, avroSchema,
+                recordMapper, partitionResolver, eventTypeCache);
         
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
