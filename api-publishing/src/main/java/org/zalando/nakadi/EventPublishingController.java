@@ -70,11 +70,7 @@ public class EventPublishingController {
         this.publishingResultConverter = publishingResultConverter;
     }
 
-    @RequestMapping(
-            value = "/event-types/{eventTypeName}/events",
-            method = POST,
-            consumes = "application/json"
-    )
+    @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postJsonEvents(@PathVariable final String eventTypeName,
                                          @RequestBody final String eventsAsString,
                                          final HttpServletRequest request,
