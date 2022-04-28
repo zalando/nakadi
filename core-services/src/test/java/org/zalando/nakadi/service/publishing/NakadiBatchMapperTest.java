@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.ByteArrayOutputStream;
@@ -42,10 +43,10 @@ public class NakadiBatchMapperTest {
     }
 
     private byte[] generateRecord(final AvroSchema avroSchema) throws IOException {
+        final VersionedAvroSchema versionedSchema =
+                avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
         final GenericRecord metadata =
-                new GenericData.Record(avroSchema
-                        .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY)
-                        .getSchema());
+                new GenericData.Record(versionedSchema.getSchema());
 
         final long someEqualTime = 1643290232172l;
         metadata.put("occurred_at", someEqualTime);
@@ -65,6 +66,6 @@ public class NakadiBatchMapperTest {
         final var meta = baos.toByteArray();
         final var metadataBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(meta.length).array(), meta);
         final var payloadBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(2).array(), new byte[]{'y', 'y'});
-        return Bytes.concat(new byte[]{1}, metadataBytes, payloadBytes);
+        return Bytes.concat(new byte[]{Byte.parseByte(versionedSchema.getVersion())}, metadataBytes, payloadBytes);
     }
 }
