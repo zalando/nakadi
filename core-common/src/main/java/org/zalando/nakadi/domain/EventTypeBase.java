@@ -25,6 +25,8 @@ import static java.util.Collections.unmodifiableList;
 
 public class EventTypeBase implements EventTypeAuthz {
 
+    public static final String DATA_CHANGE_WRAP_FIELD = "data";
+    public static final String DATA_PATH_PREFIX = DATA_CHANGE_WRAP_FIELD + ".";
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
     private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
 

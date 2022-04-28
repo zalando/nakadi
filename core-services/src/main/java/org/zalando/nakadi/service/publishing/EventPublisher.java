@@ -53,7 +53,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.validation.JsonSchemaEnrichment.DATA_PATH_PREFIX;
+import static org.zalando.nakadi.domain.EventTypeBase.DATA_PATH_PREFIX;
 
 @Component
 public class EventPublisher {
