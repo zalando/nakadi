@@ -60,9 +60,9 @@ public class PublishingResultConverter {
 
     public EventPublishResult mapPublishingResultToView(final List<NakadiRecordResult> recordsMetadata) {
         final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
-        EventPublishingStep step = null;
         EventPublishingStatus status = null;
         for (final NakadiRecordResult recordMetadata : recordsMetadata) {
+            status = mapPublishingStatus(recordMetadata.getStatus());
             batchItemResponses.add(new BatchItemResponse()
                     .setStep(EventPublishingStep.PUBLISHING)
                     .setPublishingStatus(mapPublishingStatus(recordMetadata.getStatus()))
@@ -70,7 +70,7 @@ public class PublishingResultConverter {
                     .setDetail(recordMetadata.getException().getMessage()));
         }
 
-        return new EventPublishResult(status, step, batchItemResponses);
+        return new EventPublishResult(status, EventPublishingStep.PUBLISHING, batchItemResponses);
     }
 
     private EventPublishingStatus mapPublishingStatus(final NakadiRecordResult.Status status) {

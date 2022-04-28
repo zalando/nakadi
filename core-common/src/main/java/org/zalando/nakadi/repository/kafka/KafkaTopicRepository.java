@@ -394,8 +394,8 @@ public class KafkaTopicRepository implements TopicRepository {
             sb.append(entry.getKey())
                     .append(":[")
                     .append(entry.getValue().stream()
-                            .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
-                            .collect(Collectors.joining(", ")))
+                     .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
+                     .collect(Collectors.joining(", ")))
                     .append("] ");
         }
         LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());

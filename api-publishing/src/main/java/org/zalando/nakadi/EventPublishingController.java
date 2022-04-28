@@ -22,7 +22,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.TracingService;

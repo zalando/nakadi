@@ -9,8 +9,8 @@ import java.util.List;
 public abstract class Check {
 
     public abstract List<RecordResult> execute(
-            final EventType eventType,
-            final List<NakadiRecord> records);
+            EventType eventType,
+            List<NakadiRecord> records);
 
     public abstract Step getCurrentStep();
 

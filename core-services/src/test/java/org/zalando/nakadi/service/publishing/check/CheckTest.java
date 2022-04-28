@@ -36,7 +36,8 @@ public class CheckTest {
 
     private final Check check = new Check() {
         @Override
-        public List<RecordResult> execute(EventType eventType, List<NakadiRecord> records) {
+        public List<RecordResult> execute(final EventType eventType,
+                                          final List<NakadiRecord> records) {
             return null;
         }
 
