@@ -3,6 +3,7 @@ package org.zalando.nakadi.partitioning;
 import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
@@ -18,20 +19,20 @@ public class UserDefinedPartitionStrategyTest {
     @Test
     public void whenCorrectPartitionThenOk() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"b\"}}");
-        final String partition = STRATEGY.calculatePartition(null, event, PARTITIONS);
+        final String partition = STRATEGY.calculatePartition(null, PartitionData.fromJson(null, event), PARTITIONS);
         assertThat(partition, equalTo("b"));
     }
 
     @Test(expected = PartitioningException.class)
     public void whenIncorrectJsonThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition_id\":\"b\"}}");
-        STRATEGY.calculatePartition(null, event, PARTITIONS);
+        STRATEGY.calculatePartition(null, PartitionData.fromJson(null, event), PARTITIONS);
     }
 
     @Test(expected = PartitioningException.class)
     public void whenUnknownPartitionThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"z\"}}");
-        STRATEGY.calculatePartition(null, event, PARTITIONS);
+        STRATEGY.calculatePartition(null, PartitionData.fromJson(null, event), PARTITIONS);
     }
 
 }

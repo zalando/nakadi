@@ -13,7 +13,6 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
     public String calculatePartition(final EventType eventType, final PartitionData event, final List<String> partitions)
             throws PartitioningException {
         try {
-            //final String partition = event.getJSONObject("metadata").getString("partition");
             final String partition = String.valueOf(event.getPartition());
             if (partitions.contains(partition)) {
                 return partition;
