@@ -41,6 +41,7 @@ public class NakadiKpiPublisherTest {
     private final AvroSchema avroSchema = Mockito.mock(AvroSchema.class);
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
+    private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(avroSchema);
 
     @Captor
     private ArgumentCaptor<String> eventTypeCaptor;
@@ -59,7 +60,7 @@ public class NakadiKpiPublisherTest {
                 .setStatus("created");
 
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
@@ -83,7 +84,7 @@ public class NakadiKpiPublisherTest {
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema)
+                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema, recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verifyNoInteractions(jsonProcessor);
@@ -92,7 +93,7 @@ public class NakadiKpiPublisherTest {
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
         assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
         final var nakadiRecord = nakadiRecordCaptor.getValue();
-        assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getEventType());
+        assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getMetadata().getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
         final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
@@ -111,7 +112,7 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(false);
         final Supplier<KPIEvent> mockEventSupplier = Mockito.mock(Supplier.class);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper)
                 .publish(mockEventSupplier);
         verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, uuidGenerator, avroSchema);
     }
@@ -120,7 +121,7 @@ public class NakadiKpiPublisherTest {
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema);
+                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper);
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }

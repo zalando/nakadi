@@ -39,6 +39,7 @@ public class NakadiKpiPublisher {
     private final UUIDGenerator uuidGenerator;
     private final AvroSchema avroSchema;
     private final KPIEventMapper kpiEventMapper;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     @Autowired
     protected NakadiKpiPublisher(
@@ -48,7 +49,8 @@ public class NakadiKpiPublisher {
             final UsernameHasher usernameHasher,
             final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
-            final AvroSchema avroSchema) {
+            final AvroSchema avroSchema,
+            final NakadiRecordMapper nakadiRecordMapper) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
         this.binaryEventsProcessor = binaryEventsProcessor;
@@ -62,6 +64,7 @@ public class NakadiKpiPublisher {
                 EventTypeLogEvent.class,
                 BatchPublishedEvent.class,
                 DataStreamedEvent.class));
+        this.nakadiRecordMapper = nakadiRecordMapper;
     }
 
     public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
@@ -86,26 +89,14 @@ public class NakadiKpiPublisher {
 
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
 
-                final NakadiRecord nakadiRecord = NakadiRecord
-                        .fromAvro(eventType, metadataVersion, metadata, event);
+                final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
+                        metadataVersion, metadata, event);
                 binaryEventsProcessor.queueEvent(eventType, nakadiRecord);
             } else {
                 final JSONObject eventObject = kpiEventMapper.mapToJsonObject(kpiEvent);
                 jsonEventsProcessor.queueEvent(eventType, eventMetadata.addTo(eventObject));
             }
 
-        } catch (final Exception e) {
-            LOG.error("Error occurred when submitting KPI event for publishing", e);
-        }
-    }
-
-    private void publish(final String etName, final Supplier<JSONObject> eventSupplier) {
-        try {
-            if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
-                return;
-            }
-
-            jsonEventsProcessor.queueEvent(etName, eventMetadata.addTo(eventSupplier.get()));
         } catch (final Exception e) {
             LOG.error("Error occurred when submitting KPI event for publishing", e);
         }

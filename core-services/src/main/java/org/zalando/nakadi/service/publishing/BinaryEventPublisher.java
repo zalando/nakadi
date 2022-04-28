@@ -5,15 +5,18 @@ import io.opentracing.tag.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 
@@ -31,21 +34,28 @@ public class BinaryEventPublisher {
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
+    private final AuthorizationValidator authValidator;
+    private final List<Check> prePublishingChecks;
+
 
     @Autowired
     public BinaryEventPublisher(
             final TimelineService timelineService,
             final EventTypeCache eventTypeCache,
             final TimelineSync timelineSync,
-            final NakadiSettings nakadiSettings) {
+            final NakadiSettings nakadiSettings,
+            final AuthorizationValidator authValidator,
+            @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
+        this.authValidator = authValidator;
+        this.prePublishingChecks = prePublishingChecks;
     }
 
-    public List<NakadiRecordMetadata> publish(final String eventTypeName,
-                                              final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> publish(final String eventTypeName,
+                                            final List<NakadiRecord> records) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }
@@ -87,4 +97,22 @@ public class BinaryEventPublisher {
             }
         }
     }
+
+    public List<Check.RecordResult> checkEvents(final String eventTypeName,
+                                                final List<NakadiRecord> records) {
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+
+        // throws exception, maybe move it somewhere else
+        authValidator.authorizeEventTypeWrite(eventType);
+
+        for (final Check check : prePublishingChecks) {
+            final List<Check.RecordResult> res = check.execute(eventType, records);
+            if (res != null) {
+                return res;
+            }
+        }
+
+        return null;
+    }
+
 }
