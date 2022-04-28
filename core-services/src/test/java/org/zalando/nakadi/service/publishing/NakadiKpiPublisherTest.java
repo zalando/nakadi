@@ -117,7 +117,7 @@ public class NakadiKpiPublisherTest {
         assertEquals("created", record.get("status").toString());
 
         // Verify that partition number is the same in metadata and in the publishing DTO
-        assertEquals(1, nakadiRecord.getPartition());
+        assertEquals(1, nakadiRecord.getMetadata().getPartitionInt());
         assertEquals("1", metadata.get("partition").toString());
     }
 
