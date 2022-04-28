@@ -15,7 +15,6 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
-import org.zalando.nakadi.partitioning.MetadataRandomPartitioner;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
