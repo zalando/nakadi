@@ -11,6 +11,6 @@ public interface PartitionStrategy {
     String USER_DEFINED_STRATEGY = "user_defined";
     String RANDOM_STRATEGY = "random";
 
-    String calculatePartition(EventType eventType, PartitionData event, List<String> partitions)
+    String calculatePartition(PartitionData partitionData, List<String> partitions)
             throws PartitioningException;
 }

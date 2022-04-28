@@ -1,5 +1,6 @@
 package org.zalando.nakadi.partitioning;
 
+import com.google.common.base.Strings;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
@@ -10,20 +11,19 @@ import java.util.List;
 public class UserDefinedPartitionStrategy implements PartitionStrategy {
 
     @Override
-    public String calculatePartition(final EventType eventType, final PartitionData event, final List<String> partitions)
+    public String calculatePartition(final PartitionData partitionData, final List<String> partitions)
             throws PartitioningException {
-        try {
-            final String partition = String.valueOf(event.getPartition());
-            if (partitions.contains(partition)) {
-                return partition;
-            } else {
-                throw new PartitioningException("Failed to resolve partition. " +
-                        "Invalid partition specified when publishing event.");
-            }
-        }
-        catch (JSONException e) {
+        if (Strings.isNullOrEmpty(partitionData.getPartition())) {
             throw new PartitioningException("Failed to resolve partition. " +
-                    "Failed to get partition from event metadata", e);
+                    "Failed to get partition from event metadata");
+        }
+
+        final String partition = partitionData.getPartition();
+        if (partitions.contains(partition)) {
+            return partition;
+        } else {
+            throw new PartitioningException("Failed to resolve partition. " +
+                    "Invalid partition specified when publishing event.");
         }
     }
 

@@ -30,7 +30,9 @@ public class PartitionData {
     }
 
     public static PartitionData fromJson(final EventType eventType, final JSONObject jsonEvent) {
-        final String partition = jsonEvent.has("metadata") && jsonEvent.getJSONObject("metadata").has("partition") ? jsonEvent.getJSONObject("metadata").getString("partition") : null;
+        final String partition = jsonEvent.has("metadata") && jsonEvent.getJSONObject("metadata").has("partition")
+                ? jsonEvent.getJSONObject("metadata").getString("partition")
+                : null;
         List<String> partitionKeys = null;
         if (eventType != null) {
             final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
