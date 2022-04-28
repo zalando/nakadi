@@ -12,6 +12,8 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Header;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -640,7 +642,12 @@ public class KafkaTopicRepositoryTest {
     private class TestMetadata implements NakadiMetadata {
 
         private final Integer partition;
-        private final String eventType;
+        private String eventType;
+        private String publishedBy;
+        private String receivedAt;
+        private String flowId;
+        private String schemaVersion;
+        private final String occurredAt = new DateTime(DateTimeZone.UTC).toString();
 
         private TestMetadata(final Integer partition,
                              final String eventType) {
@@ -664,8 +671,58 @@ public class KafkaTopicRepositoryTest {
         }
 
         @Override
+        public String getOccurredAt() {
+            return this.occurredAt;
+        }
+
+        @Override
         public String getEventType() {
             return eventType;
+        }
+
+        @Override
+        public void setEventType(final String eventType) {
+            this.eventType = eventType;
+        }
+
+        @Override
+        public String getPublishedBy() {
+            return this.publishedBy;
+        }
+
+        @Override
+        public void setPublishedBy(final String publisher) {
+            this.publishedBy = publisher;
+        }
+
+        @Override
+        public String getReceivedAt() {
+            return this.receivedAt;
+        }
+
+        @Override
+        public void setReceivedAt(final String receivedAt) {
+            this.receivedAt = receivedAt;
+        }
+
+        @Override
+        public String getFlowId() {
+            return this.flowId;
+        }
+
+        @Override
+        public void setFlowId(final String flowId) {
+            this.flowId = flowId;
+        }
+
+        @Override
+        public String getSchemaVersion() {
+            return this.schemaVersion;
+        }
+
+        @Override
+        public void setSchemaVersion(final String schemaVersion) {
+            this.schemaVersion = schemaVersion;
         }
     }
 }

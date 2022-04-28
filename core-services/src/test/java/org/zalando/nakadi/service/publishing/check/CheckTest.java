@@ -64,8 +64,58 @@ public class CheckTest {
         }
 
         @Override
+        public String getOccurredAt() {
+            return null;
+        }
+
+        @Override
         public String getEventType() {
             return null;
+        }
+
+        @Override
+        public void setEventType(final String eventType) {
+
+        }
+
+        @Override
+        public String getPublishedBy() {
+            return null;
+        }
+
+        @Override
+        public void setPublishedBy(final String publisher) {
+
+        }
+
+        @Override
+        public String getReceivedAt() {
+            return null;
+        }
+
+        @Override
+        public void setReceivedAt(final String toString) {
+
+        }
+
+        @Override
+        public String getFlowId() {
+            return null;
+        }
+
+        @Override
+        public void setFlowId(final String flowId) {
+
+        }
+
+        @Override
+        public String getSchemaVersion() {
+            return null;
+        }
+
+        @Override
+        public void setSchemaVersion(final String toString) {
+
         }
     };
 
