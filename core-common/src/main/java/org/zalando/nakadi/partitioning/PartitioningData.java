@@ -28,8 +28,4 @@ public class PartitioningData {
     public List<String> getPartitionKeys() {
         return partitionKeys;
     }
-
-    public static PartitioningData fromNakadiMetadata(final NakadiMetadata metadata) {
-        return new PartitioningData(metadata.getPartitionStr(), metadata.getPartitionKeys());
-    }
 }

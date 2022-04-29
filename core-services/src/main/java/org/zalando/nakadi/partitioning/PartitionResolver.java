@@ -59,38 +59,38 @@ public class PartitionResolver {
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
-        final String eventTypeStrategy = eventType.getPartitionStrategy();
-
-        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
-        if (partitionStrategy == null) {
-            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
-                    eventTypeStrategy);
-        }
-
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-
+        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
+        final List<String> partitions = getPartitions(eventType);
         final var partitioningData = partitionStrategy.getDataFromJson(eventType, eventAsJson);
+
         return partitionStrategy.calculatePartition(partitioningData, partitions);
     }
 
-    public String resolvePartition(final EventType eventType, final NakadiMetadata metadata) {
-        return resolvePartition(eventType, PartitioningData.fromNakadiMetadata(metadata));
+    public String resolvePartition(final EventType eventType, final NakadiMetadata metadata) throws PartitioningException {
+        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
+        final List<String> partitions = getPartitions(eventType);
+
+        return partitionStrategy.calculatePartition(new PartitioningData(
+                metadata.getPartitionStr(),
+                metadata.getPartitionKeys()
+        ), partitions);
     }
 
-    private String resolvePartition(final EventType eventType, final PartitioningData partitioningData) {
-        final String eventTypeStrategy = eventType.getPartitionStrategy();
+    private List<String> getPartitions(EventType eventType) {
+        return timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+    }
 
+    private PartitionStrategy getPartitionStrategy(EventType eventType) {
+        final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+
         if (partitionStrategy == null) {
             throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-
-        return partitionStrategy.calculatePartition(partitioningData, partitions);
+        return partitionStrategy;
     }
 }
 
