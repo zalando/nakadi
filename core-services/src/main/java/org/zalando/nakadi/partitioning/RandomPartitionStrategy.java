@@ -19,15 +19,17 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions) {
         if (partitions.size() == 1) {
             return partitions.get(0);
-        }
-        else {
+        } else {
             final int partitionIndex = random.nextInt(partitions.size());
             return partitions.get(partitionIndex);
         }
     }
 
     @Override
-    public PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent) throws PartitioningException {
+    public PartitioningData getDataFromJson(
+            final EventType eventType,
+            final JSONObject jsonEvent)
+            throws PartitioningException {
         return null;
     }
 }

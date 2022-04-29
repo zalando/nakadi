@@ -28,13 +28,15 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent) throws PartitioningException {
+    public PartitioningData getDataFromJson(
+            final EventType eventType,
+            final JSONObject jsonEvent)
+            throws PartitioningException {
         try {
             final String partition = jsonEvent.getJSONObject("metadata").getString("partition");
 
             return new PartitioningData(partition);
-        }
-        catch (JSONException e) {
+        } catch (JSONException e) {
             throw new PartitioningException("Failed to resolve partition. " +
                     "Failed to get partition from event metadata", e);
         }

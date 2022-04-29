@@ -14,6 +14,6 @@ public interface PartitionStrategy {
     String calculatePartition(PartitioningData partitioningData, List<String> partitions)
             throws PartitioningException;
 
-    PartitioningData getDataFromJson(final EventType eventType, final JSONObject jsonEvent)
+    PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent)
             throws PartitioningException;;
 }

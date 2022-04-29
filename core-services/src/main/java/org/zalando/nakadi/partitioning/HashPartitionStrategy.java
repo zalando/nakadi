@@ -12,7 +12,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.util.JsonPathAccess;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -63,7 +62,10 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent) throws PartitioningException {
+    public PartitioningData getDataFromJson(
+            final EventType eventType,
+            final JSONObject jsonEvent)
+            throws PartitioningException {
         final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
         final var partitionKeyFields = eventType
                 .getPartitionKeyFields()
