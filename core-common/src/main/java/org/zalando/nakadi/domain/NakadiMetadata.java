@@ -4,6 +4,8 @@ public interface NakadiMetadata {
 
     String getEid();
 
+    void setPartition(String partition);
+
     String getPartitionStr();
 
     Integer getPartitionInt();

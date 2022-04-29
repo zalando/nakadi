@@ -50,8 +50,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         if ("".equals(metadata.getFlowId())) {
             metadata.setFlowId(FlowIdUtils.peek());
         }
-        // TODO - Set partition correctly.
-        //setPartition(metadata, batchItem);
+        metadata.setPartition(nakadiRecord.getPartition());
         metadata.setSchemaVersion(eventType.getSchema().getVersion().toString());
     }
 

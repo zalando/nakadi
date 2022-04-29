@@ -54,6 +54,10 @@ public class CheckTest {
         }
 
         @Override
+        public void setPartition(final String partition) {
+        }
+
+        @Override
         public String getPartitionStr() {
             return null;
         }

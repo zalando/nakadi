@@ -41,6 +41,11 @@ public class GenericRecordMetadata implements NakadiMetadata {
     }
 
     @Override
+    public void setPartition(final String partition) {
+        this.metadata.put(PARTITION, partition);
+    }
+
+    @Override
     public String getPartitionStr() {
         final Object partition = this.metadata.get(PARTITION);
         if (partition == null) {

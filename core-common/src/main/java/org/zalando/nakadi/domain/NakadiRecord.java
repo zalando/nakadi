@@ -62,6 +62,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
     private byte[] format;
     private EventOwnerHeader owner;
     private NakadiMetadata metadata;
+    private String partition;
 
     public byte[] getEventKey() {
         return eventKey;
@@ -108,4 +109,12 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         return this;
     }
 
+    public String getPartition() {
+        return partition;
+    }
+
+    public NakadiRecord setPartition(final String partition) {
+        this.partition = partition;
+        return this;
+    }
 }

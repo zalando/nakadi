@@ -641,7 +641,7 @@ public class KafkaTopicRepositoryTest {
 
     private class TestMetadata implements NakadiMetadata {
 
-        private final Integer partition;
+        private Integer partition;
         private String eventType;
         private String publishedBy;
         private String receivedAt;
@@ -658,6 +658,11 @@ public class KafkaTopicRepositoryTest {
         @Override
         public String getEid() {
             return null;
+        }
+
+        @Override
+        public void setPartition(final String partition) {
+            this.partition = Integer.valueOf(partition);
         }
 
         @Override

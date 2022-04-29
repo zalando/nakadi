@@ -55,7 +55,7 @@ public class NakadiConfig {
                 new EventTypeCheck(),
                 new EventOwnerSelectorCheck(authValidator),
                 new PartitioningCheck(),
-                enrichmentCheck,
+                enrichmentCheck, // TODO: Test partition is available for enrichment.
                 new EventKeyCheck()
         );
     }
