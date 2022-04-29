@@ -1,14 +1,10 @@
 package org.zalando.nakadi.domain;
 
+import java.util.List;
+
 public interface NakadiMetadata {
 
     String getEid();
-
-    void setPartition(String partition);
-
-    String getPartitionStr();
-
-    Integer getPartitionInt();
 
     String getOccurredAt();
 
@@ -16,13 +12,19 @@ public interface NakadiMetadata {
 
     void setEventType(String eventType);
 
+    String getPartitionStr();
+
+    Integer getPartitionInt();
+
+    void setPartition(String partition);
+
     String getPublishedBy();
 
     void setPublishedBy(String publisher);
 
     String getReceivedAt();
 
-    void setReceivedAt(String toString);
+    void setReceivedAt(String receivedAt);
 
     String getFlowId();
 
@@ -30,5 +32,13 @@ public interface NakadiMetadata {
 
     String getSchemaVersion();
 
-    void setSchemaVersion(String toString);
+    void setSchemaVersion(String schemaVersion);
+
+    List<String> getPartitionKeys();
+
+    void setPartitionKeys(List<String> partitionKeys);
+
+    List<String> getPartitionCompactionKeys();
+
+    void setPartitionCompactionKeys(List<String> partitionCompactionKeys);
 }

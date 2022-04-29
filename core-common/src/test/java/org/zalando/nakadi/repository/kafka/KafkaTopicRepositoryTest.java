@@ -12,8 +12,6 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Header;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -641,13 +639,8 @@ public class KafkaTopicRepositoryTest {
 
     private class TestMetadata implements NakadiMetadata {
 
-        private Integer partition;
-        private String eventType;
-        private String publishedBy;
-        private String receivedAt;
-        private String flowId;
-        private String schemaVersion;
-        private final String occurredAt = new DateTime(DateTimeZone.UTC).toString();
+        private final Integer partition;
+        private final String eventType;
 
         private TestMetadata(final Integer partition,
                              final String eventType) {
@@ -661,8 +654,8 @@ public class KafkaTopicRepositoryTest {
         }
 
         @Override
-        public void setPartition(final String partition) {
-            this.partition = Integer.valueOf(partition);
+        public String getOccurredAt() {
+            return null;
         }
 
         @Override
@@ -676,8 +669,68 @@ public class KafkaTopicRepositoryTest {
         }
 
         @Override
-        public String getOccurredAt() {
-            return this.occurredAt;
+        public void setPartition(final String partition) {
+
+        }
+
+        @Override
+        public String getPublishedBy() {
+            return null;
+        }
+
+        @Override
+        public void setPublishedBy(final String publisher) {
+
+        }
+
+        @Override
+        public String getReceivedAt() {
+            return null;
+        }
+
+        @Override
+        public void setReceivedAt(final String toString) {
+
+        }
+
+        @Override
+        public String getFlowId() {
+            return null;
+        }
+
+        @Override
+        public void setFlowId(final String flowId) {
+
+        }
+
+        @Override
+        public String getSchemaVersion() {
+            return null;
+        }
+
+        @Override
+        public void setSchemaVersion(final String toString) {
+
+        }
+
+        @Override
+        public List<String> getPartitionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionKeys(final List<String> partitionKeys) {
+
+        }
+
+        @Override
+        public List<String> getPartitionCompactionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
+
         }
 
         @Override
@@ -687,47 +740,7 @@ public class KafkaTopicRepositoryTest {
 
         @Override
         public void setEventType(final String eventType) {
-            this.eventType = eventType;
-        }
 
-        @Override
-        public String getPublishedBy() {
-            return this.publishedBy;
-        }
-
-        @Override
-        public void setPublishedBy(final String publisher) {
-            this.publishedBy = publisher;
-        }
-
-        @Override
-        public String getReceivedAt() {
-            return this.receivedAt;
-        }
-
-        @Override
-        public void setReceivedAt(final String receivedAt) {
-            this.receivedAt = receivedAt;
-        }
-
-        @Override
-        public String getFlowId() {
-            return this.flowId;
-        }
-
-        @Override
-        public void setFlowId(final String flowId) {
-            this.flowId = flowId;
-        }
-
-        @Override
-        public String getSchemaVersion() {
-            return this.schemaVersion;
-        }
-
-        @Override
-        public void setSchemaVersion(final String schemaVersion) {
-            this.schemaVersion = schemaVersion;
         }
     }
 }

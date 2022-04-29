@@ -54,7 +54,8 @@ public class CheckTest {
         }
 
         @Override
-        public void setPartition(final String partition) {
+        public String getOccurredAt() {
+            return null;
         }
 
         @Override
@@ -68,17 +69,7 @@ public class CheckTest {
         }
 
         @Override
-        public String getOccurredAt() {
-            return null;
-        }
-
-        @Override
-        public String getEventType() {
-            return null;
-        }
-
-        @Override
-        public void setEventType(final String eventType) {
+        public void setPartition(final String partition) {
 
         }
 
@@ -119,6 +110,36 @@ public class CheckTest {
 
         @Override
         public void setSchemaVersion(final String toString) {
+
+        }
+
+        @Override
+        public List<String> getPartitionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionKeys(final List<String> partitionKeys) {
+
+        }
+
+        @Override
+        public List<String> getPartitionCompactionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
+
+        }
+
+        @Override
+        public String getEventType() {
+            return null;
+        }
+
+        @Override
+        public void setEventType(final String eventType) {
 
         }
     };

@@ -2,6 +2,9 @@ package org.zalando.nakadi.domain;
 
 import org.apache.avro.generic.GenericRecord;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class GenericRecordMetadata implements NakadiMetadata {
 
     private static final String EID = "eid";
@@ -12,6 +15,9 @@ public class GenericRecordMetadata implements NakadiMetadata {
     private static final String FLOW_ID = "flow_id";
     private static final String SCHEMA_VERSION = "schema_version";
     private static final String PARTITION = "partition";
+    private static final String PARTITION_KEYS = "partition_keys";
+    private static final String PARTITION_COMPACTION_KEYS = "partition_compaction_key";
+
     private final GenericRecord metadata;
     private final byte metadataVersion;
 
@@ -25,12 +31,10 @@ public class GenericRecordMetadata implements NakadiMetadata {
         return this.metadataVersion;
     }
 
-    @Override
     public String getEid() {
         return this.metadata.get(EID).toString();
     }
 
-    @Override
     public String getEventType() {
         return this.metadata.get(EVENT_TYPE).toString();
     }
@@ -40,12 +44,6 @@ public class GenericRecordMetadata implements NakadiMetadata {
         this.metadata.put(EVENT_TYPE, eventType);
     }
 
-    @Override
-    public void setPartition(final String partition) {
-        this.metadata.put(PARTITION, partition);
-    }
-
-    @Override
     public String getPartitionStr() {
         final Object partition = this.metadata.get(PARTITION);
         if (partition == null) {
@@ -54,7 +52,6 @@ public class GenericRecordMetadata implements NakadiMetadata {
         return partition.toString();
     }
 
-    @Override
     public Integer getPartitionInt() {
         final Object partition = this.metadata.get(PARTITION);
         if (partition == null) {
@@ -64,9 +61,15 @@ public class GenericRecordMetadata implements NakadiMetadata {
     }
 
     @Override
+    public void setPartition(final String partition) {
+        this.metadata.put(PARTITION, partition);
+    }
+
+    @Override
     public String getOccurredAt() {
         return this.metadata.get(OCCURRED_AT).toString();
     }
+
 
     @Override
     public String getPublishedBy() {
@@ -107,4 +110,36 @@ public class GenericRecordMetadata implements NakadiMetadata {
     public void setSchemaVersion(final String schemaVersion) {
         this.metadata.put(SCHEMA_VERSION, schemaVersion);
     }
+
+    @Override
+    public List<String> getPartitionKeys() {
+        final Object partitionKeys = this.metadata.get(PARTITION_KEYS);
+        if (partitionKeys == null) {
+            return null;
+        }
+
+        return Arrays.asList((String[]) partitionKeys);
+    }
+
+    @Override
+    public void setPartitionKeys(final List<String> partitionKeys) {
+        this.metadata.put(PARTITION_KEYS, partitionKeys.toArray(new String[0]));
+    }
+
+    @Override
+    public List<String> getPartitionCompactionKeys() {
+        final Object partitionCompactionKeys = this.metadata.get(PARTITION_COMPACTION_KEYS);
+        if (partitionCompactionKeys == null) {
+            return null;
+        }
+
+        return Arrays.asList((String[]) partitionCompactionKeys);
+    }
+
+    @Override
+    public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
+        this.metadata.put(PARTITION_COMPACTION_KEYS, partitionCompactionKeys.toArray(new String[0]));
+    }
+
+
 }
