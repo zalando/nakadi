@@ -12,7 +12,7 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final PartitionData partitionData, final List<String> partitions) {
+    public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions) {
         if (partitions.size() == 1) {
             return partitions.get(0);
         }

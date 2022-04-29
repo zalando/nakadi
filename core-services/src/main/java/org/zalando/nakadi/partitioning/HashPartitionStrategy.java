@@ -25,15 +25,15 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final PartitionData partitionData, final List<String> partitions)
+    public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
             throws InvalidPartitionKeyFieldsException {
-        if (partitionData.getPartitionKeys().isEmpty()) {
+        if (partitioningData.getPartitionKeys().isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
                     "has no partition key fields configured.");
         }
 
         try {
-            final int hashValue = partitionData.getPartitionKeys().stream()
+            final int hashValue = partitioningData.getPartitionKeys().stream()
                     .map(Try.wrap(pkf -> stringHash.hashCode(pkf)))
                     .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)
