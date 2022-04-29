@@ -654,6 +654,11 @@ public class KafkaTopicRepositoryTest {
         }
 
         @Override
+        public String getOccurredAt() {
+            return null;
+        }
+
+        @Override
         public String getPartitionStr() {
             return String.valueOf(partition);
         }
@@ -664,8 +669,78 @@ public class KafkaTopicRepositoryTest {
         }
 
         @Override
+        public void setPartition(final String partition) {
+
+        }
+
+        @Override
+        public String getPublishedBy() {
+            return null;
+        }
+
+        @Override
+        public void setPublishedBy(final String publisher) {
+
+        }
+
+        @Override
+        public String getReceivedAt() {
+            return null;
+        }
+
+        @Override
+        public void setReceivedAt(final String toString) {
+
+        }
+
+        @Override
+        public String getFlowId() {
+            return null;
+        }
+
+        @Override
+        public void setFlowId(final String flowId) {
+
+        }
+
+        @Override
+        public String getSchemaVersion() {
+            return null;
+        }
+
+        @Override
+        public void setSchemaVersion(final String toString) {
+
+        }
+
+        @Override
+        public List<String> getPartitionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionKeys(final List<String> partitionKeys) {
+
+        }
+
+        @Override
+        public List<String> getPartitionCompactionKeys() {
+            return null;
+        }
+
+        @Override
+        public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
+
+        }
+
+        @Override
         public String getEventType() {
             return eventType;
+        }
+
+        @Override
+        public void setEventType(final String eventType) {
+
         }
     }
 }
