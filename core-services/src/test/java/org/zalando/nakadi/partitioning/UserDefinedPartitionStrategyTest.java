@@ -26,20 +26,20 @@ public class UserDefinedPartitionStrategyTest {
     @Test
     public void whenCorrectPartitionThenOk() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"b\"}}");
-        final String partition = STRATEGY.calculatePartition(PartitioningData.fromJson(eventType, event), PARTITIONS);
+        final String partition = STRATEGY.calculatePartition(STRATEGY.getDataFromJson(null, event), PARTITIONS);
         assertThat(partition, equalTo("b"));
     }
 
     @Test(expected = PartitioningException.class)
     public void whenIncorrectJsonThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition_id\":\"b\"}}");
-        STRATEGY.calculatePartition(PartitioningData.fromJson(eventType, event), PARTITIONS);
+        STRATEGY.calculatePartition(STRATEGY.getDataFromJson(null, event), PARTITIONS);
     }
 
     @Test(expected = PartitioningException.class)
     public void whenUnknownPartitionThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"z\"}}");
-        STRATEGY.calculatePartition(PartitioningData.fromJson(eventType, event), PARTITIONS);
+        STRATEGY.calculatePartition(STRATEGY.getDataFromJson(null, event), PARTITIONS);
     }
 
 }

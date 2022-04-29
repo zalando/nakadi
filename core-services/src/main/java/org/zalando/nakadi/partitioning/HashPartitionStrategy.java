@@ -1,11 +1,18 @@
 package org.zalando.nakadi.partitioning;
 
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.EventCategory;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.util.JsonPathAccess;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -55,4 +62,25 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
+    @Override
+    public PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent) throws PartitioningException {
+        final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
+        final var partitionKeyFields = eventType
+                .getPartitionKeyFields()
+                .stream()
+                .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
+                        ? EventType.DATA_PATH_PREFIX + pkf
+                        : pkf)
+                .map(Try.wrap(okf -> {
+                    try {
+                        return traversableJsonEvent.get(okf).toString();
+                    } catch (final JsonPathAccessException e) {
+                        throw new InvalidPartitionKeyFieldsException(e.getMessage());
+                    }
+                }))
+                .map(Try::getOrThrow)
+                .collect(Collectors.toList());
+
+        return new PartitioningData(partitionKeyFields);
+    }
 }

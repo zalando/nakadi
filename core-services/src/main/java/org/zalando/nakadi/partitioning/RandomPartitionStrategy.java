@@ -1,5 +1,9 @@
 package org.zalando.nakadi.partitioning;
 
+import org.json.JSONObject;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+
 import java.util.List;
 import java.util.Random;
 
@@ -22,5 +26,8 @@ public class RandomPartitionStrategy implements PartitionStrategy {
         }
     }
 
-
+    @Override
+    public PartitioningData getDataFromJson(EventType eventType, JSONObject jsonEvent) throws PartitioningException {
+        return null;
+    }
 }

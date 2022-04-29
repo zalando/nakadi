@@ -37,7 +37,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.loadEventType;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
@@ -59,7 +58,6 @@ public class HashPartitionStrategyTest {
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
         simpleEventType.setPartitionKeyFields(asList("sku", "name"));
-        simpleEventType.setPartitionStrategy(HASH_STRATEGY);
 
         final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
         when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
@@ -101,10 +99,9 @@ public class HashPartitionStrategyTest {
 
         final EventType eventType = new EventType();
         eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
-        eventType.setPartitionStrategy(HASH_STRATEGY);
 
         final String partition = strategy.calculatePartition(
-                PartitioningData.fromJson(eventType, event),
+                strategy.getDataFromJson(eventType, event),
                 asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
@@ -116,7 +113,6 @@ public class HashPartitionStrategyTest {
 
         final EventType eventType = new EventType();
         eventType.setPartitionKeyFields(asList("details.detail_a.detail_a_a"));
-        eventType.setPartitionStrategy(HASH_STRATEGY);
 
         final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
         when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
@@ -130,7 +126,7 @@ public class HashPartitionStrategyTest {
         final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
         final String partition = strategy.calculatePartition(
-                PartitioningData.fromJson(eventType, event),
+                strategy.getDataFromJson(eventType, event),
                 asList(partitions));
         assertEquals("8", partition);
     }
@@ -139,10 +135,9 @@ public class HashPartitionStrategyTest {
     public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
         final EventType eventType = loadEventType(
                 "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
-        eventType.setPartitionStrategy(HASH_STRATEGY);
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
         assertThat(strategy.calculatePartition(
-                PartitioningData.fromJson(eventType, event), ImmutableList.of("p0")),
+                strategy.getDataFromJson(eventType, event), ImmutableList.of("p0")),
                 equalTo("p0"));
     }
 
@@ -213,7 +208,7 @@ public class HashPartitionStrategyTest {
         events.stream()
                 .map(Try.<JSONObject, Void>wrap(event -> {
                     final String partition = strategy.calculatePartition(
-                            PartitioningData.fromJson(eventType, event),
+                            strategy.getDataFromJson(eventType, event),
                             asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);

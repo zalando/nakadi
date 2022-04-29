@@ -20,6 +20,14 @@ public class PartitioningData {
     private String partition;
     private List<String> partitionKeys;
 
+    public PartitioningData(final String partition) {
+        this.partition = partition;
+    }
+
+    public PartitioningData(final List<String> partitionKeys) {
+        this.partitionKeys = partitionKeys;
+    }
+
     public PartitioningData(final String partition, final List<String> partitionKeys) {
         this.partition = partition;
         this.partitionKeys = partitionKeys;
@@ -33,40 +41,6 @@ public class PartitioningData {
         return partitionKeys;
     }
 
-    public static PartitioningData fromJson(final EventType eventType, final JSONObject jsonEvent) {
-        final String partition = tryGetPartition(jsonEvent);
-        List<String> partitionKeys = getPartitionKeys(eventType, jsonEvent);
-
-        return new PartitioningData(partition, partitionKeys);
-    }
-
-    private static String tryGetPartition(JSONObject jsonEvent) {
-        return jsonEvent.has("metadata") && jsonEvent.getJSONObject("metadata").has("partition")
-                ? jsonEvent.getJSONObject("metadata").getString("partition")
-                : null;
-    }
-
-    private static List<String> getPartitionKeys(final EventType eventType, final JSONObject jsonEvent) {
-        if (eventType.getPartitionStrategy().equals(HASH_STRATEGY)) {
-            final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
-            final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
-            return partitionKeyFields.stream()
-                    .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
-                            ? EventType.DATA_PATH_PREFIX + pkf
-                            : pkf)
-                    .map(Try.wrap(okf -> {
-                        try {
-                            return traversableJsonEvent.get(okf).toString();
-                        } catch (final JsonPathAccessException e) {
-                            throw new InvalidPartitionKeyFieldsException(e.getMessage());
-                        }
-                    }))
-                    .map(Try::getOrThrow)
-                    .collect(Collectors.toList());
-        }
-
-        return Collections.emptyList();
-    }
 
     public static PartitioningData fromNakadiMetadata(final NakadiMetadata metadata) {
         return new PartitioningData(metadata.getPartitionStr(), metadata.getPartitionKeys());

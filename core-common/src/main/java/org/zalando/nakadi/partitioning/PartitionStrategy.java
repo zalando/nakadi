@@ -1,9 +1,10 @@
 package org.zalando.nakadi.partitioning;
 
+import org.json.JSONObject;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import java.util.List;
 
-@FunctionalInterface
 public interface PartitionStrategy {
 
     String HASH_STRATEGY = "hash";
@@ -12,4 +13,7 @@ public interface PartitionStrategy {
 
     String calculatePartition(PartitioningData partitioningData, List<String> partitions)
             throws PartitioningException;
+
+    PartitioningData getDataFromJson(final EventType eventType, final JSONObject jsonEvent)
+            throws PartitioningException;;
 }
