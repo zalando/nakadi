@@ -35,7 +35,8 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
         try {
             final String partition = jsonEvent.getJSONObject("metadata").getString("partition");
 
-            return new PartitioningData(partition);
+            return new PartitioningData()
+                    .setPartition(partition);
         } catch (JSONException e) {
             throw new PartitioningException("Failed to resolve partition. " +
                     "Failed to get partition from event metadata", e);

@@ -66,22 +66,22 @@ public class PartitionResolver {
         return partitionStrategy.calculatePartition(partitioningData, partitions);
     }
 
-    public String resolvePartition(final EventType eventType, final NakadiMetadata metadata) throws PartitioningException {
+    public String resolvePartition(final EventType eventType, final NakadiMetadata metadata)
+            throws PartitioningException {
         final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
         final List<String> partitions = getPartitions(eventType);
 
-        return partitionStrategy.calculatePartition(new PartitioningData(
-                metadata.getPartitionStr(),
-                metadata.getPartitionKeys()
-        ), partitions);
+        return partitionStrategy.calculatePartition(new PartitioningData()
+                .setPartition(metadata.getPartitionStr())
+                .setPartitionKeys(metadata.getPartitionKeys()), partitions);
     }
 
-    private List<String> getPartitions(EventType eventType) {
+    private List<String> getPartitions(final EventType eventType) {
         return timelineService.getTopicRepository(eventType)
                 .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
     }
 
-    private PartitionStrategy getPartitionStrategy(EventType eventType) {
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) {
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
 

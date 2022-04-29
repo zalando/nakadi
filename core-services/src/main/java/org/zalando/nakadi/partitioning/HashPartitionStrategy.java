@@ -83,6 +83,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        return new PartitioningData(partitionKeyFields);
+        return new PartitioningData()
+                .setPartitionKeys(partitionKeyFields);
     }
 }
