@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.publishing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
+import org.assertj.core.api.Assertions;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,19 +15,21 @@ import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
-import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -36,6 +39,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.eq;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NakadiKpiPublisherTest {
@@ -47,8 +52,8 @@ public class NakadiKpiPublisherTest {
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
     private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(avroSchema);
-    private final PartitionResolver partitionResolver = Mockito.mock(PartitionResolver.class);
     private final EventTypeCache eventTypeCache = Mockito.mock(EventTypeCache.class);
+    private final TimelineService timelineService = Mockito.mock(TimelineService.class);
 
     @Captor
     private ArgumentCaptor<String> eventTypeCaptor;
@@ -67,7 +72,8 @@ public class NakadiKpiPublisherTest {
                 .setStatus("created");
 
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper, partitionResolver, eventTypeCache)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper,
+                eventTypeCache, timelineService)
                 .publish(() -> subscriptionLogEvent);
 
         verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
@@ -83,21 +89,27 @@ public class NakadiKpiPublisherTest {
         final var subscriptionLogEvent = new SubscriptionLogEvent()
                 .setSubscriptionId("test-subscription-id")
                 .setStatus("created");
-        final var partitionNumber = 1;
+
+        final var topicRepositoryMock = mock(TopicRepository.class);
+        final var mockTimeline = mock(Timeline.class);
+        final var eventType = new EventType();
+        final var partitions = List.of("0", "1", "2");
 
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(true);
 
-        when(eventTypeCache.getEventType(any())).thenReturn(new EventType());
-        when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class)))
-                .thenReturn(String.valueOf(partitionNumber));
+        when(eventTypeCache.getEventType(any())).thenReturn(eventType);
+        when(timelineService.getTopicRepository(eq(eventType))).thenReturn(topicRepositoryMock);
+        when(timelineService.getActiveTimeline(eq(eventType))).thenReturn(mockTimeline);
+        when(mockTimeline.getTopic()).thenReturn("some-topic");
+        when(topicRepositoryMock.listPartitionNames(any(String.class))).thenReturn(partitions);
 
         // Publish the above KPIEvent and capture it.
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), new UUIDGenerator(), avroSchema, recordMapper,
-                partitionResolver, eventTypeCache)
+                eventTypeCache, timelineService)
                 .publish(() -> subscriptionLogEvent);
 
         verifyNoInteractions(jsonProcessor);
@@ -126,8 +138,8 @@ public class NakadiKpiPublisherTest {
         assertEquals("created", record.get("status").toString());
 
         // Verify that partition number is the same in metadata and in the publishing DTO
-        assertEquals(partitionNumber, nakadiRecord.getMetadata().getPartitionInt());
-        assertEquals(String.valueOf(partitionNumber), metadata.get("partition").toString());
+        assertEquals(nakadiRecord.getMetadata().getPartitionStr(), metadata.get("partition").toString());
+        Assertions.assertThat(partitions).contains(nakadiRecord.getMetadata().getPartitionStr());
     }
 
     @Test
@@ -135,7 +147,8 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(false);
         final Supplier<KPIEvent> mockEventSupplier = Mockito.mock(Supplier.class);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper, partitionResolver, eventTypeCache)
+                new EventMetadataTestStub(), uuidGenerator, avroSchema, recordMapper,
+                eventTypeCache, timelineService)
                 .publish(mockEventSupplier);
         verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, uuidGenerator, avroSchema);
     }
@@ -145,8 +158,8 @@ public class NakadiKpiPublisherTest {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), uuidGenerator, avroSchema,
-                recordMapper, partitionResolver, eventTypeCache);
-        
+                recordMapper, eventTypeCache, timelineService);
+
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }

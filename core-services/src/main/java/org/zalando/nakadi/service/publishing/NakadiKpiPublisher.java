@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.GenericRecordMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.kpi.AccessLogEvent;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
@@ -18,14 +17,16 @@ import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
 import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
-import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.partitioning.RandomPartitionStrategy;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -43,8 +44,9 @@ public class NakadiKpiPublisher {
     private final AvroSchema avroSchema;
     private final KPIEventMapper kpiEventMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
-    private final PartitionResolver partitionResolver;
     private final EventTypeCache eventTypeCache;
+    private final RandomPartitionStrategy randomPartitionStrategy;
+    private final TimelineService timelineService;
 
     @Autowired
     protected NakadiKpiPublisher(
@@ -56,8 +58,8 @@ public class NakadiKpiPublisher {
             final UUIDGenerator uuidGenerator,
             final AvroSchema avroSchema,
             final NakadiRecordMapper nakadiRecordMapper,
-            final PartitionResolver partitionResolver,
-            final EventTypeCache eventTypeCache) {
+            final EventTypeCache eventTypeCache,
+            final TimelineService timelineService) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
         this.binaryEventsProcessor = binaryEventsProcessor;
@@ -66,8 +68,9 @@ public class NakadiKpiPublisher {
         this.uuidGenerator = uuidGenerator;
         this.avroSchema = avroSchema;
         this.nakadiRecordMapper = nakadiRecordMapper;
-        this.partitionResolver = partitionResolver;
         this.eventTypeCache = eventTypeCache;
+        this.randomPartitionStrategy = new RandomPartitionStrategy(new Random());
+        this.timelineService = timelineService;
         this.kpiEventMapper = new KPIEventMapper(Set.of(
                 AccessLogEvent.class,
                 SubscriptionLogEvent.class,
@@ -122,6 +125,9 @@ public class NakadiKpiPublisher {
             final String eventTypeName, final Schema metadataSchema, final byte metadataSchemaVersion,
             final String etSchemaVersion, final String user) {
         final long now = System.currentTimeMillis();
+        final var eventType = this.eventTypeCache.getEventType(eventTypeName);
+        final var partitions = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
         final var metadata = new GenericRecordBuilder(metadataSchema)
                 .set("occurred_at", now)
                 .set("eid", uuidGenerator.randomUUID().toString())
@@ -130,12 +136,8 @@ public class NakadiKpiPublisher {
                 .set("received_at", now)
                 .set("schema_version", etSchemaVersion)
                 .set("published_by", user)
+                .set("partition", randomPartitionStrategy.calculatePartition(partitions))
                 .build();
-
-        final var genericRecord = new GenericRecordMetadata(metadata, metadataSchemaVersion);
-        final var eventType = this.eventTypeCache.getEventType(eventTypeName);
-        final String partition = partitionResolver.resolvePartition(eventType, genericRecord);
-        metadata.put("partition", partition);
 
         return metadata;
     }

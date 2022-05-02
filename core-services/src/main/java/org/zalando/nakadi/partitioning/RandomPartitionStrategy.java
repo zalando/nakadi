@@ -29,6 +29,10 @@ public class RandomPartitionStrategy implements PartitionStrategy {
         return getRandomPartition(partitions);
     }
 
+    public String calculatePartition(final List<String> partitions) {
+        return getRandomPartition(partitions);
+    }
+
     private String getRandomPartition(final List<String> partitions){
         if (partitions.size() == 1) {
             return partitions.get(0);
