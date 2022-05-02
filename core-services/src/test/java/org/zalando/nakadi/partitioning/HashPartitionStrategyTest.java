@@ -101,7 +101,8 @@ public class HashPartitionStrategyTest {
         eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
         final String partition = strategy.calculatePartition(
-                strategy.getDataFromJson(eventType, event),
+                eventType,
+                event,
                 asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
@@ -126,7 +127,8 @@ public class HashPartitionStrategyTest {
         final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
         final String partition = strategy.calculatePartition(
-                strategy.getDataFromJson(eventType, event),
+                eventType,
+                event,
                 asList(partitions));
         assertEquals("8", partition);
     }
@@ -136,8 +138,7 @@ public class HashPartitionStrategyTest {
         final EventType eventType = loadEventType(
                 "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-        assertThat(strategy.calculatePartition(
-                strategy.getDataFromJson(eventType, event), ImmutableList.of("p0")),
+        assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")),
                 equalTo("p0"));
     }
 
@@ -208,7 +209,8 @@ public class HashPartitionStrategyTest {
         events.stream()
                 .map(Try.<JSONObject, Void>wrap(event -> {
                     final String partition = strategy.calculatePartition(
-                            strategy.getDataFromJson(eventType, event),
+                            eventType,
+                            event,
                             asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);

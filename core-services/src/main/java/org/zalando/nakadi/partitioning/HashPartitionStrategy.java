@@ -31,6 +31,16 @@ public class HashPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
+    public String calculatePartition(final EventType eventType,
+                                     final JSONObject jsonEvent,
+                                     final List<String> partitions)
+            throws PartitioningException {
+        final var partitioningData = getDataFromJson(eventType, jsonEvent);
+
+        return calculatePartition(partitioningData, partitions);
+    }
+
+    @Override
     public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
             throws InvalidPartitionKeyFieldsException {
         if (partitioningData.getPartitionKeys().isEmpty()) {
@@ -61,8 +71,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    @Override
-    public PartitioningData getDataFromJson(
+    private PartitioningData getDataFromJson(
             final EventType eventType,
             final JSONObject jsonEvent)
             throws PartitioningException {

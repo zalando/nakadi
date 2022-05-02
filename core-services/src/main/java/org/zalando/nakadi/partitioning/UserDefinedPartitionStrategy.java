@@ -10,6 +10,15 @@ import java.util.List;
 
 public class UserDefinedPartitionStrategy implements PartitionStrategy {
 
+    public String calculatePartition(final EventType eventType,
+                                     final JSONObject jsonEvent,
+                                     final List<String> partitions)
+            throws PartitioningException {
+        final var partitioningData = getDataFromJson(jsonEvent);
+
+        return calculatePartition(partitioningData, partitions);
+    }
+
     @Override
     public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
             throws PartitioningException {
@@ -27,10 +36,7 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    @Override
-    public PartitioningData getDataFromJson(
-            final EventType eventType,
-            final JSONObject jsonEvent)
+    private PartitioningData getDataFromJson(final JSONObject jsonEvent)
             throws PartitioningException {
         try {
             final String partition = jsonEvent.getJSONObject("metadata").getString("partition");

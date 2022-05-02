@@ -61,9 +61,8 @@ public class PartitionResolver {
             throws PartitioningException {
         final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
         final List<String> partitions = getPartitions(eventType);
-        final var partitioningData = partitionStrategy.getDataFromJson(eventType, eventAsJson);
 
-        return partitionStrategy.calculatePartition(partitioningData, partitions);
+        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 
     public String resolvePartition(final EventType eventType, final NakadiMetadata metadata)
