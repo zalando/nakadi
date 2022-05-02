@@ -10,6 +10,7 @@ import java.util.List;
 
 public class UserDefinedPartitionStrategy implements PartitionStrategy {
 
+    @Override
     public String calculatePartition(final EventType eventType,
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
@@ -19,8 +20,7 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
         return calculatePartition(partitioningData, partitions);
     }
 
-    @Override
-    public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
+    private String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
             throws PartitioningException {
         if (Strings.isNullOrEmpty(partitioningData.getPartition())) {
             throw new PartitioningException("Failed to resolve partition. " +

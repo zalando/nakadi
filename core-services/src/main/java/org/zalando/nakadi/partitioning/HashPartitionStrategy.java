@@ -40,8 +40,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         return calculatePartition(partitioningData, partitions);
     }
 
-    @Override
-    public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
+    private String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
             throws InvalidPartitionKeyFieldsException {
         if (partitioningData.getPartitionKeys().isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +

@@ -24,11 +24,6 @@ public class RandomPartitionStrategy implements PartitionStrategy {
         return getRandomPartition(partitions);
     }
 
-    @Override
-    public String calculatePartition(final PartitioningData partitioningData, final List<String> partitions) {
-        return getRandomPartition(partitions);
-    }
-
     public String calculatePartition(final List<String> partitions) {
         return getRandomPartition(partitions);
     }
