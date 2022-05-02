@@ -35,7 +35,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var partitioningData = getDataFromJson(eventType, jsonEvent);
+        final var partitioningData = getDataByPartitionKeyFields(eventType, jsonEvent);
 
         return calculatePartition(partitioningData, partitions);
     }
@@ -70,7 +70,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    private PartitioningData getDataFromJson(
+    private PartitioningData getDataByPartitionKeyFields(
             final EventType eventType,
             final JSONObject jsonEvent)
             throws PartitioningException {

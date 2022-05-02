@@ -15,7 +15,7 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var partitioningData = getDataFromJson(jsonEvent);
+        final var partitioningData = getPartitionFromMetadata(jsonEvent);
 
         return calculatePartition(partitioningData, partitions);
     }
@@ -36,7 +36,7 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    private PartitioningData getDataFromJson(final JSONObject jsonEvent)
+    private PartitioningData getPartitionFromMetadata(final JSONObject jsonEvent)
             throws PartitioningException {
         try {
             final String partition = jsonEvent.getJSONObject("metadata").getString("partition");
