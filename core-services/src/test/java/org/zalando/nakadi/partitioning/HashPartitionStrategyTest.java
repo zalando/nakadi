@@ -6,6 +6,8 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.Collections;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
@@ -135,6 +138,23 @@ public class HashPartitionStrategyTest {
         eventType.setPartitionStrategy(HASH_STRATEGY);
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
         assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")), equalTo("p0"));
+    }
+
+    @Test(expected = PartitioningException.class)
+    public void whenPartitionKeyFieldsAreMissingThenItThrows() {
+        final var event = new JSONObject();
+        final var eventType = new EventType();
+
+        strategy.calculatePartition(eventType, event, Collections.emptyList());
+    }
+
+    @Test(expected = InvalidPartitionKeyFieldsException.class)
+    public void whenPayloadIsMissingPartitionKeysThenItThrows() {
+        final var event = new JSONObject();
+        final var eventType = new EventType();
+        eventType.setPartitionKeyFields(List.of("body.sku"));
+
+        strategy.calculatePartition(eventType, event, Collections.emptyList());
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {

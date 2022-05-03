@@ -35,16 +35,15 @@ public class HashPartitionStrategy implements PartitionStrategy {
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var partitioningData = getDataByPartitionKeyFields(eventType, jsonEvent);
+        final var partitioningData = getPartitionKeys(eventType, jsonEvent);
 
         return calculatePartition(partitioningData, partitions);
     }
 
-    private String calculatePartition(final PartitioningData partitioningData, final List<String> partitions)
-            throws InvalidPartitionKeyFieldsException {
-        if (partitioningData.getPartitionKeys().isEmpty()) {
-            throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
-                    "has no partition key fields configured.");
+    private String calculatePartition(final PartitioningData partitioningData, final List<String> partitions) {
+        if (partitioningData.getPartitionKeys() == null || partitioningData.getPartitionKeys().isEmpty()) {
+            throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
+                    "has no partition keys.");
         }
 
         try {
@@ -70,12 +69,17 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    private PartitioningData getDataByPartitionKeyFields(
+    private PartitioningData getPartitionKeys(
             final EventType eventType,
-            final JSONObject jsonEvent)
-            throws PartitioningException {
+            final JSONObject jsonEvent) throws InvalidPartitionKeyFieldsException {
+        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
+        if (partitionKeyFields.isEmpty()) {
+            throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
+                    "has no partition key fields configured.");
+        }
+
         final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
-        final var partitionKeyFields = eventType
+        final var partitionKeys = eventType
                 .getPartitionKeyFields()
                 .stream()
                 .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
@@ -92,6 +96,6 @@ public class HashPartitionStrategy implements PartitionStrategy {
                 .collect(Collectors.toList());
 
         return new PartitioningData()
-                .setPartitionKeys(partitionKeyFields);
+                .setPartitionKeys(partitionKeys);
     }
 }
