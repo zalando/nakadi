@@ -10,6 +10,8 @@ import org.zalando.nakadi.domain.NakadiRecordResult;
 
 import java.util.List;
 
+import static org.zalando.nakadi.domain.NakadiRecordResult.Status;
+
 @Component
 @Qualifier("avro-publisher")
 public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
@@ -34,10 +36,11 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
         try {
             final List<NakadiRecordResult> eventRecordMetadata =
                     binaryEventPublisher.publish(etName, events);
-            if (!eventRecordMetadata.isEmpty()) {
-                LOG.warn("failed to publish events to {} {}",
-                        etName, eventRecordMetadata.get(0).getException());
-            }
+            eventRecordMetadata.stream()
+                    .filter(nrr -> nrr.getStatus() != Status.SUCCEEDED)
+                    .forEach(nrr ->
+                            LOG.warn("failed to publish events to {} status {} exception {}",
+                                    etName, nrr.getStatus(), nrr.getException()));
         } catch (final RuntimeException ex) {
             LOG.error("failed to send single batch for unknown reason", ex);
         }
