@@ -10,31 +10,35 @@ public class BatchItemResponse {
         return eid;
     }
 
-    public void setEid(final String eid) {
+    public BatchItemResponse setEid(final String eid) {
         this.eid = eid;
+        return this;
     }
 
     public EventPublishingStatus getPublishingStatus() {
         return publishingStatus;
     }
 
-    public void setPublishingStatus(final EventPublishingStatus publishingStatus) {
+    public BatchItemResponse setPublishingStatus(final EventPublishingStatus publishingStatus) {
         this.publishingStatus = publishingStatus;
+        return this;
     }
 
     public EventPublishingStep getStep() {
         return step;
     }
 
-    public void setStep(final EventPublishingStep step) {
+    public BatchItemResponse setStep(final EventPublishingStep step) {
         this.step = step;
+        return this;
     }
 
     public String getDetail() {
         return detail;
     }
 
-    public void setDetail(final String detail) {
+    public BatchItemResponse setDetail(final String detail) {
         this.detail = detail;
+        return this;
     }
 }

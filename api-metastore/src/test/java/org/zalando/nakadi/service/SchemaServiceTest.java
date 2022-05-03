@@ -68,7 +68,7 @@ public class SchemaServiceTest {
         schemaService = new SchemaService(schemaRepository, paginationService,
                 new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"),
                 schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache,
-                timelineSync, nakadiSettings, nakadiAuditLogPublisher, nakadiKpiPublisher, "test");
+                timelineSync, nakadiSettings, nakadiAuditLogPublisher, nakadiKpiPublisher);
     }
 
     @Test(expected = InvalidLimitException.class)

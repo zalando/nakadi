@@ -55,7 +55,7 @@ nakadi:
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
-    retries: 5
+    retries: 0
     request.timeout.ms: 30000
     instanceType: t2.large
     poll.timeoutMs: 100

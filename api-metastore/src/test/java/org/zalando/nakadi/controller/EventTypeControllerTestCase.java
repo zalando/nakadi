@@ -131,7 +131,7 @@ public class EventTypeControllerTestCase {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, ses, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
+                nakadiKpiPublisher, nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
                 schemaService, adminService, subscriptionTokenLister, null);
 

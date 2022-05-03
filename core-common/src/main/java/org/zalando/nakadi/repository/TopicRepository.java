@@ -4,7 +4,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -55,7 +55,7 @@ public interface TopicRepository {
             throws EventPublishingException;
 
 
-    default List<NakadiRecordMetadata> sendEvents(String topic, List<NakadiRecord> nakadiRecords) {
+    default List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords) {
         return Collections.emptyList();
     }
 

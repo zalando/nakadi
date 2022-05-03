@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.kpi.AccessLogEvent;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -150,18 +151,19 @@ public class LoggingFilter extends OncePerRequestFilter {
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long responseLength,
             final Long timeSpentMs) {
 
-        nakadiKpiPublisher.publishAccessLogEvent(
-                requestLogInfo.method,
-                requestLogInfo.path,
-                requestLogInfo.query,
-                requestLogInfo.userAgent,
-                requestLogInfo.user,
-                requestLogInfo.contentEncoding,
-                requestLogInfo.acceptEncoding,
-                statusCode,
-                timeSpentMs,
-                requestLogInfo.contentLength,
-                responseLength);
+        nakadiKpiPublisher.publish(() -> new AccessLogEvent()
+                .setMethod(requestLogInfo.method)
+                .setPath(requestLogInfo.path)
+                .setQuery(requestLogInfo.query)
+                .setUserAgent(requestLogInfo.userAgent)
+                .setApplicationName(requestLogInfo.user)
+                .setHashedApplicationName(nakadiKpiPublisher.hash(requestLogInfo.user))
+                .setContentEncoding(requestLogInfo.contentEncoding)
+                .setAcceptEncoding(requestLogInfo.acceptEncoding)
+                .setStatusCode(statusCode)
+                .setTimeSpentMs(timeSpentMs)
+                .setRequestLength(requestLogInfo.contentLength)
+                .setResponseLength(responseLength));
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long responseLength,
