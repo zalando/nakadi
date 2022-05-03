@@ -28,8 +28,6 @@ import java.util.Set;
 
 @Component
 public class JsonSchemaEnrichment {
-    public static final String DATA_CHANGE_WRAP_FIELD = "data";
-    public static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String ADDITIONAL_ITEMS = "additionalItems";
@@ -155,7 +153,7 @@ public class JsonSchemaEnrichment {
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
                 .put("enum", Arrays.asList("C", "U", "D", "S")));
-        properties.put(DATA_CHANGE_WRAP_FIELD, schema);
+        properties.put(EventTypeBase.DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put(ADDITIONAL_PROPERTIES, false);
 
