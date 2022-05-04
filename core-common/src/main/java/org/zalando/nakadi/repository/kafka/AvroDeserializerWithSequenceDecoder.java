@@ -5,6 +5,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
+import org.zalando.nakadi.domain.GenericRecordMetadata;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
@@ -27,20 +28,29 @@ public class AvroDeserializerWithSequenceDecoder {
 
     public byte[] deserializeAvro(final EnvelopeHolder envelope) throws RuntimeException {
         try {
+            final byte metadataVersion = envelope.getMetadataVersion();
+
             final SequenceDecoder metadataDecoder = metadataSequenceDecoders.computeIfAbsent(
-                    String.valueOf(envelope.getMetadataVersion()),
+                    String.valueOf(metadataVersion),
                     (v) -> new SequenceDecoder(schemas.getEventTypeSchema(AvroSchema.METADATA_KEY, v)));
 
             final GenericRecord metadata = metadataDecoder.read(envelope.getMetadata());
 
-            metadata.put("occurred_at", new DateTime(
-                    (long) metadata.get("occurred_at"), DateTimeZone.UTC).toString());
-            metadata.put("received_at", new DateTime(
-                    (long) metadata.get("received_at"), DateTimeZone.UTC).toString());
+            metadata.put(GenericRecordMetadata.OCCURRED_AT, new DateTime(
+                    (long) metadata.get(GenericRecordMetadata.OCCURRED_AT), DateTimeZone.UTC).toString());
+
+            metadata.put(GenericRecordMetadata.RECEIVED_AT, new DateTime(
+                    (long) metadata.get(GenericRecordMetadata.RECEIVED_AT), DateTimeZone.UTC).toString());
+
+            final String eventType = metadata.get(GenericRecordMetadata.EVENT_TYPE).toString();
+
+            final String schemaVersionField =
+                    metadataVersion < 4 ? "schema_version": GenericRecordMetadata.SCHEMA_VERSION;
 
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
-                    metadata.get("schema_version").toString(),
-                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(metadata.get("event_type").toString(), v)));
+                    metadata.get(schemaVersionField).toString(),
+                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(eventType, v)));
+
             final GenericRecord event = eventDecoder.read(envelope.getPayload());
             final StringBuilder sEvent = new StringBuilder(event.toString());
 
