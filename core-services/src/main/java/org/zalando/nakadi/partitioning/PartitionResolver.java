@@ -58,17 +58,28 @@ public class PartitionResolver {
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
+        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
+        final List<String> partitions = getPartitions(eventType);
 
+        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+    }
+
+    private List<String> getPartitions(final EventType eventType) {
+        return timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+    }
+
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) {
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+
         if (partitionStrategy == null) {
             throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        return partitionStrategy;
     }
-
 }
+
+
