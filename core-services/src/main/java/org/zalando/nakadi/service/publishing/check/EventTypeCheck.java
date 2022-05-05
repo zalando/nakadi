@@ -20,7 +20,7 @@ public class EventTypeCheck extends Check {
 
             // todo should be amongst active schemas, fix after schema registry
 //                final String recordSchemaVersion = record.getEventMetadata()
-//                        .get("schema_version").toString();
+//                        .get("version").toString();
 //                if (!eventType.getSchema().getVersion().equals(recordSchemaVersion)) {
 //
 //                }

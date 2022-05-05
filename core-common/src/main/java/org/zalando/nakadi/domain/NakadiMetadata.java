@@ -38,7 +38,7 @@ public interface NakadiMetadata {
 
     void setPartitionKeys(List<String> partitionKeys);
 
-    List<String> getPartitionCompactionKeys();
+    String getPartitionCompactionKey();
 
-    void setPartitionCompactionKeys(List<String> partitionCompactionKeys);
+    void setPartitionCompactionKey(String partitionCompactionKey);
 }
