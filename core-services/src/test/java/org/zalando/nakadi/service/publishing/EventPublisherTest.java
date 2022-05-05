@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -596,13 +597,14 @@ public class EventPublisherTest {
                 new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
-                cache, timelineSync, nakadiSettings, null, null);
+                cache, timelineSync, nakadiSettings, null, null, partitionResolver);
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
         final String eventTypeName = eventType.getName();
         Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
         Mockito.when(timelineService.getActiveTimeline(eventType))
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class))).thenReturn("1");
 
         final long now = System.currentTimeMillis();
 

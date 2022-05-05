@@ -14,6 +14,8 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.check.Check;
@@ -36,7 +38,7 @@ public class BinaryEventPublisher {
     private final NakadiSettings nakadiSettings;
     private final AuthorizationValidator authValidator;
     private final List<Check> prePublishingChecks;
-
+    private final PartitionResolver partitionResolver;
 
     @Autowired
     public BinaryEventPublisher(
@@ -45,13 +47,15 @@ public class BinaryEventPublisher {
             final TimelineSync timelineSync,
             final NakadiSettings nakadiSettings,
             final AuthorizationValidator authValidator,
-            @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks) {
+            @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks,
+            final PartitionResolver partitionResolver) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
         this.authValidator = authValidator;
         this.prePublishingChecks = prePublishingChecks;
+        this.partitionResolver = partitionResolver;
     }
 
     public List<NakadiRecordResult> publish(final String eventTypeName,
@@ -75,6 +79,8 @@ public class BinaryEventPublisher {
                     .withTag("event_type", eventTypeName)
                     .withTag("type", "binary")
                     .start();
+            partition(eventType, records);
+            System.out.println(records.get(0).getMetadata().getPartitionStr());
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
                 return timelineService.getTopicRepository(eventType).sendEvents(topic, records);
             } catch (final IOException ioe) {
@@ -115,4 +121,13 @@ public class BinaryEventPublisher {
         return null;
     }
 
+    private void partition(final EventType eventType, final List<NakadiRecord> records)
+            throws PartitioningException {
+        for (final var record : records) {
+            final var metadata = record.getMetadata();
+            final var partition = this.partitionResolver.resolvePartition(eventType, metadata);
+
+            metadata.setPartition(partition);
+        }
+    }
 }

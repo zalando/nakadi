@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
@@ -35,19 +36,28 @@ public class HashPartitionStrategy implements PartitionStrategy {
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var partitioningData = getPartitionKeys(eventType, jsonEvent);
+        final var userDefinedPartitionKeys = getPartitionKeys(eventType, jsonEvent);
 
-        return calculatePartition(partitioningData, partitions);
+        return _calculatePartition(userDefinedPartitionKeys, partitions);
     }
 
-    private String calculatePartition(final PartitioningData partitioningData, final List<String> partitions) {
-        if (partitioningData.getPartitionKeys() == null || partitioningData.getPartitionKeys().isEmpty()) {
+    @Override
+    public String calculatePartition(final NakadiMetadata nakadiRecordMetadata,
+                                     final List<String> partitions)
+            throws PartitioningException {
+        final var userDefinedPartitionKeys = nakadiRecordMetadata.getPartitionKeys();
+
+        return _calculatePartition(userDefinedPartitionKeys, partitions);
+    }
+
+    private String _calculatePartition(final List<String> partitionKeys, final List<String> partitions) {
+        if (partitionKeys == null || partitionKeys.isEmpty()) {
             throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
                     "has no partition keys.");
         }
 
         try {
-            final int hashValue = partitioningData.getPartitionKeys().stream()
+            final int hashValue = partitionKeys.stream()
                     .map(Try.wrap(pkf -> stringHash.hashCode(pkf)))
                     .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)
@@ -69,7 +79,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
     }
 
-    private PartitioningData getPartitionKeys(
+    private List<String> getPartitionKeys(
             final EventType eventType,
             final JSONObject jsonEvent) throws InvalidPartitionKeyFieldsException {
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
@@ -79,8 +89,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         }
 
         final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
-        final var partitionKeys = eventType
-                .getPartitionKeyFields()
+        final var partitionKeys = partitionKeyFields
                 .stream()
                 .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
                         ? EventType.DATA_PATH_PREFIX + pkf
@@ -95,7 +104,6 @@ public class HashPartitionStrategy implements PartitionStrategy {
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        return new PartitioningData()
-                .setPartitionKeys(partitionKeys);
+        return partitionKeys;
     }
 }
