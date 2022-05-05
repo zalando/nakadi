@@ -55,7 +55,7 @@ public class NakadiBatchMapperTest {
         metadata.put("event_type", "nakadi.access.log");
         metadata.put("partition", "0");
         metadata.put("received_at", someEqualTime);
-        metadata.put("schema_version", "schemaVersion");
+        metadata.put("version", "schemaVersion");
         metadata.put("published_by", "nakadi-test");
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();

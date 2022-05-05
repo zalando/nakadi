@@ -124,12 +124,12 @@ public class CheckTest {
         }
 
         @Override
-        public List<String> getPartitionCompactionKeys() {
+        public String getPartitionCompactionKey() {
             return null;
         }
 
         @Override
-        public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
+        public void setPartitionCompactionKey(final String partitionCompactionKey) {
 
         }
 

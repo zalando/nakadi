@@ -134,7 +134,7 @@ public class NakadiKpiPublisher {
                 .set("flow_id", FlowIdUtils.peek())
                 .set("event_type", eventTypeName)
                 .set("received_at", now)
-                .set("schema_version", etSchemaVersion)
+                .set("version", etSchemaVersion)
                 .set("published_by", user)
                 .set("partition", randomPartitionStrategy.calculatePartition(partitions))
                 .build();

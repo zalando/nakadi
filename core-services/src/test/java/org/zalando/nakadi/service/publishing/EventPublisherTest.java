@@ -620,7 +620,7 @@ public class EventPublisherTest {
                 .set("event_type", "nakadi.access.log")
                 .set("partition", "0")
                 .set("received_at", now)
-                .set("schema_version", latestSchema.getVersion())
+                .set("version", latestSchema.getVersion())
                 .set("published_by", "adyachkov")
                 .build();
         final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())

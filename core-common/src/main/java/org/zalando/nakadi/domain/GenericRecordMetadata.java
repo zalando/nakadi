@@ -7,16 +7,16 @@ import java.util.List;
 
 public class GenericRecordMetadata implements NakadiMetadata {
 
-    private static final String EID = "eid";
-    private static final String OCCURRED_AT = "occurred_at";
-    private static final String PUBLISHED_BY = "published_by";
-    private static final String RECEIVED_AT = "received_at";
-    private static final String EVENT_TYPE = "event_type";
-    private static final String FLOW_ID = "flow_id";
-    private static final String SCHEMA_VERSION = "schema_version";
-    private static final String PARTITION = "partition";
-    private static final String PARTITION_KEYS = "partition_keys";
-    private static final String PARTITION_COMPACTION_KEYS = "partition_compaction_key";
+    public static final String EID = "eid";
+    public static final String OCCURRED_AT = "occurred_at";
+    public static final String PUBLISHED_BY = "published_by";
+    public static final String RECEIVED_AT = "received_at";
+    public static final String EVENT_TYPE = "event_type";
+    public static final String FLOW_ID = "flow_id";
+    public static final String SCHEMA_VERSION = "version";
+    public static final String PARTITION = "partition";
+    public static final String PARTITION_KEYS = "partition_keys";
+    public static final String PARTITION_COMPACTION_KEY = "partition_compaction_key";
 
     private final GenericRecord metadata;
     private final byte metadataVersion;
@@ -127,19 +127,12 @@ public class GenericRecordMetadata implements NakadiMetadata {
     }
 
     @Override
-    public List<String> getPartitionCompactionKeys() {
-        final Object partitionCompactionKeys = this.metadata.get(PARTITION_COMPACTION_KEYS);
-        if (partitionCompactionKeys == null) {
-            return null;
-        }
-
-        return Arrays.asList((String[]) partitionCompactionKeys);
+    public String getPartitionCompactionKey() {
+        return this.metadata.get(PARTITION_COMPACTION_KEY).toString();
     }
 
     @Override
-    public void setPartitionCompactionKeys(final List<String> partitionCompactionKeys) {
-        this.metadata.put(PARTITION_COMPACTION_KEYS, partitionCompactionKeys.toArray(new String[0]));
+    public void setPartitionCompactionKey(final String partitionCompactionKey) {
+        this.metadata.put(PARTITION_COMPACTION_KEY, partitionCompactionKey);
     }
-
-
 }
