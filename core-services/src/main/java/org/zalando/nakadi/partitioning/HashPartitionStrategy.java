@@ -50,7 +50,9 @@ public class HashPartitionStrategy implements PartitionStrategy {
         return calculatePartition(userDefinedPartitionKeys, partitions);
     }
 
-    public String calculatePartition(final List<String> partitionKeys, final List<String> partitions) {
+    public String calculatePartition(final List<String> partitionKeys,
+                                     final List<String> partitions)
+            throws PartitioningException {
         if (partitionKeys == null || partitionKeys.isEmpty()) {
             throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
                     "has no partition keys.");

@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
@@ -57,17 +59,38 @@ public class HashPartitionStrategyTest {
 
     private final HashPartitionStrategy strategy;
     private final EventType simpleEventType;
+    private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
         simpleEventType.setPartitionKeyFields(asList("sku", "name"));
 
-        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
+        hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
         when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
                 .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
 
         strategy = new HashPartitionStrategy(hashPartitioningCrutch, new StringHash());
+    }
+
+    @Test
+    public void whenCorrectPartitionFieldsKeysThenOk() {
+        final var metadata = Mockito.mock(NakadiMetadata.class);
+        when(metadata.getPartitionKeys()).thenReturn(ImmutableList.of("sku=123", "price=512$"));
+
+        final var partitions = ImmutableList.of("0", "1", "2");
+
+        assertEquals("2", strategy.calculatePartition(metadata, partitions));
+    }
+
+    @Test(expected = PartitioningException.class)
+    public void whenPartitionKeysMissingInMetadataThenThrow() {
+        final var metadata = Mockito.mock(NakadiMetadata.class);
+        when(metadata.getPartitionKeys()).thenReturn(Collections.emptyList());
+
+        final var partitions = ImmutableList.of("0", "1", "2");
+
+        strategy.calculatePartition(metadata, partitions);
     }
 
     @Test
@@ -111,24 +134,15 @@ public class HashPartitionStrategyTest {
 
     @Test
     public void whenStringHashCodeIsIntMinThenItWorks() throws Exception {
-        final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
-
-        final EventType eventType = new EventType();
-        eventType.setPartitionKeyFields(asList("details.detail_a.detail_a_a"));
-
-        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
-        when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
-                .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
+        final var partitionKeys = List.of("sku=ABC-123");
+        final String[] partitions = new String[]{"0", "1", "2"};
 
         final StringHash stringHash = mock(StringHash.class);
+        final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
         when(stringHash.hashCode(anyString())).thenReturn(Integer.MIN_VALUE);
 
-        final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
-
-        final String[] partitions = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
-
-        final String partition = strategy.calculatePartition(eventType, event, asList(partitions));
-        assertEquals("8", partition);
+        final String partition = strategy.calculatePartition(partitionKeys, asList(partitions));
+        assertEquals("2", partition);
     }
 
     @Test
@@ -196,7 +210,9 @@ public class HashPartitionStrategyTest {
     }
 
     private List<TreeSet<String>> sortPartitions(final List<List<JSONObject>> unsortedPartitions) {
-        return unsortedPartitions.stream().parallel()
+        return unsortedPartitions
+                .stream()
+                .parallel()
                 .map(jsonObjects -> jsonObjects.stream()
                         .map(jsonObject -> jsonObject.getString("sku") + DELIMITER + jsonObject.getString("name"))
                         .distinct()
@@ -227,7 +243,8 @@ public class HashPartitionStrategyTest {
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                     return null;
-                }).andThen(Try::getOrThrow)).collect(Collectors.toSet());
+                }).andThen(Try::getOrThrow))
+                .collect(Collectors.toSet());
     }
 
     private JSONObject randomArticleEvent() {
