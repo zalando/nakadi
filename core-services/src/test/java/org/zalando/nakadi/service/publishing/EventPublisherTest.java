@@ -604,7 +604,8 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
         Mockito.when(timelineService.getActiveTimeline(eventType))
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
-        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class))).thenReturn("1");
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class)))
+                .thenReturn("1");
 
         final long now = System.currentTimeMillis();
 

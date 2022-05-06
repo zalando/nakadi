@@ -80,7 +80,6 @@ public class BinaryEventPublisher {
                     .withTag("type", "binary")
                     .start();
             partition(eventType, records);
-            System.out.println(records.get(0).getMetadata().getPartitionStr());
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
                 return timelineService.getTopicRepository(eventType).sendEvents(topic, records);
             } catch (final IOException ioe) {

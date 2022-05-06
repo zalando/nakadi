@@ -38,7 +38,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
             throws PartitioningException {
         final var userDefinedPartitionKeys = getPartitionKeys(eventType, jsonEvent);
 
-        return _calculatePartition(userDefinedPartitionKeys, partitions);
+        return calculatePartition(userDefinedPartitionKeys, partitions);
     }
 
     @Override
@@ -47,10 +47,10 @@ public class HashPartitionStrategy implements PartitionStrategy {
             throws PartitioningException {
         final var userDefinedPartitionKeys = nakadiRecordMetadata.getPartitionKeys();
 
-        return _calculatePartition(userDefinedPartitionKeys, partitions);
+        return calculatePartition(userDefinedPartitionKeys, partitions);
     }
 
-    private String _calculatePartition(final List<String> partitionKeys, final List<String> partitions) {
+    public String calculatePartition(final List<String> partitionKeys, final List<String> partitions) {
         if (partitionKeys == null || partitionKeys.isEmpty()) {
             throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
                     "has no partition keys.");

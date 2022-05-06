@@ -16,9 +16,9 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
                                      final JSONObject jsonEvent,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var partitioningData = getPartitionFromMetadata(jsonEvent);
+        final var userDefinedPartition = getPartitionFromMetadata(jsonEvent);
 
-        return _calculatePartition(partitioningData, partitions);
+        return calculatePartition(userDefinedPartition, partitions);
     }
 
     @Override
@@ -27,10 +27,11 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
             throws PartitioningException {
         final var userDefinedPartition = nakadiRecordMetadata.getPartitionStr();
 
-        return _calculatePartition(userDefinedPartition, partitions);
+        return calculatePartition(userDefinedPartition, partitions);
     }
 
-    private String _calculatePartition(final String userDefinedPartition, final List<String> partitions)
+    public String calculatePartition(final String userDefinedPartition,
+                                     final List<String> partitions)
             throws PartitioningException {
         if (Strings.isNullOrEmpty(userDefinedPartition)) {
             throw new PartitioningException("Failed to resolve partition. " +

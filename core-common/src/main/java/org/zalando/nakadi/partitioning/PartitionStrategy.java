@@ -15,6 +15,6 @@ public interface PartitionStrategy {
     String calculatePartition(EventType eventType, JSONObject jsonEvent, List<String> partitions)
             throws PartitioningException;
 
-    String calculatePartition(final NakadiMetadata nakadiRecordMetadata, final List<String> partitions)
+    String calculatePartition(NakadiMetadata nakadiRecordMetadata, List<String> partitions)
             throws PartitioningException;
 }
