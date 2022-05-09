@@ -97,8 +97,7 @@ public class EventPublishingControllerTest {
         final EventPublishingController controller =
                 new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
                         eventTypeMetricRegistry, blacklistService, kpiPublisher,
-                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
-                        "default");
+                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

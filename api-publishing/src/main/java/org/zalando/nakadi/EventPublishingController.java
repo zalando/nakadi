@@ -3,7 +3,6 @@ package org.zalando.nakadi;
 import com.google.common.base.Charsets;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,7 +52,6 @@ public class EventPublishingController {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final NakadiRecordMapper nakadiRecordMapper;
     private final PublishingResultConverter publishingResultConverter;
-    private final String profile;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -62,8 +60,7 @@ public class EventPublishingController {
                                      final BlacklistService blacklistService,
                                      final NakadiKpiPublisher nakadiKpiPublisher,
                                      final NakadiRecordMapper nakadiRecordMapper,
-                                     final PublishingResultConverter publishingResultConverter,
-                                     @Value("${spring.profiles.active:default}") final String profile) {
+                                     final PublishingResultConverter publishingResultConverter) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
@@ -71,7 +68,6 @@ public class EventPublishingController {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.publishingResultConverter = publishingResultConverter;
-        this.profile = profile;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -97,15 +93,12 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
 
-        if ("acceptanceTest".equals(profile)) {
-            try {
-                return postBinaryEvents(eventTypeName, batch, request, client, false);
-            } catch (IOException e) {
-                throw new InternalNakadiException("failed to parse batch", e);
-            }
-        } else {
-            return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development profile = " + profile);
-        }
+        //try {
+        //    return postBinaryEvents(eventTypeName, batch, request, client, false);
+        //} catch (IOException e) {
+        //    throw new InternalNakadiException("failed to parse batch", e);
+        //}
+        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
     }
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
