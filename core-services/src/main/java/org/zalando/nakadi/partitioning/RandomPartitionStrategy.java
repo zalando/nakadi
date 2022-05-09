@@ -2,6 +2,7 @@ package org.zalando.nakadi.partitioning;
 
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
@@ -18,6 +19,14 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     @Override
     public String calculatePartition(final EventType eventType,
                                      final JSONObject jsonEvent,
+                                     final List<String> partitions)
+            throws PartitioningException {
+
+        return getRandomPartition(partitions);
+    }
+
+    @Override
+    public String calculatePartition(final NakadiMetadata nakadiRecordMetadata,
                                      final List<String> partitions)
             throws PartitioningException {
 
