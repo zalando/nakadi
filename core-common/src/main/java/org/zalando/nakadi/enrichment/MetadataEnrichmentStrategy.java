@@ -45,7 +45,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         final var metadata = nakadiRecord.getMetadata();
         metadata.setPublishedBy(getPublisher());
         final DateTime dateTime = new DateTime(DateTimeZone.UTC);
-        metadata.setReceivedAt(dateTime.toString());
+        metadata.setReceivedAt(dateTime.getMillis());
         metadata.setEventType(eventType.getName());
         if ("".equals(metadata.getFlowId())) {
             metadata.setFlowId(FlowIdUtils.peek());

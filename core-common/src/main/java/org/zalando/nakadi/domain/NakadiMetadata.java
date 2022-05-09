@@ -6,7 +6,7 @@ public interface NakadiMetadata {
 
     String getEid();
 
-    String getOccurredAt();
+    long getOccurredAt();
 
     String getEventType();
 
@@ -22,9 +22,9 @@ public interface NakadiMetadata {
 
     void setPublishedBy(String publisher);
 
-    String getReceivedAt();
+    long getReceivedAt();
 
-    void setReceivedAt(String receivedAt);
+    void setReceivedAt(long receivedAt);
 
     String getFlowId();
 

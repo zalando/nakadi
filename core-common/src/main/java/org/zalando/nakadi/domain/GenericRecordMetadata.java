@@ -27,7 +27,7 @@ public class GenericRecordMetadata implements NakadiMetadata {
         this.metadataVersion = metadataVersion;
     }
 
-    public GenericRecord getMetadata(){
+    public GenericRecord getMetadata() {
         return this.metadata;
     }
 
@@ -70,8 +70,8 @@ public class GenericRecordMetadata implements NakadiMetadata {
     }
 
     @Override
-    public String getOccurredAt() {
-        return this.metadata.get(OCCURRED_AT).toString();
+    public long getOccurredAt() {
+        return (Long) this.metadata.get(OCCURRED_AT);
     }
 
 
@@ -86,12 +86,12 @@ public class GenericRecordMetadata implements NakadiMetadata {
     }
 
     @Override
-    public String getReceivedAt() {
-        return this.metadata.get(RECEIVED_AT).toString();
+    public long getReceivedAt() {
+        return (Long) this.metadata.get(RECEIVED_AT);
     }
 
     @Override
-    public void setReceivedAt(final String receivedAt) {
+    public void setReceivedAt(final long receivedAt) {
         this.metadata.put(RECEIVED_AT, receivedAt);
     }
 

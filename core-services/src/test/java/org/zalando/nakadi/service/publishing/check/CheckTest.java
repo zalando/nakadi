@@ -54,8 +54,8 @@ public class CheckTest {
         }
 
         @Override
-        public String getOccurredAt() {
-            return null;
+        public long getOccurredAt() {
+            return 0L;
         }
 
         @Override
@@ -84,12 +84,12 @@ public class CheckTest {
         }
 
         @Override
-        public String getReceivedAt() {
-            return null;
+        public long getReceivedAt() {
+            return 0L;
         }
 
         @Override
-        public void setReceivedAt(final String toString) {
+        public void setReceivedAt(final long receivedAt) {
 
         }
 
