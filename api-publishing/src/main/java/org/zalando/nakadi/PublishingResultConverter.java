@@ -60,17 +60,22 @@ public class PublishingResultConverter {
 
     public EventPublishResult mapPublishingResultToView(final List<NakadiRecordResult> recordsMetadata) {
         final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
-        EventPublishingStatus status = null;
         for (final NakadiRecordResult recordMetadata : recordsMetadata) {
-            status = mapPublishingStatus(recordMetadata.getStatus());
+            final EventPublishingStatus status = mapPublishingStatus(recordMetadata.getStatus());
             batchItemResponses.add(new BatchItemResponse()
                     .setStep(EventPublishingStep.PUBLISHING)
-                    .setPublishingStatus(mapPublishingStatus(recordMetadata.getStatus()))
+                    .setPublishingStatus(status)
                     .setEid(recordMetadata.getMetadata().getEid())
-                    .setDetail(recordMetadata.getException().getMessage()));
+                    .setDetail((recordMetadata.getException() != null) ?
+                            recordMetadata.getException().getMessage() : ""));
         }
 
-        return new EventPublishResult(status, EventPublishingStep.PUBLISHING, batchItemResponses);
+        final var overallStatus = batchItemResponses.stream()
+                .map(BatchItemResponse::getPublishingStatus)
+                .filter(status -> !EventPublishingStatus.SUBMITTED.equals(status))
+                .findAny().map(status -> EventPublishingStatus.FAILED).orElse(EventPublishingStatus.SUBMITTED);
+
+        return new EventPublishResult(overallStatus, EventPublishingStep.PUBLISHING, batchItemResponses);
     }
 
     private EventPublishingStatus mapPublishingStatus(final NakadiRecordResult.Status status) {

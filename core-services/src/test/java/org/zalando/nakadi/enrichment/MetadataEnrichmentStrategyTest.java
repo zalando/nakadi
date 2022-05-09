@@ -1,16 +1,28 @@
 package org.zalando.nakadi.enrichment;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.GenericRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
+import java.io.IOException;
+import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
@@ -25,6 +37,13 @@ import static org.zalando.nakadi.utils.TestUtils.randomString;
 public class MetadataEnrichmentStrategyTest {
     private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
     private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy(authorizationService);
+
+    private AvroSchema avroSchema;
+
+    public MetadataEnrichmentStrategyTest() throws IOException {
+        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(),
+                new DefaultResourceLoader().getResource("event-type-schema/"));
+    }
 
     @Test
     public void setReceivedAtWithSystemTimeInUTC() throws Exception {
@@ -166,4 +185,47 @@ public class MetadataEnrichmentStrategyTest {
         assertEquals("test-user-123", batch.getEvent().getJSONObject("metadata").getString("published_by"));
     }
 
+    @Test
+    public void testNakadiRecordEnrichment() throws IOException {
+        final var eventType = Mockito.mock(EventType.class);
+        final var nakadiRecord = getTestNakadiRecord();
+
+        strategy.enrich(nakadiRecord, eventType);
+
+    }
+
+    private NakadiRecord getTestNakadiRecord() throws IOException {
+
+        final long now = System.currentTimeMillis();
+        final var nakadiAccessLog = "nakadi.access.log";
+        final var latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+        final var latestSchema = avroSchema.getLatestEventTypeSchemaVersion(nakadiAccessLog);
+
+        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getSchema())
+                .set("occurred_at", now)
+                .set("eid", UUID.randomUUID().toString())
+                .set("flow_id", "test-flow")
+                .set("event_type", "nakadi.test-2022-05-06.et")
+                .set("version", latestSchema.getVersion())
+                .set("published_by", "test-user")
+                .build();
+        final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
+                .set("method", "POST")
+                .set("path", "/event-types")
+                .set("query", "")
+                .set("user_agent", "test-user-agent")
+                .set("app", "nakadi")
+                .set("app_hashed", "hashed-app")
+                .set("status_code", 201)
+                .set("response_time_ms", 10)
+                .set("accept_encoding", "-")
+                .set("content_encoding", "--")
+                .set("request_length", 123)
+                .set("response_length", 321)
+                .build();
+
+        return new NakadiRecordMapper(avroSchema)
+                .fromAvroGenericRecord(Byte.parseByte(latestMeta.getVersion()), metadata, event);
+
+    }
 }

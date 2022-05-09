@@ -112,7 +112,7 @@ public class BinaryEventPublisher {
             }
         }
 
-        return null;
+        return List.of();
     }
 
 }

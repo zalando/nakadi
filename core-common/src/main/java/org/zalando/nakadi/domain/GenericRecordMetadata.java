@@ -27,6 +27,10 @@ public class GenericRecordMetadata implements NakadiMetadata {
         this.metadataVersion = metadataVersion;
     }
 
+    public GenericRecord getMetadata(){
+        return this.metadata;
+    }
+
     public byte getMetadataVersion() {
         return this.metadataVersion;
     }
