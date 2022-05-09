@@ -11,7 +11,6 @@ import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.GenericRecordMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -20,7 +19,6 @@ import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 

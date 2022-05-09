@@ -63,7 +63,7 @@ public class EventPublishingController {
                                      final NakadiKpiPublisher nakadiKpiPublisher,
                                      final NakadiRecordMapper nakadiRecordMapper,
                                      final PublishingResultConverter publishingResultConverter,
-                                     @Value("${spring.profiles.active}") final String profile) {
+                                     @Value("${spring.profiles.active:default}") final String profile) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
