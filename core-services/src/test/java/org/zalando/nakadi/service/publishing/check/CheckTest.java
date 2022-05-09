@@ -142,6 +142,16 @@ public class CheckTest {
         public void setEventType(final String eventType) {
 
         }
+
+        @Override
+        public String getEventOwner() {
+            return null;
+        }
+
+        @Override
+        public void setEventOwner(final String eventOwner) {
+
+        }
     };
 
 }

@@ -44,7 +44,6 @@ import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -146,8 +145,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
 
         Mockito.when(eventOwnerExtractorFactory.createExtractor(eq(eventType))).thenReturn(
-                EventOwnerExtractorFactory.createStaticExtractor(
-                        new EventOwnerSelector(EventOwnerSelector.Type.STATIC, "retailer", "nakadi")));
+                EventOwnerExtractorFactory.createStaticExtractor("retailer", "nakadi"));
 
         publisher.publish(batch.toString(), eventType.getName());
         Mockito.verify(authzValidator, Mockito.times(3)).authorizeEventWrite(any(BatchItem.class));
@@ -735,9 +733,8 @@ public class EventPublisherTest {
 
     private void mockSuccessfulOwnerExtraction(final EventType eventType) {
         Mockito
-                .doReturn(EventOwnerExtractorFactory.createStaticExtractor(new EventOwnerSelector(
-                        EventOwnerSelector.Type.STATIC, "nakadi", "retailer"
-                ))).when(eventOwnerExtractorFactory)
+                .doReturn(EventOwnerExtractorFactory.createStaticExtractor("nakadi", "retailer"))
+                .when(eventOwnerExtractorFactory)
                 .createExtractor(eq(eventType));
     }
 

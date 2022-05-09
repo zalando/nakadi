@@ -17,6 +17,7 @@ public class GenericRecordMetadata implements NakadiMetadata {
     public static final String PARTITION = "partition";
     public static final String PARTITION_KEYS = "partition_keys";
     public static final String PARTITION_COMPACTION_KEY = "partition_compaction_key";
+    public static final String EVENT_OWNER = "event_owner";
 
     private final GenericRecord metadata;
     private final byte metadataVersion;
@@ -134,5 +135,15 @@ public class GenericRecordMetadata implements NakadiMetadata {
     @Override
     public void setPartitionCompactionKey(final String partitionCompactionKey) {
         this.metadata.put(PARTITION_COMPACTION_KEY, partitionCompactionKey);
+    }
+
+    @Override
+    public String getEventOwner() {
+        return this.metadata.get(EVENT_OWNER).toString();
+    }
+
+    @Override
+    public void setEventOwner(final String eventOwner) {
+        this.metadata.put(EVENT_OWNER, eventOwner);
     }
 }

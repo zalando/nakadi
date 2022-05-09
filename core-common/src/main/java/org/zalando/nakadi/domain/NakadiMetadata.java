@@ -41,4 +41,8 @@ public interface NakadiMetadata {
     String getPartitionCompactionKey();
 
     void setPartitionCompactionKey(String partitionCompactionKey);
+
+    String getEventOwner();
+
+    void setEventOwner(String eventOwner);
 }
