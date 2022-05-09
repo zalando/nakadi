@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -190,6 +191,9 @@ public class MetadataEnrichmentStrategyTest {
 
         strategy.enrich(nakadiRecord, eventType);
 
+        final var metadata = nakadiRecord.getMetadata();
+        assertEquals("unauthenticated", metadata.getPublishedBy());
+        assertTrue(metadata.getReceivedAt() > metadata.getOccurredAt());
     }
 
     private NakadiRecord getTestNakadiRecord() throws IOException {
