@@ -97,7 +97,7 @@ dependencies {
     compile "org.apache.avro:avro:1.10.2"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
 
-    compile 'com.github.luben:zstd-jni:1.5.0-4'
+    compile 'com.github.luben:zstd-jni:1.5.2-2'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
