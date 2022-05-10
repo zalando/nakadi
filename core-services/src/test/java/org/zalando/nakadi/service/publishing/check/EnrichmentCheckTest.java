@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.enrichment.EnrichmentsRegistry;
 import org.zalando.nakadi.enrichment.MetadataEnrichmentStrategy;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -59,13 +60,13 @@ public class EnrichmentCheckTest {
         final NakadiMetadata metadata = Mockito.mock(NakadiMetadata.class);
         Mockito.when(nakadiRecord.getMetadata()).thenReturn(metadata);
         Mockito.doThrow(EnrichmentException.class).when(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
-        final List<Check.RecordResult> recordResults = enrichmentCheck.execute(eventType, nakadiRecords);
+        final List<NakadiRecordResult> recordResults = enrichmentCheck.execute(eventType, nakadiRecords);
         assertNotNull(recordResults);
         assertEquals(1, recordResults.size());
     }
 
     @Test
     public void testGetCurrentStep() {
-        assertEquals(Check.Step.ENRICHMENT, enrichmentCheck.getCurrentStep());
+        assertEquals(NakadiRecordResult.Step.ENRICHMENT, enrichmentCheck.getCurrentStep());
     }
 }

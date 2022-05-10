@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.enrichment.EnrichmentStrategy;
 import org.zalando.nakadi.enrichment.EnrichmentsRegistry;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -22,14 +23,14 @@ public class EnrichmentCheck extends Check {
     }
 
     @Override
-    public List<RecordResult> execute(final EventType eventType,
-                                      final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> execute(final EventType eventType,
+                                            final List<NakadiRecord> records) {
 
         for (final NakadiRecord record : records) {
             try {
                 enrich(record, eventType);
             } catch (EnrichmentException e) {
-                return processError(records, record, e.getMessage());
+                return processError(records, record, e);
             }
         }
         return null;
@@ -47,7 +48,7 @@ public class EnrichmentCheck extends Check {
     }
 
     @Override
-    public Step getCurrentStep() {
-        return Step.ENRICHMENT;
+    public NakadiRecordResult.Step getCurrentStep() {
+        return NakadiRecordResult.Step.ENRICHMENT;
     }
 }

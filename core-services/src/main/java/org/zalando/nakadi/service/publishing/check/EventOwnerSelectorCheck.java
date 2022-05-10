@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.publishing.check;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
@@ -18,8 +19,8 @@ public class EventOwnerSelectorCheck extends Check {
     }
 
     @Override
-    public List<RecordResult> execute(final EventType eventType,
-                                      final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> execute(final EventType eventType,
+                                            final List<NakadiRecord> records) {
 
         for (final NakadiRecord record : records) {
             final EventOwnerSelector eventOwnerSelector = eventType.getEventOwnerSelector();
@@ -41,7 +42,7 @@ public class EventOwnerSelectorCheck extends Check {
 
                 authValidator.authorizeEventWrite(record);
             } catch (AccessDeniedException e) {
-                return processError(records, record, e.explain());
+                return processError(records, record, e);
             }
         }
 
@@ -50,7 +51,7 @@ public class EventOwnerSelectorCheck extends Check {
 
 
     @Override
-    public Step getCurrentStep() {
-        return Step.VALIDATION;
+    public NakadiRecordResult.Step getCurrentStep() {
+        return NakadiRecordResult.Step.VALIDATION;
     }
 }

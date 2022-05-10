@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.EventPublishingController;
 import org.zalando.nakadi.EventPublishingExceptionHandler;
 import org.zalando.nakadi.PublishingResultConverter;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -31,6 +32,7 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
@@ -97,7 +99,8 @@ public class EventPublishingControllerTest {
         final EventPublishingController controller =
                 new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
                         eventTypeMetricRegistry, blacklistService, kpiPublisher,
-                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class));
+                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
+                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

@@ -3,14 +3,17 @@ package org.zalando.nakadi;
 import com.google.common.base.Charsets;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
@@ -23,6 +26,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
@@ -52,6 +56,9 @@ public class EventPublishingController {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final NakadiRecordMapper nakadiRecordMapper;
     private final PublishingResultConverter publishingResultConverter;
+    private final EventTypeCache eventTypeCache;
+    private final AuthorizationValidator authValidator;
+    private final List<Check> prePublishingChecks;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -60,7 +67,10 @@ public class EventPublishingController {
                                      final BlacklistService blacklistService,
                                      final NakadiKpiPublisher nakadiKpiPublisher,
                                      final NakadiRecordMapper nakadiRecordMapper,
-                                     final PublishingResultConverter publishingResultConverter) {
+                                     final PublishingResultConverter publishingResultConverter,
+                                     final EventTypeCache eventTypeCache,
+                                     final AuthorizationValidator authValidator,
+                                     @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
@@ -68,6 +78,9 @@ public class EventPublishingController {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.publishingResultConverter = publishingResultConverter;
+        this.eventTypeCache = eventTypeCache;
+        this.authValidator = authValidator;
+        this.prePublishingChecks = prePublishingChecks;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -115,6 +128,11 @@ public class EventPublishingController {
             throw new BlockedException("Application or event type is blocked");
         }
 
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+
+        // throws exception, maybe move it somewhere else
+        authValidator.authorizeEventTypeWrite(eventType);
+
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         try {
             final long startingNanos = System.nanoTime();
@@ -129,15 +147,12 @@ public class EventPublishingController {
 
                 final EventPublishResult result;
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
-                final List<Check.RecordResult> recordResults = binaryPublisher
-                        .checkEvents(eventTypeName, nakadiRecords);
-                if (!recordResults.isEmpty()) {
-                    result = publishingResultConverter.mapCheckResultToView(recordResults);
-                } else {
-                    final List<NakadiRecordResult> nakadiRecordsMetadata =
-                            binaryPublisher.publish(eventTypeName, nakadiRecords);
-                    result = publishingResultConverter.mapPublishingResultToView(nakadiRecordsMetadata);
+                final List<NakadiRecordResult> recordResults = binaryPublisher
+                        .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
+                if (recordResults.isEmpty()) {
+                    throw new RuntimeException("");
                 }
+                result = publishingResultConverter.mapPublishingResultToView(recordResults);
 
                 final int eventCount = result.getResponses().size();
 

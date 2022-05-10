@@ -394,8 +394,8 @@ public class KafkaTopicRepository implements TopicRepository {
             sb.append(entry.getKey())
                     .append(":[")
                     .append(entry.getValue().stream()
-                     .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
-                     .collect(Collectors.joining(", ")))
+                            .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
+                            .collect(Collectors.joining(", ")))
                     .append("] ");
         }
         LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());
@@ -456,11 +456,13 @@ public class KafkaTopicRepository implements TopicRepository {
                             result = new NakadiRecordResult(
                                     nakadiRecord.getMetadata(),
                                     NakadiRecordResult.Status.FAILED,
+                                    NakadiRecordResult.Step.PUBLISHING,
                                     exception);
                         } else {
                             result = new NakadiRecordResult(
                                     nakadiRecord.getMetadata(),
-                                    NakadiRecordResult.Status.SUCCEEDED);
+                                    NakadiRecordResult.Status.SUCCEEDED,
+                                    NakadiRecordResult.Step.PUBLISHING);
                         }
                         responses.put(nakadiRecord, result);
                     } finally {
@@ -501,7 +503,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 // in case kafka producer send method threw exception, the record was not attempted for publishing
                 resps.add(new NakadiRecordResult(
                         record.getMetadata(),
-                        NakadiRecordResult.Status.NOT_ATTEMPTED,
+                        NakadiRecordResult.Status.ABORTED,
+                        NakadiRecordResult.Step.PUBLISHING,
                         exception));
             } else {
                 resps.add(nakadiRecordResult);

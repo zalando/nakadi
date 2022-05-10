@@ -11,6 +11,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
+import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.publishing.check.EnrichmentCheck;
@@ -50,11 +51,12 @@ public class NakadiConfig {
     @Bean
     @Qualifier("pre-publishing-checks")
     public List<Check> prePublishingChecks(final AuthorizationValidator authValidator,
-                                           final EnrichmentCheck enrichmentCheck) {
+                                           final EnrichmentCheck enrichmentCheck,
+                                           final PartitionResolver partitionResolver) {
         return Lists.newArrayList(
                 new EventTypeCheck(),
                 new EventOwnerSelectorCheck(authValidator),
-                new PartitioningCheck(),
+                new PartitioningCheck(partitionResolver),
                 enrichmentCheck, // TODO: Test partition is available for enrichment.
                 new EventKeyCheck()
         );

@@ -541,9 +541,9 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(null, result.get(1).getException());
         Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
         Assert.assertEquals(exception, result.get(2).getException());
-        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(2).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(2).getStatus());
         Assert.assertEquals(exception, result.get(3).getException());
-        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(3).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {
