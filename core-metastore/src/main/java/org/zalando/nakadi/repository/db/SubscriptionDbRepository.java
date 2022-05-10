@@ -186,7 +186,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    static void applyFilter(
+    private static void applyFilter(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
             final Optional<AuthorizationAttribute> reader,
@@ -221,7 +221,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    static void appendClauses(final StringBuilder queryBuilder, final List<String> clauses) {
+    private static void appendClauses(final StringBuilder queryBuilder, final List<String> clauses) {
         if (!clauses.isEmpty()) {
             queryBuilder.append(" WHERE ");
             queryBuilder.append(String.join(" AND ", clauses));
