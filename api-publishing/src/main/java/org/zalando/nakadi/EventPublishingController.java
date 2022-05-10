@@ -93,12 +93,12 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
 
+        //try {
+        //    return postBinaryEvents(eventTypeName, batch, request, client, false);
+        //} catch (IOException e) {
+        //    throw new InternalNakadiException("failed to parse batch", e);
+        //}
         return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
-//        try {
-//            return postBinaryEvents(eventTypeName, batch, request, client, false);
-//        } catch (IOException e) {
-//            throw new InternalNakadiException("failed to parse batch", e);
-//        }
     }
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,

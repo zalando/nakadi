@@ -10,6 +10,7 @@ import org.zalando.nakadi.service.publishing.check.Check;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class PublishingResultConverter {
@@ -60,17 +61,32 @@ public class PublishingResultConverter {
 
     public EventPublishResult mapPublishingResultToView(final List<NakadiRecordResult> recordsMetadata) {
         final List<BatchItemResponse> batchItemResponses = new LinkedList<>();
-        EventPublishingStatus status = null;
         for (final NakadiRecordResult recordMetadata : recordsMetadata) {
-            status = mapPublishingStatus(recordMetadata.getStatus());
+            final EventPublishingStatus status = mapPublishingStatus(recordMetadata.getStatus());
             batchItemResponses.add(new BatchItemResponse()
                     .setStep(EventPublishingStep.PUBLISHING)
-                    .setPublishingStatus(mapPublishingStatus(recordMetadata.getStatus()))
+                    .setPublishingStatus(status)
                     .setEid(recordMetadata.getMetadata().getEid())
-                    .setDetail(recordMetadata.getException().getMessage()));
+                    .setDetail((recordMetadata.getException() != null) ?
+                            recordMetadata.getException().getMessage() : ""));
         }
 
-        return new EventPublishResult(status, EventPublishingStep.PUBLISHING, batchItemResponses);
+        final var overallStatus = getOverallStatus(batchItemResponses);
+        return new EventPublishResult(overallStatus, EventPublishingStep.PUBLISHING, batchItemResponses);
+    }
+
+    private EventPublishingStatus getOverallStatus(final List<BatchItemResponse> batchItemResponses) {
+        final var publishingStatusSet = batchItemResponses.stream()
+                .map(BatchItemResponse::getPublishingStatus)
+                .collect(Collectors.toSet());
+
+        if (publishingStatusSet.contains(EventPublishingStatus.FAILED)) {
+            return EventPublishingStatus.FAILED;
+        } else if (publishingStatusSet.contains(EventPublishingStatus.ABORTED)) {
+            return EventPublishingStatus.ABORTED;
+        } else {
+            return EventPublishingStatus.SUBMITTED;
+        }
     }
 
     private EventPublishingStatus mapPublishingStatus(final NakadiRecordResult.Status status) {

@@ -117,7 +117,7 @@ public class BinaryEventPublisher {
             }
         }
 
-        return null;
+        return List.of();
     }
 
     private void partition(final EventType eventType, final List<NakadiRecord> records)

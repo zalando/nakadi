@@ -49,12 +49,13 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("pre-publishing-checks")
-    public List<Check> prePublishingChecks(final AuthorizationValidator authValidator) {
+    public List<Check> prePublishingChecks(final AuthorizationValidator authValidator,
+                                           final EnrichmentCheck enrichmentCheck) {
         return Lists.newArrayList(
                 new EventTypeCheck(),
                 new EventOwnerSelectorCheck(authValidator),
                 new PartitioningCheck(),
-                new EnrichmentCheck(),
+                enrichmentCheck, // TODO: Test partition is available for enrichment.
                 new EventKeyCheck()
         );
     }
