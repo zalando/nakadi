@@ -90,7 +90,8 @@ public class RepartitioningService {
             // Increase kafka partitions count, increase partitions in database
             timelineService.updateTimeLineForRepartition(eventType, partitions);
 
-            updateSubscriptionsForRepartitioning(eventType.getName(), partitions);
+            subscriptionRepository.listAllSubscriptionsFor(ImmutableSet.of(eventType.getName()))
+                    .forEach(sub -> updateSubscriptionForRepartitioning(sub, eventTypeName, partitions));
 
             // it is clear that the operation has to be done under the lock with other related work for changing event
             // type, but it is skipped, because it is quite rare operation to change event type and repartition at the
@@ -165,18 +166,6 @@ public class RepartitioningService {
                 LOG.warn("Failed to close zookeeper connection while updating subsciprtion {}",
                         subscription.getId(), ex);
             }
-        }
-    }
-
-    private void updateSubscriptionsForRepartitioning(final String eventTypeName, final int partitions)
-            throws NakadiBaseException {
-        SubscriptionDbRepository.ListResult list = subscriptionRepository.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(),null, 100);
-        while (list != null) {
-            list.getItems()
-                    .forEach(item -> updateSubscriptionForRepartitioning(item, eventTypeName, partitions));
-            list = null == list.getNext() ? null : subscriptionRepository.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 100);
         }
     }
 }

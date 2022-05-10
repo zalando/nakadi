@@ -124,7 +124,16 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     /**
-     * Use {@code SubscriptionTokenLister} instead
+     * Internal use only.
+     */
+    public List<Subscription> listAllSubscriptionsFor(final Set<String> eventTypes)
+            throws ServiceTemporarilyUnavailableException {
+
+        return listSubscriptions(eventTypes, Optional.empty(), Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Use {@code listSubscriptions} with token instead.
      */
     @Deprecated
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
