@@ -70,9 +70,4 @@ public class EventOwnerHeader {
         result = 31 * result + value.hashCode();
         return result;
     }
-
-    @Override
-    public String toString() {
-        return "{ name: " + this.name + ", value: " + this.value + " }";
-    }
 }
