@@ -10,6 +10,7 @@ import org.zalando.nakadi.service.publishing.check.Check;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class PublishingResultConverter {
@@ -70,12 +71,22 @@ public class PublishingResultConverter {
                             recordMetadata.getException().getMessage() : ""));
         }
 
-        final var overallStatus = batchItemResponses.stream()
-                .map(BatchItemResponse::getPublishingStatus)
-                .filter(status -> !EventPublishingStatus.SUBMITTED.equals(status))
-                .findAny().map(status -> EventPublishingStatus.FAILED).orElse(EventPublishingStatus.SUBMITTED);
-
+        final var overallStatus = getOverallStatus(batchItemResponses);
         return new EventPublishResult(overallStatus, EventPublishingStep.PUBLISHING, batchItemResponses);
+    }
+
+    private EventPublishingStatus getOverallStatus(final List<BatchItemResponse> batchItemResponses) {
+        final var publishingStatusSet = batchItemResponses.stream()
+                .map(BatchItemResponse::getPublishingStatus)
+                .collect(Collectors.toSet());
+
+        if (publishingStatusSet.contains(EventPublishingStatus.FAILED)) {
+            return EventPublishingStatus.FAILED;
+        } else if (publishingStatusSet.contains(EventPublishingStatus.ABORTED)) {
+            return EventPublishingStatus.ABORTED;
+        } else {
+            return EventPublishingStatus.SUBMITTED;
+        }
     }
 
     private EventPublishingStatus mapPublishingStatus(final NakadiRecordResult.Status status) {
