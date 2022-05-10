@@ -5,7 +5,6 @@ import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
