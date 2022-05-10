@@ -18,7 +18,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -47,7 +46,6 @@ public class RepartitioningService {
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
     private final TimelineSync timelineSync;
-    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public RepartitioningService(
@@ -57,8 +55,7 @@ public class RepartitioningService {
             final SubscriptionClientFactory subscriptionClientFactory,
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
-            final TimelineSync timelineSync,
-            final SubscriptionTokenLister subscriptionTokenLister) {
+            final TimelineSync timelineSync) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
@@ -66,7 +63,6 @@ public class RepartitioningService {
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
         this.timelineSync = timelineSync;
-        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public void repartition(final String eventTypeName, final int partitions)
@@ -174,12 +170,12 @@ public class RepartitioningService {
 
     private void updateSubscriptionsForRepartitioning(final String eventTypeName, final int partitions)
             throws NakadiBaseException {
-        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
+        SubscriptionDbRepository.ListResult list = subscriptionRepository.listSubscriptions(
                 ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(),null, 100);
         while (list != null) {
             list.getItems()
                     .forEach(item -> updateSubscriptionForRepartitioning(item, eventTypeName, partitions));
-            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
+            list = null == list.getNext() ? null : subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 100);
         }
     }

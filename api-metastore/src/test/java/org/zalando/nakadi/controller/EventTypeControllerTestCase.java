@@ -26,7 +26,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
@@ -93,7 +92,6 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
     private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
     private final SchemaRepository schemaRepository = Mockito.mock(SchemaRepository.class);
@@ -133,7 +131,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
-                schemaService, adminService, subscriptionTokenLister, null);
+                schemaService, adminService, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);

@@ -31,7 +31,6 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -87,8 +86,6 @@ public class EventTypeServiceTest {
     @Mock
     private SubscriptionDbRepository subscriptionDbRepository;
     @Mock
-    private SubscriptionTokenLister subscriptionTokenLister;
-    @Mock
     private TimelineService timelineService;
     @Mock
     private TimelineSync timelineSync;
@@ -120,7 +117,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                eventTypeCache, schemaService, adminService, subscriptionTokenLister, applicationService);
+                eventTypeCache, schemaService, adminService, applicationService);
 
         when(nakadiSettings.getDeletableSubscriptionConsumerGroup()).thenReturn(DELETABLE_CONSUMER_GROUP);
         when(nakadiSettings.getDeletableSubscriptionOwningApplication()).thenReturn(DELETABLE_OWNING_APP);

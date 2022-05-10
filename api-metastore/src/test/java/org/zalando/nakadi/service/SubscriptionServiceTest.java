@@ -23,7 +23,6 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -49,7 +48,6 @@ public class SubscriptionServiceTest {
     private FeatureToggleService featureToggleService;
     private AuthorizationValidator authorizationValidator;
     private SubscriptionValidationService subscriptionValidationService;
-    private SubscriptionTokenLister subscriptionTokenLister;
     private EventTypeRepository eventTypeRepository;
     private TransactionTemplate transactionTemplate;
 
@@ -72,7 +70,6 @@ public class SubscriptionServiceTest {
         subscriptionCache = Mockito.mock(SubscriptionCache.class);
         featureToggleService = Mockito.mock(FeatureToggleService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
-        subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
         eventTypeRepository = Mockito.mock(EventTypeRepository.class);
         transactionTemplate = Mockito.mock(TransactionTemplate.class);
 
@@ -80,7 +77,7 @@ public class SubscriptionServiceTest {
                 subscriptionCache, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
                 cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister,
+                nakadiAuditLogPublisher, authorizationValidator, cache,
                 transactionTemplate, eventTypeRepository);
     }
 
