@@ -5,6 +5,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 
+import java.util.Collections;
 import java.util.List;
 
 public class EventTypeCheck extends Check {
@@ -30,7 +31,7 @@ public class EventTypeCheck extends Check {
 
         }
 
-        return null;
+        return Collections.emptyList();
     }
 
     @Override

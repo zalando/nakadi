@@ -13,7 +13,9 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
@@ -73,7 +75,7 @@ public class NakadiRecordMapper {
                 }));
         return new NakadiRecord()
                 .setMetadata(new GenericRecordMetadata(metadata, metadataVersion))
-                .setEventKey(null)
+                .setEventKey(null) // fixme remove it once event key implemented
                 .setData(data)
                 .setFormat(NakadiRecord.Format.AVRO.getFormat());
     }

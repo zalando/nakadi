@@ -8,6 +8,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
+import java.util.Collections;
 import java.util.List;
 
 public class EventOwnerSelectorCheck extends Check {
@@ -46,7 +47,7 @@ public class EventOwnerSelectorCheck extends Check {
             }
         }
 
-        return null;
+        return Collections.emptyList();
     }
 
 

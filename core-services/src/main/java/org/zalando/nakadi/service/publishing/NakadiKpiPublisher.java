@@ -131,12 +131,7 @@ public class NakadiKpiPublisher {
         final var metadata = new GenericRecordBuilder(metadataSchema)
                 .set("occurred_at", now)
                 .set("eid", uuidGenerator.randomUUID().toString())
-                .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", eventTypeName)
-                .set("received_at", now)
                 .set("version", etSchemaVersion)
-                .set("published_by", user)
-                .set("partition", randomPartitionStrategy.calculatePartition(partitions))
                 .build();
 
         return metadata;

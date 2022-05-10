@@ -46,7 +46,7 @@ public class BinaryEventPublisher {
                                                       final List<Check> checks) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
-            if (res != null) {
+            if (res != null && !res.isEmpty()) {
                 return res;
             }
         }

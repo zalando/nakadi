@@ -10,6 +10,7 @@ import org.zalando.nakadi.enrichment.EnrichmentStrategy;
 import org.zalando.nakadi.enrichment.EnrichmentsRegistry;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -33,7 +34,8 @@ public class EnrichmentCheck extends Check {
                 return processError(records, record, e);
             }
         }
-        return null;
+
+        return Collections.emptyList();
     }
 
     private void enrich(final NakadiRecord nakadiRecord, final EventType eventType) throws EnrichmentException {
