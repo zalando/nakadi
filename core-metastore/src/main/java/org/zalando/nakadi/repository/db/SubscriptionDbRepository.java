@@ -156,6 +156,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
      *
      * @param eventTypes        Event types that are targeted by subscription
      * @param owningApplication Ownnig application of subscriptions
+     * @param reader            Authorization attribute of a reader of subscripitons
      * @param token             Token to use for iteration
      * @param limit             Amount of records to return. Min value is 1
      * @return List of subscriptions with optional tokens to iterate forward and backward
