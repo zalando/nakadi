@@ -28,7 +28,6 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
@@ -349,8 +348,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
 
     @Test
-    public void whenListSubscriptionsByMultipleEventTypesThenOk() throws ServiceTemporarilyUnavailableException {
-        // The test is a copy of SubscriptionDbRepositoryTest, that is to be deleted when deprecated method removed
+    public void whenListSubscriptionsByMultipleEventTypesWithoutTokenThenOk() throws ServiceTemporarilyUnavailableException {
+        // The test is a copy of whenListSubscriptionsByMultipleEventTypesThenOk, that is to be deleted when deprecated method removed
         final String et1 = TestUtils.randomUUID();
         final String et2 = TestUtils.randomUUID();
         final String et3 = TestUtils.randomUUID();
@@ -373,17 +372,5 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
                 Optional.empty(), Optional.empty(), null, 10).getItems();
         assertThat(subscriptions, equalTo(expectedSubscriptions));
-    }
-
-    private void insertSubscriptionToDB(final Subscription subscription) {
-        try {
-            template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object, s_key_fields_hash) " +
-                            "VALUES (?, ?::JSONB, ?)",
-                    subscription.getId(),
-                    TestUtils.OBJECT_MAPPER.writer().writeValueAsString(subscription),
-                    hashGenerator.generateSubscriptionKeyFieldsHash(subscription));
-        } catch (final Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }
