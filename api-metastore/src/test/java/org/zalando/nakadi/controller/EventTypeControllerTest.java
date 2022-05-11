@@ -567,32 +567,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        when(eventTypeCache.getEventTypeIfExists(eventType.getName())).thenReturn(Optional.of(eventType));
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
-
-        final Subscription mockSubscription = mock(Subscription.class);
-        when(mockSubscription.getConsumerGroup()).thenReturn("def");
-        when(mockSubscription.getOwningApplication()).thenReturn("asdf");
-        when(subscriptionRepository
-                .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())),
-                        eq(Optional.empty()),
-                        eq(Optional.empty()),
-                        eq(Optional.empty())))
-                .thenReturn(ImmutableList.of(mockSubscription));
-
-        final Problem expectedProblem = Problem.valueOf(CONFLICT,
-                "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
-
-        deleteEventType(eventType.getName())
-                .andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = TestUtils.randomValidEventTypeName();
