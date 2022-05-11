@@ -41,6 +41,7 @@ import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -100,7 +101,8 @@ public class EventPublishingControllerTest {
                 new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
                         eventTypeMetricRegistry, blacklistService, kpiPublisher,
                         Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
-                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class));
+                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class),
+                        Collections.emptyList());
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

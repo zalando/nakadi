@@ -23,7 +23,7 @@ public class UserDefinedPartitionStrategyTest {
         assertThat(STRATEGY.calculatePartition(null, event, PARTITIONS), equalTo(PARTITIONS.get(1)));
 
         final var metadata = Mockito.mock(NakadiMetadata.class);
-        Mockito.when(metadata.getPartitionStr()).thenReturn("1");
+        Mockito.when(metadata.getPartition()).thenReturn("1");
         assertThat(STRATEGY.calculatePartition(metadata, PARTITIONS), equalTo(PARTITIONS.get(1)));
     }
 

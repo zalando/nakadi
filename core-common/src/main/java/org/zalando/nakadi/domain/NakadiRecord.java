@@ -61,7 +61,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
     private byte[] data;
     private byte[] format;
     private EventOwnerHeader owner;
-    private NakadiMetadata metadata;
+    private NakadiAvroMetadata metadata;
     private String partition;
 
     public byte[] getEventKey() {
@@ -80,7 +80,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         return owner;
     }
 
-    public NakadiMetadata getMetadata() {
+    public NakadiAvroMetadata getMetadata() {
         return metadata;
     }
 
@@ -104,7 +104,7 @@ public class NakadiRecord implements Resource<NakadiRecord> {
         return this;
     }
 
-    public NakadiRecord setMetadata(final NakadiMetadata metadata) {
+    public NakadiRecord setMetadata(final NakadiAvroMetadata metadata) {
         this.metadata = metadata;
         return this;
     }

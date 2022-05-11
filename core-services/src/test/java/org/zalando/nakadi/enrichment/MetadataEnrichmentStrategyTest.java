@@ -11,6 +11,7 @@ import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -203,14 +204,16 @@ public class MetadataEnrichmentStrategyTest {
         final var latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
         final var latestSchema = avroSchema.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
-        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getSchema())
-                .set("occurred_at", now)
-                .set("eid", UUID.randomUUID().toString())
-                .set("flow_id", "test-flow")
-                .set("event_type", "nakadi.test-2022-05-06.et")
-                .set("version", latestSchema.getVersion())
-                .set("published_by", "test-user")
-                .build();
+        final var nakadiAvroMetadata = new NakadiAvroMetadata(
+                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+        nakadiAvroMetadata.setOccurredAt(now);
+        nakadiAvroMetadata.setEid(UUID.randomUUID().toString());
+        nakadiAvroMetadata.setFlowId("test-flow");
+        nakadiAvroMetadata.setEventType("nakadi.test-2022-05-06.et");
+        nakadiAvroMetadata.setSchemaVersion(latestSchema.getVersion());
+        nakadiAvroMetadata.setPublishedBy("test-user");
+
+
         final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
                 .set("method", "POST")
                 .set("path", "/event-types")
@@ -227,7 +230,7 @@ public class MetadataEnrichmentStrategyTest {
                 .build();
 
         return new NakadiRecordMapper(avroSchema)
-                .fromAvroGenericRecord(Byte.parseByte(latestMeta.getVersion()), metadata, event);
+                .fromAvroGenericRecord(nakadiAvroMetadata, event);
 
     }
 }
