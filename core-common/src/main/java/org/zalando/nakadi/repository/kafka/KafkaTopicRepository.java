@@ -203,8 +203,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return false;
         }
         return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                UnknownServerException.class)
+                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                        UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
@@ -436,9 +436,11 @@ public class KafkaTopicRepository implements TopicRepository {
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
+                final var partition = nakadiRecord.getMetadata().getPartition();
+                final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
                 final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
                         topic,
-                        nakadiRecord.getMetadata().getPartitionInt(),
+                        partitionInt,
                         nakadiRecord.getEventKey(),
                         nakadiRecord.getData());
 

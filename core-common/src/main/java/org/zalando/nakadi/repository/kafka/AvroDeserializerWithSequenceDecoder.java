@@ -5,7 +5,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.domain.GenericRecordMetadata;
+import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
@@ -36,16 +36,16 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final GenericRecord metadata = metadataDecoder.read(envelope.getMetadata());
 
-            metadata.put(GenericRecordMetadata.OCCURRED_AT, new DateTime(
-                    (long) metadata.get(GenericRecordMetadata.OCCURRED_AT), DateTimeZone.UTC).toString());
+            metadata.put(NakadiAvroMetadata.OCCURRED_AT, new DateTime(
+                    (long) metadata.get(NakadiAvroMetadata.OCCURRED_AT), DateTimeZone.UTC).toString());
 
-            metadata.put(GenericRecordMetadata.RECEIVED_AT, new DateTime(
-                    (long) metadata.get(GenericRecordMetadata.RECEIVED_AT), DateTimeZone.UTC).toString());
+            metadata.put(NakadiAvroMetadata.RECEIVED_AT, new DateTime(
+                    (long) metadata.get(NakadiAvroMetadata.RECEIVED_AT), DateTimeZone.UTC).toString());
 
-            final String eventType = metadata.get(GenericRecordMetadata.EVENT_TYPE).toString();
+            final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
 
             final String schemaVersionField =
-                    metadataVersion < 4 ? "schema_version": GenericRecordMetadata.SCHEMA_VERSION;
+                    metadataVersion < 4 ? "schema_version" : NakadiAvroMetadata.SCHEMA_VERSION;
 
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
                     metadata.get(schemaVersionField).toString(),
@@ -55,7 +55,9 @@ public class AvroDeserializerWithSequenceDecoder {
             final StringBuilder sEvent = new StringBuilder(event.toString());
 
             final var sanitizedMetadata = getJsonWithNonNullValues(metadata.toString()).toString();
-            sEvent.deleteCharAt(sEvent.length() - 1).append(", \"metadata\":").append(sanitizedMetadata).append('}');
+            sEvent.deleteCharAt(sEvent.length() - 1)
+                    .append(", \"metadata\":")
+                    .append(sanitizedMetadata).append('}');
 
             return sEvent.toString().getBytes(StandardCharsets.UTF_8);
         } catch (final IOException io) {
@@ -63,12 +65,12 @@ public class AvroDeserializerWithSequenceDecoder {
         }
     }
 
-    private static JSONObject getJsonWithNonNullValues(final String json){
+    private static JSONObject getJsonWithNonNullValues(final String json) {
         final var metadataObj = new JSONObject(json);
         final var iterator = metadataObj.keys();
-        while(iterator.hasNext()){
+        while (iterator.hasNext()) {
             final var key = iterator.next();
-            if(metadataObj.get(key).equals(JSONObject.NULL)){
+            if (metadataObj.get(key).equals(JSONObject.NULL)) {
                 iterator.remove();
             }
         }

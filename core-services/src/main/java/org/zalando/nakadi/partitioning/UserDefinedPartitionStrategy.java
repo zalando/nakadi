@@ -25,7 +25,7 @@ public class UserDefinedPartitionStrategy implements PartitionStrategy {
     public String calculatePartition(final NakadiMetadata nakadiRecordMetadata,
                                      final List<String> partitions)
             throws PartitioningException {
-        final var userDefinedPartition = nakadiRecordMetadata.getPartitionStr();
+        final var userDefinedPartition = nakadiRecordMetadata.getPartition();
 
         return calculatePartition(userDefinedPartition, partitions);
     }
