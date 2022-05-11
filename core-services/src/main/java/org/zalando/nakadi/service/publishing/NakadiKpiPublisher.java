@@ -125,6 +125,7 @@ public class NakadiKpiPublisher {
         final var metadata = new NakadiAvroMetadata(metadataSchemaVersion, metadataSchema);
         metadata.setOccurredAt(now);
         metadata.setEid(uuidGenerator.randomUUID().toString());
+        metadata.setEventType(eventTypeName);
         metadata.setSchemaVersion(etSchemaVersion);
 
         return metadata;

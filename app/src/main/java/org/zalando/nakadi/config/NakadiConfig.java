@@ -49,6 +49,17 @@ public class NakadiConfig {
     }
 
     @Bean
+    @Qualifier("pre-internal-publishing-checks")
+    public List<Check> prePublishingChecks(final EnrichmentCheck enrichmentCheck,
+                                           final PartitionResolver partitionResolver) {
+        return Lists.newArrayList(
+                new PartitioningCheck(partitionResolver),
+                enrichmentCheck, // TODO: Test partition is available for enrichment.
+                new EventKeyCheck()
+        );
+    }
+
+    @Bean
     @Qualifier("pre-publishing-checks")
     public List<Check> prePublishingChecks(final AuthorizationValidator authValidator,
                                            final EnrichmentCheck enrichmentCheck,

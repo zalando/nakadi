@@ -46,7 +46,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         metadata.setPublishedBy(getPublisher());
         final DateTime dateTime = new DateTime(DateTimeZone.UTC);
         metadata.setReceivedAt(dateTime.getMillis());
-        metadata.setEventType(eventType.getName());
         if ("".equals(metadata.getFlowId())) {
             metadata.setFlowId(FlowIdUtils.peek());
         }

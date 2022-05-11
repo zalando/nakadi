@@ -19,7 +19,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EnrichmentCheckTest {
@@ -45,7 +44,7 @@ public class EnrichmentCheckTest {
         final NakadiRecord nakadiRecord = Mockito.mock(NakadiRecord.class);
         final List<NakadiRecord> nakadiRecords = List.of(nakadiRecord);
 
-        assertNull(enrichmentCheck.execute(eventType, nakadiRecords));
+        assertNotNull(enrichmentCheck.execute(eventType, nakadiRecords));
 
         Mockito.verify(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
     }

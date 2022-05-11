@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
-import org.assertj.core.api.Assertions;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -136,10 +135,6 @@ public class NakadiKpiPublisherTest {
         // Verify values in GenericRecord
         assertEquals("test-subscription-id", record.get("subscription_id").toString());
         assertEquals("created", record.get("status").toString());
-
-        // Verify that partition number is the same in metadata and in the publishing DTO
-        assertEquals(nakadiRecord.getMetadata().getPartition(), metadata.get("partition").toString());
-        Assertions.assertThat(partitions).contains(nakadiRecord.getMetadata().getPartition());
     }
 
     @Test

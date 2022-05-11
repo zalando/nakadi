@@ -9,11 +9,8 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
-import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.service.publishing.check.Check;
-import org.zalando.nakadi.service.publishing.check.PartitioningCheck;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.zalando.nakadi.domain.NakadiRecordResult.Status;
@@ -26,12 +23,13 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
 
     private final BinaryEventPublisher binaryEventPublisher;
     private final EventTypeCache eventTypeCache;
-    private final PartitionResolver partitionResolver;
+
+    private final List<Check> prePublishingChecks;
 
     public BinaryEventProcessor(
             final BinaryEventPublisher binaryEventPublisher,
             final EventTypeCache eventTypeCache,
-            final PartitionResolver partitionResolver,
+            @Qualifier("pre-internal-publishing-checks") final List<Check> prePublishingChecks,
             @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
             @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
             @Value("${nakadi.kpi.config.workers}") final int workers,
@@ -40,17 +38,15 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
         super(batchCollectionTimeout, maxBatchSize, workers, maxBatchQueue, eventsQueueSize);
         this.binaryEventPublisher = binaryEventPublisher;
         this.eventTypeCache = eventTypeCache;
-        this.partitionResolver = partitionResolver;
+        this.prePublishingChecks = prePublishingChecks;
     }
 
     @Override
     public void sendEvents(final String etName, final List<NakadiRecord> events) {
         try {
-            final List<Check> checks = Arrays.asList(new PartitioningCheck(partitionResolver));
-
             final EventType eventType = eventTypeCache.getEventType(etName);
             final List<NakadiRecordResult> eventRecordMetadata =
-                    binaryEventPublisher.publishWithChecks(eventType, events, checks);
+                    binaryEventPublisher.publishWithChecks(eventType, events, prePublishingChecks);
             eventRecordMetadata.stream()
                     .filter(nrr -> nrr.getStatus() != Status.SUCCEEDED)
                     .forEach(nrr ->
