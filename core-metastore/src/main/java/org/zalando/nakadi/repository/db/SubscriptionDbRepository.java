@@ -141,23 +141,21 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
                                                 final Optional<PaginationParameters> paginationParams)
             throws ServiceTemporarilyUnavailableException {
 
-        final StringBuilder queryBuilder = new StringBuilder();
-
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
+        final StringBuilder query = initQuery(eventTypes, owningApplication, reader, clauses, params);
 
-        applyFilter(eventTypes, owningApplication, reader, queryBuilder, clauses, params);
-        appendClauses(queryBuilder, clauses);
+        appendClauses(query, clauses);
 
-        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC");
+        query.append(" ORDER BY s_subscription_object->>'created_at' DESC");
 
         paginationParams.ifPresent(pp -> {
-            queryBuilder.append(" LIMIT ? OFFSET ?");
+            query.append(" LIMIT ? OFFSET ?");
             params.add(pp.limit);
             params.add(pp.offset);
         });
 
-        return executeListSubscriptions(queryBuilder.toString(), params);
+        return executeListSubscriptions(query.toString(), params);
     }
 
     /**
@@ -180,30 +178,32 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new IllegalArgumentException("Limit can't be less than 1");
         }
 
-        final StringBuilder queryBuilder = new StringBuilder();
         final List<String> clauses = Lists.newArrayList();
         final List<Object> params = Lists.newArrayList();
-
-        applyFilter(eventTypes, owningApplication, reader, queryBuilder, clauses, params);
+        final StringBuilder query = initQuery(eventTypes, owningApplication, reader, clauses, params);
 
         if (null == token || !token.hasSubscriptionId()) {
-            return listNoToken(queryBuilder, clauses, params, limit);
-        } else if (token.getTokenType().forward) {
-            return listForwardToken(queryBuilder, clauses, params, token, limit);
+            return listNoToken(query, clauses, params, limit);
         } else {
-            return listBackwardToken(queryBuilder, clauses, params, token, limit);
+            clauses.add(" s_id " + token.getTokenType().dbClause + " ? ");
+            params.add(token.getSubscriptionId());
+
+            if (token.getTokenType().forward) {
+                return listForwardToken(query, clauses, params, token, limit);
+            } else {
+                return listBackwardToken(query, clauses, params, token, limit);
+            }
         }
     }
 
-    private static void applyFilter(
+    private static StringBuilder initQuery(
             final Set<String> eventTypes,
             final Optional<String> owningApplication,
             final Optional<AuthorizationAttribute> reader,
-            final StringBuilder queryBuilder,
             final List<String> clauses,
             final List<Object> params) {
 
-        queryBuilder.append("SELECT s_subscription_object FROM zn_data.subscription");
+        final StringBuilder query = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription");
 
         owningApplication.ifPresent(owningApp -> {
             clauses.add(" s_subscription_object->>'owning_application' = ? ");
@@ -221,19 +221,21 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
 
         if (reader.isPresent()) {
-            queryBuilder.append(", jsonb_to_recordset(s_subscription_object->'authorization'->'readers')" +
+            query.append(", jsonb_to_recordset(s_subscription_object->'authorization'->'readers')" +
                     " AS readers(data_type text, value text) ");
 
             clauses.add(" readers.data_type = ? AND readers.value = ? ");
             params.add(reader.get().getDataType());
             params.add(reader.get().getValue());
         }
+
+        return query;
     }
 
-    private static void appendClauses(final StringBuilder queryBuilder, final List<String> clauses) {
+    private static void appendClauses(final StringBuilder query, final List<String> clauses) {
         if (!clauses.isEmpty()) {
-            queryBuilder.append(" WHERE ");
-            queryBuilder.append(String.join(" AND ", clauses));
+            query.append(" WHERE ");
+            query.append(String.join(" AND ", clauses));
         }
     }
 
@@ -294,16 +296,15 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     private ListResult listBackwardToken(
-            final StringBuilder queryBuilder, final List<String> clauses, final List<Object> params,
+            final StringBuilder query, final List<String> clauses, final List<Object> params,
             final Token token, final int limit) {
 
-        clauses.add(" s_id " + token.getTokenType().dbClause + " ? ");
-        params.add(token.getSubscriptionId());
-
         final List<Subscription> subscriptionsPlusOne = executeListSubscriptions(
-                queryBuilder, clauses, params, limit + 1, false);
+                query, clauses, params, limit + 1, false);
+
         // subscriptions are listed in a backwards direction, therefore they should be reversed afterwards
         Collections.reverse(subscriptionsPlusOne);
+
         if (subscriptionsPlusOne.size() > limit) {
             // we need to remove the first one, as it shows that there is something before.
             return new ListResult(
@@ -324,14 +325,12 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     private ListResult listForwardToken(
-            final StringBuilder queryBuilder, final List<String> clauses, final List<Object> params,
+            final StringBuilder query, final List<String> clauses, final List<Object> params,
             final Token token, final int limit) {
 
-        clauses.add(" s_id " + token.getTokenType().dbClause + " ? ");
-        params.add(token.getSubscriptionId());
-
         final List<Subscription> subscriptionsPlusOne = executeListSubscriptions(
-                queryBuilder, clauses, params, limit + 1, true);
+                query, clauses, params, limit + 1, true);
+
         if (subscriptionsPlusOne.size() > limit) {
             return new ListResult(
                     subscriptionsPlusOne.subList(0, limit),
@@ -348,11 +347,12 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     private ListResult listNoToken(
-            final StringBuilder queryBuilder, final List<String> clauses, final List<Object> params,
+            final StringBuilder query, final List<String> clauses, final List<Object> params,
             final int limit) {
 
         final List<Subscription> subscriptionsPlusOne = executeListSubscriptions(
-                queryBuilder, clauses, params, limit + 1, true);
+                query, clauses, params, limit + 1, true);
+
         if (subscriptionsPlusOne.size() > limit) {
             return new ListResult(
                     subscriptionsPlusOne.subList(0, limit),
@@ -368,18 +368,18 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     private List<Subscription> executeListSubscriptions(
-            final StringBuilder queryBuilder, final List<String> clauses, final List<Object> params,
+            final StringBuilder query, final List<String> clauses, final List<Object> params,
             final int limit, final boolean asc) {
 
-        appendClauses(queryBuilder, clauses);
+        appendClauses(query, clauses);
 
-        queryBuilder.append(" ORDER by s_id ");
-        queryBuilder.append(asc ? "ASC" : "DESC");
+        query.append(" ORDER by s_id ");
+        query.append(asc ? "ASC" : "DESC");
 
-        queryBuilder.append(" LIMIT ?");
+        query.append(" LIMIT ?");
         params.add(limit);
 
-        return executeListSubscriptions(queryBuilder.toString(), params);
+        return executeListSubscriptions(query.toString(), params);
     }
 
     private List<Subscription> executeListSubscriptions(final String query, final List<Object> params) {
