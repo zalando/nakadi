@@ -21,7 +21,6 @@ import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
@@ -38,7 +37,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Collections;
@@ -64,8 +62,6 @@ public class EventTypeServiceTest {
 
     protected static final long TOPIC_RETENTION_MIN_MS = 10800000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
-    public static final String DELETABLE_OWNING_APP = "nakadi_archiver";
-    public static final String DELETABLE_CONSUMER_GROUP = "nakadi_to_s3";
 
     @Mock
     private Enrichment enrichment;
@@ -119,9 +115,6 @@ public class EventTypeServiceTest {
                 nakadiAuditLogPublisher, eventTypeOptionsValidator,
                 eventTypeCache, schemaService, adminService, applicationService);
 
-        when(nakadiSettings.getDeletableSubscriptionConsumerGroup()).thenReturn(DELETABLE_CONSUMER_GROUP);
-        when(nakadiSettings.getDeletableSubscriptionOwningApplication()).thenReturn(DELETABLE_OWNING_APP);
-
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
@@ -147,69 +140,6 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenSubscriptionsExistThenCantDeleteEventType() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(false);
-
-        assertThrows(ConflictException.class,
-                () -> eventTypeService.delete(eventType.getName()));
-    }
-
-    @Test
-    public void testFeatureToggleAllowsDeleteEventTypeWithSubscriptions() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(true);
-
-        eventTypeService.delete(eventType.getName());
-        // no exception should be thrown
-    }
-
-    @Test
-    public void testFeatureToggleAllowsDeleteEventTypeWithAuthzSectionAndDeletableSubscription() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setAuthorization(TestUtils.buildResourceAuthorization());
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(
-                TestUtils.
-                        createSubscription(DELETABLE_OWNING_APP, DELETABLE_CONSUMER_GROUP)))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        eventTypeService.delete(eventType.getName());
-        // no exception should be thrown
-    }
-
-    @Test
     public void testFeatureToggleForbidsDeleteEventTypeWithoutAuthzSection() {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
@@ -219,28 +149,6 @@ public class EventTypeServiceTest {
                 .thenReturn(true);
 
         assertThrows(AccessDeniedException.class, () -> eventTypeService.delete(eventType.getName()));
-    }
-
-    @Test
-    public void testFeatureToggleForbidsDeleteEventTypeWithNonDeletableSubscription() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setAuthorization(TestUtils.buildResourceAuthorization());
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-
-        doReturn(ImmutableList.of(TestUtils.createSubscription("someone", "something")))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(false);
-
-        assertThrows(ConflictException.class,
-                () -> eventTypeService.delete(eventType.getName()));
     }
 
     @Test
