@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.junit.Before;
 import org.junit.Test;
