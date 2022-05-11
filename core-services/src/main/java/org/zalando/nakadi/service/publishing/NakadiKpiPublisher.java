@@ -96,7 +96,7 @@ public class NakadiKpiPublisher {
                 final var eventSchemaEntry = avroSchema
                         .getLatestEventTypeSchemaVersion(eventTypeName);
 
-                final NakadiAvroMetadata metadata = buildMetaDataGenericRecord(
+                final NakadiAvroMetadata metadata = buildMetaData(
                         eventTypeName, metaSchemaEntry.getSchema(), metadataVersion, eventSchemaEntry.getVersion());
 
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
@@ -115,9 +115,8 @@ public class NakadiKpiPublisher {
         }
     }
 
-    private NakadiAvroMetadata buildMetaDataGenericRecord(
-            final String eventTypeName, final Schema metadataSchema,
-            final byte metadataSchemaVersion, final String etSchemaVersion) {
+    private NakadiAvroMetadata buildMetaData(final String eventTypeName, final Schema metadataSchema,
+                                             final byte metadataSchemaVersion, final String etSchemaVersion) {
 
         final long now = System.currentTimeMillis();
         final var eventType = this.eventTypeCache.getEventType(eventTypeName);
