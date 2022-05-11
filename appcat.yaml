@@ -2,15 +2,14 @@
 id: "077a600f-29ce-443a-92b4-6d8656ae11ff"
 modelType: "Application"
 appCode: "nakadi"
-sysCode: "epdcs"
-atlasId: 
+atlasId: "APP-9793"
 name: "EdPub Event Hub"
 appType: "Built"
 description: "Event Hub for manage events"
 state: "Active"
 documentationUrl: "https://confluence.wiley.com/display/TC/Activity+Progress"
 hostedBy: "aws"
-functionalArea: "technology-education-publishing"
+functionalArea: "technology-academic-professional"
 systemId: "077a600f-29ce-443a-92b4-6d8656ae11ff"
 shortCode: "nakadi"
 isSystem: false
