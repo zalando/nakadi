@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.kpi.AccessLogEvent;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
@@ -96,13 +96,13 @@ public class NakadiKpiPublisher {
                 final var eventSchemaEntry = avroSchema
                         .getLatestEventTypeSchemaVersion(eventTypeName);
 
-                final GenericRecord metadata = buildMetaDataGenericRecord(
+                final NakadiAvroMetadata metadata = buildMetaDataGenericRecord(
                         eventTypeName, metaSchemaEntry.getSchema(), metadataVersion, eventSchemaEntry.getVersion());
 
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
 
                 final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
-                        metadataVersion, metadata, event);
+                        metadata, event);
 
                 binaryEventsProcessor.queueEvent(eventTypeName, nakadiRecord);
             } else {
@@ -115,29 +115,23 @@ public class NakadiKpiPublisher {
         }
     }
 
-    private GenericRecord buildMetaDataGenericRecord(
-            final String eventType, final Schema metadataSchema,
+    private NakadiAvroMetadata buildMetaDataGenericRecord(
+            final String eventTypeName, final Schema metadataSchema,
             final byte metadataSchemaVersion, final String etSchemaVersion) {
-        return buildMetaDataGenericRecord(eventType, metadataSchema, metadataSchemaVersion, etSchemaVersion, "unknown");
-    }
 
-    private GenericRecord buildMetaDataGenericRecord(
-            final String eventTypeName, final Schema metadataSchema, final byte metadataSchemaVersion,
-            final String etSchemaVersion, final String user) {
         final long now = System.currentTimeMillis();
         final var eventType = this.eventTypeCache.getEventType(eventTypeName);
         final var partitions = timelineService.getTopicRepository(eventType)
                 .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        final var metadata = new GenericRecordBuilder(metadataSchema)
-                .set("occurred_at", now)
-                .set("eid", uuidGenerator.randomUUID().toString())
-                .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", eventTypeName)
-                .set("received_at", now)
-                .set("version", etSchemaVersion)
-                .set("published_by", user)
-                .set("partition", randomPartitionStrategy.calculatePartition(partitions))
-                .build();
+
+        final var metadata = new NakadiAvroMetadata(metadataSchemaVersion, metadataSchema);
+        metadata.setOccurredAt(now);
+        metadata.setEid(uuidGenerator.randomUUID().toString());
+        metadata.setFlowId(FlowIdUtils.peek());
+        metadata.setEventType(eventTypeName);
+        metadata.setReceivedAt(now);
+        metadata.setSchemaVersion(etSchemaVersion);
+        metadata.setPartition(randomPartitionStrategy.calculatePartition(partitions));
 
         return metadata;
     }

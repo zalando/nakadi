@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -615,18 +616,17 @@ public class EventPublisherTest {
         final var latestSchema =
                 avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
-        final byte metadataVersion = Byte.parseByte(latestMeta.getVersion());
+        final NakadiAvroMetadata metadata = new NakadiAvroMetadata(
+                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+        metadata.setOccurredAt(now);
+        metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
+        metadata.setFlowId(FlowIdUtils.peek());
+        metadata.setEventType("nakadi.access.log");
+        metadata.setPartition("0");
+        metadata.setReceivedAt(now);
+        metadata.setSchemaVersion(latestSchema.getVersion());
+        metadata.setPublishedBy("adyachkov");
 
-        final GenericRecord metadata = new GenericRecordBuilder(latestMeta.getSchema())
-                .set("occurred_at", now)
-                .set("eid", "9702cf96-9bdb-48b7-9f4c-92643cb6d9fc")
-                .set("flow_id", FlowIdUtils.peek())
-                .set("event_type", "nakadi.access.log")
-                .set("partition", "0")
-                .set("received_at", now)
-                .set("version", latestSchema.getVersion())
-                .set("published_by", "adyachkov")
-                .build();
         final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
                 .set("method", "POST")
                 .set("path", "/event-types")
@@ -643,7 +643,7 @@ public class EventPublisherTest {
                 .build();
 
         final NakadiRecord nakadiRecord = new NakadiRecordMapper(avroSchema)
-                .fromAvroGenericRecord(metadataVersion, metadata, event);
+                .fromAvroGenericRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventTypeName, records);
@@ -651,7 +651,7 @@ public class EventPublisherTest {
 
         records.forEach(record -> {
             Mockito.verify(partitionResolver).resolvePartition(eq(eventType), eq(record.getMetadata()));
-            assertEquals("1", record.getMetadata().getPartitionStr());
+            assertEquals("1", record.getMetadata().getPartition());
         });
     }
 
