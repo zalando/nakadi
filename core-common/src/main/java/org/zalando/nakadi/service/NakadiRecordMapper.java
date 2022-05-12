@@ -4,11 +4,11 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -64,6 +64,19 @@ public class NakadiRecordMapper {
                 .setEventKey(null) // fixme remove it once event key implemented
                 .setData(data)
                 .setFormat(NakadiRecord.Format.AVRO.getFormat());
+    }
+
+    public ProducerRecord<byte[], byte[]> toProducerRecord(
+            final String topic, final NakadiRecord nakadiRecord) {
+
+        final var partition = nakadiRecord.getMetadata().getPartition();
+        final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
+        final var eventKey = nakadiRecord.getEventKey();
+       
+        // TODO - Re serialize data with the enriched metadata
+        final var data = nakadiRecord.getData();
+
+        return new ProducerRecord<>(topic, partitionInt, eventKey, data);
     }
 
 }
