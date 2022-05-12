@@ -2,47 +2,136 @@ package org.zalando.nakadi.domain;
 
 import java.util.List;
 
-public interface NakadiMetadata {
+public class NakadiMetadata {
 
-    String getEid();
+    private String eid;
+    private long occurredAt;
+    private String eventType;
+    private String partition;
+    private String publishedBy;
+    private long receivedAt;
+    private String flowId;
+    private String spanCtx;
+    private String schemaVersion;
+    private List<String> parentEids;
+    private List<String> partitionKeys;
+    private String partitionCompactionKey;
+    private String eventOwner;
 
-    String getOccurredAt();
+    public String getEid() {
+        return eid;
+    }
 
-    String getEventType();
+    public NakadiMetadata setEid(final String eid) {
+        this.eid = eid;
+        return this;
+    }
 
-    void setEventType(String eventType);
+    public long getOccurredAt() {
+        return occurredAt;
+    }
 
-    String getPartitionStr();
+    public NakadiMetadata setOccurredAt(final long occurredAt) {
+        this.occurredAt = occurredAt;
+        return this;
+    }
 
-    Integer getPartitionInt();
+    public String getEventType() {
+        return eventType;
+    }
 
-    void setPartition(String partition);
+    public NakadiMetadata setEventType(final String eventType) {
+        this.eventType = eventType;
+        return this;
+    }
 
-    String getPublishedBy();
+    public String getPartition() {
+        return partition;
+    }
 
-    void setPublishedBy(String publisher);
+    public NakadiMetadata setPartition(final String partition) {
+        this.partition = partition;
+        return this;
+    }
 
-    String getReceivedAt();
+    public String getPublishedBy() {
+        return publishedBy;
+    }
 
-    void setReceivedAt(String receivedAt);
+    public NakadiMetadata setPublishedBy(final String publishedBy) {
+        this.publishedBy = publishedBy;
+        return this;
+    }
 
-    String getFlowId();
+    public long getReceivedAt() {
+        return receivedAt;
+    }
 
-    void setFlowId(String flowId);
+    public NakadiMetadata setReceivedAt(final long receivedAt) {
+        this.receivedAt = receivedAt;
+        return this;
+    }
 
-    String getSchemaVersion();
+    public String getFlowId() {
+        return flowId;
+    }
 
-    void setSchemaVersion(String schemaVersion);
+    public NakadiMetadata setFlowId(final String flowId) {
+        this.flowId = flowId;
+        return this;
+    }
 
-    List<String> getPartitionKeys();
+    public String getSpanCtx() {
+        return spanCtx;
+    }
 
-    void setPartitionKeys(List<String> partitionKeys);
+    public NakadiMetadata setSpanCtx(final String spanCtx) {
+        this.spanCtx = spanCtx;
+        return this;
+    }
 
-    String getPartitionCompactionKey();
+    public String getSchemaVersion() {
+        return schemaVersion;
+    }
 
-    void setPartitionCompactionKey(String partitionCompactionKey);
+    public NakadiMetadata setSchemaVersion(final String schemaVersion) {
+        this.schemaVersion = schemaVersion;
+        return this;
+    }
 
-    String getEventOwner();
+    public List<String> getParentEids() {
+        return parentEids;
+    }
 
-    void setEventOwner(String eventOwner);
+    public NakadiMetadata setParentEids(final List<String> parentEids) {
+        this.parentEids = parentEids;
+        return this;
+    }
+
+    public List<String> getPartitionKeys() {
+        return partitionKeys;
+    }
+
+    public NakadiMetadata setPartitionKeys(final List<String> partitionKeys) {
+        this.partitionKeys = partitionKeys;
+        return this;
+    }
+
+    public String getPartitionCompactionKey() {
+        return partitionCompactionKey;
+    }
+
+    public NakadiMetadata setPartitionCompactionKey(final String partitionCompactionKey) {
+        this.partitionCompactionKey = partitionCompactionKey;
+        return this;
+    }
+
+    public String getEventOwner() {
+        reutrn eventOwner;
+    }
+
+    public NakadiMetadata setEventOwner(final String eventOwner) {
+        this.eventOwner = eventOwner;
+        return this;
+    }
 }

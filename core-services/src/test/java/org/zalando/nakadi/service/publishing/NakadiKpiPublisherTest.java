@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
-import org.assertj.core.api.Assertions;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,11 +12,11 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.EnvelopeHolder;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -36,11 +35,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.eq;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NakadiKpiPublisherTest {
@@ -136,10 +135,6 @@ public class NakadiKpiPublisherTest {
         // Verify values in GenericRecord
         assertEquals("test-subscription-id", record.get("subscription_id").toString());
         assertEquals("created", record.get("status").toString());
-
-        // Verify that partition number is the same in metadata and in the publishing DTO
-        assertEquals(nakadiRecord.getMetadata().getPartitionStr(), metadata.get("partition").toString());
-        Assertions.assertThat(partitions).contains(nakadiRecord.getMetadata().getPartitionStr());
     }
 
     @Test

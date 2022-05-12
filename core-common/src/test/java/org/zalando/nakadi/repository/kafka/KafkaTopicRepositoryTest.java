@@ -23,8 +23,8 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -454,9 +454,9 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(0, eventType))
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType))
         );
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -474,15 +474,22 @@ public class KafkaTopicRepositoryTest {
         });
     }
 
+    private NakadiAvroMetadata getTestNakadiAvroMetadata(final String partition, final String eventType) {
+        final var metadata = new NakadiAvroMetadata((byte) 0, null);
+        metadata.setPartition(partition);
+        metadata.setEventType(eventType);
+        return metadata;
+    }
+
     @Test
     public void testSendNakadiRecordsHalfPublished() {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(1, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(2, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(3, eventType))
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("1", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("2", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("3", eventType))
         );
 
         final Exception exception = new Exception();
@@ -515,10 +522,10 @@ public class KafkaTopicRepositoryTest {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(new TestMetadata(0, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(1, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(2, eventType)),
-                new NakadiRecord().setMetadata(new TestMetadata(3, eventType))
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("1", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("2", eventType)),
+                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("3", eventType))
         );
 
         final KafkaException exception = new KafkaException();
@@ -541,9 +548,9 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(null, result.get(1).getException());
         Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
         Assert.assertEquals(exception, result.get(2).getException());
-        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(2).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(2).getStatus());
         Assert.assertEquals(exception, result.get(3).getException());
-        Assert.assertEquals(NakadiRecordResult.Status.NOT_ATTEMPTED, result.get(3).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {
@@ -635,122 +642,5 @@ public class KafkaTopicRepositoryTest {
     private ProducerRecord<byte[], byte[]> captureProducerRecordSent() {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
-    }
-
-    private class TestMetadata implements NakadiMetadata {
-
-        private final Integer partition;
-        private final String eventType;
-
-        private TestMetadata(final Integer partition,
-                             final String eventType) {
-            this.partition = partition;
-            this.eventType = eventType;
-        }
-
-        @Override
-        public String getEid() {
-            return null;
-        }
-
-        @Override
-        public String getOccurredAt() {
-            return null;
-        }
-
-        @Override
-        public String getPartitionStr() {
-            return String.valueOf(partition);
-        }
-
-        @Override
-        public Integer getPartitionInt() {
-            return partition;
-        }
-
-        @Override
-        public void setPartition(final String partition) {
-
-        }
-
-        @Override
-        public String getPublishedBy() {
-            return null;
-        }
-
-        @Override
-        public void setPublishedBy(final String publisher) {
-
-        }
-
-        @Override
-        public String getReceivedAt() {
-            return null;
-        }
-
-        @Override
-        public void setReceivedAt(final String toString) {
-
-        }
-
-        @Override
-        public String getFlowId() {
-            return null;
-        }
-
-        @Override
-        public void setFlowId(final String flowId) {
-
-        }
-
-        @Override
-        public String getSchemaVersion() {
-            return null;
-        }
-
-        @Override
-        public void setSchemaVersion(final String toString) {
-
-        }
-
-        @Override
-        public List<String> getPartitionKeys() {
-            return null;
-        }
-
-        @Override
-        public void setPartitionKeys(final List<String> partitionKeys) {
-
-        }
-
-        @Override
-        public String getPartitionCompactionKey() {
-            return null;
-        }
-
-        @Override
-        public void setPartitionCompactionKey(final String partitionCompactionKey) {
-
-        }
-
-        @Override
-        public String getEventType() {
-            return eventType;
-        }
-
-        @Override
-        public void setEventType(final String eventType) {
-
-        }
-
-        @Override
-        public String getEventOwner() {
-            return null;
-        }
-
-        @Override
-        public void setEventOwner(final String eventOwner) {
-
-        }
     }
 }
