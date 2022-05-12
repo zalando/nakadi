@@ -130,7 +130,6 @@ public class EventPublishingController {
 
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
-        // throws exception, maybe move it somewhere else
         authValidator.authorizeEventTypeWrite(eventType);
 
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);

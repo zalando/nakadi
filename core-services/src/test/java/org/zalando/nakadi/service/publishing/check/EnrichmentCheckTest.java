@@ -44,7 +44,9 @@ public class EnrichmentCheckTest {
         final NakadiRecord nakadiRecord = Mockito.mock(NakadiRecord.class);
         final List<NakadiRecord> nakadiRecords = List.of(nakadiRecord);
 
-        assertNotNull(enrichmentCheck.execute(eventType, nakadiRecords));
+        final List<NakadiRecordResult> result = enrichmentCheck.execute(eventType, nakadiRecords);
+        assertNotNull(result);
+        assertEquals(0, result.size());
 
         Mockito.verify(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
     }
