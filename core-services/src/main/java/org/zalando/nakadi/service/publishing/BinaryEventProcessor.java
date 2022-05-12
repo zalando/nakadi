@@ -29,7 +29,7 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
     public BinaryEventProcessor(
             final BinaryEventPublisher binaryEventPublisher,
             final EventTypeCache eventTypeCache,
-            @Qualifier("pre-internal-publishing-checks") final List<Check> prePublishingChecks,
+            @Qualifier("internal-publishing-checks") final List<Check> prePublishingChecks,
             @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
             @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
             @Value("${nakadi.kpi.config.workers}") final int workers,

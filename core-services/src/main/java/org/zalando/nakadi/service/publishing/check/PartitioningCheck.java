@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing.check;
 
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -10,6 +11,7 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import java.util.Collections;
 import java.util.List;
 
+@Component
 public class PartitioningCheck extends Check {
 
     private final PartitionResolver partitionResolver;

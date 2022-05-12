@@ -9,8 +9,8 @@ public class NakadiRecordResult {
     public enum Step {
         NONE,
         VALIDATION,
-        ENRICHMENT,
         PARTITIONING,
+        ENRICHMENT,
         PUBLISHING
     }
 

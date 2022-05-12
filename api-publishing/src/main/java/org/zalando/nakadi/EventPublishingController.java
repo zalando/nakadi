@@ -150,7 +150,8 @@ public class EventPublishingController {
                 final List<NakadiRecordResult> recordResults = binaryPublisher
                         .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
                 if (recordResults.isEmpty()) {
-                    throw new RuntimeException("");
+                    throw new InternalNakadiException("unexpected empty record result list, " +
+                            "publishing record result can not be empty");
                 }
                 result = publishingResultConverter.mapPublishingResultToView(recordResults);
 
