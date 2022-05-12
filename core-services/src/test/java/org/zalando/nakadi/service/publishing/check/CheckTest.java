@@ -47,16 +47,6 @@ public class CheckTest {
         public NakadiRecordResult.Step getCurrentStep() {
             return NakadiRecordResult.Step.VALIDATION;
         }
-
-        @Override
-        public String getEventOwner() {
-            return null;
-        }
-
-        @Override
-        public void setEventOwner(final String eventOwner) {
-
-        }
     };
 
     private NakadiAvroMetadata getTestMetadata() {

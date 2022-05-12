@@ -1,18 +1,11 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EventOwnerHeader;
-import org.zalando.nakadi.domain.GenericRecordMetadata;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.StrictJsonParser;
-import org.zalando.nakadi.domain.VersionedAvroSchema;
-import org.zalando.nakadi.service.AvroSchema;
 
 import java.io.IOException;
 
@@ -61,19 +54,8 @@ public class EventOwnerExtractorTest {
 
     @Test
     public void testCorrectValueSetWhenMetadata() throws IOException {
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        final VersionedAvroSchema latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-
-        final GenericRecordMetadata metadata = new GenericRecordMetadata(
-                new GenericRecordBuilder(latestMeta.getSchema())
-                        .set("occurred_at", System.currentTimeMillis())
-                        .set("eid", "777bf536-ca07-4f23-abd1-16a30dc8f296")
-                        .set("event_type", "doesn't-matter")
-                        .set("version", "0")
-                        .set(GenericRecordMetadata.EVENT_OWNER, "owner-123")
-                        .build(),
-                Byte.parseByte(latestMeta.getVersion()));
+        final NakadiMetadata metadata = new NakadiMetadata();
+        metadata.setEventOwner("owner-123");
 
         final EventOwnerExtractor extractor = EventOwnerExtractorFactory.createMetadataExtractor("retailer_id");
 

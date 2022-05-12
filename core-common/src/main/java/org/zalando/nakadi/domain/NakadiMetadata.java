@@ -127,7 +127,7 @@ public class NakadiMetadata {
     }
 
     public String getEventOwner() {
-        reutrn eventOwner;
+        return eventOwner;
     }
 
     public NakadiMetadata setEventOwner(final String eventOwner) {
