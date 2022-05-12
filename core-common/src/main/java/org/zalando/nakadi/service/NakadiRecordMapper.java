@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.publishing;
+package org.zalando.nakadi.service;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;

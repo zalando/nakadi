@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 import java.io.IOException;

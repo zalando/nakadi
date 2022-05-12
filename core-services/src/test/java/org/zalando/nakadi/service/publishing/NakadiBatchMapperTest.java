@@ -14,6 +14,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
