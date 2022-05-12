@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 
 import java.util.List;
 
@@ -20,31 +21,31 @@ public class CheckTest {
         final List<NakadiRecord> records = Lists.newArrayList(
                 recordOne, failedRecord, recordThree);
 
-        final List<Check.RecordResult> results =
-                check.processError(records, failedRecord, "test-error");
-        Assert.assertEquals(Check.Status.ABORTED, results.get(0).getStatus());
-        Assert.assertEquals(Check.Step.VALIDATION, results.get(0).getStep());
-        Assert.assertEquals("", results.get(0).getError());
+        final List<NakadiRecordResult> results =
+                check.processError(records, failedRecord, new RuntimeException("test-error"));
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, results.get(0).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Step.VALIDATION, results.get(0).getStep());
+        Assert.assertNull(results.get(0).getException());
 
-        Assert.assertEquals(Check.Status.FAILED, results.get(1).getStatus());
-        Assert.assertEquals(Check.Step.VALIDATION, results.get(1).getStep());
-        Assert.assertEquals("test-error", results.get(1).getError());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, results.get(1).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Step.VALIDATION, results.get(1).getStep());
+        Assert.assertNotNull(results.get(1).getException());
 
-        Assert.assertEquals(Check.Status.ABORTED, results.get(2).getStatus());
-        Assert.assertEquals(Check.Step.NONE, results.get(2).getStep());
-        Assert.assertEquals("", results.get(2).getError());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, results.get(2).getStatus());
+        Assert.assertEquals(NakadiRecordResult.Step.NONE, results.get(2).getStep());
+        Assert.assertNull(results.get(2).getException());
     }
 
     private final Check check = new Check() {
         @Override
-        public List<RecordResult> execute(final EventType eventType,
-                                          final List<NakadiRecord> records) {
+        public List<NakadiRecordResult> execute(final EventType eventType,
+                                                final List<NakadiRecord> records) {
             return null;
         }
 
         @Override
-        public Step getCurrentStep() {
-            return Step.VALIDATION;
+        public NakadiRecordResult.Step getCurrentStep() {
+            return NakadiRecordResult.Step.VALIDATION;
         }
     };
 

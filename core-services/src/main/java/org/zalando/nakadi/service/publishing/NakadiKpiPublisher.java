@@ -23,7 +23,6 @@ import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.Random;
@@ -126,11 +125,8 @@ public class NakadiKpiPublisher {
         final var metadata = new NakadiAvroMetadata(metadataSchemaVersion, metadataSchema);
         metadata.setOccurredAt(now);
         metadata.setEid(uuidGenerator.randomUUID().toString());
-        metadata.setFlowId(FlowIdUtils.peek());
         metadata.setEventType(eventTypeName);
-        metadata.setReceivedAt(now);
         metadata.setSchemaVersion(etSchemaVersion);
-        metadata.setPartition(randomPartitionStrategy.calculatePartition(partitions));
 
         return metadata;
     }

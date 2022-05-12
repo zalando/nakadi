@@ -48,13 +48,25 @@ public class NakadiConfig {
     }
 
     @Bean
+    @Qualifier("internal-publishing-checks")
+    public List<Check> prePublishingChecks(final EnrichmentCheck enrichmentCheck,
+                                           final PartitioningCheck partitioningCheck) {
+        return Lists.newArrayList(
+                partitioningCheck,
+                enrichmentCheck, // TODO: Test partition is available for enrichment.
+                new EventKeyCheck()
+        );
+    }
+
+    @Bean
     @Qualifier("pre-publishing-checks")
     public List<Check> prePublishingChecks(final AuthorizationValidator authValidator,
-                                           final EnrichmentCheck enrichmentCheck) {
+                                           final EnrichmentCheck enrichmentCheck,
+                                           final PartitioningCheck partitioningCheck) {
         return Lists.newArrayList(
                 new EventTypeCheck(),
                 new EventOwnerSelectorCheck(authValidator),
-                new PartitioningCheck(),
+                partitioningCheck,
                 enrichmentCheck, // TODO: Test partition is available for enrichment.
                 new EventKeyCheck()
         );

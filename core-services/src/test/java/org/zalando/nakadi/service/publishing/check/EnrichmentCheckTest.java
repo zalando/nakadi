@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.enrichment.EnrichmentsRegistry;
 import org.zalando.nakadi.enrichment.MetadataEnrichmentStrategy;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -18,7 +19,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EnrichmentCheckTest {
@@ -44,7 +44,9 @@ public class EnrichmentCheckTest {
         final NakadiRecord nakadiRecord = Mockito.mock(NakadiRecord.class);
         final List<NakadiRecord> nakadiRecords = List.of(nakadiRecord);
 
-        assertNull(enrichmentCheck.execute(eventType, nakadiRecords));
+        final List<NakadiRecordResult> result = enrichmentCheck.execute(eventType, nakadiRecords);
+        assertNotNull(result);
+        assertEquals(0, result.size());
 
         Mockito.verify(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
     }
@@ -59,13 +61,13 @@ public class EnrichmentCheckTest {
         final NakadiAvroMetadata metadata = Mockito.mock(NakadiAvroMetadata.class);
         Mockito.when(nakadiRecord.getMetadata()).thenReturn(metadata);
         Mockito.doThrow(EnrichmentException.class).when(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
-        final List<Check.RecordResult> recordResults = enrichmentCheck.execute(eventType, nakadiRecords);
+        final List<NakadiRecordResult> recordResults = enrichmentCheck.execute(eventType, nakadiRecords);
         assertNotNull(recordResults);
         assertEquals(1, recordResults.size());
     }
 
     @Test
     public void testGetCurrentStep() {
-        assertEquals(Check.Step.ENRICHMENT, enrichmentCheck.getCurrentStep());
+        assertEquals(NakadiRecordResult.Step.ENRICHMENT, enrichmentCheck.getCurrentStep());
     }
 }

@@ -61,7 +61,7 @@ public class NakadiRecordMapper {
                 }));
         return new NakadiRecord()
                 .setMetadata(metadata)
-                .setEventKey(null)
+                .setEventKey(null) // fixme remove it once event key implemented
                 .setData(data)
                 .setFormat(NakadiRecord.Format.AVRO.getFormat());
     }

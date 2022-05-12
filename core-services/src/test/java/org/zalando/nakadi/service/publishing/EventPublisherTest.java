@@ -61,7 +61,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyBoolean;
@@ -598,8 +597,8 @@ public class EventPublisherTest {
         final org.springframework.core.io.Resource eventTypeRes =
                 new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(timelineService,
-                cache, timelineSync, nakadiSettings, null, null, partitionResolver);
+        final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
+                timelineService, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
         final String eventTypeName = eventType.getName();
@@ -646,13 +645,8 @@ public class EventPublisherTest {
                 .fromAvroGenericRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
-        eventPublisher.publish(eventTypeName, records);
+        eventPublisher.publish(eventType, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
-
-        records.forEach(record -> {
-            Mockito.verify(partitionResolver).resolvePartition(eq(eventType), eq(record.getMetadata()));
-            assertEquals("1", record.getMetadata().getPartition());
-        });
     }
 
     private void mockFailedPublishing() throws Exception {
