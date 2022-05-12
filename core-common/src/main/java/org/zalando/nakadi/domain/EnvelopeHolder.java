@@ -86,7 +86,18 @@ public class EnvelopeHolder {
     }
 
     public InputStream getPayload() {
-        return new ByteArrayInputStream(data, 1 + 4 + metadataLength + 4, payloadLength);
+        return new ByteArrayInputStream(data, getPayloadOffset(), payloadLength);
     }
 
+    public EventWriter getPayloadWriter() {
+        return (outputStream) -> outputStream.write(data, getPayloadOffset(), payloadLength);
+    }
+
+    private int getPayloadOffset() {
+        // metadata version = 1 byte
+        // metadata length  = 4 byte (int)
+        // actual metadata  = metadataLength
+        // payload length   = 4 bytes (int)
+        return 1 + 4 + metadataLength + 4;
+    }
 }

@@ -67,16 +67,20 @@ public class NakadiRecordMapper {
     }
 
     public ProducerRecord<byte[], byte[]> toProducerRecord(
-            final String topic, final NakadiRecord nakadiRecord) {
+            final String topic, final NakadiRecord nakadiRecord) throws IOException {
 
         final var partition = nakadiRecord.getMetadata().getPartition();
         final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
         final var eventKey = nakadiRecord.getEventKey();
-       
-        // TODO - Re serialize data with the enriched metadata
-        final var data = nakadiRecord.getData();
 
-        return new ProducerRecord<>(topic, partitionInt, eventKey, data);
+        final var envelope = EnvelopeHolder.fromBytes(nakadiRecord.getData());
+
+        final var eventData = EnvelopeHolder.produceBytes(
+                nakadiRecord.getMetadata().getMetadataVersion(),
+                nakadiRecord.getMetadata(),
+                envelope.getPayloadWriter());
+
+        return new ProducerRecord<>(topic, partitionInt, eventKey, eventData);
     }
 
 }

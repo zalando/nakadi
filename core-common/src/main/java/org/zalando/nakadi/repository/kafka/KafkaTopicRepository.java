@@ -52,6 +52,7 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.NakadiRecordMapper;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -495,6 +496,9 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
             return prepareResponse(nakadiRecords, responses, e);
+        } catch (final IOException ioe) {
+            // TODO Handle IO exception
+            return null;
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
