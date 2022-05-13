@@ -91,15 +91,14 @@ public class NakadiKpiPublisher {
 
                 final var metaSchemaEntry = avroSchema
                         .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-                final var metadataVersion = Byte.parseByte(metaSchemaEntry.getVersion());
+                final var metadataVersion = metaSchemaEntry.getVersionAsByte();
 
-                final var eventSchemaEntry = avroSchema
-                        .getLatestEventTypeSchemaVersion(eventTypeName);
+                final var eventSchema = avroSchema.getLatestEventTypeSchemaVersion(eventTypeName);
 
                 final NakadiAvroMetadata metadata = buildMetaData(
-                        eventTypeName, metaSchemaEntry.getSchema(), metadataVersion, eventSchemaEntry.getVersion());
+                        eventTypeName, metaSchemaEntry.getSchema(), metadataVersion, eventSchema.getVersion());
 
-                final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchemaEntry.getSchema());
+                final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent, eventSchema.getSchema());
 
                 final NakadiRecord nakadiRecord = nakadiRecordMapper.fromAvroGenericRecord(
                         metadata, event);

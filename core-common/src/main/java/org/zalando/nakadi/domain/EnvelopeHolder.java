@@ -1,5 +1,9 @@
 package org.zalando.nakadi.domain;
 
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.EncoderFactory;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -45,6 +49,19 @@ public class EnvelopeHolder {
         data[offset + 1] = (byte) (value >> 16);
         data[offset + 2] = (byte) (value >> 8);
         data[offset + 3] = (byte) (value >> 0);
+    }
+
+    public static EnvelopeHolder fromMetadataAndEvent(final NakadiAvroMetadata metadata, final GenericRecord event)
+            throws IOException {
+        final byte[] data = EnvelopeHolder.produceBytes(
+                metadata.getMetadataVersion(),
+                metadata,
+                (outputStream -> {
+                    final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
+                    eventWriter.write(event, EncoderFactory.get()
+                            .directBinaryEncoder(outputStream, null));
+                }));
+        return EnvelopeHolder.fromBytes(data);
     }
 
     public static EnvelopeHolder fromBytes(final byte[] data) throws IOException {

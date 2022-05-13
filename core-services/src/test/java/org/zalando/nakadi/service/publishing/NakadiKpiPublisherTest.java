@@ -12,7 +12,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -121,7 +120,7 @@ public class NakadiKpiPublisherTest {
         assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getMetadata().getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
-        final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
+        final var envelopeHolder = nakadiRecord.getEnvelope();
 
         final var schemaEntry = avroSchema
                 .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());

@@ -11,6 +11,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.AvroSchema;
@@ -21,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class NakadiBatchMapperTest {
+public class NakadiRecordMapperTest {
 
     @Test
     public void testMap() throws IOException {
@@ -39,8 +40,17 @@ public class NakadiBatchMapperTest {
         Assert.assertNotNull(records.get(0).getMetadata());
         Assert.assertNotNull(records.get(1).getMetadata());
 
-        Assert.assertArrayEquals(firstRecord, records.get(0).getData());
-        Assert.assertArrayEquals(secondRecord, records.get(1).getData());
+
+        Assert.assertArrayEquals(firstRecord, readDataFromRecord(records.get(0)));
+        Assert.assertArrayEquals(secondRecord, readDataFromRecord(records.get(1)));
+    }
+
+    private byte[] readDataFromRecord(final NakadiRecord nakadiRecord) throws IOException {
+        final var envelope = nakadiRecord.getEnvelope();
+        return EnvelopeHolder.produceBytes(
+                envelope.getMetadataVersion(),
+                nakadiRecord.getMetadata(),
+                envelope.getPayloadWriter());
     }
 
     private byte[] generateRecord(final AvroSchema avroSchema) throws IOException {
@@ -67,6 +77,6 @@ public class NakadiBatchMapperTest {
         final var meta = baos.toByteArray();
         final var metadataBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(meta.length).array(), meta);
         final var payloadBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(2).array(), new byte[]{'y', 'y'});
-        return Bytes.concat(new byte[]{Byte.parseByte(versionedSchema.getVersion())}, metadataBytes, payloadBytes);
+        return Bytes.concat(new byte[]{versionedSchema.getVersionAsByte()}, metadataBytes, payloadBytes);
     }
 }

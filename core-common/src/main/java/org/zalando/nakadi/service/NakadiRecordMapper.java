@@ -1,10 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
@@ -43,7 +40,7 @@ public class NakadiRecordMapper {
                     AvroSchema.METADATA_KEY, Byte.toString(metadataVersion));
             records.add(new NakadiRecord()
                     .setMetadata(new NakadiAvroMetadata(metadataVersion, metadataSchema, metadata))
-                    .setData(wholeRecord));
+                    .setEnvelope(EnvelopeHolder.fromBytes(wholeRecord)));
         }
 
         return records;
@@ -51,36 +48,11 @@ public class NakadiRecordMapper {
 
     public NakadiRecord fromAvroGenericRecord(final NakadiAvroMetadata metadata,
                                               final GenericRecord event) throws IOException {
-        final byte[] data = EnvelopeHolder.produceBytes(
-                metadata.getMetadataVersion(),
-                metadata,
-                (outputStream -> {
-                    final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
-                    eventWriter.write(event, EncoderFactory.get()
-                            .directBinaryEncoder(outputStream, null));
-                }));
         return new NakadiRecord()
                 .setMetadata(metadata)
                 .setEventKey(null) // fixme remove it once event key implemented
-                .setData(data)
+                .setEnvelope(EnvelopeHolder.fromMetadataAndEvent(metadata, event))
                 .setFormat(NakadiRecord.Format.AVRO.getFormat());
-    }
-
-    public ProducerRecord<byte[], byte[]> toProducerRecord(
-            final String topic, final NakadiRecord nakadiRecord) throws IOException {
-
-        final var partition = nakadiRecord.getMetadata().getPartition();
-        final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
-        final var eventKey = nakadiRecord.getEventKey();
-
-        final var envelope = EnvelopeHolder.fromBytes(nakadiRecord.getData());
-
-        final var eventData = EnvelopeHolder.produceBytes(
-                nakadiRecord.getMetadata().getMetadataVersion(),
-                nakadiRecord.getMetadata(),
-                envelope.getPayloadWriter());
-
-        return new ProducerRecord<>(topic, partitionInt, eventKey, eventData);
     }
 
 }
