@@ -183,7 +183,7 @@ public class EventTypeAT extends BaseAT {
                 .header("accept", "application/json")
                 .contentType(JSON).post(ENDPOINT)
                 .then()
-                .body(equalTo("")).statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test
