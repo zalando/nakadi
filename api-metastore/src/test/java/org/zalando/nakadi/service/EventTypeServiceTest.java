@@ -23,6 +23,7 @@ import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
@@ -41,6 +42,7 @@ import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -379,7 +381,6 @@ public class EventTypeServiceTest {
         verifyNoInteractions(applicationService);
     }
 
-
     @Test
     public void whenEventTypeDeletedThenKPIEventSubmitted() {
         final EventType et = TestUtils.buildDefaultEventType();
@@ -393,5 +394,16 @@ public class EventTypeServiceTest {
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
         assertEquals("disabled", kpiEvent.getAuthz());
         assertEquals(et.getCompatibilityMode().toString(), kpiEvent.getCompatibilityMode());
+    }
+
+    @Test
+    public void whenMetadataEventOwnerSelectorThenValueUnset() {
+        final EventType et = TestUtils.buildDefaultEventType();
+
+        et.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "any_name", null));
+        assertDoesNotThrow(() -> EventTypeService.validateEventOwnerSelector(et));
+
+        et.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "other_name", "some_value"));
+        assertThrows(InvalidEventTypeException.class, () -> EventTypeService.validateEventOwnerSelector(et));
     }
 }

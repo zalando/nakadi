@@ -35,12 +35,8 @@ public class EventOwnerExtractorFactory {
             case STATIC:
                 return createStaticExtractor(selector.getName(), selector.getValue());
             case METADATA:
-                if (!"event_owner".equals(selector.getValue())) {
-                    throw new IllegalArgumentException(
-                            "Unsupported Value for METADATA event_owner_selector: " + selector.getValue());
-                } else {
-                    return createMetadataExtractor(selector.getName());
-                }
+                // value is ignored on purpose, may be extended later
+                return createMetadataExtractor(selector.getName());
             default:
                 throw new IllegalArgumentException("Unsupported Type for event_owner_selector: " + selector.getType());
         }
