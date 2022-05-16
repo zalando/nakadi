@@ -16,6 +16,7 @@ public class NakadiMetadata {
     private List<String> parentEids;
     private List<String> partitionKeys;
     private String partitionCompactionKey;
+    private String eventOwner;
 
     public String getEid() {
         return eid;
@@ -122,6 +123,15 @@ public class NakadiMetadata {
 
     public NakadiMetadata setPartitionCompactionKey(final String partitionCompactionKey) {
         this.partitionCompactionKey = partitionCompactionKey;
+        return this;
+    }
+
+    public String getEventOwner() {
+        return eventOwner;
+    }
+
+    public NakadiMetadata setEventOwner(final String eventOwner) {
+        this.eventOwner = eventOwner;
         return this;
     }
 }

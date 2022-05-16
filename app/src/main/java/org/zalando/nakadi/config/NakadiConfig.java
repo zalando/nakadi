@@ -12,6 +12,7 @@ import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.publishing.EventOwnerExtractorFactory;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.publishing.check.EnrichmentCheck;
 import org.zalando.nakadi.service.publishing.check.EventKeyCheck;
@@ -60,12 +61,13 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("pre-publishing-checks")
-    public List<Check> prePublishingChecks(final AuthorizationValidator authValidator,
+    public List<Check> prePublishingChecks(final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                                           final AuthorizationValidator authValidator,
                                            final EnrichmentCheck enrichmentCheck,
                                            final PartitioningCheck partitioningCheck) {
         return Lists.newArrayList(
                 new EventTypeCheck(),
-                new EventOwnerSelectorCheck(authValidator),
+                new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
                 partitioningCheck,
                 enrichmentCheck, // TODO: Test partition is available for enrichment.
                 new EventKeyCheck()

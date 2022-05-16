@@ -191,6 +191,8 @@ public class EventTypeService {
 
         validateOwningApplication(null, eventType.getOwningApplication());
 
+        validateEventOwnerSelector(eventType);
+
         if (eventType.getAnnotations() == null) {
             eventType.setAnnotations(new HashMap<>());
         }
@@ -460,6 +462,8 @@ public class EventTypeService {
                 authorizationValidator.authorizeEventTypeAdmin(original);
                 validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }
+            validateEventOwnerSelector(eventTypeBase);
+
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
@@ -623,6 +627,16 @@ public class EventTypeService {
             InvalidEventTypeException {
         if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
+    static void validateEventOwnerSelector(final EventTypeBase eventType) {
+        final EventOwnerSelector selector = eventType.getEventOwnerSelector();
+        if (selector != null) {
+            if (selector.getType() == EventOwnerSelector.Type.METADATA && selector.getValue() != null) {
+                throw new InvalidEventTypeException(
+                        "event_owner_selector specifying value for type 'metadata' is not supported");
+            }
         }
     }
 

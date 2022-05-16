@@ -7,12 +7,12 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.view.EventOwnerSelector;
-
-import java.util.function.Function;
 
 @Component
 public class EventOwnerExtractorFactory {
@@ -24,37 +24,74 @@ public class EventOwnerExtractorFactory {
         this.featureToggleService = featureToggleService;
     }
 
-    public Function<JSONObject, EventOwnerHeader> createExtractor(final EventType eventType) {
+    public EventOwnerExtractor createExtractor(final EventType eventType) {
         final EventOwnerSelector selector = eventType.getEventOwnerSelector();
         if (null == selector || !(featureToggleService.isFeatureEnabled(Feature.EVENT_OWNER_SELECTOR_AUTHZ))) {
             return null;
         }
         switch (selector.getType()) {
             case PATH:
-                return createPathExtractor(selector);
+                return createPathExtractor(selector.getName(), selector.getValue());
             case STATIC:
-                return createStaticExtractor(selector);
+                return createStaticExtractor(selector.getName(), selector.getValue());
+            case METADATA:
+                // value is ignored on purpose, may be extended later
+                return createMetadataExtractor(selector.getName());
             default:
                 throw new IllegalArgumentException("Unsupported Type for event_owner_selector: " + selector.getType());
         }
     }
 
     @VisibleForTesting
-    static Function<JSONObject, EventOwnerHeader> createPathExtractor(final EventOwnerSelector selector) {
-        return (batchItem) -> {
-            try {
-                final JsonPathAccess jsonPath = new JsonPathAccess(batchItem);
-                final Object value = jsonPath.get(selector.getValue());
-                return JSONObject.NULL == value ? null : new EventOwnerHeader(selector.getName(), value.toString());
-            } catch (final JsonPathAccessException e) {
-                return null;
+    static EventOwnerExtractor createPathExtractor(final String name, final String path) {
+        return new EventOwnerExtractor() {
+            @Override
+            public EventOwnerHeader extractEventOwner(final JSONObject event) {
+                try {
+                    final JsonPathAccess jsonPath = new JsonPathAccess(event);
+                    final Object value = jsonPath.get(path);
+                    return JSONObject.NULL == value ? null : new EventOwnerHeader(name, value.toString());
+                } catch (final JsonPathAccessException e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public EventOwnerHeader extractEventOwner(final NakadiMetadata metadata) {
+                throw new NakadiBaseException("not implemented");
             }
         };
     }
 
     @VisibleForTesting
-    static Function<JSONObject, EventOwnerHeader> createStaticExtractor(final EventOwnerSelector selector) {
-        final EventOwnerHeader eventOwnerHeader = new EventOwnerHeader(selector.getName(), selector.getValue());
-        return batchItem -> eventOwnerHeader;
+    static EventOwnerExtractor createStaticExtractor(final String name, final String value) {
+        final EventOwnerHeader eventOwnerHeader = new EventOwnerHeader(name, value);
+
+        return new EventOwnerExtractor() {
+            @Override
+            public EventOwnerHeader extractEventOwner(final JSONObject event) {
+                return eventOwnerHeader;
+            }
+
+            @Override
+            public EventOwnerHeader extractEventOwner(final NakadiMetadata metadata) {
+                return eventOwnerHeader;
+            }
+        };
+    }
+
+    @VisibleForTesting
+    static EventOwnerExtractor createMetadataExtractor(final String name) {
+        return new EventOwnerExtractor() {
+            @Override
+            public EventOwnerHeader extractEventOwner(final JSONObject event) {
+                throw new NakadiBaseException("not implemented");
+            }
+
+            @Override
+            public EventOwnerHeader extractEventOwner(final NakadiMetadata metadata) {
+                return new EventOwnerHeader(name, metadata.getEventOwner());
+            }
+        };
     }
 }
