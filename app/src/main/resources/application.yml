@@ -153,6 +153,9 @@ spring:
       on-profile: acceptanceTest
 
 nakadi:
+  eventType.deletableSubscription:
+    owningApplication: "deletable_owning_app"
+    consumerGroup: "deletable_consumer_group"
   stream:
     maxStreamMemoryBytes: 10_000 # ~10 Kb
     max.commitTimeout: 5 # seconds

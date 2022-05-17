@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -104,7 +104,6 @@ public class EventTypeService {
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
-    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public EventTypeService(
@@ -126,7 +125,6 @@ public class EventTypeService {
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,
-            final SubscriptionTokenLister subscriptionTokenLister,
             final ApplicationService applicationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -146,7 +144,6 @@ public class EventTypeService {
         this.adminService = adminService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
-        this.subscriptionTokenLister = subscriptionTokenLister;
         this.applicationService = applicationService;
     }
 
@@ -394,12 +391,10 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
-                eventTypeRepository.listEventTypesWithRowLock(Set.of(eventType),
-                        EventTypeRepository.RowLockMode.UPDATE);
+                final Set<String> eventTypes = ImmutableSet.of(eventType);
+                eventTypeRepository.listEventTypesWithRowLock(eventTypes, EventTypeRepository.RowLockMode.UPDATE);
 
-                final List<Subscription> subscriptions =
-                        subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
-                                Optional.empty(), Optional.empty());
+                final List<Subscription> subscriptions = subscriptionRepository.listAllSubscriptionsFor(eventTypes);
 
                 if (!(featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
                         || onlyDeletableSubscriptions(subscriptions))) {
