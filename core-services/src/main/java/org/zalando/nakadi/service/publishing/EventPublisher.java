@@ -50,7 +50,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.EventTypeBase.DATA_PATH_PREFIX;
@@ -242,15 +241,18 @@ public class EventPublisher {
     }
 
     private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
-        final Function<JSONObject, EventOwnerHeader> extractor = eventOwnerExtractorFactory.createExtractor(eventType);
+        final EventOwnerExtractor extractor = eventOwnerExtractorFactory.createExtractor(eventType);
         if (null == extractor) {
             return;
         }
+
         for (final BatchItem item : batchItems) {
             item.setStep(EventPublishingStep.VALIDATING);
+
+            final EventOwnerHeader owner = extractor.extractEventOwner(item.getEvent());
+            item.setOwner(owner);
+
             try {
-                final EventOwnerHeader owner = extractor.apply(item.getEvent());
-                item.setOwner(owner);
                 authValidator.authorizeEventWrite(item);
             } catch (AccessDeniedException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());

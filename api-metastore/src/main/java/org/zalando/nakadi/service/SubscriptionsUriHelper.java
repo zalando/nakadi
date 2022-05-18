@@ -4,7 +4,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.model.AuthorizationAttributeQueryParser;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 
 import java.util.Optional;
 import java.util.Set;
@@ -14,7 +14,7 @@ public class SubscriptionsUriHelper {
     public static PaginationLinks.Link createSubscriptionListLink(
             final Optional<String> owningApplication, final Set<String> eventTypes,
             final Optional<AuthorizationAttribute> reader, final int offset,
-            final Optional<SubscriptionTokenLister.Token> token, final int limit, final boolean showStatus) {
+            final Optional<SubscriptionDbRepository.Token> token, final int limit, final boolean showStatus) {
 
         final UriComponentsBuilder urlBuilder = UriComponentsBuilder.fromPath("/subscriptions");
         if (!eventTypes.isEmpty()) {

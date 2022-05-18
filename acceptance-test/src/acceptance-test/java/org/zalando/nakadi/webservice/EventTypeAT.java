@@ -175,6 +175,18 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
+    public void whenEventAuthSelectorCreateWithMetadataAndValueThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "x", "y"));
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
     public void whenEventAuthSelectorUpdatedThenOK() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setEventOwnerSelector(null);

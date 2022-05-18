@@ -141,7 +141,6 @@ public class SubscriptionControllerTest {
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
                 nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
-                null,
                 transactionTemplate, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);

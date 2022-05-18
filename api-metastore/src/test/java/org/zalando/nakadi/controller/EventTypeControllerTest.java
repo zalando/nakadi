@@ -2,7 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import org.hamcrest.core.StringContains;
@@ -19,10 +18,8 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -51,13 +48,11 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -67,7 +62,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.problem.Status.CONFLICT;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
@@ -564,32 +558,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"));
-    }
-
-    @Test
-    public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        when(eventTypeCache.getEventTypeIfExists(eventType.getName())).thenReturn(Optional.of(eventType));
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
-
-        final Subscription mockSubscription = mock(Subscription.class);
-        when(mockSubscription.getConsumerGroup()).thenReturn("def");
-        when(mockSubscription.getOwningApplication()).thenReturn("asdf");
-        when(subscriptionRepository
-                .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())),
-                        eq(Optional.empty()),
-                        eq(Optional.empty()),
-                        eq(Optional.empty())))
-                .thenReturn(ImmutableList.of(mockSubscription));
-
-        final Problem expectedProblem = Problem.valueOf(CONFLICT,
-                "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
-
-        deleteEventType(eventType.getName())
-                .andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test

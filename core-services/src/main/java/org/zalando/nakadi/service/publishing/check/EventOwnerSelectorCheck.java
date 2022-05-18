@@ -1,21 +1,24 @@
 package org.zalando.nakadi.service.publishing.check;
 
-import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.view.EventOwnerSelector;
+import org.zalando.nakadi.service.publishing.EventOwnerExtractor;
+import org.zalando.nakadi.service.publishing.EventOwnerExtractorFactory;
 
 import java.util.Collections;
 import java.util.List;
 
 public class EventOwnerSelectorCheck extends Check {
 
+    private final EventOwnerExtractorFactory eventOwnerExtractorFactory;
     private final AuthorizationValidator authValidator;
 
-    public EventOwnerSelectorCheck(final AuthorizationValidator authValidator) {
+    public EventOwnerSelectorCheck(final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                                   final AuthorizationValidator authValidator) {
+        this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
         this.authValidator = authValidator;
     }
 
@@ -23,24 +26,14 @@ public class EventOwnerSelectorCheck extends Check {
     public List<NakadiRecordResult> execute(final EventType eventType,
                                             final List<NakadiRecord> records) {
 
+        final EventOwnerExtractor extractor = eventOwnerExtractorFactory.createExtractor(eventType);
+        if (null == extractor) {
+            return null; // means has no selector or feature disabled
+        }
+
         for (final NakadiRecord record : records) {
-            final EventOwnerSelector eventOwnerSelector = eventType.getEventOwnerSelector();
-            if (null == eventOwnerSelector) {
-                continue;
-            }
-
+            record.setOwner(extractor.extractEventOwner(record.getMetadata()));
             try {
-                switch (eventOwnerSelector.getType()) {
-                    case STATIC:
-                        record.setOwner(new EventOwnerHeader(
-                                eventOwnerSelector.getName(),
-                                eventOwnerSelector.getValue()));
-                    case PATH:
-                        // todo take from metadata (no field at the moment)
-                    default:
-                        record.setOwner(null);
-                }
-
                 authValidator.authorizeEventWrite(record);
             } catch (AccessDeniedException e) {
                 return processError(records, record, e);
@@ -49,7 +42,6 @@ public class EventOwnerSelectorCheck extends Check {
 
         return Collections.emptyList();
     }
-
 
     @Override
     public NakadiRecordResult.Step getCurrentStep() {
