@@ -65,7 +65,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
-    private final AvroSchema avroSchema;
+    private final SchemaService schemaService;
 
     public MultiTimelineEventConsumer(
             final String clientId,
@@ -254,7 +254,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
-                        clientId, entry.getValue(), new KafkaRecordDeserializer(avroSchema));
+                        clientId, entry.getValue(), new KafkaRecordDeserializer(schemaService));
                 eventConsumers.put(repo, consumer);
             }
         }

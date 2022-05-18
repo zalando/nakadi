@@ -1,5 +1,9 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
@@ -28,6 +32,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -44,6 +49,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -64,6 +70,7 @@ public class SchemaService {
     private final NakadiSettings nakadiSettings;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -90,6 +97,14 @@ public class SchemaService {
         this.nakadiSettings = nakadiSettings;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.schemasCache = CacheBuilder.newBuilder()
+                .build(new CacheLoader<>() {
+                    @Override
+                    public EventTypeSchema load(final SchemaId schemaId)
+                            throws NoSuchSchemaException, InvalidVersionNumberException {
+                        return schemaRepository.getSchemaVersion(schemaId.name, schemaId.version);
+                    }
+                });
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
@@ -162,8 +177,25 @@ public class SchemaService {
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
             throws NoSuchSchemaException, InvalidVersionNumberException {
-        final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
-        return schema;
+        try {
+            return schemasCache.get(new SchemaId(name, version));
+        } catch (final UncheckedExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof NoSuchSchemaException) {
+                throw (NoSuchSchemaException) cause;
+            }
+            if (cause instanceof InvalidVersionNumberException) {
+                throw (InvalidVersionNumberException) cause;
+            }
+
+            throw new ServiceTemporarilyUnavailableException("Failed to access schemas cache", cause);
+        } catch (final ExecutionException e) {
+            throw new ServiceTemporarilyUnavailableException("Failed to access schemas cache", e.getCause());
+        }
+    }
+
+    public EventTypeSchema getMetadataSchema(final String version) {
+        return getSchemaVersion("metadata", version);
     }
 
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
@@ -269,6 +301,28 @@ public class SchemaService {
             StrictJsonParser.parse(jsonInString, false);
         } catch (final RuntimeException jpe) {
             throw new SchemaValidationException("schema must be a valid json: " + jpe.getMessage());
+        }
+    }
+
+    private class SchemaId {
+        private final String name;
+        private final String version;
+
+        public SchemaId(final String name, final String version) {
+            this.name = name;
+            this.version = version;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            final SchemaId that = (SchemaId) o;
+            return Objects.equals(name, that.name) &&
+                    Objects.equals(version, that.version);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, version);
         }
     }
 }
