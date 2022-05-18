@@ -29,7 +29,7 @@ public class AccessLogEvent extends KPIEvent {
     private long responseLength;
 
     public AccessLogEvent() {
-        super(KPIEventTypes.ACCESS_LOG);
+        super(KPIEventTypes.ACCESS_LOG, "1");
     }
 
     public String getMethod() {

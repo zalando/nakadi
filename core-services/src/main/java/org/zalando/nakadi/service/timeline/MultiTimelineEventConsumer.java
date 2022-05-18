@@ -15,7 +15,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.SchemaServiceProvider;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 import java.io.IOException;
@@ -65,19 +65,19 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
-    private final AvroSchema avroSchema;
+    private final SchemaServiceProvider schemaService;
 
     public MultiTimelineEventConsumer(
             final String clientId,
             final TimelineService timelineService,
             final TimelineSync timelineSync,
             final Comparator<NakadiCursor> comparator,
-            final AvroSchema avroSchema) {
+            final SchemaServiceProvider schemaService) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.comparator = comparator;
-        this.avroSchema = avroSchema;
+        this.schemaService = schemaService;
     }
 
     @Override
@@ -254,7 +254,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
-                        clientId, entry.getValue(), new KafkaRecordDeserializer(avroSchema));
+                        clientId, entry.getValue(), new KafkaRecordDeserializer(schemaService));
                 eventConsumers.put(repo, consumer);
             }
         }

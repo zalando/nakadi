@@ -29,7 +29,7 @@ public class KPIEventMapperTest {
         private double doubleGetter;
 
         public ValidTestKPIEvent() {
-            super("test-et");
+            super("test-et", "1");
         }
 
         public String getSimpleGetter() {
@@ -97,7 +97,7 @@ public class KPIEventMapperTest {
         }
 
         public KPIEventWithoutGetter() {
-            super("test-et");
+            super("test-et", "1");
         }
     }
 
@@ -115,7 +115,7 @@ public class KPIEventMapperTest {
         }
 
         public KPIEventWithPrivateGetter() {
-            super("test-et");
+            super("test-et", "1");
         }
     }
 

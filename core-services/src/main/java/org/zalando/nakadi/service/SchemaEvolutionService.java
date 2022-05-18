@@ -20,8 +20,8 @@ import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.JsonVersion;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
@@ -123,11 +123,11 @@ public class SchemaEvolutionService {
                                        final AvroVersion avroVersion)
             throws SchemaEvolutionException {
         final var compatibilityMode = eventType.getCompatibilityMode();
-            validateAvroSchema(Collections.singletonList(original.getSchema()),
-                    eventType.getSchema(), compatibilityMode);
+        validateAvroSchema(Collections.singletonList(original.getSchema()),
+                eventType.getSchema(), compatibilityMode);
 
         final var level = AvroUtils.getParsedSchema(original.getSchema().getSchema()).
-                equals(AvroUtils.getParsedSchema(eventType.getSchema().getSchema()))? NO_CHANGES : MAJOR;
+                equals(AvroUtils.getParsedSchema(eventType.getSchema().getSchema())) ? NO_CHANGES : MAJOR;
 
         return bumpVersion(original, eventType, level, avroVersion);
     }
@@ -138,7 +138,7 @@ public class SchemaEvolutionService {
         try {
             final var prevSchema =
                     original.stream().map(schema -> AvroUtils.getParsedSchema(schema.getSchema())).
-                    collect(Collectors.toList());
+                            collect(Collectors.toList());
             final var newSchema = AvroUtils.getParsedSchema(eventType.getSchema());
             final var incompatibilities =
                     avroSchemaCompatibility.validateSchema(prevSchema, newSchema, compatibilityMode);

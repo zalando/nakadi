@@ -1,5 +1,9 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
@@ -10,6 +14,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -22,12 +27,13 @@ import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.StrictJsonParser;
 import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
-import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -42,15 +48,19 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Component
-public class SchemaService {
+public class SchemaService implements SchemaServiceProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaService.class);
+    public static final String EVENT_TYPE_METADATA = "metadata";
 
     private final SchemaRepository schemaRepository;
     private final PaginationService paginationService;
@@ -64,6 +74,10 @@ public class SchemaService {
     private final NakadiSettings nakadiSettings;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final NakadiKpiPublisher nakadiKpiPublisher;
+    private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
+    private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
+
+    private final org.apache.avro.Schema.Parser avroSchemaParser;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -77,7 +91,8 @@ public class SchemaService {
                          final TimelineSync timelineSync,
                          final NakadiSettings nakadiSettings,
                          final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                         final NakadiKpiPublisher nakadiKpiPublisher) {
+                         // dirty hack to resolve cycling dep, but they both need each other
+                         @Lazy final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -90,6 +105,16 @@ public class SchemaService {
         this.nakadiSettings = nakadiSettings;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
+        this.schemasCache = CacheBuilder.newBuilder()
+                .build(new CacheLoader<>() {
+                    @Override
+                    public EventTypeSchema load(final SchemaId schemaId)
+                            throws NoSuchSchemaException, InvalidVersionNumberException {
+                        return schemaRepository.getSchemaVersion(schemaId.name, schemaId.version);
+                    }
+                });
+        this.avroSchemasCache = new ConcurrentHashMap<>();
+        this.avroSchemaParser = new org.apache.avro.Schema.Parser();
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
@@ -162,8 +187,21 @@ public class SchemaService {
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
             throws NoSuchSchemaException, InvalidVersionNumberException {
-        final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
-        return schema;
+        try {
+            return schemasCache.get(new SchemaId(name, version));
+        } catch (final UncheckedExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof NoSuchSchemaException) {
+                throw (NoSuchSchemaException) cause;
+            }
+            if (cause instanceof InvalidVersionNumberException) {
+                throw (InvalidVersionNumberException) cause;
+            }
+
+            throw new ServiceTemporarilyUnavailableException("Failed to access schemas cache", cause);
+        } catch (final ExecutionException e) {
+            throw new ServiceTemporarilyUnavailableException("Failed to access schemas cache", e.getCause());
+        }
     }
 
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
@@ -269,6 +307,42 @@ public class SchemaService {
             StrictJsonParser.parse(jsonInString, false);
         } catch (final RuntimeException jpe) {
             throw new SchemaValidationException("schema must be a valid json: " + jpe.getMessage());
+        }
+    }
+
+    public org.apache.avro.Schema getAvroSchema(final String etName,
+                                                final String version) {
+        final SchemaId schemaId = new SchemaId(etName, version);
+        return avroSchemasCache.computeIfAbsent(schemaId, (key) -> {
+            final EventTypeSchema eventTypeSchema = getSchemaVersion(etName, version);
+            if (eventTypeSchema.getType() != EventTypeSchemaBase.Type.AVRO_SCHEMA) {
+                throw new IllegalStateException(String.format(
+                        "event schema type is not known: `%s`", eventTypeSchema.getType()));
+            }
+
+            return avroSchemaParser.parse(eventTypeSchema.getSchema());
+        });
+    }
+
+    private class SchemaId {
+        private final String name;
+        private final String version;
+
+        SchemaId(final String name, final String version) {
+            this.name = name;
+            this.version = version;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            final SchemaId that = (SchemaId) o;
+            return Objects.equals(name, that.name) &&
+                    Objects.equals(version, that.version);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, version);
         }
     }
 }

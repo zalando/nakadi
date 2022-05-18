@@ -24,7 +24,7 @@ public class DataStreamedEvent extends KPIEvent {
     private String subscriptionId;
 
     public DataStreamedEvent() {
-        super(KPIEventTypes.DATA_STREAMED);
+        super(KPIEventTypes.DATA_STREAMED, "1");
     }
 
     public String getEventTypeName() {
