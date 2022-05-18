@@ -27,7 +27,6 @@ public class NakadiRecord {
     private byte[] format;
     private EventOwnerHeader owner;
     private NakadiAvroMetadata metadata;
-    private String partition;
 
     public byte[] getEventKey() {
         return eventKey;
@@ -71,15 +70,6 @@ public class NakadiRecord {
 
     public NakadiRecord setMetadata(final NakadiAvroMetadata metadata) {
         this.metadata = metadata;
-        return this;
-    }
-
-    public String getPartition() {
-        return partition;
-    }
-
-    public NakadiRecord setPartition(final String partition) {
-        this.partition = partition;
         return this;
     }
 
