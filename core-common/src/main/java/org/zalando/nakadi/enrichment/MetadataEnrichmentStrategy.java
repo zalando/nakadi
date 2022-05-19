@@ -49,7 +49,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         if ("".equals(metadata.getFlowId())) {
             metadata.setFlowId(FlowIdUtils.peek());
         }
-        metadata.setPartition(nakadiRecord.getMetadata().getPartition());
     }
 
     private void setPublisher(final JSONObject metadata) {
