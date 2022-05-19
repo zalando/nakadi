@@ -23,7 +23,7 @@ public class NakadiRecord {
     }
 
     private byte[] eventKey;
-    private EnvelopeHolder envelope;
+    private byte[] payload;
     private byte[] format;
     private EventOwnerHeader owner;
     private NakadiAvroMetadata metadata;
@@ -37,12 +37,12 @@ public class NakadiRecord {
         return this;
     }
 
-    public EnvelopeHolder getEnvelope() {
-        return envelope;
+    public byte[] getPayload() {
+        return payload;
     }
 
-    public NakadiRecord setEnvelope(final EnvelopeHolder envelope) {
-        this.envelope = envelope;
+    public NakadiRecord setPayload(final byte[] payload) {
+        this.payload = payload;
         return this;
     }
 
@@ -79,7 +79,7 @@ public class NakadiRecord {
         final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
 
         final var eventData = EnvelopeHolder.produceBytes(
-                metadata.getMetadataVersion(), metadata, envelope.getPayloadWriter());
+                metadata.getMetadataVersion(), metadata, os -> os.write(payload));
 
         return new ProducerRecord<>(topic, partitionInt, eventKey, eventData);
     }

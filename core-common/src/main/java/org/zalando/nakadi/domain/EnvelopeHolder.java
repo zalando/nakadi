@@ -106,6 +106,10 @@ public class EnvelopeHolder {
         return new ByteArrayInputStream(data, getPayloadOffset(), payloadLength);
     }
 
+    public byte[] getPayloadAsBytes() throws IOException {
+        return getPayload().readNBytes(payloadLength);
+    }
+
     public EventWriter getPayloadWriter() {
         return (outputStream) -> outputStream.write(data, getPayloadOffset(), payloadLength);
     }

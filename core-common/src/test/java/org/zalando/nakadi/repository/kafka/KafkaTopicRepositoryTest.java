@@ -25,7 +25,6 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
@@ -40,6 +39,7 @@ import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.view.Cursor;
 
 import java.io.IOException;
@@ -89,6 +89,7 @@ public class KafkaTopicRepositoryTest {
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
     private final AvroSchema avroSchema;
+    private final NakadiRecordMapper nakadiRecordMapper;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -141,6 +142,7 @@ public class KafkaTopicRepositoryTest {
 
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        this.nakadiRecordMapper = new NakadiRecordMapper(avroSchema);
     }
 
 
@@ -648,10 +650,7 @@ public class KafkaTopicRepositoryTest {
                 .set(NakadiAvroMetadata.SCHEMA_VERSION, "version")
                 .set(NakadiAvroMetadata.EVENT_TYPE, "test-type")
                 .build();
-        final var envelope = EnvelopeHolder.fromMetadataAndEvent(testMetadata, eventRecord);
-        return new NakadiRecord()
-                .setEnvelope(envelope)
-                .setMetadata(testMetadata);
+        return nakadiRecordMapper.fromAvroGenericRecord(testMetadata, eventRecord);
     }
 
     private NakadiAvroMetadata getTestNakadiAvroMetadata(final String partition, final String eventType) {

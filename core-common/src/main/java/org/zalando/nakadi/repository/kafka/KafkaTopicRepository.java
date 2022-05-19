@@ -482,9 +482,13 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final InterruptException | InterruptedException e) {
             Thread.currentThread().interrupt();
             return prepareResponse(nakadiRecords, responses, e);
-        } catch (final RuntimeException | IOException e) {
+        } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
+            LOG.debug("RuntimeException:{}", e.getMessage(), e);
             return prepareResponse(nakadiRecords, responses, e);
+        } catch (final IOException ioe) {
+            LOG.debug("IOException:{}", ioe.getMessage(), ioe);
+            return prepareResponse(nakadiRecords, responses, ioe);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
