@@ -101,7 +101,8 @@ public class NakadiKpiPublisherTest {
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), new TestSchemaServiceProvider(avroSchema), recordMapper)
+                new EventMetadataTestStub(), new UUIDGenerator(),
+                new TestSchemaServiceProvider(avroSchema), recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verifyNoInteractions(jsonProcessor);
