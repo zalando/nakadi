@@ -90,8 +90,8 @@ public class SchemaService implements SchemaServiceProvider {
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
                          final NakadiSettings nakadiSettings,
-                         final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                          // dirty hack to resolve cycling dep, but they both need each other
+                         @Lazy final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                          @Lazy final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
