@@ -1,9 +1,5 @@
 package org.zalando.nakadi.domain;
 
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.EncoderFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,19 +47,6 @@ public class EnvelopeHolder {
         data[offset + 3] = (byte) (value >> 0);
     }
 
-    public static EnvelopeHolder fromMetadataAndEvent(final NakadiAvroMetadata metadata, final GenericRecord event)
-            throws IOException {
-        final byte[] data = EnvelopeHolder.produceBytes(
-                metadata.getMetadataVersion(),
-                metadata,
-                (outputStream -> {
-                    final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
-                    eventWriter.write(event, EncoderFactory.get()
-                            .directBinaryEncoder(outputStream, null));
-                }));
-        return EnvelopeHolder.fromBytes(data);
-    }
-
     public static EnvelopeHolder fromBytes(final byte[] data) throws IOException {
         final EnvelopeHolder envelopeHolder = new EnvelopeHolder();
         envelopeHolder.data = data;
@@ -103,22 +86,7 @@ public class EnvelopeHolder {
     }
 
     public InputStream getPayload() {
-        return new ByteArrayInputStream(data, getPayloadOffset(), payloadLength);
+        return new ByteArrayInputStream(data, 1 + 4 + metadataLength + 4, payloadLength);
     }
 
-    public byte[] getPayloadAsBytes() throws IOException {
-        return getPayload().readNBytes(payloadLength);
-    }
-
-    public EventWriter getPayloadWriter() {
-        return (outputStream) -> outputStream.write(data, getPayloadOffset(), payloadLength);
-    }
-
-    private int getPayloadOffset() {
-        // metadata version = 1 byte
-        // metadata length  = 4 byte (int)
-        // actual metadata  = metadataLength
-        // payload length   = 4 bytes (int)
-        return 1 + 4 + metadataLength + 4;
-    }
 }
