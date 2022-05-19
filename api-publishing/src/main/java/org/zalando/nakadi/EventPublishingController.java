@@ -28,11 +28,11 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
@@ -81,6 +81,10 @@ public class EventPublishingController {
         this.eventTypeCache = eventTypeCache;
         this.authValidator = authValidator;
         this.prePublishingChecks = prePublishingChecks;
+        if (prePublishingChecks.isEmpty()) {
+            // Safeguard against silent failure one spring injecting empty list
+            throw new RuntimeException("Checks should not be empty");
+        }
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
