@@ -20,7 +20,7 @@ public class BatchPublishedEvent extends KPIEvent {
     private int totalSizeBytes;
 
     public BatchPublishedEvent() {
-        super(KPIEventTypes.BATCH_PUBLISHED);
+        super(KPIEventTypes.BATCH_PUBLISHED, "1");
     }
 
     public String getEventTypeName() {

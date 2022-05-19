@@ -39,6 +39,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.TestSchemaServiceProvider;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -639,7 +640,7 @@ public class EventPublisherTest {
                 .set("response_length", 321)
                 .build();
 
-        final NakadiRecord nakadiRecord = new NakadiRecordMapper(avroSchema)
+        final NakadiRecord nakadiRecord = new NakadiRecordMapper(new TestSchemaServiceProvider(avroSchema))
                 .fromAvroGenericRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);

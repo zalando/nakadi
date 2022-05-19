@@ -14,6 +14,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.TestSchemaServiceProvider;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +31,7 @@ public class NakadiBatchMapperTest {
         final byte[] secondRecord = generateRecord(avroSchema);
         final byte[] input = Bytes.concat(firstRecord, secondRecord);
 
-        final NakadiRecordMapper mapper = new NakadiRecordMapper(avroSchema);
+        final NakadiRecordMapper mapper = new NakadiRecordMapper(new TestSchemaServiceProvider(avroSchema));
         final List<NakadiRecord> records = mapper.fromBytesBatch(input);
 
         Assert.assertEquals(2, records.size());

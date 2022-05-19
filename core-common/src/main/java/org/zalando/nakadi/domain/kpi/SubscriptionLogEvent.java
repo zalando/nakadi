@@ -10,7 +10,7 @@ public class SubscriptionLogEvent extends KPIEvent {
     protected String status;
 
     public SubscriptionLogEvent() {
-        super(KPIEventTypes.SUBSCRIPTION_LOG);
+        super(KPIEventTypes.SUBSCRIPTION_LOG, "1");
     }
 
     public String getSubscriptionId() {

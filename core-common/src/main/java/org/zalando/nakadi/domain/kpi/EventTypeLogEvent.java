@@ -15,7 +15,7 @@ public class EventTypeLogEvent extends KPIEvent {
     private String compatibilityMode;
 
     public EventTypeLogEvent() {
-        super(KPIEventTypes.EVENT_TYPE_LOG);
+        super(KPIEventTypes.EVENT_TYPE_LOG, "1");
     }
 
     public String getEventType() {

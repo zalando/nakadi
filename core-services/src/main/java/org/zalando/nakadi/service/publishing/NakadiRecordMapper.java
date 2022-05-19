@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.SchemaServiceProvider;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,10 +19,11 @@ import java.util.List;
 @Service
 public class NakadiRecordMapper {
 
-    private final AvroSchema avroSchema;
+    private final SchemaServiceProvider schemaService;
 
-    public NakadiRecordMapper(final AvroSchema avroSchema) {
-        this.avroSchema = avroSchema;
+    public NakadiRecordMapper(final SchemaServiceProvider schemaService) {
+        this.schemaService = schemaService;
+
     }
 
     public List<NakadiRecord> fromBytesBatch(final byte[] batch) throws IOException {
@@ -39,10 +41,13 @@ public class NakadiRecordMapper {
             tmp.position(recordStart);
             tmp.get(wholeRecord);
 
-            final Schema metadataSchema = avroSchema.getEventTypeSchema(
-                    AvroSchema.METADATA_KEY, Byte.toString(metadataVersion));
+            final Schema metadataAvroSchema = schemaService.getAvroSchema(
+                    SchemaService.EVENT_TYPE_METADATA, Byte.toString(metadataVersion));
+            final NakadiAvroMetadata nakadiAvroMetadata = new NakadiAvroMetadata(
+                    metadataVersion, metadataAvroSchema, metadata);
+
             records.add(new NakadiRecord()
-                    .setMetadata(new NakadiAvroMetadata(metadataVersion, metadataSchema, metadata))
+                    .setMetadata(nakadiAvroMetadata)
                     .setData(wholeRecord));
         }
 

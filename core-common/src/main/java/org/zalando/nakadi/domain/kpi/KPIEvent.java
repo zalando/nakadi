@@ -13,12 +13,19 @@ public abstract class KPIEvent {
     }
 
     private final String name;
+    private final String version;
 
-    protected KPIEvent(final String name) {
+    protected KPIEvent(final String name,
+                       final String version) {
         this.name = name;
+        this.version = version;
     }
 
     public final String getName() {
         return this.name;
+    }
+
+    public String getVersion() {
+        return version;
     }
 }

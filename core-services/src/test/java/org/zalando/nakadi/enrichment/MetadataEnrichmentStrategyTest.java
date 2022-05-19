@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.TestSchemaServiceProvider;
 import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -229,7 +230,7 @@ public class MetadataEnrichmentStrategyTest {
                 .set("response_length", 321)
                 .build();
 
-        return new NakadiRecordMapper(avroSchema)
+        return new NakadiRecordMapper(new TestSchemaServiceProvider(avroSchema))
                 .fromAvroGenericRecord(nakadiAvroMetadata, event);
 
     }

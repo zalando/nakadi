@@ -6,7 +6,8 @@ import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.SchemaServiceProvider;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,12 +16,12 @@ import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
 
-    private final AvroSchema schemas;
+    private final SchemaServiceProvider schemaService;
     private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(final AvroSchema schemas) {
-        this.schemas = schemas;
+    public AvroDeserializerWithSequenceDecoder(final SchemaServiceProvider schemaService) {
+        this.schemaService = schemaService;
 
         this.metadataSequenceDecoders = new HashMap<>();
         this.eventSequenceDecoders = new HashMap<>();
@@ -32,7 +33,10 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final SequenceDecoder metadataDecoder = metadataSequenceDecoders.computeIfAbsent(
                     String.valueOf(metadataVersion),
-                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(AvroSchema.METADATA_KEY, v)));
+                    (v) -> new SequenceDecoder(
+                            schemaService.getAvroSchema(SchemaService.EVENT_TYPE_METADATA, v)
+                    )
+            );
 
             final GenericRecord metadata = metadataDecoder.read(envelope.getMetadata());
 
@@ -44,12 +48,12 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
 
-            final String schemaVersionField =
-                    metadataVersion < 4 ? "schema_version" : NakadiAvroMetadata.SCHEMA_VERSION;
-
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
-                    metadata.get(schemaVersionField).toString(),
-                    (v) -> new SequenceDecoder(schemas.getEventTypeSchema(eventType, v)));
+                    metadata.get(NakadiAvroMetadata.SCHEMA_VERSION).toString(),
+                    (v) -> new SequenceDecoder(
+                            schemaService.getAvroSchema(eventType, v)
+                    )
+            );
 
             final GenericRecord event = eventDecoder.read(envelope.getPayload());
             final StringBuilder sEvent = new StringBuilder(event.toString());

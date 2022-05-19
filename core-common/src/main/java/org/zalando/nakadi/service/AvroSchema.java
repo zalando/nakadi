@@ -26,7 +26,7 @@ import java.util.TreeMap;
 @Service
 public class AvroSchema {
 
-    public static final String METADATA_KEY = "_metadata";
+    public static final String METADATA_KEY = "metadata";
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
@@ -69,7 +69,7 @@ public class AvroSchema {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 
-        for (int i = 0; ; ++i) {
+        for (int i = 1; ; ++i) {
             try {
                 final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
                 final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();
