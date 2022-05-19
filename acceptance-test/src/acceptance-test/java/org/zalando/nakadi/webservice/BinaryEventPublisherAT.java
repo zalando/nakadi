@@ -152,9 +152,13 @@ public class BinaryEventPublisherAT extends BaseAT {
         final var event = events.get(0);
         // All acceptance tests are run against same instance, so the exact event that is consumed is unpredictable.
         // So the test is only looking for a valid event.
-        Assert.assertEquals(
-                NAKADI_DATA_STREAMED,
-                ((Map) event.get("metadata")).get("event_type"));
+        final var metadata = (Map) event.get("metadata");
+        Assert.assertEquals(NAKADI_DATA_STREAMED, metadata.get("event_type"));
+        Assert.assertNotNull(metadata.get("occurred_at"));
+        Assert.assertNotNull(metadata.get("received_at"));
+        Assert.assertNotNull(metadata.get("partition"));
+        Assert.assertNotNull(metadata.get("flow_id"));
+        Assert.assertNotNull(metadata.get("partition"));
         Assert.assertNotNull(event.get("api"));
         Assert.assertNotNull(event.get("event_type"));
         Assert.assertNotNull(event.get("app"));
