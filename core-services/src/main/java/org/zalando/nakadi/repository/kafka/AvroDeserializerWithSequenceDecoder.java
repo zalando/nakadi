@@ -7,7 +7,7 @@ import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.SchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,11 +16,11 @@ import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
 
-    private final SchemaServiceProvider schemaService;
+    private final SchemaProviderService schemaService;
     private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(final SchemaServiceProvider schemaService) {
+    public AvroDeserializerWithSequenceDecoder(final SchemaProviderService schemaService) {
         this.schemaService = schemaService;
 
         this.metadataSequenceDecoders = new HashMap<>();

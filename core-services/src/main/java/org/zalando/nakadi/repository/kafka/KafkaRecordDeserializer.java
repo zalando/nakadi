@@ -2,7 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.service.SchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -11,7 +11,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
 
     private final AvroDeserializerWithSequenceDecoder decoder;
 
-    public KafkaRecordDeserializer(final SchemaServiceProvider schemaService) {
+    public KafkaRecordDeserializer(final SchemaProviderService schemaService) {
         this.decoder = new AvroDeserializerWithSequenceDecoder(schemaService);
     }
 

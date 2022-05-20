@@ -14,8 +14,8 @@ import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.SchemaServiceProvider;
-import org.zalando.nakadi.service.TestSchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
+import org.zalando.nakadi.service.TestSchemaProviderService;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -23,7 +23,7 @@ import java.util.Optional;
 public class KafkaRecordDeserializerTest {
 
     private final AvroSchema avroSchema;
-    private final SchemaServiceProvider schemaService;
+    private final SchemaProviderService schemaService;
     private static final long SOME_TIME = 1643290232172l;
     private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
 
@@ -31,7 +31,7 @@ public class KafkaRecordDeserializerTest {
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        schemaService = new TestSchemaServiceProvider(avroSchema);
+        schemaService = new TestSchemaProviderService(avroSchema);
     }
 
     @Test

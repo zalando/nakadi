@@ -5,6 +5,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.avro.AvroRuntimeException;
+import org.apache.avro.Schema.Parser;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -57,7 +58,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Component
-public class SchemaService implements SchemaServiceProvider {
+public class SchemaService implements SchemaProviderService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaService.class);
     public static final String EVENT_TYPE_METADATA = "metadata";
@@ -77,7 +78,7 @@ public class SchemaService implements SchemaServiceProvider {
     private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
     private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
 
-    private final org.apache.avro.Schema.Parser avroSchemaParser;
+    private final Parser avroSchemaParser;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -114,7 +115,7 @@ public class SchemaService implements SchemaServiceProvider {
                     }
                 });
         this.avroSchemasCache = new ConcurrentHashMap<>();
-        this.avroSchemaParser = new org.apache.avro.Schema.Parser();
+        this.avroSchemaParser = new Parser();
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {

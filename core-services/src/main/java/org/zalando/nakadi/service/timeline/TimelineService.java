@@ -50,7 +50,7 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
-import org.zalando.nakadi.service.SchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
@@ -79,7 +79,7 @@ public class TimelineService {
     private final String compactedStorageName;
     private final NakadiAuditLogPublisher auditLogPublisher;
     // one man said, it is fine to add 11th argument
-    private final SchemaServiceProvider schemaService;
+    private final SchemaProviderService schemaService;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -93,7 +93,7 @@ public class TimelineService {
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
                            @Lazy final NakadiAuditLogPublisher auditLogPublisher,
-                           final SchemaServiceProvider schemaService) {
+                           final SchemaProviderService schemaService) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;

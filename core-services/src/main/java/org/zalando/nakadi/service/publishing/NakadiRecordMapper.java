@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.SchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,9 +19,9 @@ import java.util.List;
 @Service
 public class NakadiRecordMapper {
 
-    private final SchemaServiceProvider schemaService;
+    private final SchemaProviderService schemaService;
 
-    public NakadiRecordMapper(final SchemaServiceProvider schemaService) {
+    public NakadiRecordMapper(final SchemaProviderService schemaService) {
         this.schemaService = schemaService;
 
     }

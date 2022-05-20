@@ -24,8 +24,8 @@ import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.SchemaServiceProvider;
-import org.zalando.nakadi.service.TestSchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
+import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -48,10 +48,10 @@ public class NakadiKpiPublisherTest {
     private final JsonEventProcessor jsonProcessor = Mockito.mock(JsonEventProcessor.class);
     private final BinaryEventProcessor binaryProcessor = Mockito.mock(BinaryEventProcessor.class);
     private final AvroSchema avroSchema = Mockito.mock(AvroSchema.class);
-    private final SchemaServiceProvider schemaServiceProvider = new TestSchemaServiceProvider(avroSchema);
+    private final SchemaProviderService schemaProviderService = new TestSchemaProviderService(avroSchema);
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
-    private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(schemaServiceProvider);
+    private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(schemaProviderService);
     private final EventTypeCache eventTypeCache = Mockito.mock(EventTypeCache.class);
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
 
@@ -72,7 +72,7 @@ public class NakadiKpiPublisherTest {
                 .setStatus("created");
 
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaServiceProvider, recordMapper)
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
@@ -102,7 +102,7 @@ public class NakadiKpiPublisherTest {
         final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), new UUIDGenerator(),
-                new TestSchemaServiceProvider(avroSchema), recordMapper)
+                new TestSchemaProviderService(avroSchema), recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verifyNoInteractions(jsonProcessor);
@@ -136,7 +136,7 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(false);
         final Supplier<KPIEvent> mockEventSupplier = Mockito.mock(Supplier.class);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaServiceProvider, recordMapper)
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
                 .publish(mockEventSupplier);
         verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, uuidGenerator, avroSchema);
     }
@@ -145,7 +145,7 @@ public class NakadiKpiPublisherTest {
     public void testHash() throws Exception {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaServiceProvider, recordMapper);
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper);
 
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));

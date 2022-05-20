@@ -2,11 +2,11 @@ package org.zalando.nakadi.service;
 
 import org.apache.avro.Schema;
 
-public class TestSchemaServiceProvider implements SchemaServiceProvider {
+public class TestSchemaProviderService implements SchemaProviderService {
 
     private final AvroSchema avroSchema;
 
-    public TestSchemaServiceProvider(final AvroSchema avroSchema) {
+    public TestSchemaProviderService(final AvroSchema avroSchema) {
         this.avroSchema = avroSchema;
     }
 

@@ -19,7 +19,7 @@ import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
 import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.SchemaServiceProvider;
+import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.Set;
@@ -38,7 +38,7 @@ public class NakadiKpiPublisher {
     private final UsernameHasher usernameHasher;
     private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
-    private final SchemaServiceProvider schemaService;
+    private final SchemaProviderService schemaService;
     private final KPIEventMapper kpiEventMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
 
@@ -50,7 +50,7 @@ public class NakadiKpiPublisher {
             final UsernameHasher usernameHasher,
             final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
-            final SchemaServiceProvider schemaService,
+            final SchemaProviderService schemaService,
             final NakadiRecordMapper nakadiRecordMapper) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
