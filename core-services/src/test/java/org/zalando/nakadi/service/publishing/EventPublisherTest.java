@@ -39,6 +39,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -614,7 +615,7 @@ public class EventPublisherTest {
                 avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
         final NakadiAvroMetadata metadata = new NakadiAvroMetadata(
-                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+                latestMeta.getVersionAsByte(), latestMeta.getSchema());
         metadata.setOccurredAt(now);
         metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
         metadata.setFlowId(FlowIdUtils.peek());

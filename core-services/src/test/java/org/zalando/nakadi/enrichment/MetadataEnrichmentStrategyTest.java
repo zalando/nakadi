@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 import java.io.IOException;
@@ -204,8 +204,7 @@ public class MetadataEnrichmentStrategyTest {
         final var latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
         final var latestSchema = avroSchema.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
-        final var nakadiAvroMetadata = new NakadiAvroMetadata(
-                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+        final var nakadiAvroMetadata = new NakadiAvroMetadata(latestMeta.getVersionAsByte(), latestMeta.getSchema());
         nakadiAvroMetadata.setOccurredAt(now);
         nakadiAvroMetadata.setEid(UUID.randomUUID().toString());
         nakadiAvroMetadata.setFlowId("test-flow");

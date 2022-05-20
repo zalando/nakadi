@@ -28,8 +28,7 @@ public class PartitioningCheck extends Check {
             try {
                 final String partition = partitionResolver
                         .resolvePartition(eventType, metadata);
-                // fixme record should not hold partition
-                record.setPartition(partition);
+                record.getMetadata().setPartition(partition);
             } catch (PartitioningException pe) {
                 return processError(records, record, pe);
             }

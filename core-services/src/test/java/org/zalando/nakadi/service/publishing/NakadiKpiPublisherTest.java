@@ -12,7 +12,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.cache.EventTypeCache;
-import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -24,14 +23,17 @@ import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -120,17 +122,14 @@ public class NakadiKpiPublisherTest {
         assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getMetadata().getEventType());
 
         // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
-        final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
 
         final var schemaEntry = avroSchema
                 .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
         final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
-        final var record = sequenceDecoder.read(envelopeHolder.getPayload());
+        final var record = sequenceDecoder.read(new ByteArrayInputStream(nakadiRecord.getPayload()));
 
-        final var metaSchemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-        final var metadataDecoder = new SequenceDecoder(metaSchemaEntry.getSchema());
-        final var metadata = metadataDecoder.read(envelopeHolder.getMetadata());
+        final var metadata = nakadiRecord.getMetadata();
+        assertNotNull(metadata);
 
         // Verify values in GenericRecord
         assertEquals("test-subscription-id", record.get("subscription_id").toString());

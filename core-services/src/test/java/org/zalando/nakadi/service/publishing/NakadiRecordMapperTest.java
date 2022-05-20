@@ -14,20 +14,26 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.NakadiRecordMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.UUID;
 
-public class NakadiBatchMapperTest {
+public class NakadiRecordMapperTest {
 
     @Test
-    public void testMap() throws IOException {
+    public void testFromBytesBatch() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        final byte[] firstRecord = generateRecord(avroSchema);
-        final byte[] secondRecord = generateRecord(avroSchema);
+        final var eid1 = UUID.randomUUID().toString();
+        final var message1 = "First record for testing !!!";
+        final var firstRecord = generateRecord(avroSchema, eid1, message1);
+        final var eid2 = UUID.randomUUID().toString();
+        final var message2 = "*** Testing twice ***";
+        final var secondRecord = generateRecord(avroSchema, eid2, message2);
         final byte[] input = Bytes.concat(firstRecord, secondRecord);
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(avroSchema);
@@ -36,13 +42,16 @@ public class NakadiBatchMapperTest {
         Assert.assertEquals(2, records.size());
 
         Assert.assertNotNull(records.get(0).getMetadata());
+        Assert.assertEquals(eid1, records.get(0).getMetadata().getEid());
         Assert.assertNotNull(records.get(1).getMetadata());
+        Assert.assertEquals(eid2, records.get(1).getMetadata().getEid());
 
-        Assert.assertArrayEquals(firstRecord, records.get(0).getData());
-        Assert.assertArrayEquals(secondRecord, records.get(1).getData());
+        Assert.assertEquals(message1, new String(records.get(0).getPayload()));
+        Assert.assertEquals(message2, new String(records.get(1).getPayload()));
     }
 
-    private byte[] generateRecord(final AvroSchema avroSchema) throws IOException {
+    private byte[] generateRecord(final AvroSchema avroSchema, final String eid, final String payload)
+            throws IOException {
         final VersionedAvroSchema versionedSchema =
                 avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
         final GenericRecord metadata =
@@ -50,7 +59,7 @@ public class NakadiBatchMapperTest {
 
         final long someEqualTime = 1643290232172l;
         metadata.put("occurred_at", someEqualTime);
-        metadata.put("eid", "32f5dae5-4fc4-4cda-be07-b313b58490ab");
+        metadata.put("eid", eid);
         metadata.put("flow_id", "hek");
         metadata.put("event_type", "nakadi.access.log");
         metadata.put("partition", "0");
@@ -64,8 +73,11 @@ public class NakadiBatchMapperTest {
                 .directBinaryEncoder(baos, null));
 
         final var meta = baos.toByteArray();
-        final var metadataBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(meta.length).array(), meta);
-        final var payloadBytes = ArrayUtils.addAll(ByteBuffer.allocate(4).putInt(2).array(), new byte[]{'y', 'y'});
-        return Bytes.concat(new byte[]{Byte.parseByte(versionedSchema.getVersion())}, metadataBytes, payloadBytes);
+        final var metadataBytes = ArrayUtils.addAll(
+                ByteBuffer.allocate(4).putInt(meta.length).array(), meta);
+        final var payloadBytes = ArrayUtils.addAll(
+                ByteBuffer.allocate(4).putInt(payload.length()).array(), payload.getBytes());
+        return Bytes.concat(new byte[]{versionedSchema.getVersionAsByte()}, metadataBytes, payloadBytes);
     }
+
 }

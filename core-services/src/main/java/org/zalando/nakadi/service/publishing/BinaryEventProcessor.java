@@ -39,6 +39,11 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
         this.binaryEventPublisher = binaryEventPublisher;
         this.eventTypeCache = eventTypeCache;
         this.prePublishingChecks = prePublishingChecks;
+
+        if (prePublishingChecks.isEmpty()) {
+            // Safeguard against silent failure one spring injecting empty list
+            throw new RuntimeException("Publishing checks should not be empty");
+        }
     }
 
     @Override
