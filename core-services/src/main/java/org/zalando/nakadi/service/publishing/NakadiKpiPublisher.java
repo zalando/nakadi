@@ -24,6 +24,7 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
 import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.Random;
@@ -126,6 +127,7 @@ public class NakadiKpiPublisher {
         metadata.setEid(uuidGenerator.randomUUID().toString());
         metadata.setEventType(eventTypeName);
         metadata.setSchemaVersion(etSchemaVersion);
+        metadata.setFlowId(FlowIdUtils.peek());
 
         return metadata;
     }
