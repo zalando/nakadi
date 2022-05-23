@@ -18,8 +18,9 @@ import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
-import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.SchemaProviderService;
+import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.Set;
@@ -106,6 +107,8 @@ public class NakadiKpiPublisher {
         metadata.setEid(uuidGenerator.randomUUID().toString());
         metadata.setEventType(eventTypeName);
         metadata.setSchemaVersion(eventVersion);
+        metadata.setFlowId(FlowIdUtils.peek());
+
         return metadata;
     }
 
