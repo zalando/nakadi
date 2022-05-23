@@ -342,14 +342,17 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(
-                ImmutableSet.of("et1"), Optional.of(owningApp), Optional.empty(), null, 10).getItems();
+                ImmutableSet.of("et1"), Optional.of(owningApp), Optional.empty(), null, 10)
+                .getItems();
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
 
     @Test
-    public void whenListSubscriptionsByMultipleEventTypesWithoutTokenThenOk() throws ServiceTemporarilyUnavailableException {
-        // The test is a copy of whenListSubscriptionsByMultipleEventTypesThenOk, that is to be deleted when deprecated method removed
+    public void whenListSubscriptionsByMultipleEventTypesWithoutTokenThenOk()
+            throws ServiceTemporarilyUnavailableException {
+        // The test is a copy of whenListSubscriptionsByMultipleEventTypesThenOk, that is to be deleted when
+        // deprecated method removed
         final String et1 = TestUtils.randomUUID();
         final String et2 = TestUtils.randomUUID();
         final String et3 = TestUtils.randomUUID();

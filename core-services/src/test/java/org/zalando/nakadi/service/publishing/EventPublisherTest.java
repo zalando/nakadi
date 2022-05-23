@@ -615,7 +615,7 @@ public class EventPublisherTest {
                 avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
         final NakadiAvroMetadata metadata = new NakadiAvroMetadata(
-                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+                latestMeta.getVersionAsByte(), latestMeta.getSchema());
         metadata.setOccurredAt(now);
         metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
         metadata.setFlowId(FlowIdUtils.peek());

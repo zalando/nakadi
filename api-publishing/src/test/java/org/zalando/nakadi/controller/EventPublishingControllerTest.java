@@ -38,10 +38,10 @@ import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -93,6 +93,7 @@ public class EventPublishingControllerTest {
         authorizationService = Mockito.mock(AuthorizationService.class);
         Mockito.when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "adminClientId"));
         Mockito.when(settings.getAuthMode()).thenReturn(OFF);
+        final var dummyCheck = Mockito.mock(Check.class);
 
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
@@ -102,7 +103,7 @@ public class EventPublishingControllerTest {
                         eventTypeMetricRegistry, blacklistService, kpiPublisher,
                         Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
                         Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class),
-                        Collections.emptyList());
+                        List.of(dummyCheck));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

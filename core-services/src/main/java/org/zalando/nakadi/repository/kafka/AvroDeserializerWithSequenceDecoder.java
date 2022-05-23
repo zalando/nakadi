@@ -43,8 +43,11 @@ public class AvroDeserializerWithSequenceDecoder {
             metadata.put(NakadiAvroMetadata.OCCURRED_AT, new DateTime(
                     (long) metadata.get(NakadiAvroMetadata.OCCURRED_AT), DateTimeZone.UTC).toString());
 
-            metadata.put(NakadiAvroMetadata.RECEIVED_AT, new DateTime(
-                    (long) metadata.get(NakadiAvroMetadata.RECEIVED_AT), DateTimeZone.UTC).toString());
+            final var receivedAt = metadata.get(NakadiAvroMetadata.RECEIVED_AT);
+            if (receivedAt != null) {
+                metadata.put(NakadiAvroMetadata.RECEIVED_AT, new DateTime(
+                        (long) receivedAt, DateTimeZone.UTC).toString());
+            }
 
             final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
 

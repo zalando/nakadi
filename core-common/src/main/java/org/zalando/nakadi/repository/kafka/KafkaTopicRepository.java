@@ -51,6 +51,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -203,8 +204,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return false;
         }
         return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                UnknownServerException.class)
+                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                        UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
@@ -437,13 +438,7 @@ public class KafkaTopicRepository implements TopicRepository {
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
-                final var partition = nakadiRecord.getMetadata().getPartition();
-                final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
-                final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
-                        topic,
-                        partitionInt,
-                        nakadiRecord.getEventKey(),
-                        nakadiRecord.getData());
+                final ProducerRecord<byte[], byte[]> producerRecord = nakadiRecord.toProducerRecord(topic);
 
                 if (null != nakadiRecord.getOwner()) {
                     nakadiRecord.getOwner().serialize(producerRecord);
@@ -489,7 +484,11 @@ public class KafkaTopicRepository implements TopicRepository {
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
+            LOG.debug("RuntimeException:{}", e.getMessage(), e);
             return prepareResponse(nakadiRecords, responses, e);
+        } catch (final IOException ioe) {
+            LOG.debug("IOException:{}", ioe.getMessage(), ioe);
+            return prepareResponse(nakadiRecords, responses, ioe);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }

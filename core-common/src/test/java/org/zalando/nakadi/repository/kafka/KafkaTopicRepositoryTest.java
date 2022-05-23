@@ -1,6 +1,8 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -18,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
@@ -25,6 +28,7 @@ import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -34,8 +38,11 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.view.Cursor;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -80,7 +87,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
-
+    private final AvroSchema avroSchema;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -122,7 +129,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
-    public KafkaTopicRepositoryTest() {
+    public KafkaTopicRepositoryTest() throws IOException {
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
@@ -130,6 +137,8 @@ public class KafkaTopicRepositoryTest {
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
+        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
+        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
     }
 
 
@@ -453,44 +462,29 @@ public class KafkaTopicRepositoryTest {
     public void testSendNakadiRecordsOk() {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
-        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType))
-        );
+        final var nakadiRecord = getTestNakadiRecord("0");
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(nakadiRecord, nakadiRecord, nakadiRecord);
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
-            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
             callback.onCompletion(null, null);
             return null;
         });
 
-        final List<NakadiRecordResult> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords);
         Assert.assertEquals(3, result.size());
-        result.forEach(r -> {
-            Assert.assertTrue(r.getStatus() == NakadiRecordResult.Status.SUCCEEDED);
-        });
-    }
-
-    private NakadiAvroMetadata getTestNakadiAvroMetadata(final String partition, final String eventType) {
-        final var metadata = new NakadiAvroMetadata((byte) 0, null);
-        metadata.setPartition(partition);
-        metadata.setEventType(eventType);
-        return metadata;
+        result.forEach(r -> Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, r.getStatus()));
     }
 
     @Test
-    public void testSendNakadiRecordsHalfPublished() {
+    public void testSendNakadiRecordsHalfPublished() throws IOException {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("1", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("2", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("3", eventType))
-        );
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
 
         final Exception exception = new Exception();
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -518,15 +512,13 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void testSendNakadiRecordsHalfSubmitted() {
-        final String eventType = UUID.randomUUID().toString();
+    public void testSendNakadiRecordsHalfSubmitted() throws IOException {
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("0", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("1", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("2", eventType)),
-                new NakadiRecord().setMetadata(getTestNakadiAvroMetadata("3", eventType))
-        );
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
 
         final KafkaException exception = new KafkaException();
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -643,4 +635,20 @@ public class KafkaTopicRepositoryTest {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
     }
+
+    private NakadiRecord getTestNakadiRecord(final String partition) {
+        final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
+                avroSchema.getEventTypeSchema("metadata", "1"));
+        metadata.setEid(UUID.randomUUID().toString());
+        metadata.setOccurredAt(Instant.now().toEpochMilli());
+        metadata.setSchemaVersion("0");
+        metadata.setPartition(partition);
+        metadata.setEventType("test-event");
+
+        return new NakadiRecord()
+                .setMetadata(metadata)
+                .setPayload(new byte[0])
+                .setFormat(NakadiRecord.Format.AVRO.getFormat());
+    }
+
 }

@@ -81,6 +81,10 @@ public class EventPublishingController {
         this.eventTypeCache = eventTypeCache;
         this.authValidator = authValidator;
         this.prePublishingChecks = prePublishingChecks;
+        if (prePublishingChecks.isEmpty()) {
+            // Safeguard against silent failure one spring injecting empty list
+            throw new RuntimeException("Checks should not be empty");
+        }
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)

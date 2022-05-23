@@ -205,8 +205,7 @@ public class MetadataEnrichmentStrategyTest {
         final var latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
         final var latestSchema = avroSchema.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
-        final var nakadiAvroMetadata = new NakadiAvroMetadata(
-                Byte.parseByte(latestMeta.getVersion()), latestMeta.getSchema());
+        final var nakadiAvroMetadata = new NakadiAvroMetadata(latestMeta.getVersionAsByte(), latestMeta.getSchema());
         nakadiAvroMetadata.setOccurredAt(now);
         nakadiAvroMetadata.setEid(UUID.randomUUID().toString());
         nakadiAvroMetadata.setFlowId("test-flow");
