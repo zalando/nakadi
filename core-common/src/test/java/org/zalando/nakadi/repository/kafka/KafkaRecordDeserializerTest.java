@@ -62,11 +62,11 @@ public class KafkaRecordDeserializerTest {
                 data1
         );
 
-        Assert.assertTrue(
-                getExpectedNode0(null).similar(new JSONObject(new String(deserializedEvent0))));
+        Assert.assertEquals(
+                getExpectedNode0(null).toMap(), new JSONObject(new String(deserializedEvent0)).toMap());
 
-        Assert.assertTrue(
-                getExpectedNode1().similar(new JSONObject(new String(deserializedEvent1))));
+        Assert.assertEquals(
+                getExpectedNode1().toMap(), new JSONObject(new String(deserializedEvent1)).toMap());
     }
 
     @Test
@@ -80,7 +80,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getExpectedNode0(jsonObject);
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
     @Test
@@ -94,7 +94,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getExpectedNode0(jsonObject);
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getExpectedNode0(jsonObject);
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
     @Test
@@ -132,8 +132,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getExpectedNode0(jsonObject);
-
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
     @Test
@@ -148,7 +147,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getExpectedNode0(jsonObject);
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
     @Test
@@ -186,8 +185,7 @@ public class KafkaRecordDeserializerTest {
 
         final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
         final var expectedJson = getBaseExpectedNode(metadataVersion, "0", jsonObject);
-
-        Assert.assertTrue(expectedJson.similar(actualJson));
+        Assert.assertEquals(expectedJson.toMap(), actualJson.toMap());
     }
 
 
