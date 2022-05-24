@@ -13,6 +13,8 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
@@ -281,4 +283,55 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList()), is(errorMessages));
         }
     }
+
+
+    @Test
+    public void testVersionOnTypeChangeToAvro(){
+        final EventType oldEventType = EventTypeTestBuilder.builder().
+                compatibilityMode(CompatibilityMode.NONE).build();
+
+        final var schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, ""),
+                "5", TestUtils.randomDate());
+        final EventType newEventType =
+                EventTypeTestBuilder.builder().
+                compatibilityMode(CompatibilityMode.NONE).schema(schema).build();
+
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+        Mockito.when(levelResolver.apply(any(), eq(CompatibilityMode.NONE))).thenReturn(MAJOR);
+        Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
+                .collectChanges(any(), any());
+
+        final EventType eventType = service.evolve(oldEventType, newEventType);
+
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1")));
+
+        Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
+
+    }
+
+    @Test
+    public void testVersionOnTypeChangeToJson(){
+        final var schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                ""), "2", TestUtils.randomDate());
+
+        final EventType oldEventType =
+                EventTypeTestBuilder.builder().
+                compatibilityMode(CompatibilityMode.NONE).schema(schema).build();
+        final EventType newEventType =
+                EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.NONE).build();
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+        Mockito.when(levelResolver.apply(any(), eq(CompatibilityMode.NONE))).thenReturn(MAJOR);
+        Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
+                .collectChanges(any(), any());
+
+        final EventType eventType = service.evolve(oldEventType, newEventType);
+
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.0.0")));
+
+        Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
+
+    }
+
 }
