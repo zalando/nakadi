@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
+import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -67,7 +68,7 @@ public class SchemaEvolutionServiceTest {
             Mockito.mock(BiFunction.class);
     private final SchemaDiff schemaDiff = Mockito.mock(SchemaDiff.class);
     private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
-
+    private final SchemaRepository schemaRepository = Mockito.mock(SchemaRepository.class);
     @Before
     public void setUp() throws IOException {
         final List<SchemaEvolutionConstraint> evolutionConstraints = Lists.newArrayList(evolutionConstraint);
@@ -75,7 +76,7 @@ public class SchemaEvolutionServiceTest {
                 Charsets.UTF_8));
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
         this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, levelResolver,
-                errorMessages, avroSchemaCompatibility);
+                errorMessages, avroSchemaCompatibility, schemaRepository);
 
         Mockito.doReturn("error").when(errorMessages).get(any());
     }
