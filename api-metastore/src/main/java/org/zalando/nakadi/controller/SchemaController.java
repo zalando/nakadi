@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
@@ -27,6 +28,7 @@ import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
 import javax.validation.Valid;
 
@@ -37,11 +39,15 @@ public class SchemaController {
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
-    public SchemaController(final SchemaService schemaService, final EventTypeService eventTypeService) {
+    public SchemaController(final SchemaService schemaService,
+                            final EventTypeService eventTypeService,
+                            final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaService = schemaService;
         this.eventTypeService = eventTypeService;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
@@ -52,9 +58,19 @@ public class SchemaController {
             throw new ValidationException(errors);
         }
 
-        schemaService.addSchema(name, schema);
+        final var eventType = eventTypeService.fetchFromRepository(name);
+        final var status = schemaService.addSchema(eventType, schema);
 
-        return status(HttpStatus.OK).build();
+        if (status) {
+            nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                    .setEventType(name)
+                    .setStatus("updated")
+                    .setCategory(eventType.getCategory().name())
+                    .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
+                    .setCompatibilityMode(eventType.getCompatibilityMode().name()));
+        }
+
+        return status(HttpStatus.OK).build(); // Maybe return different status code when there is no change
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
@@ -67,8 +83,8 @@ public class SchemaController {
         }
 
         final EventType eventType = eventTypeService.get(name);
-        final var toCompareEventTypeSchema = version.equals("latest")?
-                eventType.getSchema(): schemaService.getSchemaVersion(name, version);
+        final var toCompareEventTypeSchema = version.equals("latest") ?
+                eventType.getSchema() : schemaService.getSchemaVersion(name, version);
         eventType.setSchema(toCompareEventTypeSchema);
 
         final var newEventTypeBase = new EventTypeBase(eventType);

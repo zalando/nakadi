@@ -21,7 +21,6 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.StrictJsonParser;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
@@ -32,7 +31,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -63,7 +61,6 @@ public class SchemaService {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
-    private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -76,8 +73,7 @@ public class SchemaService {
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
                          final NakadiSettings nakadiSettings,
-                         final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                         final NakadiKpiPublisher nakadiKpiPublisher) {
+                         final NakadiAuditLogPublisher nakadiAuditLogPublisher) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -89,14 +85,13 @@ public class SchemaService {
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
-        this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
-    public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
+    public boolean addSchema(final EventType originalEventType, final EventTypeSchemaBase newSchema) {
         Closeable closeable = null;
         try {
-            closeable = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
+            closeable = timelineSync.workWithEventType(originalEventType.getName(),
+                    nakadiSettings.getTimelineWaitTimeoutMs());
 
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 authorizationValidator.authorizeEventTypeAdmin(originalEventType);
@@ -106,27 +101,21 @@ public class SchemaService {
             updatedEventType.setSchema(newSchema);
 
             final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
-            eventTypeRepository.update(eventType);
+            eventTypeRepository.update(eventType); // Why are we updating if we don't have to?
 
             eventTypeCache.invalidate(eventType.getName());
             if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
-                nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
-                        .setEventType(eventTypeName)
-                        .setStatus("updated")
-                        .setCategory(eventType.getCategory().name())
-                        .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
-                        .setCompatibilityMode(eventType.getCompatibilityMode().name()));
-
                 nakadiAuditLogPublisher.publish(Optional.of(originalEventType), Optional.of(eventType),
                         NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
                         eventType.getName());
+                return true;
             }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } finally {
             try {
@@ -137,6 +126,7 @@ public class SchemaService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
+        return false;
     }
 
     public EventType getValidEvolvedEventType(final EventType originalEventType, final EventTypeBase updatedEventType) {
