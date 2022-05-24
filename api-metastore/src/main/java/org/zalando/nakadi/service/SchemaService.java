@@ -30,7 +30,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -60,7 +59,6 @@ public class SchemaService {
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
-    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
 
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
@@ -72,8 +70,7 @@ public class SchemaService {
                          final AuthorizationValidator authorizationValidator,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
-                         final NakadiSettings nakadiSettings,
-                         final NakadiAuditLogPublisher nakadiAuditLogPublisher) {
+                         final NakadiSettings nakadiSettings) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -84,10 +81,9 @@ public class SchemaService {
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
-        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
     }
 
-    public boolean addSchema(final EventType originalEventType, final EventTypeSchemaBase newSchema) {
+    public Optional<EventType> addSchema(final EventType originalEventType, final EventTypeSchemaBase newSchema) {
         Closeable closeable = null;
         try {
             closeable = timelineSync.workWithEventType(originalEventType.getName(),
@@ -105,10 +101,7 @@ public class SchemaService {
 
             eventTypeCache.invalidate(eventType.getName());
             if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
-                nakadiAuditLogPublisher.publish(Optional.of(originalEventType), Optional.of(eventType),
-                        NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
-                        eventType.getName());
-                return true;
+                return Optional.of(eventType);
             }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -126,7 +119,7 @@ public class SchemaService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        return false;
+        return Optional.empty();
     }
 
     public EventType getValidEvolvedEventType(final EventType originalEventType, final EventTypeBase updatedEventType) {

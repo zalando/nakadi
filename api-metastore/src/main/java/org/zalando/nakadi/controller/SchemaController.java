@@ -28,9 +28,11 @@ import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
 import javax.validation.Valid;
+import java.util.Optional;
 
 import static org.springframework.http.ResponseEntity.status;
 
@@ -39,14 +41,17 @@ public class SchemaController {
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
     public SchemaController(final SchemaService schemaService,
                             final EventTypeService eventTypeService,
+                            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                             final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaService = schemaService;
         this.eventTypeService = eventTypeService;
+        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
@@ -58,17 +63,23 @@ public class SchemaController {
             throw new ValidationException(errors);
         }
 
-        final var eventType = eventTypeService.fetchFromRepository(name);
-        final var status = schemaService.addSchema(eventType, schema);
+        final var originalEventType = eventTypeService.fetchFromRepository(name);
+        schemaService.addSchema(originalEventType, schema)
+                .ifPresent(updatedEventType -> {
+                    nakadiAuditLogPublisher.publish(
+                            Optional.of(originalEventType),
+                            Optional.of(updatedEventType),
+                            NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
+                            NakadiAuditLogPublisher.ActionType.UPDATED,
+                            originalEventType.getName());
 
-        if (status) {
-            nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
-                    .setEventType(name)
-                    .setStatus("updated")
-                    .setCategory(eventType.getCategory().name())
-                    .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
-                    .setCompatibilityMode(eventType.getCompatibilityMode().name()));
-        }
+                    nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                            .setEventType(name)
+                            .setStatus("updated")
+                            .setCategory(originalEventType.getCategory().name())
+                            .setAuthz(originalEventType.getAuthorization() == null ? "disabled" : "enabled")
+                            .setCompatibilityMode(originalEventType.getCompatibilityMode().name()));
+                });
 
         return status(HttpStatus.OK).build(); // Maybe return different status code when there is no change
     }

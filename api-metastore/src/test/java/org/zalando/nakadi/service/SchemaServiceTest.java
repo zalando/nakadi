@@ -20,7 +20,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -45,7 +44,6 @@ public class SchemaServiceTest {
     private EventType eventType;
     private TimelineSync timelineSync;
     private NakadiSettings nakadiSettings;
-    private NakadiAuditLogPublisher nakadiAuditLogPublisher;
 
     @Before
     public void setUp() throws IOException {
@@ -61,11 +59,10 @@ public class SchemaServiceTest {
         Mockito.when(eventTypeRepository.findByName(any())).thenReturn(eventType);
         timelineSync = Mockito.mock(TimelineSync.class);
         nakadiSettings = Mockito.mock(NakadiSettings.class);
-        nakadiAuditLogPublisher = Mockito.mock(NakadiAuditLogPublisher.class);
         schemaService = new SchemaService(schemaRepository, paginationService,
                 new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"),
                 schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache,
-                timelineSync, nakadiSettings, nakadiAuditLogPublisher);
+                timelineSync, nakadiSettings);
     }
 
     @Test(expected = InvalidLimitException.class)
