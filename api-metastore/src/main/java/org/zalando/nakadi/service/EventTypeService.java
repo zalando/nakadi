@@ -586,6 +586,12 @@ public class EventTypeService {
         return eventType;
     }
 
+    public EventType getNoCache(final String eventTypeName) throws NoSuchEventTypeException, InternalNakadiException {
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+        return eventType;
+    }
+
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
             throws EventTypeDeletionException {
         try {

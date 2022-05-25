@@ -25,6 +25,9 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 
@@ -37,11 +40,18 @@ public class SchemaController {
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
+    private final AdminService adminService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
-    public SchemaController(final SchemaService schemaService, final EventTypeService eventTypeService) {
+    public SchemaController(final SchemaService schemaService,
+            final EventTypeService eventTypeService,
+            final AdminService adminService,
+            final AuthorizationValidator authorizationValidator) {
         this.schemaService = schemaService;
         this.eventTypeService = eventTypeService;
+        this.adminService = adminService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
@@ -52,7 +62,13 @@ public class SchemaController {
             throw new ValidationException(errors);
         }
 
-        schemaService.addSchema(name, schema);
+        final EventType eventType = eventTypeService.getNoCache(name);
+
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+            authorizationValidator.authorizeEventTypeAdmin(eventType);
+        }
+
+        schemaService.addSchema(eventType, schema);
 
         return status(HttpStatus.OK).build();
     }

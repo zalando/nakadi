@@ -28,7 +28,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -57,8 +56,6 @@ public class SchemaService {
     private final JsonSchemaEnrichment jsonSchemaEnrichment;
     private final SchemaEvolutionService schemaEvolutionService;
     private final EventTypeRepository eventTypeRepository;
-    private final AdminService adminService;
-    private final AuthorizationValidator authorizationValidator;
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
@@ -71,8 +68,6 @@ public class SchemaService {
                          final JsonSchemaEnrichment jsonSchemaEnrichment,
                          final SchemaEvolutionService schemaEvolutionService,
                          final EventTypeRepository eventTypeRepository,
-                         final AdminService adminService,
-                         final AuthorizationValidator authorizationValidator,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
                          final NakadiSettings nakadiSettings,
@@ -83,8 +78,6 @@ public class SchemaService {
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
         this.schemaEvolutionService = schemaEvolutionService;
         this.eventTypeRepository = eventTypeRepository;
-        this.adminService = adminService;
-        this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
@@ -92,41 +85,36 @@ public class SchemaService {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
-    public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
+    public void addSchema(final EventType eventType, final EventTypeSchemaBase newSchema) {
         Closeable closeable = null;
         try {
-            closeable = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
+            closeable = timelineSync.workWithEventType(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
 
-            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-                authorizationValidator.authorizeEventTypeAdmin(originalEventType);
-            }
-
-            final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
+            final EventTypeBase updatedEventType = new EventTypeBase(eventType);
             updatedEventType.setSchema(newSchema);
 
-            final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
-            eventTypeRepository.update(eventType);
-
+            final EventType evolvedEventType = getValidEvolvedEventType(eventType, updatedEventType);
+            eventTypeRepository.update(evolvedEventType);
             eventTypeCache.invalidate(eventType.getName());
-            if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
+
+            if (!evolvedEventType.getSchema().getVersion().equals(eventType.getSchema().getVersion())) {
                 nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
-                        .setEventType(eventTypeName)
+                        .setEventType(eventType.getName())
                         .setStatus("updated")
                         .setCategory(eventType.getCategory().name())
                         .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
                         .setCompatibilityMode(eventType.getCompatibilityMode().name()));
 
-                nakadiAuditLogPublisher.publish(Optional.of(originalEventType), Optional.of(eventType),
+                nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.of(evolvedEventType),
                         NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
                         eventType.getName());
             }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + eventType.getName()
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + eventType.getName()
                     + " is currently in maintenance, please repeat request");
         } finally {
             try {

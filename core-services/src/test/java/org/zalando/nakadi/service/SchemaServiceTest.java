@@ -40,8 +40,6 @@ public class SchemaServiceTest {
     private JsonSchemaEnrichment jsonSchemaEnrichment;
     private SchemaEvolutionService schemaEvolutionService;
     private EventTypeRepository eventTypeRepository;
-    private AdminService adminService;
-    private AuthorizationValidator authorizationValidator;
     private EventTypeCache eventTypeCache;
     private EventType eventType;
     private TimelineSync timelineSync;
@@ -56,8 +54,6 @@ public class SchemaServiceTest {
         jsonSchemaEnrichment = Mockito.mock(JsonSchemaEnrichment.class);
         schemaEvolutionService = Mockito.mock(SchemaEvolutionService.class);
         eventTypeRepository = Mockito.mock(EventTypeRepository.class);
-        adminService = Mockito.mock(AdminService.class);
-        authorizationValidator = Mockito.mock(AuthorizationValidator.class);
         eventTypeCache = Mockito.mock(EventTypeCache.class);
         eventType = TestUtils.buildDefaultEventType();
         Mockito.when(eventTypeRepository.findByName(any())).thenReturn(eventType);
@@ -67,8 +63,8 @@ public class SchemaServiceTest {
         nakadiAuditLogPublisher = Mockito.mock(NakadiAuditLogPublisher.class);
         schemaService = new SchemaService(schemaRepository, paginationService,
                 new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json"),
-                schemaEvolutionService, eventTypeRepository, adminService, authorizationValidator, eventTypeCache,
-                timelineSync, nakadiSettings, nakadiAuditLogPublisher, nakadiKpiPublisher);
+                schemaEvolutionService, eventTypeRepository, eventTypeCache, timelineSync, nakadiSettings,
+                nakadiAuditLogPublisher, nakadiKpiPublisher);
     }
 
     @Test(expected = InvalidLimitException.class)
