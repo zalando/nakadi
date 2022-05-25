@@ -13,7 +13,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
 
@@ -22,7 +22,7 @@ import java.util.Optional;
 
 public class KafkaRecordDeserializerTest {
 
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
     private final SchemaProviderService schemaService;
     private static final long SOME_TIME = 1643290232172l;
     private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
@@ -30,13 +30,13 @@ public class KafkaRecordDeserializerTest {
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        schemaService = new TestSchemaProviderService(avroSchema);
+        localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        schemaService = new TestSchemaProviderService(localSchemaRegistry);
     }
 
     @Test
     public void testDeserializeAvro() throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
 
         final JSONObject jsonObject = new JSONObject()
                 .put("flow_id", "hek")
@@ -87,7 +87,7 @@ public class KafkaRecordDeserializerTest {
 
     private JSONObject getSerializedJsonObject(final String metadataVersion,
                                                final JSONObject metadataOverride) throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
 
         final var eventWriter = getEventWriter1();
 
@@ -108,7 +108,7 @@ public class KafkaRecordDeserializerTest {
 
     private GenericRecord getBaseRecord(final String schemaVersion) {
         final GenericRecord event = new GenericData.Record(
-                avroSchema.getEventTypeSchema("nakadi.access.log", schemaVersion));
+                localSchemaRegistry.getEventTypeSchema("nakadi.access.log", schemaVersion));
         event.put("method", "POST");
         event.put("path", "/event-types");
         event.put("query", "");
@@ -149,7 +149,8 @@ public class KafkaRecordDeserializerTest {
                                                          final JSONObject metadataOverride) {
         return os -> {
             final GenericRecord metadata =
-                    new GenericData.Record(avroSchema.getEventTypeSchema(AvroSchema.METADATA_KEY, metadataVersion));
+                    new GenericData.Record(localSchemaRegistry
+                            .getEventTypeSchema(LocalSchemaRegistry.METADATA_KEY, metadataVersion));
 
             metadata.put("occurred_at", SOME_TIME);
             metadata.put("received_at", SOME_TIME);

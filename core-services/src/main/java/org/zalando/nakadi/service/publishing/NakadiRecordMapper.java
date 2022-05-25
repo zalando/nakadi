@@ -7,8 +7,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.service.SchemaService;
-import org.zalando.nakadi.service.SchemaProviderService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,10 +18,10 @@ import java.util.List;
 @Service
 public class NakadiRecordMapper {
 
-    private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
-    public NakadiRecordMapper(final SchemaProviderService schemaService) {
-        this.schemaService = schemaService;
+    public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
+        this.localSchemaRegistry = localSchemaRegistry;
 
     }
 
@@ -41,8 +40,9 @@ public class NakadiRecordMapper {
             tmp.position(recordStart + 1 + 4 + metadataLength + 4);
             tmp.get(payload);
 
-            final Schema metadataAvroSchema = schemaService.getAvroSchema(
-                    SchemaService.EVENT_TYPE_METADATA, Byte.toString(metadataVersion));
+            // fixme use version as byte in local registry
+            final Schema metadataAvroSchema = localSchemaRegistry.getEventTypeSchema(
+                    LocalSchemaRegistry.METADATA_KEY, String.valueOf(metadataVersion));
             final NakadiAvroMetadata nakadiAvroMetadata = new NakadiAvroMetadata(
                     metadataVersion, metadataAvroSchema, metadata);
 

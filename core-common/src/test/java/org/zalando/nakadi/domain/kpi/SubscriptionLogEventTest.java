@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.KPIEventMapper;
 
 import java.io.IOException;
@@ -15,12 +15,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SubscriptionLogEventTest {
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper eventMapper;
 
     public SubscriptionLogEventTest() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         this.eventMapper = new KPIEventMapper(Set.of(SubscriptionLogEvent.class));
     }
 
@@ -43,7 +43,7 @@ public class SubscriptionLogEventTest {
                 .setSubscriptionId(UUID.randomUUID().toString())
                 .setStatus("created");
 
-        final var latestSchemaEntry = avroSchema
+        final var latestSchemaEntry = localSchemaRegistry
                 .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
 
         final var subscriptionLogGenericRecord = eventMapper

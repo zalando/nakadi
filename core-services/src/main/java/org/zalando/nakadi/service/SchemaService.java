@@ -61,7 +61,6 @@ import java.util.stream.Collectors;
 public class SchemaService implements SchemaProviderService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaService.class);
-    public static final String EVENT_TYPE_METADATA = "metadata";
 
     private final SchemaRepository schemaRepository;
     private final PaginationService paginationService;

@@ -15,6 +15,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
@@ -66,18 +67,21 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
     private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
     public MultiTimelineEventConsumer(
             final String clientId,
             final TimelineService timelineService,
             final TimelineSync timelineSync,
             final Comparator<NakadiCursor> comparator,
-            final SchemaProviderService schemaService) {
+            final SchemaProviderService schemaService,
+            final LocalSchemaRegistry localSchemaRegistry) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.comparator = comparator;
         this.schemaService = schemaService;
+        this.localSchemaRegistry = localSchemaRegistry;
     }
 
     @Override
@@ -254,7 +258,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
-                        clientId, entry.getValue(), new KafkaRecordDeserializer(schemaService));
+                        clientId, entry.getValue(), new KafkaRecordDeserializer(schemaService, localSchemaRegistry));
                 eventConsumers.put(repo, consumer);
             }
         }

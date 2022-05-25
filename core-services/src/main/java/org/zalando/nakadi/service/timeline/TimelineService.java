@@ -49,6 +49,7 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
@@ -80,6 +81,7 @@ public class TimelineService {
     private final NakadiAuditLogPublisher auditLogPublisher;
     // one man said, it is fine to add 11th argument
     private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -93,7 +95,8 @@ public class TimelineService {
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
                            @Lazy final NakadiAuditLogPublisher auditLogPublisher,
-                           final SchemaProviderService schemaService) {
+                           final SchemaProviderService schemaService,
+                           final LocalSchemaRegistry localSchemaRegistry) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -106,6 +109,7 @@ public class TimelineService {
         this.compactedStorageName = compactedStorageName;
         this.auditLogPublisher = auditLogPublisher;
         this.schemaService = schemaService;
+        this.localSchemaRegistry = localSchemaRegistry;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId)
@@ -291,14 +295,16 @@ public class TimelineService {
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache), schemaService);
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
         result.reassign(positions);
         return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache), schemaService);
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

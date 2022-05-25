@@ -19,7 +19,7 @@ import static org.apache.avro.SchemaCompatibility.SchemaIncompatibilityType.READ
 import static org.apache.avro.SchemaCompatibility.SchemaIncompatibilityType.TYPE_MISMATCH;
 
 
-public class AvroSchemaCompatibilityTest {
+public class LocalSchemaRegistryCompatibilityTest {
 
     private AvroSchemaCompatibility avroSchemaCompatibility;
     private static final String BASE_RECORD_JSON =  getBaseRecordJson();

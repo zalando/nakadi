@@ -4,14 +4,14 @@ import org.apache.avro.Schema;
 
 public class TestSchemaProviderService implements SchemaProviderService {
 
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
-    public TestSchemaProviderService(final AvroSchema avroSchema) {
-        this.avroSchema = avroSchema;
+    public TestSchemaProviderService(final LocalSchemaRegistry localSchemaRegistry) {
+        this.localSchemaRegistry = localSchemaRegistry;
     }
 
     @Override
     public Schema getAvroSchema(final String etName, final String version) {
-        return avroSchema.getEventTypeSchema(etName, version);
+        return localSchemaRegistry.getEventTypeSchema(etName, version);
     }
 }

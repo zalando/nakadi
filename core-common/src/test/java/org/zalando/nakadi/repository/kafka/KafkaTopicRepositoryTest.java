@@ -38,7 +38,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.view.Cursor;
 
 import java.io.IOException;
@@ -87,7 +87,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -138,7 +138,7 @@ public class KafkaTopicRepositoryTest {
         kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
     }
 
 
@@ -638,7 +638,7 @@ public class KafkaTopicRepositoryTest {
 
     private NakadiRecord getTestNakadiRecord(final String partition) {
         final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
-                avroSchema.getEventTypeSchema("metadata", "1"));
+                localSchemaRegistry.getEventTypeSchema("metadata", "1"));
         metadata.setEid(UUID.randomUUID().toString());
         metadata.setOccurredAt(Instant.now().toEpochMilli());
         metadata.setSchemaVersion("0");

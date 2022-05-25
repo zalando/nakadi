@@ -6,7 +6,7 @@ import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
-import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 
 import java.io.IOException;
@@ -17,11 +17,15 @@ import java.util.Map;
 public class AvroDeserializerWithSequenceDecoder {
 
     private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
     private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(final SchemaProviderService schemaService) {
+    public AvroDeserializerWithSequenceDecoder(
+            final SchemaProviderService schemaService,
+            final LocalSchemaRegistry localSchemaRegistry) {
         this.schemaService = schemaService;
+        this.localSchemaRegistry = localSchemaRegistry;
 
         this.metadataSequenceDecoders = new HashMap<>();
         this.eventSequenceDecoders = new HashMap<>();
@@ -34,7 +38,7 @@ public class AvroDeserializerWithSequenceDecoder {
             final SequenceDecoder metadataDecoder = metadataSequenceDecoders.computeIfAbsent(
                     String.valueOf(metadataVersion),
                     (v) -> new SequenceDecoder(
-                            schemaService.getAvroSchema(SchemaService.EVENT_TYPE_METADATA, v)
+                            localSchemaRegistry.getEventTypeSchema(LocalSchemaRegistry.METADATA_KEY, v)
                     )
             );
 

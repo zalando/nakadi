@@ -18,8 +18,8 @@ import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
-import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -40,6 +40,7 @@ public class NakadiKpiPublisher {
     private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
     private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper kpiEventMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
 
@@ -52,6 +53,7 @@ public class NakadiKpiPublisher {
             final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
             final SchemaProviderService schemaService,
+            final LocalSchemaRegistry localSchemaRegistry,
             final NakadiRecordMapper nakadiRecordMapper) {
         this.featureToggleService = featureToggleService;
         this.jsonEventsProcessor = jsonEventsProcessor;
@@ -60,6 +62,7 @@ public class NakadiKpiPublisher {
         this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.schemaService = schemaService;
+        this.localSchemaRegistry = localSchemaRegistry;
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.kpiEventMapper = new KPIEventMapper(Set.of(
                 AccessLogEvent.class,
@@ -100,9 +103,12 @@ public class NakadiKpiPublisher {
     private NakadiAvroMetadata buildMetaData(final String eventTypeName,
                                              final String metadataVersion,
                                              final String eventVersion) {
+        final var metaSchemaEntry = localSchemaRegistry
+                .getEventTypeSchema(LocalSchemaRegistry.METADATA_KEY, VERSION_METADATA);
+
         final var metadata = new NakadiAvroMetadata(
                 Byte.parseByte(metadataVersion),
-                schemaService.getAvroSchema(SchemaService.EVENT_TYPE_METADATA, metadataVersion));
+                metaSchemaEntry);
         metadata.setOccurredAt(System.currentTimeMillis());
         metadata.setEid(uuidGenerator.randomUUID().toString());
         metadata.setEventType(eventTypeName);

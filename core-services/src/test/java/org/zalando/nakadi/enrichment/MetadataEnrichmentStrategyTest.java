@@ -15,8 +15,7 @@ import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.TestSchemaProviderService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
@@ -39,10 +38,10 @@ public class MetadataEnrichmentStrategyTest {
     private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
     private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy(authorizationService);
 
-    private AvroSchema avroSchema;
+    private LocalSchemaRegistry localSchemaRegistry;
 
     public MetadataEnrichmentStrategyTest() throws IOException {
-        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(),
+        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(),
                 new DefaultResourceLoader().getResource("event-type-schema/"));
     }
 
@@ -202,8 +201,8 @@ public class MetadataEnrichmentStrategyTest {
 
         final long now = System.currentTimeMillis();
         final var nakadiAccessLog = "nakadi.access.log";
-        final var latestMeta = avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-        final var latestSchema = avroSchema.getLatestEventTypeSchemaVersion(nakadiAccessLog);
+        final var latestMeta = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
+        final var latestSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
         final var nakadiAvroMetadata = new NakadiAvroMetadata(latestMeta.getVersionAsByte(), latestMeta.getSchema());
         nakadiAvroMetadata.setOccurredAt(now);
@@ -229,7 +228,7 @@ public class MetadataEnrichmentStrategyTest {
                 .set("response_length", 321)
                 .build();
 
-        return new NakadiRecordMapper(new TestSchemaProviderService(avroSchema))
+        return new NakadiRecordMapper(localSchemaRegistry)
                 .fromAvroGenericRecord(nakadiAvroMetadata, event);
 
     }

@@ -24,7 +24,7 @@ import java.util.TreeMap;
 
 // temporarily storage for event type avro schemas untill schema repository supports them
 @Service
-public class AvroSchema {
+public class LocalSchemaRegistry {
 
     public static final String METADATA_KEY = "metadata";
 
@@ -42,7 +42,7 @@ public class AvroSchema {
     private final ObjectMapper objectMapper;
 
     @Autowired
-    public AvroSchema(
+    public LocalSchemaRegistry(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
             @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}") final Resource eventTypeSchemaRes)
