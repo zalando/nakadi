@@ -9,7 +9,7 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
-import org.zalando.nakadi.domain.AvroVersion;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -17,9 +17,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
-import org.zalando.nakadi.domain.JsonVersion;
-import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -119,52 +118,17 @@ public class SchemaEvolutionService {
                 equals(eventType.getSchema().getType());
 
         if(typeChanged) {
-            return getEventTypeWhenTypeChanged(original, eventType);
+            return bumpVersion(original, eventType, MAJOR, new Version());
         }
 
         switch (eventType.getSchema().getType()) {
             case JSON_SCHEMA:
-                return evolveJsonSchema(original, eventType, new JsonVersion(version));
+                return evolveJsonSchema(original, eventType, new Version(version));
             case AVRO_SCHEMA:
-                return evolveAvroSchema(original, eventType, new AvroVersion(version));
+                return evolveAvroSchema(original, eventType, new Version(version));
             default:
                 throw new RuntimeException("unsupported type for evolving " + eventType.getSchema().getType());
         }
-    }
-
-    private EventType getEventTypeWhenTypeChanged(final EventType original, final EventTypeBase eventType) {
-        final var currentType = eventType.getSchema().getType();
-        final var typeToVersions =
-                schemaRepository.getAllSchemas(eventType.getName()).stream().
-                        collect(Collectors.groupingBy(EventTypeSchema::getType,
-                                Collectors.mapping(EventTypeSchema::getVersion, Collectors.toList())));
-
-        //check if previously this event type was of current type
-        // if yes then bump the version from that as base version
-        if (typeToVersions.containsKey(currentType)) {
-            final var list = typeToVersions.get(currentType);
-            list.sort(getComparator(currentType));
-            final var biggestVersion = list.get(list.size() - 1);
-            return bumpVersion(original, eventType, MAJOR, currentType == EventTypeSchemaBase.Type.JSON_SCHEMA ?
-                    new JsonVersion(biggestVersion) : new AvroVersion(biggestVersion));
-        }
-
-        //otherwise, create new start version
-        return getUpdatedEventType(original, eventType, MAJOR, getResettedVersion(currentType).toString());
-    }
-
-    private Comparator<String> getComparator(final EventTypeSchemaBase.Type currentType) {
-        return currentType == EventTypeSchemaBase.Type.JSON_SCHEMA? Comparator.naturalOrder(): Comparator.comparingInt(Integer::parseInt);
-    }
-
-    private Version getResettedVersion(final EventTypeSchemaBase.Type current) {
-        if(current.equals(EventTypeSchemaBase.Type.JSON_SCHEMA))
-            return new JsonVersion();
-
-        if(current.equals(EventTypeSchemaBase.Type.AVRO_SCHEMA))
-            return new AvroVersion();
-
-        throw new IllegalArgumentException("unsupported schema type " + current);
     }
 
     private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType,

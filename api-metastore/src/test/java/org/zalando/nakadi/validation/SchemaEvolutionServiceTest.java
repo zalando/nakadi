@@ -304,7 +304,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1")));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("2.0.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
 
@@ -328,7 +328,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("1.0.0")));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("2.0.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
 
