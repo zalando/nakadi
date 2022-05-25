@@ -24,7 +24,6 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
@@ -94,7 +93,6 @@ public class EventTypeControllerTestCase {
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
     private final SchemaService schemaService = mock(SchemaService.class);
     private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
-    private final SchemaRepository schemaRepository = Mockito.mock(SchemaRepository.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() {

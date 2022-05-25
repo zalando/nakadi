@@ -8,7 +8,7 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
-import org.zalando.nakadi.domain.AvroVersion;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -16,9 +16,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
-import org.zalando.nakadi.domain.JsonVersion;
 import org.zalando.nakadi.domain.SchemaChange;
-import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.util.AvroUtils;
@@ -108,18 +106,25 @@ public class SchemaEvolutionService {
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
         checkEvolutionIncompatibilities(original, eventType);
         final var version = original.getSchema().getVersion();
+        final var typeChanged = !original.getSchema().getType().
+                equals(eventType.getSchema().getType());
+
+        if(typeChanged) {
+            return bumpVersion(original, eventType, MAJOR, new Version(version));
+        }
+
         switch (eventType.getSchema().getType()) {
             case JSON_SCHEMA:
-                return evolveJsonSchema(original, eventType, new JsonVersion(version));
+                return evolveJsonSchema(original, eventType, new Version(version));
             case AVRO_SCHEMA:
-                return evolveAvroSchema(original, eventType, new AvroVersion(version));
+                return evolveAvroSchema(original, eventType, new Version(version));
             default:
                 throw new RuntimeException("unsupported type for evolving " + eventType.getSchema().getType());
         }
     }
 
     private EventType evolveAvroSchema(final EventType original, final EventTypeBase eventType,
-                                       final AvroVersion avroVersion)
+                                       final Version avroVersion)
             throws SchemaEvolutionException {
         final var compatibilityMode = eventType.getCompatibilityMode();
             validateAvroSchema(Collections.singletonList(original.getSchema()),
@@ -153,7 +158,7 @@ public class SchemaEvolutionService {
     }
 
     private EventType evolveJsonSchema(final EventType original, final EventTypeBase eventType,
-                                       final JsonVersion jsonVersion) {
+                                       final Version jsonVersion) {
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
         final Version.Level changeLevel = semanticOfChange(original.getSchema().getSchema(),
@@ -271,8 +276,13 @@ public class SchemaEvolutionService {
 
     private EventType bumpVersion(final EventType original, final EventTypeBase eventType,
                                   final Version.Level changeLevel, final Version version) {
-        final DateTime now = new DateTime(DateTimeZone.UTC);
         final String newVersion = version.bump(changeLevel).toString();
+        return getUpdatedEventType(original, eventType, changeLevel, newVersion);
+    }
+
+    private EventType getUpdatedEventType(final EventType original, final EventTypeBase eventType,
+                                          final Version.Level changeLevel, final String newVersion) {
+        final DateTime now = new DateTime(DateTimeZone.UTC);
 
         final EventTypeSchema schema = changeLevel == NO_CHANGES ? original.getSchema() :
                 new EventTypeSchema(eventType.getSchema(), newVersion, now);
