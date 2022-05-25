@@ -111,7 +111,7 @@ public class SchemaEvolutionService {
                 equals(eventType.getSchema().getType());
 
         if(typeChanged) {
-            return bumpVersion(original, eventType, MAJOR, new Version());
+            return bumpVersion(original, eventType, MAJOR, new Version(version));
         }
 
         switch (eventType.getSchema().getType()) {

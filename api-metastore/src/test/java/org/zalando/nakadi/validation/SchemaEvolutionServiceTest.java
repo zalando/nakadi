@@ -289,7 +289,7 @@ public class SchemaEvolutionServiceTest {
                 compatibilityMode(CompatibilityMode.NONE).build();
 
         final var schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, ""),
-                "5", TestUtils.randomDate());
+                "", TestUtils.randomDate());
         final EventType newEventType =
                 EventTypeTestBuilder.builder().
                 compatibilityMode(CompatibilityMode.NONE).schema(schema).build();
@@ -311,7 +311,7 @@ public class SchemaEvolutionServiceTest {
     @Test
     public void testVersionOnTypeChangeToJson(){
         final var schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA,
-                ""), "2", TestUtils.randomDate());
+                ""), "2.1.1", TestUtils.randomDate());
 
         final EventType oldEventType =
                 EventTypeTestBuilder.builder().
@@ -326,7 +326,7 @@ public class SchemaEvolutionServiceTest {
 
         final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("2.0.0")));
+        Assert.assertThat(eventType.getSchema().getVersion(), is(equalTo("3.0.0")));
 
         Mockito.verify(evolutionConstraint).validate(oldEventType, newEventType);
 
