@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.utils.TestUtils;
@@ -34,11 +35,12 @@ public class TimelinesControllerTest {
 
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
     private final SecuritySettings securitySettings = Mockito.mock(SecuritySettings.class);
+    private final NakadiAuditLogPublisher auditLogPublisher = Mockito.mock(NakadiAuditLogPublisher.class);
     private MockMvc mockMvc;
     private final AuthorizationService authorizationService = Mockito.mock(AuthorizationService.class);
 
     public TimelinesControllerTest() {
-        final TimelinesController controller = new TimelinesController(timelineService);
+        final TimelinesController controller = new TimelinesController(timelineService, auditLogPublisher);
         when(securitySettings.getAuthMode()).thenReturn(OFF);
         when(securitySettings.getAdminClientId()).thenReturn("org/zalando/nakadi");
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
@@ -52,11 +54,12 @@ public class TimelinesControllerTest {
 
     @Test
     public void whenPostTimelineThenCreated() throws Exception {
-        Mockito.doNothing().when(timelineService).createTimeline(Mockito.any(), Mockito.any());
+        Mockito.when(timelineService.createTimeline(Mockito.any(), Mockito.any()))
+                .thenReturn(Mockito.mock(Timeline.class));
         mockMvc.perform(MockMvcRequestBuilders.post("/event-types/event_type/timelines")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(new JSONObject().put("storage_id", "default").toString())
-                .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new JSONObject().put("storage_id", "default").toString())
+                        .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isCreated());
     }
 
@@ -70,8 +73,8 @@ public class TimelinesControllerTest {
         final List<TimelineView> timelineViews = timelines.stream().map(TimelineView::new).collect(Collectors.toList());
 
         mockMvc.perform(MockMvcRequestBuilders.get("/event-types/event_type/timelines")
-                .contentType(MediaType.APPLICATION_JSON)
-                .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().json(
                         TestUtils.OBJECT_MAPPER.writeValueAsString(timelineViews)));

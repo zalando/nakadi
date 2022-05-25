@@ -14,10 +14,12 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
 import org.zalando.nakadi.view.TimelineView;
 
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -27,10 +29,13 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class TimelinesController {
 
     private final TimelineService timelineService;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
-    public TimelinesController(final TimelineService timelineService) {
+    public TimelinesController(final TimelineService timelineService,
+                               final NakadiAuditLogPublisher auditLogPublisher) {
         this.timelineService = timelineService;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -39,7 +44,15 @@ public class TimelinesController {
                                             final NativeWebRequest request)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException {
-        timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());
+        final var nextTimeline = timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId());
+
+        auditLogPublisher.publish(
+                Optional.empty(),
+                Optional.of(nextTimeline),
+                NakadiAuditLogPublisher.ResourceType.TIMELINE,
+                NakadiAuditLogPublisher.ActionType.CREATED,
+                String.valueOf(nextTimeline.getId()));
+
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

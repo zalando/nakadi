@@ -29,7 +29,6 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.util.Collections;
@@ -61,8 +60,6 @@ public class TimelineServiceTest {
     @Mock
     private FeatureToggleService featureToggleService;
     @Mock
-    private NakadiAuditLogPublisher auditLogPublisher;
-    @Mock
     private AvroSchema avroSchema;
     private TimelineService timelineService;
 
@@ -71,8 +68,7 @@ public class TimelineServiceTest {
         timelineService = new TimelineService(eventTypeCache,
                 storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
                 topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-                adminService, featureToggleService, "compacted-storage", auditLogPublisher,
-                avroSchema);
+                adminService, featureToggleService, "compacted-storage", avroSchema);
     }
 
     @Test(expected = NotFoundException.class)
