@@ -13,6 +13,7 @@ import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -29,6 +30,7 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.util.stream.LongStream.rangeClosed;
@@ -41,7 +43,9 @@ import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.TestUtils.randomDate;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
@@ -50,16 +54,15 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscrip
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
-    private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
-    private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
-    private static final String EVENT_INVALID = "{\"baz\":\"" + randomTextString() + "\"}";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 
     private String eventTypeName;
-
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
+    private String event1;
+    private String event2;
+    private String eventInvalid;
 
     public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
                                                   final String owningApp)
@@ -76,6 +79,17 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
         createEventType();
+
+        event1 = newEvent().put("foo", randomTextString()).toString();
+        event2 = newEvent().put("foo", randomTextString()).toString();
+        eventInvalid = newEvent().put("bar", randomTextString()).toString();
+    }
+
+    JSONObject newEvent() {
+        return new JSONObject()
+                .put("metadata", new JSONObject()
+                         .put("eid", randomUUID())
+                         .put("occurred_at", randomDate().toString()));
     }
 
     @SuppressWarnings("unchecked")
@@ -162,7 +176,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(EVENT1, EVENT2);
+        postEvents(event1, event2);
 
         // get offsets for partition
         jsonRequestSpec()
@@ -194,7 +208,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"001-0001-000000000000000001\"}," +
-                        "\"events\":[" + EVENT1 + "," + EVENT2 + "]}\n"));
+                        "\"events\":[" + event1 + "," + event2 + "]}\n"));
 
         // get distance between cursors
         jsonRequestSpec()
@@ -385,11 +399,20 @@ public class UserJourneyAT extends RealEnvironmentAT {
     @Test(timeout = 15000)
     public void userJourneyAvroTransition() throws InterruptedException, IOException {
 
+        final EventType eventType = MAPPER.readValue(jsonRequestSpec()
+                    .header("accept", "application/json")
+                    .get(ENDPOINT + "/" + eventTypeName)
+                    .getBody()
+                    .asString(),
+                EventType.class);
+
+        final String validatedWithJsonSchemaVersion = eventType.getSchema().getVersion();
+
         // push two JSON events to event-type
-        postEvents(EVENT1, EVENT2);
+        postEvents(event1, event2);
 
         // try to push some invalid event
-        tryPostInvalidEvents(EVENT_INVALID);
+        tryPostInvalidEvents(eventInvalid);
 
         // update schema => change to Avro
         jsonRequestSpec()
@@ -402,10 +425,10 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(OK.value());
 
         // push two more JSON events to Avro event-type
-        postEvents(EVENT1, EVENT2);
+        postEvents(event1, event2);
 
         // test that JSON validation still works
-        tryPostInvalidEvents(EVENT_INVALID);
+        tryPostInvalidEvents(eventInvalid);
 
         // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
@@ -421,6 +444,13 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getBatches();
+
+        // validate the events metadata
+        for (final StreamBatch batch : batches) {
+            final Map<String, String> metadata = (Map<String, String>) batch.getEvents().get(0).get("metadata");
+            //assertThat(batch.getEvents().get(0), equalTo(""));
+            assertThat(metadata.get("version"), equalTo(validatedWithJsonSchemaVersion));
+        }
 
         // delete subscription
         jsonRequestSpec()
