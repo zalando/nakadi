@@ -24,6 +24,7 @@ import org.zalando.nakadi.validation.EventValidatorBuilder;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,12 +161,14 @@ public class EventTypeCacheTest {
         final EventTypeValidator validator2 = mock(EventTypeValidator.class);
         final List<Timeline> expectedTimelines2 = mock(List.class);
 
-        final var etSchema = new EventTypeSchema(new EventTypeSchemaBase(
-                EventTypeSchemaBase.Type.JSON_SCHEMA, ""),
+        final EventTypeSchema etSchema = new EventTypeSchema(new EventTypeSchemaBase(
+                EventTypeSchemaBase.Type.JSON_SCHEMA, "{}"),
                 "1.0.0", DateTime.now());
         when(et1.getSchema()).thenReturn(etSchema);
         when(et2.getSchema()).thenReturn(etSchema);
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
+        when(schemaService.getLatestSchemaForType(eventTypeName, EventTypeSchema.Type.JSON_SCHEMA))
+                .thenReturn(Optional.of(etSchema));
         when(eventValidatorBuilder.build(eq(et1), any())).thenReturn(validator1);
         when(eventValidatorBuilder.build(eq(et2), any())).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))
