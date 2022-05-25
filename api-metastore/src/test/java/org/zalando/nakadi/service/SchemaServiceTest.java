@@ -11,9 +11,8 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.JsonVersion;
-import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
@@ -104,7 +103,7 @@ public class SchemaServiceTest {
     @Test(expected = NoSuchSchemaException.class)
     public void testNonExistingVersionNumber() throws Exception {
         final var newVersion =
-                new JsonVersion(eventType.getSchema().getVersion()).bump(Version.Level.MINOR).toString();
+                new Version(eventType.getSchema().getVersion()).bump(Version.Level.MINOR).toString();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(), newVersion))
                 .thenThrow(NoSuchSchemaException.class);
         schemaService.getSchemaVersion(eventType.getName(), newVersion);
