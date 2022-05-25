@@ -22,10 +22,10 @@ import java.util.Optional;
 
 public class KafkaRecordDeserializerTest {
 
-    private final LocalSchemaRegistry localSchemaRegistry;
-    private final SchemaProviderService schemaService;
     private static final long SOME_TIME = 1643290232172l;
     private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
+    private final LocalSchemaRegistry localSchemaRegistry;
+    private final SchemaProviderService schemaService;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash

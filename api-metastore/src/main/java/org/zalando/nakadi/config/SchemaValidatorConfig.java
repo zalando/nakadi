@@ -17,7 +17,6 @@ import org.zalando.nakadi.validation.schema.EnrichmentStrategyConstraint;
 import org.zalando.nakadi.validation.schema.PartitionKeyFieldsConstraint;
 import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
-import org.zalando.nakadi.validation.schema.SchemaTypeChangeConstraint;
 import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.io.IOException;
@@ -66,7 +65,6 @@ public class SchemaValidatorConfig {
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
-                new SchemaTypeChangeConstraint(),
                 new CategoryChangeConstraint(),
                 compatibilityModeChangeConstraint,
                 new PartitionKeyFieldsConstraint(),
