@@ -39,6 +39,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
@@ -51,6 +52,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
+    private static final String EVENT_INVALID = "{\"baz\":\"" + randomTextString() + "\"}";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 
@@ -380,6 +382,53 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(NO_CONTENT.value());
     }
 
+    @Test(timeout = 15000)
+    public void userJourneyAvroTransition() throws InterruptedException, IOException {
+
+        // push two JSON events to event-type
+        postEvents(EVENT1, EVENT2);
+
+        // try to push some invalid event
+        tryPostInvalidEvents(EVENT_INVALID);
+
+        // update schema => change to Avro
+        jsonRequestSpec()
+                .body("{\"type\": \"avro_schema\", " +
+                      "\"schema\": \"{\\\"type\\\": \\\"record\\\", \\\"name\\\": \\\"Foo\\\", " +
+                      "\\\"fields\\\": [{\\\"name\\\": \\\"foo\\\", \\\"type\\\": \\\"string\\\"}]}\"}")
+                .post("/event-types/" + eventTypeName + "/schemas")
+                .then()
+                .body(equalTo(""))
+                .statusCode(OK.value());
+
+        // push two more JSON events to Avro event-type
+        postEvents(EVENT1, EVENT2);
+
+        // test that JSON validation still works
+        tryPostInvalidEvents(EVENT_INVALID);
+
+        // create subscription
+        final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
+                .withOwningApplication("stups_aruha-test-end2end-nakadi")
+                .withEventType(eventTypeName)
+                .withStartFrom(BEGIN)
+                .buildSubscriptionBase();
+        final Subscription subscription = createSubscription(jsonRequestSpec(), subscriptionToCreate);
+
+        // create client and wait till we receive 4 events
+        final TestStreamingClient client = new TestStreamingClient(
+                RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
+
+        waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(4)));
+        final List<StreamBatch> batches = client.getBatches();
+
+        // delete subscription
+        jsonRequestSpec()
+                .delete("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(NO_CONTENT.value());
+    }
+
     private void createEventType() {
         jsonRequestSpec()
                 .body(eventTypeBody)
@@ -398,6 +447,16 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .post("/event-types/" + eventTypeName + "/events")
                 .then()
                 .statusCode(OK.value());
+    }
+
+    private void tryPostInvalidEvents(final String... events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        jsonRequestSpec()
+                .body(batch)
+                .when()
+                .post("/event-types/" + eventTypeName + "/events")
+                .then()
+                .statusCode(UNPROCESSABLE_ENTITY.value());
     }
 
     private RequestSpecification jsonRequestSpec() {
