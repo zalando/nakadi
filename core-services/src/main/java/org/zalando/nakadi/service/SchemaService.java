@@ -166,6 +166,10 @@ public class SchemaService {
         return schema;
     }
 
+    public Optional<EventTypeSchema> getLatestSchemaForType(final String name, final EventTypeSchema.Type schemaType) {
+        return schemaRepository.getLatestSchemaForType(name, schemaType);
+    }
+
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
@@ -224,7 +228,7 @@ public class SchemaService {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, schemaAsJson);
         final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);

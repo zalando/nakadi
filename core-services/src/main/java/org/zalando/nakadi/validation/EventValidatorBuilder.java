@@ -21,17 +21,16 @@ public class EventValidatorBuilder {
     private final JsonSchemaEnrichment loader;
 
     @Autowired
-    public EventValidatorBuilder(
-            final JsonSchemaEnrichment loader) {
+    public EventValidatorBuilder(final JsonSchemaEnrichment loader) {
         this.loader = loader;
     }
 
-    public EventTypeValidator build(final EventType eventType) {
+    public EventTypeValidator build(final EventType eventType, final JSONObject schemaAsJson) {
         final List<Function<JSONObject, Optional<ValidationError>>> validators = new ArrayList<>(2);
 
         // 1. We always validate schema.
         final Schema schema = SchemaLoader.builder()
-                .schemaJson(loader.effectiveSchema(eventType))
+                .schemaJson(loader.effectiveSchema(eventType, schemaAsJson))
                 .addFormatValidator(new RFC3339DateTimeValidator())
                 .build()
                 .load()

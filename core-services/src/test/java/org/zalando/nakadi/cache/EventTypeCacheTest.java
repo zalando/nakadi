@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
@@ -47,6 +48,8 @@ public class EventTypeCacheTest {
     @Mock
     private EventValidatorBuilder eventValidatorBuilder;
     @Mock
+    private SchemaService schemaService;
+    @Mock
     private TimelineSync.ListenerRegistration listener;
     private EventTypeCache eventTypeCache;
     @Captor
@@ -58,8 +61,8 @@ public class EventTypeCacheTest {
 
         eventTypeCache = new EventTypeCache(
                 changesRegistry, eventTypeRepository, timelineDbRepository, timelineSync, eventValidatorBuilder,
-                1,
-                3); // Update every second, so tests should be fast enough
+                schemaService,
+                1, 3); // Update every second, so tests should be fast enough
     }
 
     @Test
@@ -163,8 +166,8 @@ public class EventTypeCacheTest {
         when(et1.getSchema()).thenReturn(etSchema);
         when(et2.getSchema()).thenReturn(etSchema);
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
-        when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
-        when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
+        when(eventValidatorBuilder.build(eq(et1), any())).thenReturn(validator1);
+        when(eventValidatorBuilder.build(eq(et2), any())).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(expectedTimelines1, expectedTimelines2);
 

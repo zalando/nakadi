@@ -110,6 +110,8 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
 
+        // TODO: check that event type schema type is AVRO!
+
         //try {
         //    return postBinaryEvents(eventTypeName, batch, request, client, false);
         //} catch (IOException e) {
