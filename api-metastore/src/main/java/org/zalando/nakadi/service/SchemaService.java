@@ -97,12 +97,14 @@ public class SchemaService {
             updatedEventType.setSchema(newSchema);
 
             final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
-            eventTypeRepository.update(eventType); // Why are we updating if we don't have to?
-
-            eventTypeCache.invalidate(eventType.getName());
+            // The version of the schema of the evolved event type will be different if there is a change,
+            // and the schema got evolved, otherwise the version of schema remains the same.
             if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
+                eventTypeRepository.update(eventType);
+                eventTypeCache.invalidate(eventType.getName());
                 return Optional.of(eventType);
             }
+            return Optional.empty();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
@@ -119,7 +121,6 @@ public class SchemaService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        return Optional.empty();
     }
 
     public EventType getValidEvolvedEventType(final EventType originalEventType, final EventTypeBase updatedEventType) {
