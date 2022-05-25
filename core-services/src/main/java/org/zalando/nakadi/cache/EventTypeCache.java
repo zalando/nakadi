@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
@@ -137,6 +138,7 @@ public class EventTypeCache {
             final TimelineDbRepository timelineRepository,
             final TimelineSync timelineSync,
             final EventValidatorBuilder eventValidatorBuilder,
+            @Lazy
             final SchemaService schemaService,
             @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
             @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
