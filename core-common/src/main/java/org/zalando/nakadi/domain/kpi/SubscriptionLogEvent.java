@@ -1,8 +1,27 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
+import org.zalando.nakadi.util.AvroUtils;
+
+import java.io.IOException;
 
 public class SubscriptionLogEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA =
+            "event-type-schema/nakadi.subscription.log/nakadi.subscription.log.1.avsc";
+    private static final Schema SCHEMA;
+
+    static {
+        // load latest local schema
+        try {
+            SCHEMA = AvroUtils.getParsedSchema(
+                    KPIEvent.class.getClassLoader().getResourceAsStream(PATH_SCHEMA)
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("failed to load avro schema");
+        }
+    }
 
     @KPIField("subscription_id")
     protected String subscriptionId;
@@ -10,7 +29,7 @@ public class SubscriptionLogEvent extends KPIEvent {
     protected String status;
 
     public SubscriptionLogEvent() {
-        super(KPIEventTypes.SUBSCRIPTION_LOG, "1");
+        super(KPIEventTypes.SUBSCRIPTION_LOG);
     }
 
     public String getSubscriptionId() {
@@ -31,4 +50,8 @@ public class SubscriptionLogEvent extends KPIEvent {
         return this;
     }
 
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
+    }
 }

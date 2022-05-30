@@ -45,10 +45,8 @@ public class AccessLogEventTest {
     public void testAsGenericRecord() {
         final var accessLogEvent = getRandomEvent();
 
-        final var latestSchemaEntry = localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(accessLogEvent.getName());
         final var accessLogGenericRecord = eventMapper
-                .mapToGenericRecord(accessLogEvent, latestSchemaEntry.getSchema());
+                .mapToGenericRecord(accessLogEvent);
 
         assertEquals(accessLogEvent.getMethod(), accessLogGenericRecord.get("method"));
         assertEquals(accessLogEvent.getPath(), accessLogGenericRecord.get("path"));

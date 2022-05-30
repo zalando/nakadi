@@ -64,8 +64,7 @@ public class LocalSchemaRegistry {
     }
 
     private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
-            final Resource eventTypeSchemaRes, final String eventTypeName)
-            throws IOException {
+            final Resource eventTypeSchemaRes, final String eventTypeName) {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 

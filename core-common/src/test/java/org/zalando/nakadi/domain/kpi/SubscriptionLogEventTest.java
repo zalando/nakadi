@@ -43,11 +43,8 @@ public class SubscriptionLogEventTest {
                 .setSubscriptionId(UUID.randomUUID().toString())
                 .setStatus("created");
 
-        final var latestSchemaEntry = localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
-
         final var subscriptionLogGenericRecord = eventMapper
-                .mapToGenericRecord(subscriptionLogEvent, latestSchemaEntry.getSchema());
+                .mapToGenericRecord(subscriptionLogEvent);
 
         assertEquals("created", subscriptionLogGenericRecord.get("status"));
         assertEquals(subscriptionLogEvent.getSubscriptionId(), subscriptionLogGenericRecord.get("subscription_id"));

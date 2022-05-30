@@ -1,10 +1,7 @@
 package org.zalando.nakadi.domain.kpi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.KPIEventMapper;
 
 import java.io.IOException;
@@ -14,12 +11,10 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BatchPublishedEventTest {
-    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper eventMapper;
 
     public BatchPublishedEventTest() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         this.eventMapper = new KPIEventMapper(Set.of(BatchPublishedEvent.class));
     }
 
@@ -43,11 +38,8 @@ public class BatchPublishedEventTest {
     public void testAsGenericRecord() {
         final var eventTypeLogEvent = getRandomBatchPublishedEventObject();
 
-        final var latestSchemaEntry = localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.getName());
-
         final var eventTypeLogGenericRecord = eventMapper
-                .mapToGenericRecord(eventTypeLogEvent, latestSchemaEntry.getSchema());
+                .mapToGenericRecord(eventTypeLogEvent);
 
         assertEquals(eventTypeLogEvent.getEventTypeName(), eventTypeLogGenericRecord.get("event_type"));
         assertEquals(eventTypeLogEvent.getApplicationName(), eventTypeLogGenericRecord.get("app"));

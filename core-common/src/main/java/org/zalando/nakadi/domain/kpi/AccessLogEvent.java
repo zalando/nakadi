@@ -1,8 +1,27 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
+import org.zalando.nakadi.util.AvroUtils;
+
+import java.io.IOException;
 
 public class AccessLogEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA = "event-type-schema/nakadi.access.log/nakadi.access.log.2.avsc";
+    private static final Schema SCHEMA;
+
+    static {
+        // load latest local schema
+        try {
+            SCHEMA = AvroUtils.getParsedSchema(
+                    KPIEvent.class.getClassLoader().getResourceAsStream(PATH_SCHEMA)
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("failed to load avro schema");
+        }
+    }
+
     @KPIField("method")
     private String method;
     @KPIField("path")
@@ -29,7 +48,7 @@ public class AccessLogEvent extends KPIEvent {
     private long responseLength;
 
     public AccessLogEvent() {
-        super(KPIEventTypes.ACCESS_LOG, "1");
+        super(KPIEventTypes.ACCESS_LOG);
     }
 
     public String getMethod() {
@@ -139,4 +158,10 @@ public class AccessLogEvent extends KPIEvent {
         this.responseLength = responseLength;
         return this;
     }
+
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
+    }
+
 }

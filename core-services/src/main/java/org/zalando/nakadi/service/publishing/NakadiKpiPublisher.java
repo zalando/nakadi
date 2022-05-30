@@ -81,11 +81,11 @@ public class NakadiKpiPublisher {
             final var eventTypeName = kpiEvent.getName();
 
             if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
-                final String eventVersion = kpiEvent.getVersion();
+                final String eventVersion = schemaService.getAvroSchemaVersion(
+                        eventTypeName, kpiEvent.getSchema());
                 final NakadiAvroMetadata metadata = buildMetaData(
                         eventTypeName, VERSION_METADATA, eventVersion);
-                final GenericRecord event = kpiEventMapper.mapToGenericRecord(
-                        kpiEvent, schemaService.getAvroSchema(eventTypeName, eventVersion));
+                final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent);
 
                 final NakadiRecord nakadiRecord =
                         nakadiRecordMapper.fromAvroGenericRecord(metadata, event);

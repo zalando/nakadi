@@ -76,6 +76,7 @@ public class SchemaService implements SchemaProviderService {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
     private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
+    private final Map<NameSchema, String> schemaVersionCache;
 
     private final Parser avroSchemaParser;
 
@@ -114,6 +115,7 @@ public class SchemaService implements SchemaProviderService {
                     }
                 });
         this.avroSchemasCache = new ConcurrentHashMap<>();
+        this.schemaVersionCache = new ConcurrentHashMap<>();
         this.avroSchemaParser = new Parser();
     }
 
@@ -310,11 +312,11 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
-    public org.apache.avro.Schema getAvroSchema(final String etName,
+    public org.apache.avro.Schema getAvroSchema(final String name,
                                                 final String version) {
-        final SchemaId schemaId = new SchemaId(etName, version);
+        final SchemaId schemaId = new SchemaId(name, version);
         return avroSchemasCache.computeIfAbsent(schemaId, (key) -> {
-            final EventTypeSchema eventTypeSchema = getSchemaVersion(etName, version);
+            final EventTypeSchema eventTypeSchema = getSchemaVersion(name, version);
             if (eventTypeSchema.getType() != EventTypeSchemaBase.Type.AVRO_SCHEMA) {
                 throw new IllegalStateException(String.format(
                         "event schema type is not known: `%s`", eventTypeSchema.getType()));
@@ -322,6 +324,22 @@ public class SchemaService implements SchemaProviderService {
 
             return avroSchemaParser.parse(eventTypeSchema.getSchema());
         });
+    }
+
+    @Override
+    public String getAvroSchemaVersion(final String name, final org.apache.avro.Schema schema)
+            throws NoSuchSchemaException {
+        final NameSchema key = new NameSchema(name, schema);
+        return schemaVersionCache.computeIfAbsent(key, (nameSchema) ->
+                // assuming there will be no more than 100 schemas for the event type
+                schemaRepository.getSchemas(name, 0, 100).stream()
+                        .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
+                        .filter(ets -> avroSchemaParser.parse(ets.getSchema()).equals(schema))
+                        .map(EventTypeSchema::getVersion)
+                        .findFirst()
+                        .orElseThrow(() -> new NoSuchSchemaException(
+                                String.format("schema is not found for %s", name)))
+        );
     }
 
     private class SchemaId {
@@ -345,4 +363,27 @@ public class SchemaService implements SchemaProviderService {
             return Objects.hash(name, version);
         }
     }
+
+    private class NameSchema {
+        private final String name;
+        private final org.apache.avro.Schema schema;
+
+        NameSchema(final String name, final org.apache.avro.Schema schema) {
+            this.name = name;
+            this.schema = schema;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            final NameSchema that = (NameSchema) o;
+            return Objects.equals(name, that.name) &&
+                    Objects.equals(schema, that.schema);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, schema);
+        }
+    }
+
 }

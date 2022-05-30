@@ -14,4 +14,9 @@ public class TestSchemaProviderService implements SchemaProviderService {
     public Schema getAvroSchema(final String etName, final String version) {
         return localSchemaRegistry.getEventTypeSchema(etName, version);
     }
+
+    @Override
+    public String getAvroSchemaVersion(final String etName, final Schema schema) {
+        return null;
+    }
 }

@@ -48,10 +48,8 @@ public class DataStreamedEventTest {
         final var dataStreamedEvent = getRandomEvent()
                 .setApi("lola");
 
-        final var latestSchema = localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(dataStreamedEvent.getName());
         final var dataStreamedGenericRecord = eventMapper
-                .mapToGenericRecord(dataStreamedEvent, latestSchema.getSchema());
+                .mapToGenericRecord(dataStreamedEvent);
 
         assertEquals(dataStreamedEvent.getEventTypeName(), dataStreamedGenericRecord.get("event_type"));
         assertEquals(dataStreamedEvent.getApplicationName(), dataStreamedGenericRecord.get("app"));
@@ -66,7 +64,7 @@ public class DataStreamedEventTest {
         dataStreamedEvent.setApi("hila")
                 .setSubscriptionId(UUID.randomUUID().toString());
         final var dataStreamedGenericRecord2 = eventMapper
-                .mapToGenericRecord(dataStreamedEvent, latestSchema.getSchema());
+                .mapToGenericRecord(dataStreamedEvent);
         assertEquals(dataStreamedEvent.getApi(), dataStreamedGenericRecord2.get("api"));
         assertEquals(dataStreamedEvent.getSubscriptionId(), dataStreamedGenericRecord2.get("subscription"));
 

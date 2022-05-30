@@ -40,11 +40,8 @@ public class EventTypeLogEventTest {
     public void testAsGenericRecord() {
         final var eventTypeLogEvent = getRandomEventTypeLogEvent();
 
-        final var latestSchemaEntry = localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(eventTypeLogEvent.getName());
-
         final var eventTypeLogGenericRecord = eventMapper
-                .mapToGenericRecord(eventTypeLogEvent, latestSchemaEntry.getSchema());
+                .mapToGenericRecord(eventTypeLogEvent);
 
         assertEquals(eventTypeLogEvent.getEventType(), eventTypeLogGenericRecord.get("event_type"));
         assertEquals(eventTypeLogEvent.getStatus(), eventTypeLogGenericRecord.get("status"));
