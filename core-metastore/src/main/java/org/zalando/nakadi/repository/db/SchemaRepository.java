@@ -42,15 +42,6 @@ public class SchemaRepository extends AbstractDbRepository {
                     + "\" has no schema with version \"" + version + "\"", e);
         }
     }
-//
-//    public EventTypeSchema getSchemaVersionBySchema(final String name, final String schema) {
-//        return jdbcTemplate.queryForObject(
-//                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
-//                        "WHERE ets_event_type_name = ? and ets_schema_object->>'schema' = ? " +
-//                        "ORDER BY ets_schema_object->>'created_at' DESC LIMIT 1",
-//                new Object[]{name, schema},
-//                new SchemaRowMapper());
-//    }
 
     public int getSchemasCount(final String name) {
         return jdbcTemplate.queryForObject(

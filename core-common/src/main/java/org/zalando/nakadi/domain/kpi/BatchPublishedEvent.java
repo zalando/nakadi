@@ -2,9 +2,6 @@ package org.zalando.nakadi.domain.kpi;
 
 import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
-import org.zalando.nakadi.util.AvroUtils;
-
-import java.io.IOException;
 
 public class BatchPublishedEvent extends KPIEvent {
 
@@ -13,13 +10,7 @@ public class BatchPublishedEvent extends KPIEvent {
 
     static {
         // load latest local schema
-        try {
-            SCHEMA = AvroUtils.getParsedSchema(
-                    KPIEvent.class.getClassLoader().getResourceAsStream(PATH_SCHEMA)
-            );
-        } catch (IOException e) {
-            throw new RuntimeException("failed to load avro schema");
-        }
+        SCHEMA = loadSchema(PATH_SCHEMA);
     }
 
     @KPIField("event_type")
