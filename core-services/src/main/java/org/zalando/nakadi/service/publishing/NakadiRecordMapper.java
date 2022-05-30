@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service;
+package org.zalando.nakadi.service.publishing;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -7,6 +7,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,10 +18,11 @@ import java.util.List;
 @Service
 public class NakadiRecordMapper {
 
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
-    public NakadiRecordMapper(final AvroSchema avroSchema) {
-        this.avroSchema = avroSchema;
+    public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
+        this.localSchemaRegistry = localSchemaRegistry;
+
     }
 
     public List<NakadiRecord> fromBytesBatch(final byte[] batch) throws IOException {
@@ -38,10 +40,14 @@ public class NakadiRecordMapper {
             tmp.position(recordStart + 1 + 4 + metadataLength + 4);
             tmp.get(payload);
 
-            final Schema metadataSchema = avroSchema.getEventTypeSchema(
-                    AvroSchema.METADATA_KEY, Byte.toString(metadataVersion));
+            // fixme use version as byte in local registry
+            final Schema metadataAvroSchema = localSchemaRegistry.getEventTypeSchema(
+                    LocalSchemaRegistry.METADATA_KEY, String.valueOf(metadataVersion));
+            final NakadiAvroMetadata nakadiAvroMetadata = new NakadiAvroMetadata(
+                    metadataVersion, metadataAvroSchema, metadata);
+
             records.add(new NakadiRecord()
-                    .setMetadata(new NakadiAvroMetadata(metadataVersion, metadataSchema, metadata))
+                    .setMetadata(nakadiAvroMetadata)
                     .setPayload(payload));
         }
 

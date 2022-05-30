@@ -26,7 +26,7 @@ public class NakadiRecord {
     private byte[] payload;
     private byte[] format;
     private EventOwnerHeader owner;
-    private NakadiAvroMetadata metadata;
+    private NakadiMetadata metadata;
 
     public byte[] getEventKey() {
         return eventKey;
@@ -64,11 +64,11 @@ public class NakadiRecord {
         return this;
     }
 
-    public NakadiAvroMetadata getMetadata() {
+    public NakadiMetadata getMetadata() {
         return metadata;
     }
 
-    public NakadiRecord setMetadata(final NakadiAvroMetadata metadata) {
+    public NakadiRecord setMetadata(final NakadiMetadata metadata) {
         this.metadata = metadata;
         return this;
     }

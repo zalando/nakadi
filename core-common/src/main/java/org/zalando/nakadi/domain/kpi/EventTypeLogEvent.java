@@ -1,8 +1,13 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
 
 public class EventTypeLogEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA = "event-type-schema/nakadi.event.type.log/nakadi.event.type.log.1.avsc";
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
+
     @KPIField("event_type")
     private String eventType;
     @KPIField("status")
@@ -61,5 +66,10 @@ public class EventTypeLogEvent extends KPIEvent {
     public EventTypeLogEvent setCompatibilityMode(final String compatibilityMode) {
         this.compatibilityMode = compatibilityMode;
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
     }
 }

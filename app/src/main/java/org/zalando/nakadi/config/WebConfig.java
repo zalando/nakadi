@@ -31,11 +31,9 @@ import org.zalando.nakadi.filters.TracingFilter;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
-import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.util.FlowIdRequestFilter;
 import org.zalando.nakadi.util.CompressionBodyRequestFilter;
+import org.zalando.nakadi.util.FlowIdRequestFilter;
 
 import javax.servlet.Filter;
 import java.util.List;
@@ -67,12 +65,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Autowired
     private AsyncTaskExecutor asyncTaskExecutor;
-
-    @Autowired
-    private AvroSchema avroSchema;
-
-    @Autowired
-    private BinaryEventPublisher binaryEventPublisher;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -116,8 +108,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     // MIDDLE POINT
     @Bean
     public FilterRegistrationBean securityFilterChain(
-            @Qualifier(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
-            final Filter securityFilter) {
+            @Qualifier(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME) final Filter securityFilter) {
         //
         // Override the order of the Spring's security filter, which by default has the lowest
         // precedence.

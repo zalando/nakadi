@@ -2,7 +2,9 @@ package org.zalando.nakadi.domain;
 
 import java.util.List;
 
-public class NakadiMetadata {
+public abstract class NakadiMetadata implements EnvelopeHolder.EventWriter {
+
+    private final byte metadataVersion;
 
     private String eid;
     private Long occurredAt;
@@ -17,6 +19,14 @@ public class NakadiMetadata {
     private List<String> partitionKeys;
     private String partitionCompactionKey;
     private String eventOwner;
+
+    public NakadiMetadata(final byte metadataVersion) {
+        this.metadataVersion = metadataVersion;
+    }
+
+    public byte getMetadataVersion() {
+        return metadataVersion;
+    }
 
     public String getEid() {
         return eid;

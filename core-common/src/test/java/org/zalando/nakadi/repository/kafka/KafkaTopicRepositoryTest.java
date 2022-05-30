@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -29,6 +28,7 @@ import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
@@ -38,8 +38,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.NakadiRecordMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.view.Cursor;
 
 import java.io.IOException;
@@ -88,8 +87,7 @@ public class KafkaTopicRepositoryTest {
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
-    private final AvroSchema avroSchema;
-    private final NakadiRecordMapper nakadiRecordMapper;
+    private final LocalSchemaRegistry localSchemaRegistry;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -139,10 +137,8 @@ public class KafkaTopicRepositoryTest {
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
-
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
-        this.nakadiRecordMapper = new NakadiRecordMapper(avroSchema);
+        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
     }
 
 
@@ -463,14 +459,13 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void testSendNakadiRecordsOk() throws IOException {
+    public void testSendNakadiRecordsOk() {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final var nakadiRecord = getTestNakadiRecord("0");
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(nakadiRecord, nakadiRecord, nakadiRecord);
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
-            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
             callback.onCompletion(null, null);
             return null;
@@ -641,30 +636,19 @@ public class KafkaTopicRepositoryTest {
         return producerRecordArgumentCaptor.getValue();
     }
 
-    private NakadiRecord getTestNakadiRecord(final String partition) throws IOException {
-        final var testMetadata = getTestNakadiAvroMetadata(partition, "test-event");
-        // NOTE: reusing metadata schema to create a fake event-payload generic record.
-        final var eventRecord = new GenericRecordBuilder(testMetadata.getMetadataAvroSchema())
-                .set(NakadiAvroMetadata.OCCURRED_AT, Instant.now().toEpochMilli())
-                .set(NakadiAvroMetadata.EID, UUID.randomUUID().toString())
-                .set(NakadiAvroMetadata.SCHEMA_VERSION, "version")
-                .set(NakadiAvroMetadata.EVENT_TYPE, "test-type")
-                .build();
-        return nakadiRecordMapper.fromAvroGenericRecord(testMetadata, eventRecord);
-    }
-
-    private NakadiAvroMetadata getTestNakadiAvroMetadata(final String partition, final String eventType) {
-
-        final var metadataSchema = avroSchema
-                .getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
-
-        final var metadata = new NakadiAvroMetadata(metadataSchema.getVersionAsByte(), metadataSchema.getSchema());
+    private NakadiRecord getTestNakadiRecord(final String partition) {
+        final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
+                localSchemaRegistry.getEventTypeSchema("metadata", "1"));
         metadata.setEid(UUID.randomUUID().toString());
         metadata.setOccurredAt(Instant.now().toEpochMilli());
         metadata.setSchemaVersion("0");
         metadata.setPartition(partition);
-        metadata.setEventType(eventType);
-        return metadata;
+        metadata.setEventType("test-event");
+
+        return new NakadiRecord()
+                .setMetadata(metadata)
+                .setPayload(new byte[0])
+                .setFormat(NakadiRecord.Format.AVRO.getFormat());
     }
 
 }
