@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain.kpi;
 
 import org.apache.avro.Schema;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.util.AvroUtils;
 
 import java.io.IOException;
