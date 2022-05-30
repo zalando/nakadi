@@ -203,6 +203,7 @@ public class EventPublisherTest {
     @Test
     public void whenValidationFailsThenResultIsAborted() throws Exception {
         final EventType eventType = buildDefaultEventType();
+        //final String schemaVersion = eventType.getSchema().getVersion().toString();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -211,7 +212,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(createBatchItem(event), eventType, any());
+        verify(enrichment, times(0)).enrich(any(), any(), any());
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -461,7 +462,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(cache, times(1)).getValidator(eventType.getName());
+        verify(cache, atLeastOnce()).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(enrichment, times(1)).enrich(any(), any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
@@ -683,6 +684,11 @@ public class EventPublisherTest {
                 .getValidator(eventType.getName());
 
         Mockito
+                .doReturn(eventType.getSchema())
+                .when(faultyValidator)
+                .getSchema();
+
+        Mockito
                 .doReturn(Optional.of(new ValidationError(error)))
                 .when(faultyValidator)
                 .validate(any());
@@ -702,6 +708,11 @@ public class EventPublisherTest {
                 .validate(event);
 
         Mockito
+                .doReturn(eventType.getSchema())
+                .when(truthyValidator)
+                .getSchema();
+
+        Mockito
                 .doReturn(truthyValidator)
                 .when(cache)
                 .getValidator(eventType.getName());
@@ -719,6 +730,11 @@ public class EventPublisherTest {
                 .doReturn(Optional.empty())
                 .when(truthyValidator)
                 .validate(any());
+
+        Mockito
+                .doReturn(eventType.getSchema())
+                .when(truthyValidator)
+                .getSchema();
 
         Mockito
                 .doReturn(truthyValidator)
