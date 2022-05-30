@@ -28,11 +28,11 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;

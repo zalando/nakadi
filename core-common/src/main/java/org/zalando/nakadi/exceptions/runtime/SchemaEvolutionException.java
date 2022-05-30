@@ -1,6 +1,4 @@
-package org.zalando.nakadi.exception;
-
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
+package org.zalando.nakadi.exceptions.runtime;
 
 public class SchemaEvolutionException extends NakadiBaseException {
     public SchemaEvolutionException(final String message) {

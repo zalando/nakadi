@@ -24,9 +24,9 @@ import java.util.TreeMap;
 
 // temporarily storage for event type avro schemas untill schema repository supports them
 @Service
-public class AvroSchema {
+public class LocalSchemaRegistry {
 
-    public static final String METADATA_KEY = "_metadata";
+    public static final String METADATA_KEY = "metadata";
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
@@ -42,7 +42,7 @@ public class AvroSchema {
     private final ObjectMapper objectMapper;
 
     @Autowired
-    public AvroSchema(
+    public LocalSchemaRegistry(
             final AvroMapper avroMapper,
             final ObjectMapper objectMapper,
             @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}") final Resource eventTypeSchemaRes)
@@ -64,12 +64,11 @@ public class AvroSchema {
     }
 
     private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
-            final Resource eventTypeSchemaRes, final String eventTypeName)
-            throws IOException {
+            final Resource eventTypeSchemaRes, final String eventTypeName) {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 
-        for (int i = 0; ; ++i) {
+        for (int i = 1; ; ++i) {
             try {
                 final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
                 final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();

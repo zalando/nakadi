@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.apache.avro.Schema;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
@@ -85,6 +86,11 @@ public class KPIEventMapperTest {
             this.doubleGetter = doubleGetter;
             return this;
         }
+
+        @Override
+        public Schema getSchema() {
+            return null;
+        }
     }
 
     public static class KPIEventWithoutGetter extends KPIEvent {
@@ -98,6 +104,11 @@ public class KPIEventMapperTest {
 
         public KPIEventWithoutGetter() {
             super("test-et");
+        }
+
+        @Override
+        public Schema getSchema() {
+            return null;
         }
     }
 
@@ -116,6 +127,11 @@ public class KPIEventMapperTest {
 
         public KPIEventWithPrivateGetter() {
             super("test-et");
+        }
+
+        @Override
+        public Schema getSchema() {
+            return null;
         }
     }
 

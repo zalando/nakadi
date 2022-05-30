@@ -13,7 +13,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class NakadiAvroMetadata extends NakadiMetadata implements EnvelopeHolder.EventWriter {
+public class NakadiAvroMetadata extends NakadiMetadata {
     public static final String EID = "eid";
     public static final String OCCURRED_AT = "occurred_at";
     public static final String PUBLISHED_BY = "published_by";
@@ -27,13 +27,12 @@ public class NakadiAvroMetadata extends NakadiMetadata implements EnvelopeHolder
     public static final String PARENT_EIDS = "parent_eids";
     public static final String SPAN_CTX = "span_ctx";
 
-    private final byte metadataVersion;
     private final Schema metadataAvroSchema;
 
     public NakadiAvroMetadata(
             final byte metadataVersion,
             final Schema metadataAvroSchema) {
-        this.metadataVersion = metadataVersion;
+        super(metadataVersion);
         this.metadataAvroSchema = metadataAvroSchema;
     }
 
@@ -42,7 +41,7 @@ public class NakadiAvroMetadata extends NakadiMetadata implements EnvelopeHolder
             final Schema metadataAvroSchema,
             final byte[] data) throws IOException {
 
-        this.metadataVersion = metadataVersion;
+        super(metadataVersion);
         this.metadataAvroSchema = metadataAvroSchema;
 
         final GenericDatumReader datumReader = new GenericDatumReader(metadataAvroSchema);
@@ -63,10 +62,6 @@ public class NakadiAvroMetadata extends NakadiMetadata implements EnvelopeHolder
         this.setPartitionCompactionKey(wrapper.getString(PARTITION_COMPACTION_KEY));
         this.setParentEids(wrapper.getListOfStrings(PARENT_EIDS));
         this.setSpanCtx(wrapper.getString(SPAN_CTX));
-    }
-
-    public byte getMetadataVersion() {
-        return metadataVersion;
     }
 
     public Schema getMetadataAvroSchema() {

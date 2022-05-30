@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.zalando.nakadi.service.AvroSchema;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.KPIEventMapper;
 
 import java.io.IOException;
@@ -13,12 +13,12 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 
 public class AccessLogEventTest {
-    private final AvroSchema avroSchema;
+    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper eventMapper;
 
     public AccessLogEventTest() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         this.eventMapper = new KPIEventMapper(Set.of(AccessLogEvent.class));
     }
 
@@ -45,10 +45,8 @@ public class AccessLogEventTest {
     public void testAsGenericRecord() {
         final var accessLogEvent = getRandomEvent();
 
-        final var latestSchemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(accessLogEvent.getName());
         final var accessLogGenericRecord = eventMapper
-                .mapToGenericRecord(accessLogEvent, latestSchemaEntry.getSchema());
+                .mapToGenericRecord(accessLogEvent);
 
         assertEquals(accessLogEvent.getMethod(), accessLogGenericRecord.get("method"));
         assertEquals(accessLogEvent.getPath(), accessLogGenericRecord.get("path"));

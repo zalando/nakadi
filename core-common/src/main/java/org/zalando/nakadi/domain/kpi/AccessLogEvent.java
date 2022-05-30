@@ -1,8 +1,13 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
 
 public class AccessLogEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA = "event-type-schema/nakadi.access.log/nakadi.access.log.2.avsc";
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
+
     @KPIField("method")
     private String method;
     @KPIField("path")
@@ -139,4 +144,10 @@ public class AccessLogEvent extends KPIEvent {
         this.responseLength = responseLength;
         return this;
     }
+
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
+    }
+
 }

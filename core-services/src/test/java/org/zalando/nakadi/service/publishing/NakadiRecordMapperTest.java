@@ -13,8 +13,7 @@ import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
-import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.NakadiRecordMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,16 +26,17 @@ public class NakadiRecordMapperTest {
     @Test
     public void testFromBytesBatch() throws IOException {
         final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final LocalSchemaRegistry localSchemaRegistry =
+                new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final var eid1 = UUID.randomUUID().toString();
         final var message1 = "First record for testing !!!";
-        final var firstRecord = generateRecord(avroSchema, eid1, message1);
+        final var firstRecord = generateRecord(localSchemaRegistry, eid1, message1);
         final var eid2 = UUID.randomUUID().toString();
         final var message2 = "*** Testing twice ***";
-        final var secondRecord = generateRecord(avroSchema, eid2, message2);
+        final var secondRecord = generateRecord(localSchemaRegistry, eid2, message2);
         final byte[] input = Bytes.concat(firstRecord, secondRecord);
 
-        final NakadiRecordMapper mapper = new NakadiRecordMapper(avroSchema);
+        final NakadiRecordMapper mapper = new NakadiRecordMapper(localSchemaRegistry);
         final List<NakadiRecord> records = mapper.fromBytesBatch(input);
 
         Assert.assertEquals(2, records.size());
@@ -50,10 +50,10 @@ public class NakadiRecordMapperTest {
         Assert.assertEquals(message2, new String(records.get(1).getPayload()));
     }
 
-    private byte[] generateRecord(final AvroSchema avroSchema, final String eid, final String payload)
+    private byte[] generateRecord(final LocalSchemaRegistry localSchemaRegistry, final String eid, final String payload)
             throws IOException {
         final VersionedAvroSchema versionedSchema =
-                avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+                localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final GenericRecord metadata =
                 new GenericData.Record(versionedSchema.getSchema());
 

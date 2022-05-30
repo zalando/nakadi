@@ -1,8 +1,12 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
 
 public class BatchPublishedEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA = "event-type-schema/nakadi.batch.published/nakadi.batch.published.1.avsc";
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("event_type")
     private String eventTypeName;
@@ -84,5 +88,10 @@ public class BatchPublishedEvent extends KPIEvent {
     public BatchPublishedEvent setTotalSizeBytes(final int totalSizeBytes) {
         this.totalSizeBytes = totalSizeBytes;
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
     }
 }

@@ -47,9 +47,10 @@ import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
 
 import javax.annotation.Nullable;
@@ -76,7 +77,8 @@ public class TimelineService {
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
     // one man said, it is fine to add 11th argument
-    private final AvroSchema avroSchema;
+    private final SchemaProviderService schemaService;
+    private final LocalSchemaRegistry localSchemaRegistry;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -89,7 +91,8 @@ public class TimelineService {
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
-                           final AvroSchema avroSchema) {
+                           final SchemaProviderService schemaService,
+                           final LocalSchemaRegistry localSchemaRegistry) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -100,7 +103,8 @@ public class TimelineService {
         this.adminService = adminService;
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
-        this.avroSchema = avroSchema;
+        this.schemaService = schemaService;
+        this.localSchemaRegistry = localSchemaRegistry;
     }
 
     public Timeline createTimeline(final String eventTypeName, final String storageId)
@@ -281,14 +285,16 @@ public class TimelineService {
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache), avroSchema);
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
         result.reassign(positions);
         return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
-                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache), avroSchema);
+                clientId, this, timelineSync,
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

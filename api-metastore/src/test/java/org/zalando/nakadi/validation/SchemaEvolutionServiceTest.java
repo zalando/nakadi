@@ -17,7 +17,7 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.exception.SchemaEvolutionException;
+import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;

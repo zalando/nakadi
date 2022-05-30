@@ -1,8 +1,13 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
 
 public class SubscriptionLogEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA =
+            "event-type-schema/nakadi.subscription.log/nakadi.subscription.log.1.avsc";
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("subscription_id")
     protected String subscriptionId;
@@ -31,4 +36,8 @@ public class SubscriptionLogEvent extends KPIEvent {
         return this;
     }
 
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
+    }
 }
