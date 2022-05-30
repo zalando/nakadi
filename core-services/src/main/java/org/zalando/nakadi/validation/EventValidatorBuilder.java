@@ -113,9 +113,9 @@ public class EventValidatorBuilder {
             builder.append(e.getMessage());
 
             e.getCausingExceptions().forEach(causingException -> {
-                    builder.append("\n");
-                    recursiveCollectErrors(causingException, builder);
-                });
+                builder.append("\n");
+                recursiveCollectErrors(causingException, builder);
+            });
         }
     }
 }
