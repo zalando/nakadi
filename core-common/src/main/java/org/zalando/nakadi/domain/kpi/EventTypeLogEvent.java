@@ -6,12 +6,7 @@ import org.zalando.nakadi.config.KPIEventTypes;
 public class EventTypeLogEvent extends KPIEvent {
 
     private static final String PATH_SCHEMA = "event-type-schema/nakadi.event.type.log/nakadi.event.type.log.1.avsc";
-    private static final Schema SCHEMA;
-
-    static {
-        // load latest local schema
-        SCHEMA = loadSchema(PATH_SCHEMA);
-    }
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("event_type")
     private String eventType;

@@ -78,8 +78,6 @@ public class SchemaService implements SchemaProviderService {
     private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
     private final Map<NameSchema, String> schemaVersionCache;
 
-    private final Parser avroSchemaParser;
-
     @Autowired
     public SchemaService(final SchemaRepository schemaRepository,
                          final PaginationService paginationService,
@@ -116,7 +114,6 @@ public class SchemaService implements SchemaProviderService {
                 });
         this.avroSchemasCache = new ConcurrentHashMap<>();
         this.schemaVersionCache = new ConcurrentHashMap<>();
-        this.avroSchemaParser = new Parser();
     }
 
     public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
@@ -322,7 +319,7 @@ public class SchemaService implements SchemaProviderService {
                         "event schema type is not known: `%s`", eventTypeSchema.getType()));
             }
 
-            return avroSchemaParser.parse(eventTypeSchema.getSchema());
+            return new Parser().parse(eventTypeSchema.getSchema());
         });
     }
 
@@ -334,7 +331,7 @@ public class SchemaService implements SchemaProviderService {
                 // assuming there will be no more than 100 schemas for the event type
                 schemaRepository.getSchemas(name, 0, 100).stream()
                         .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
-                        .filter(ets -> avroSchemaParser.parse(ets.getSchema()).equals(schema))
+                        .filter(ets -> new Parser().parse(ets.getSchema()).equals(schema))
                         .map(EventTypeSchema::getVersion)
                         .findFirst()
                         .orElseThrow(() -> new NoSuchSchemaException(
