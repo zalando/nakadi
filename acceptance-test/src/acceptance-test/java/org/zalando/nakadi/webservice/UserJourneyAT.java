@@ -411,7 +411,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
 
         // try to push some invalid event
-        tryPostInvalidEvents(eventInvalid);
+        tryPostInvalidEvents(eventTypeNameBusiness, new String[]{eventInvalid});
 
         // update schema => change to Avro
         jsonRequestSpec()
@@ -427,7 +427,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
 
         // test that JSON validation still works
-        tryPostInvalidEvents(eventInvalid);
+        tryPostInvalidEvents(eventTypeNameBusiness, new String[]{eventInvalid});
 
         // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
@@ -483,12 +483,12 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(OK.value());
     }
 
-    private void tryPostInvalidEvents(final String... events) {
+    private void tryPostInvalidEvents(final String name, final String[] events) {
         final String batch = "[" + String.join(",", events) + "]";
         jsonRequestSpec()
                 .body(batch)
                 .when()
-                .post("/event-types/" + eventTypeName + "/events")
+                .post("/event-types/" + name + "/events")
                 .then()
                 .statusCode(UNPROCESSABLE_ENTITY.value());
     }
