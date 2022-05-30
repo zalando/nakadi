@@ -54,15 +54,17 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscrip
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
+    private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
+    private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 
     private String eventTypeName;
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
-    private String event1;
-    private String event2;
-    private String eventInvalid;
+
+    private String eventTypeNameBusiness;
+    private String eventTypeBodyBusiness;
 
     public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
                                                   final String owningApp)
@@ -78,18 +80,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
-        createEventType();
+        createEventType(eventTypeBody);
 
-        event1 = newEvent().put("foo", randomTextString()).toString();
-        event2 = newEvent().put("foo", randomTextString()).toString();
-        eventInvalid = newEvent().put("bar", randomTextString()).toString();
-    }
-
-    JSONObject newEvent() {
-        return new JSONObject()
-                .put("metadata", new JSONObject()
-                         .put("eid", randomUUID())
-                         .put("occurred_at", randomDate().toString()));
+        eventTypeNameBusiness = eventTypeName + ".business";
+        eventTypeBodyBusiness = getEventTypeJsonFromFile("sample-event-type-business.json", eventTypeNameBusiness, owningApp);
+        createEventType(eventTypeBodyBusiness);
     }
 
     @SuppressWarnings("unchecked")
@@ -176,7 +171,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(event1, event2);
+        postEvents(EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
@@ -208,7 +203,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"001-0001-000000000000000001\"}," +
-                        "\"events\":[" + event1 + "," + event2 + "]}\n"));
+                        "\"events\":[" + EVENT1 + "," + EVENT2 + "]}\n"));
 
         // get distance between cursors
         jsonRequestSpec()
@@ -401,15 +396,19 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         final EventType eventType = MAPPER.readValue(jsonRequestSpec()
                     .header("accept", "application/json")
-                    .get(ENDPOINT + "/" + eventTypeName)
+                    .get(ENDPOINT + "/" + eventTypeNameBusiness)
                     .getBody()
                     .asString(),
                 EventType.class);
 
         final String validatedWithJsonSchemaVersion = eventType.getSchema().getVersion();
 
+        final String event1 = newEvent().put("foo", randomTextString()).toString();
+        final String event2 = newEvent().put("foo", randomTextString()).toString();
+        final String eventInvalid = newEvent().put("bar", randomTextString()).toString();
+
         // push two JSON events to event-type
-        postEvents(event1, event2);
+        postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
 
         // try to push some invalid event
         tryPostInvalidEvents(eventInvalid);
@@ -419,13 +418,13 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("{\"type\": \"avro_schema\", " +
                       "\"schema\": \"{\\\"type\\\": \\\"record\\\", \\\"name\\\": \\\"Foo\\\", " +
                       "\\\"fields\\\": [{\\\"name\\\": \\\"foo\\\", \\\"type\\\": \\\"string\\\"}]}\"}")
-                .post("/event-types/" + eventTypeName + "/schemas")
+                .post("/event-types/" + eventTypeNameBusiness + "/schemas")
                 .then()
                 .body(equalTo(""))
                 .statusCode(OK.value());
 
         // push two more JSON events to Avro event-type
-        postEvents(event1, event2);
+        postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
 
         // test that JSON validation still works
         tryPostInvalidEvents(eventInvalid);
@@ -433,7 +432,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
                 .withOwningApplication("stups_aruha-test-end2end-nakadi")
-                .withEventType(eventTypeName)
+                .withEventType(eventTypeNameBusiness)
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
         final Subscription subscription = createSubscription(jsonRequestSpec(), subscriptionToCreate);
@@ -459,9 +458,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(NO_CONTENT.value());
     }
 
-    private void createEventType() {
+    private void createEventType(final String body) {
         jsonRequestSpec()
-                .body(eventTypeBody)
+                .body(body)
                 .when()
                 .post("/event-types")
                 .then()
@@ -470,12 +469,17 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     private void postEvents(final String... events) {
+        postEventsInternal(eventTypeName, events);
+    }
+
+    private void postEventsInternal(final String name, final String[] events) {
         final String batch = "[" + String.join(",", events) + "]";
         jsonRequestSpec()
                 .body(batch)
                 .when()
-                .post("/event-types/" + eventTypeName + "/events")
+                .post("/event-types/" + name + "/events")
                 .then()
+                .body(equalTo(""))
                 .statusCode(OK.value());
     }
 
@@ -495,4 +499,10 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .contentType(ContentType.JSON);
     }
 
+    private JSONObject newEvent() {
+        return new JSONObject()
+                .put("metadata", new JSONObject()
+                         .put("eid", randomUUID())
+                         .put("occurred_at", randomDate().toString()));
+    }
 }
