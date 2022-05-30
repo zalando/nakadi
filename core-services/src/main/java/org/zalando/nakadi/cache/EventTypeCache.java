@@ -349,14 +349,14 @@ public class EventTypeCache {
 
     private static class CachedValue {
         private final EventType eventType;
-        private final JsonSchemaValidator eventTypeValidator;
+        private final JsonSchemaValidator jsonSchemaValidator;
         private final List<Timeline> timelines;
 
         CachedValue(final EventType eventType,
-                    final JsonSchemaValidator eventTypeValidator,
+                    final JsonSchemaValidator jsonSchemaValidator,
                     final List<Timeline> timelines) {
             this.eventType = eventType;
-            this.eventTypeValidator = eventTypeValidator;
+            this.jsonSchemaValidator = jsonSchemaValidator;
             this.timelines = timelines;
         }
 
@@ -365,7 +365,7 @@ public class EventTypeCache {
         }
 
         public JsonSchemaValidator getJsonSchemaValidator() {
-            return eventTypeValidator;
+            return jsonSchemaValidator;
         }
 
         public List<Timeline> getTimelines() {
