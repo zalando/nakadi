@@ -22,7 +22,8 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     }
 
     @Override
-    public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
+    public void enrich(final BatchItem batchItem, final EventType eventType, final String schemaVersion)
+            throws EnrichmentException {
         try {
             final JSONObject metadata = batchItem
                     .getEvent()
@@ -33,7 +34,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
             setPartition(metadata, batchItem);
-            setVersion(metadata, eventType);
+            setVersion(metadata, schemaVersion);
             batchItem.inject(BatchItem.Injection.METADATA, metadata.toString());
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
@@ -61,8 +62,8 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
                 .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
     }
 
-    private void setVersion(final JSONObject metadata, final EventType eventType) {
-        metadata.put("version", eventType.getSchema().getVersion().toString());
+    private void setVersion(final JSONObject metadata, final String version) {
+        metadata.put("version", version);
     }
 
     private void setFlowId(final JSONObject metadata) {

@@ -6,7 +6,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 
 public interface EnrichmentStrategy {
-    void enrich(BatchItem batchItem, EventType eventType) throws EnrichmentException;
+    void enrich(BatchItem batchItem, EventType eventType, String schemaVersion) throws EnrichmentException;
 
     void enrich(NakadiRecord nakadiRecord, EventType eventType) throws EnrichmentException;
 }

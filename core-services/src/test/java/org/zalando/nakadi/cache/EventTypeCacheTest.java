@@ -18,7 +18,7 @@ import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
 
 import java.util.Collections;
@@ -154,11 +154,11 @@ public class EventTypeCacheTest {
         final String eventTypeName = "test";
 
         final EventType et1 = mock(EventType.class);
-        final EventTypeValidator validator1 = mock(EventTypeValidator.class);
+        final JsonSchemaValidator validator1 = mock(JsonSchemaValidator.class);
         final List<Timeline> expectedTimelines1 = mock(List.class);
 
         final EventType et2 = mock(EventType.class);
-        final EventTypeValidator validator2 = mock(EventTypeValidator.class);
+        final JsonSchemaValidator validator2 = mock(JsonSchemaValidator.class);
         final List<Timeline> expectedTimelines2 = mock(List.class);
 
         final EventTypeSchema etSchema = new EventTypeSchema(new EventTypeSchemaBase(

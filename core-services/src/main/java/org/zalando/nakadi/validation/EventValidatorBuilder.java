@@ -8,76 +8,114 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 @Component
 public class EventValidatorBuilder {
 
-    private final RFC3339DateTimeValidator dateTimeValidator = new RFC3339DateTimeValidator();
     private final JsonSchemaEnrichment loader;
+    private static final JsonSchemaValidator METADATA_VALIDATOR = new MetadataValidator();
 
     @Autowired
     public EventValidatorBuilder(final JsonSchemaEnrichment loader) {
         this.loader = loader;
     }
 
-    public EventTypeValidator build(final EventType eventType, final JSONObject schemaAsJson) {
-        final List<Function<JSONObject, Optional<ValidationError>>> validators = new ArrayList<>(2);
+    public JsonSchemaValidator build(final EventType eventType, final EventTypeSchema eventTypeSchema) {
 
-        // 1. We always validate schema.
+        if (eventTypeSchema.getType() != EventTypeSchema.Type.JSON_SCHEMA) {
+            throw new IllegalArgumentException("Unexpected event schema type: " + eventTypeSchema.getType());
+        }
+
         final Schema schema = SchemaLoader.builder()
-                .schemaJson(loader.effectiveSchema(eventType, schemaAsJson))
+                .schemaJson(loader.effectiveSchema(eventType, new JSONObject(eventTypeSchema.getSchema())))
                 .addFormatValidator(new RFC3339DateTimeValidator())
                 .build()
                 .load()
                 .build();
-        validators.add((evt) -> validateSchemaConformance(schema, evt));
 
-        // 2. in case of data or business event type we validate occurred_at
-        if (eventType.getCategory() == EventCategory.DATA || eventType.getCategory() == EventCategory.BUSINESS) {
-            validators.add(this::validateOccurredAt);
-        }
+        final JsonSchemaValidator baseValidator = new SchemaValidator(schema, eventTypeSchema);
 
-        return (event) -> validators
-                .stream()
-                .map(validator -> validator.apply(event))
-                .filter(Optional::isPresent)
-                .findFirst()
-                .orElse(Optional.empty());
+        return eventType.getCategory() == EventCategory.DATA || eventType.getCategory() == EventCategory.BUSINESS
+                ? new ChainingValidator(baseValidator, METADATA_VALIDATOR)
+                : baseValidator;
     }
 
-    private Optional<ValidationError> validateOccurredAt(final JSONObject event) {
-        return Optional
+    private static class ChainingValidator implements JsonSchemaValidator {
+        private final JsonSchemaValidator first;
+        private final JsonSchemaValidator next;
+
+        private ChainingValidator(final JsonSchemaValidator first, final JsonSchemaValidator next) {
+            this.first = first;
+            this.next = next;
+        }
+
+        @Override
+        public Optional<ValidationError> validate(final JSONObject event) {
+            return first.validate(event)
+                    .or(() -> next.validate(event));
+        }
+
+        @Override
+        public EventTypeSchema getSchema() {
+            return first.getSchema();
+        }
+    }
+
+    private static class MetadataValidator implements JsonSchemaValidator {
+        private final RFC3339DateTimeValidator dateTimeValidator = new RFC3339DateTimeValidator();
+
+        @Override
+        public Optional<ValidationError> validate(final JSONObject event) {
+            return Optional
                 .ofNullable(event.optJSONObject("metadata"))
                 .map(metadata -> metadata.optString("occurred_at"))
                 .flatMap(dateTimeValidator::validate)
                 .map(e -> new ValidationError("#/metadata/occurred_at:" + e));
+        }
 
-    }
-
-    private Optional<ValidationError> validateSchemaConformance(final Schema schema, final JSONObject evt) {
-        try {
-            schema.validate(evt);
-            return Optional.empty();
-        } catch (final ValidationException e) {
-            final StringBuilder builder = new StringBuilder();
-            recursiveCollectErrors(e, builder);
-            return Optional.of(new ValidationError(builder.toString()));
+        @Override
+        public EventTypeSchema getSchema() {
+            throw new InternalNakadiException("This method should not be called!");
         }
     }
 
-    private static void recursiveCollectErrors(final ValidationException e, final StringBuilder builder) {
-        builder.append(e.getMessage());
+    private static class SchemaValidator implements JsonSchemaValidator {
+        final Schema schema;
+        final EventTypeSchema eventTypeSchema;
 
-        e.getCausingExceptions().forEach(causingException -> {
-            builder.append("\n");
-            recursiveCollectErrors(causingException, builder);
-        });
+        private SchemaValidator(final Schema schema, final EventTypeSchema eventTypeSchema) {
+            this.schema = schema;
+            this.eventTypeSchema = eventTypeSchema;
+        }
+
+        @Override
+        public Optional<ValidationError> validate(final JSONObject evt) {
+            try {
+                schema.validate(evt);
+                return Optional.empty();
+            } catch (final ValidationException e) {
+                final StringBuilder builder = new StringBuilder();
+                recursiveCollectErrors(e, builder);
+                return Optional.of(new ValidationError(builder.toString()));
+            }
+        }
+
+        @Override
+        public EventTypeSchema getSchema() {
+            return eventTypeSchema;
+        }
+
+        private static void recursiveCollectErrors(final ValidationException e, final StringBuilder builder) {
+            builder.append(e.getMessage());
+
+            e.getCausingExceptions().forEach(causingException -> {
+                    builder.append("\n");
+                    recursiveCollectErrors(causingException, builder);
+                });
+        }
     }
-
 }
-

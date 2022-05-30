@@ -60,6 +60,7 @@ public class EnrichmentTest {
         eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
         final JSONObject event = new JSONObject();
         final BatchItem batchItem = createBatchItem(event);
+        final String schemaVersion = "1.2.3";
 
         final EnrichmentStrategy strategy = mock(EnrichmentStrategy.class);
         Mockito
@@ -67,8 +68,8 @@ public class EnrichmentTest {
                 .when(registry)
                 .getStrategy(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
 
-        enrichment.enrich(batchItem, eventType);
+        enrichment.enrich(batchItem, eventType, schemaVersion);
 
-        verify(strategy, times(1)).enrich(batchItem, eventType);
+        verify(strategy, times(1)).enrich(batchItem, eventType, schemaVersion);
     }
 }

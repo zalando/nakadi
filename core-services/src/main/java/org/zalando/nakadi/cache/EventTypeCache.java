@@ -20,8 +20,8 @@ import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import javax.annotation.PostConstruct;
@@ -280,8 +280,8 @@ public class EventTypeCache {
         return getCached(name).getEventType();
     }
 
-    public EventTypeValidator getValidator(final String name) throws NoSuchEventTypeException {
-        return getCached(name).getEventTypeValidator();
+    public JsonSchemaValidator getValidator(final String name) throws NoSuchEventTypeException {
+        return getCached(name).getJsonSchemaValidator();
     }
 
     public List<Timeline> getTimelinesOrdered(final String name) throws NoSuchEventTypeException {
@@ -307,20 +307,38 @@ public class EventTypeCache {
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
 
-        final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
-                EventTypeSchema.Type.JSON_SCHEMA);
         //
         // The validator is only used for publishing JSON events, but at this point we have to
         // prepare for all possibilities:
         //
-        final EventTypeValidator validator = schema
-                .map(s -> eventValidatorBuilder.build(eventType, new JSONObject(s.getSchema())))
-                .orElse((jsonEvent) ->
-                            Optional.of(new ValidationError("no json_schema found for event type: " + eventTypeName)));
+        final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
+                EventTypeSchema.Type.JSON_SCHEMA);
+
+        final JsonSchemaValidator validator = schema
+                .map(s -> eventValidatorBuilder.build(eventType, s))
+                .orElseGet(() -> new NoJsonSchemaValidator(eventTypeName));
 
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
 
         return new CachedValue(eventType, validator, timelines);
+    }
+
+    private class NoJsonSchemaValidator implements JsonSchemaValidator {
+        final String message;
+
+        private NoJsonSchemaValidator(final String eventTypeName) {
+            this.message = "no json_schema found for event type: " + eventTypeName;
+        }
+
+        @Override
+        public Optional<ValidationError> validate(final JSONObject event) {
+            return Optional.of(new ValidationError(message));
+        }
+
+        @Override
+        public EventTypeSchema getSchema() {
+            throw new InternalNakadiException(message);
+        }
     }
 
     public void addInvalidationListener(final Consumer<String> listener) {
@@ -331,11 +349,11 @@ public class EventTypeCache {
 
     private static class CachedValue {
         private final EventType eventType;
-        private final EventTypeValidator eventTypeValidator;
+        private final JsonSchemaValidator eventTypeValidator;
         private final List<Timeline> timelines;
 
         CachedValue(final EventType eventType,
-                    final EventTypeValidator eventTypeValidator,
+                    final JsonSchemaValidator eventTypeValidator,
                     final List<Timeline> timelines) {
             this.eventType = eventType;
             this.eventTypeValidator = eventTypeValidator;
@@ -346,7 +364,7 @@ public class EventTypeCache {
             return eventType;
         }
 
-        public EventTypeValidator getEventTypeValidator() {
+        public JsonSchemaValidator getJsonSchemaValidator() {
             return eventTypeValidator;
         }
 
