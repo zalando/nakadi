@@ -1,8 +1,12 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
 import org.zalando.nakadi.config.KPIEventTypes;
 
 public class DataStreamedEvent extends KPIEvent {
+
+    private static final String PATH_SCHEMA = "event-type-schema/nakadi.data.streamed/nakadi.data.streamed.1.avsc";
+    private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("event_type")
     private String eventTypeName;
@@ -106,5 +110,10 @@ public class DataStreamedEvent extends KPIEvent {
     public DataStreamedEvent setSubscriptionId(final String subscriptionId) {
         this.subscriptionId = subscriptionId;
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+        return SCHEMA;
     }
 }

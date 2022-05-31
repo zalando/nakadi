@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import org.apache.avro.AvroRuntimeException;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.json.JSONObject;
@@ -90,8 +89,8 @@ public class KPIEventMapper {
         return new KPIGetter(kpiFieldAnnotation.value(), getter);
     }
 
-    public GenericRecord mapToGenericRecord(final KPIEvent kpiEvent, final Schema schema) {
-        final var recordBuilder = new GenericRecordBuilder(schema);
+    public GenericRecord mapToGenericRecord(final KPIEvent kpiEvent) {
+        final var recordBuilder = new GenericRecordBuilder(kpiEvent.getSchema());
         gettersOf(kpiEvent.getClass()).forEach(kpiGetter -> {
             try {
                 recordBuilder.set(kpiGetter.name, kpiGetter.getter.invoke(kpiEvent));

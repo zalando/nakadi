@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,12 +12,14 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.exception.SchemaEvolutionException;
-import org.zalando.nakadi.exception.SchemaValidationException;
+import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
+import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -26,6 +29,8 @@ import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -228,4 +233,51 @@ public class SchemaServiceTest {
                 ":{\"type\":\"number\"},\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\"" +
                 ":\"object\"}},\"additionalProperties\":true}");
     }
+
+    @Test
+    public void testSchemaVersionFoundInRepository() {
+        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+                .thenReturn(Collections.singletonList(
+                        new EventTypeSchema(new EventTypeSchemaBase(
+                                EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                                new BatchPublishedEvent().getSchema().toString()), "1.0.0", new DateTime())));
+
+        final String avroSchemaVersion = schemaService.getAvroSchemaVersion(
+                "nakadi.batch.published", new BatchPublishedEvent().getSchema());
+
+        Assert.assertEquals("1.0.0", avroSchemaVersion);
+
+        Mockito.reset(schemaRepository);
+    }
+
+    @Test
+    public void testSchemaVersionFoundInRepositoryTwoSchemas() {
+        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+                .thenReturn(Arrays.asList(
+                        new EventTypeSchema(new EventTypeSchemaBase(
+                                EventTypeSchemaBase.Type.JSON_SCHEMA,
+                                "{}"), "1.0.0", new DateTime()),
+                        new EventTypeSchema(new EventTypeSchemaBase(
+                                EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                                new BatchPublishedEvent().getSchema().toString()), "2.0.0", new DateTime()))
+                );
+
+        final String avroSchemaVersion = schemaService.getAvroSchemaVersion(
+                "nakadi.batch.published", new BatchPublishedEvent().getSchema());
+
+        Assert.assertEquals("2.0.0", avroSchemaVersion);
+
+        Mockito.reset(schemaRepository);
+    }
+
+    @Test(expected = NoSuchSchemaException.class)
+    public void testSchemaVersionNotFoundForEventType() {
+        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+                .thenReturn(Collections.emptyList());
+
+        schemaService.getAvroSchemaVersion("nakadi.batch.published", new BatchPublishedEvent().getSchema());
+
+        Mockito.reset(schemaRepository);
+    }
+
 }

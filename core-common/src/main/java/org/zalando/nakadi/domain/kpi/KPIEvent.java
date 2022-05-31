@@ -1,5 +1,9 @@
 package org.zalando.nakadi.domain.kpi;
 
+import org.apache.avro.Schema;
+import org.zalando.nakadi.util.AvroUtils;
+
+import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -20,5 +24,16 @@ public abstract class KPIEvent {
 
     public final String getName() {
         return this.name;
+    }
+
+    public abstract Schema getSchema();
+
+    static Schema loadSchema(final String path) {
+        try {
+            return AvroUtils.getParsedSchema(
+                    KPIEvent.class.getClassLoader().getResourceAsStream(path));
+        } catch (IOException e) {
+            throw new RuntimeException("failed to load avro schema");
+        }
     }
 }

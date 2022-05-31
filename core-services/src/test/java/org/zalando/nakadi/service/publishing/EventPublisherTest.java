@@ -38,8 +38,7 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.AvroSchema;
-import org.zalando.nakadi.service.NakadiRecordMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -596,7 +595,8 @@ public class EventPublisherTest {
     public void testAvroEventWasSerialized() throws Exception {
         final org.springframework.core.io.Resource eventTypeRes =
                 new DefaultResourceLoader().getResource("event-type-schema/");
-        final AvroSchema avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(
+                new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
                 timelineService, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();
@@ -611,9 +611,9 @@ public class EventPublisherTest {
         final long now = System.currentTimeMillis();
 
         final var latestMeta =
-                avroSchema.getLatestEventTypeSchemaVersion(AvroSchema.METADATA_KEY);
+                localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final var latestSchema =
-                avroSchema.getLatestEventTypeSchemaVersion("nakadi.access.log");
+                localSchemaRegistry.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
         final NakadiAvroMetadata metadata = new NakadiAvroMetadata(
                 latestMeta.getVersionAsByte(), latestMeta.getSchema());
@@ -641,7 +641,7 @@ public class EventPublisherTest {
                 .set("response_length", 321)
                 .build();
 
-        final NakadiRecord nakadiRecord = new NakadiRecordMapper(avroSchema)
+        final NakadiRecord nakadiRecord = new NakadiRecordMapper(localSchemaRegistry)
                 .fromAvroGenericRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);

@@ -34,10 +34,10 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.service.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.utils.TestUtils;
 
