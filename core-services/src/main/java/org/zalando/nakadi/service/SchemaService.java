@@ -35,7 +35,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
