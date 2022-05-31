@@ -202,7 +202,6 @@ public class EventPublisherTest {
     @Test
     public void whenValidationFailsThenResultIsAborted() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        //final String schemaVersion = eventType.getSchema().getVersion().toString();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
