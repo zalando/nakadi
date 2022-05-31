@@ -447,7 +447,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // validate the events metadata
         for (final StreamBatch batch : batches) {
             final Map<String, String> metadata = (Map<String, String>) batch.getEvents().get(0).get("metadata");
-            //assertThat(batch.getEvents().get(0), equalTo(""));
             assertThat(metadata.get("version"), equalTo(validatedWithJsonSchemaVersion));
         }
 
