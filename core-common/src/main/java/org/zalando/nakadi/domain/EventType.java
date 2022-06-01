@@ -13,16 +13,16 @@ public class EventType extends EventTypeBase {
     private DateTime createdAt;
 
     private EventTypeSchema schema;
-    private final Map<EventTypeSchemaBase.Type, EventTypeSchema> latestSchemas = new HashMap<>();
+    private final Map<EventTypeSchema.Type, EventTypeSchema> latestSchemas = new HashMap<>();
 
     public EventType(final EventTypeBase eventType, final String version, final DateTime createdAt,
                      final DateTime updatedAt) {
         super(eventType);
         this.updatedAt = updatedAt;
         this.createdAt = createdAt;
-        final EventTypeSchema schema = new EventTypeSchema(eventType.getSchema(), version, updatedAt);
-        this.setSchema(schema);
-        this.setLatestSchemaByType(schema);
+        final EventTypeSchema newSchema = new EventTypeSchema(eventType.getSchema(), version, updatedAt);
+        this.setSchema(newSchema);
+        this.setLatestSchemaByType(newSchema);
     }
 
     public EventType(final EventTypeBase eventType, final DateTime createdAt, final DateTime updatedAt,
@@ -46,7 +46,7 @@ public class EventType extends EventTypeBase {
         this.schema = schema;
     }
 
-    public Optional<EventTypeSchema> getLatestSchemaByType(final EventTypeSchemaBase.Type schemaType) {
+    public Optional<EventTypeSchema> getLatestSchemaByType(final EventTypeSchema.Type schemaType) {
         return Optional.ofNullable(latestSchemas.get(schemaType));
     }
 

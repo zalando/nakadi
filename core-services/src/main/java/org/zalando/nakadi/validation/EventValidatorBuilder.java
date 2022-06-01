@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 
 import java.util.Optional;
 
@@ -25,15 +25,13 @@ public class EventValidatorBuilder {
     }
 
     public JsonSchemaValidator build(final EventType eventType) {
-        final Optional<EventTypeSchema> eventTypeSchemaOpt =
-                eventType.getLatestSchemaByType(EventTypeSchemaBase.Type.JSON_SCHEMA);
-        if (!eventTypeSchemaOpt.isPresent()) {
-            throw new RuntimeException();
+        final Optional<EventTypeSchema> jsonSchema = eventType.getLatestSchemaByType(EventTypeSchema.Type.JSON_SCHEMA);
+        if (!jsonSchema.isPresent()) {
+            throw new InternalNakadiException("No json_schema found for event type: " + eventType.getName());
         }
 
         final Schema schema = SchemaLoader.builder()
-                .schemaJson(loader.effectiveSchema(eventType,
-                        new JSONObject(eventTypeSchemaOpt.get())))
+                .schemaJson(loader.effectiveSchema(eventType, new JSONObject(jsonSchema.get().getSchema())))
                 .addFormatValidator(new RFC3339DateTimeValidator())
                 .build()
                 .load()
