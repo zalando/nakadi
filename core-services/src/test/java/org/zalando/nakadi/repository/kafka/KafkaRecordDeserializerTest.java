@@ -50,12 +50,12 @@ public class KafkaRecordDeserializerTest {
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
                 metadataSchema.getVersionAsByte(),
-                getMetadataWriter(metadataSchema.getSchema(), "1", jsonObject),
+                getMetadataWriter(metadataSchema.getSchema(), "0", jsonObject),
                 getEventWriter1());
 
         final byte[] data1 = EnvelopeHolder.produceBytes(
                 metadataSchema.getVersionAsByte(),
-                getMetadataWriter(metadataSchema.getSchema(), "2", jsonObject),
+                getMetadataWriter(metadataSchema.getSchema(), "1", jsonObject),
                 getEventWriter2());
 
         // try to deserialize that data when we would read Kafka record
@@ -96,7 +96,7 @@ public class KafkaRecordDeserializerTest {
         // prepare the same bytes as we would put in Kafka record
         final byte[] data = EnvelopeHolder.produceBytes(
                 metadataVersion.getVersionAsByte(),
-                getMetadataWriter(metadataVersion.getSchema(), "1", metadataOverride),
+                getMetadataWriter(metadataVersion.getSchema(), "0", metadataOverride),
                 eventWriter);
 
         // try to deserialize that data when we would read Kafka record
@@ -125,7 +125,7 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter1() {
         return os -> {
-            final GenericRecord event = getBaseRecord("1");
+            final GenericRecord event = getBaseRecord("0");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -135,7 +135,7 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter2() {
         return os -> {
-            final GenericRecord event = getBaseRecord("2");
+            final GenericRecord event = getBaseRecord("1");
             event.put("user_agent", "test-user-agent");
             event.put("request_length", 111);
             event.put("response_length", 222);
@@ -204,11 +204,11 @@ public class KafkaRecordDeserializerTest {
     }
 
     private JSONObject getExpectedNode1(final JSONObject metadataOverride) {
-        return getBaseExpectedNode("1", metadataOverride);
+        return getBaseExpectedNode("0", metadataOverride);
     }
 
     private JSONObject getExpectedNode2() {
-        final JSONObject event = getBaseExpectedNode("2", null);
+        final JSONObject event = getBaseExpectedNode("1", null);
         event.put("user_agent", "test-user-agent");
         event.put("request_length", 111);
         event.put("response_length", 222);
