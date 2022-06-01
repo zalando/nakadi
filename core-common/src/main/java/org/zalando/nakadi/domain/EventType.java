@@ -41,7 +41,12 @@ public class EventType extends EventTypeBase {
 
     public void setSchema(final EventTypeSchema schema) {
         this.schema = schema;
-        setLatestSchemaByType(schema);
+
+        if (schema != null) {
+            setLatestSchemaByType(schema);
+        } else {
+            latestSchemas.clear();
+        }
     }
 
     public Optional<EventTypeSchema> getLatestSchemaByType(final EventTypeSchema.Type schemaType) {
@@ -49,7 +54,7 @@ public class EventType extends EventTypeBase {
     }
 
     public void setLatestSchemaByType(final EventTypeSchema schema) {
-        this.latestSchemas.put(schema.getType(), schema);
+        latestSchemas.put(schema.getType(), schema);
     }
 
     public DateTime getUpdatedAt() {
