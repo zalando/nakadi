@@ -4,6 +4,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
@@ -15,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AvroDeserializerWithSequenceDecoder.class);
 
     private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
@@ -35,6 +39,8 @@ public class AvroDeserializerWithSequenceDecoder {
         try {
             final byte metadataVersion = envelope.getMetadataVersion();
 
+            LOG.info("metadata version: {}", String.valueOf(metadataVersion));
+
             final SequenceDecoder metadataDecoder = metadataSequenceDecoders.computeIfAbsent(
                     String.valueOf(metadataVersion),
                     (v) -> new SequenceDecoder(
@@ -54,6 +60,8 @@ public class AvroDeserializerWithSequenceDecoder {
             }
 
             final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
+
+            LOG.info("event schema version: {}", metadata.get(NakadiAvroMetadata.SCHEMA_VERSION).toString());
 
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
                     metadata.get(NakadiAvroMetadata.SCHEMA_VERSION).toString(),
