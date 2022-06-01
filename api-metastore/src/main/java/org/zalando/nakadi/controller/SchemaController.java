@@ -85,7 +85,7 @@ public class SchemaController {
         final EventType eventType = eventTypeService.get(name);
         final var toCompareEventTypeSchema = version.equals("latest")?
                 eventType.getSchema(): schemaService.getSchemaVersion(name, version);
-        eventType.setSchema(toCompareEventTypeSchema);
+        eventType.setLatestSchemaByType(toCompareEventTypeSchema);
 
         final var newEventTypeBase = new EventTypeBase(eventType);
         newEventTypeBase.setSchema(

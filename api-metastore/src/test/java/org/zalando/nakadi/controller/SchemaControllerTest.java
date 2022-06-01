@@ -101,7 +101,7 @@ public class SchemaControllerTest {
 
         final var schemeBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA,
                 eventTypeOriginal.getSchema().getSchema());
-        eventTypeNew.setSchema(new EventTypeSchema(schemeBase, "1.1.0", DateTime.now()));
+        eventTypeNew.setLatestSchemaByType(new EventTypeSchema(schemeBase, "1.1.0", DateTime.now()));
 
         Mockito.when(eventTypeService.get(eventTypeOriginal.getName())).
                 thenReturn(eventTypeOriginal);

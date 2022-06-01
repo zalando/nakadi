@@ -179,13 +179,10 @@ public class EventPublisher {
     private void enrich(final List<BatchItem> batch, final EventType eventType)
             throws EnrichmentException {
 
-        final JsonSchemaValidator validator = eventTypeCache.getValidator(eventType.getName());
-        final String schemaVersion = validator.getSchema().getVersion().toString();
-
         for (final BatchItem batchItem : batch) {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
-                enrichment.enrich(batchItem, eventType, schemaVersion);
+                enrichment.enrich(batchItem, eventType);
             } catch (EnrichmentException e) {
                 batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;

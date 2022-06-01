@@ -7,11 +7,15 @@ import org.json.JSONObject;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
+
+import java.util.Optional;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
 
@@ -22,7 +26,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     }
 
     @Override
-    public void enrich(final BatchItem batchItem, final EventType eventType, final String schemaVersion)
+    public void enrich(final BatchItem batchItem, final EventType eventType)
             throws EnrichmentException {
         try {
             final JSONObject metadata = batchItem
@@ -34,7 +38,13 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
             setPartition(metadata, batchItem);
-            setVersion(metadata, schemaVersion);
+
+            final Optional<EventTypeSchema> schema =
+                    eventType.getSchema(EventTypeSchemaBase.Type.JSON_SCHEMA);
+            if (!schema.isPresent()) {
+                throw new RuntimeException();
+            }
+            setVersion(metadata, schema.get().getVersion());
             batchItem.inject(BatchItem.Injection.METADATA, metadata.toString());
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);

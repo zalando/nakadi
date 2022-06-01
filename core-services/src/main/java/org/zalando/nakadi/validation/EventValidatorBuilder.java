@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 
 import java.util.Optional;
 
@@ -24,20 +24,22 @@ public class EventValidatorBuilder {
         this.loader = loader;
     }
 
-    public JsonSchemaValidator build(final EventType eventType, final EventTypeSchema eventTypeSchema) {
-
-        if (eventTypeSchema.getType() != EventTypeSchema.Type.JSON_SCHEMA) {
-            throw new IllegalArgumentException("Unexpected event schema type: " + eventTypeSchema.getType());
+    public JsonSchemaValidator build(final EventType eventType) {
+        final Optional<EventTypeSchema> eventTypeSchemaOpt =
+                eventType.getSchema(EventTypeSchemaBase.Type.JSON_SCHEMA);
+        if (!eventTypeSchemaOpt.isPresent()) {
+            throw new RuntimeException();
         }
 
         final Schema schema = SchemaLoader.builder()
-                .schemaJson(loader.effectiveSchema(eventType, new JSONObject(eventTypeSchema.getSchema())))
+                .schemaJson(loader.effectiveSchema(eventType,
+                        new JSONObject(eventTypeSchemaOpt.get())))
                 .addFormatValidator(new RFC3339DateTimeValidator())
                 .build()
                 .load()
                 .build();
 
-        final JsonSchemaValidator baseValidator = new SchemaValidator(schema, eventTypeSchema);
+        final JsonSchemaValidator baseValidator = new SchemaValidator(schema);
 
         return eventType.getCategory() == EventCategory.DATA || eventType.getCategory() == EventCategory.BUSINESS
                 ? new ChainingValidator(baseValidator, METADATA_VALIDATOR)
@@ -59,10 +61,6 @@ public class EventValidatorBuilder {
                     .or(() -> next.validate(event));
         }
 
-        @Override
-        public EventTypeSchema getSchema() {
-            return first.getSchema();
-        }
     }
 
     private static class MetadataValidator implements JsonSchemaValidator {
@@ -71,25 +69,19 @@ public class EventValidatorBuilder {
         @Override
         public Optional<ValidationError> validate(final JSONObject event) {
             return Optional
-                .ofNullable(event.optJSONObject("metadata"))
-                .map(metadata -> metadata.optString("occurred_at"))
-                .flatMap(dateTimeValidator::validate)
-                .map(e -> new ValidationError("#/metadata/occurred_at:" + e));
+                    .ofNullable(event.optJSONObject("metadata"))
+                    .map(metadata -> metadata.optString("occurred_at"))
+                    .flatMap(dateTimeValidator::validate)
+                    .map(e -> new ValidationError("#/metadata/occurred_at:" + e));
         }
 
-        @Override
-        public EventTypeSchema getSchema() {
-            throw new InternalNakadiException("This method should not be called!");
-        }
     }
 
     private static class SchemaValidator implements JsonSchemaValidator {
         final Schema schema;
-        final EventTypeSchema eventTypeSchema;
 
-        private SchemaValidator(final Schema schema, final EventTypeSchema eventTypeSchema) {
+        private SchemaValidator(final Schema schema) {
             this.schema = schema;
-            this.eventTypeSchema = eventTypeSchema;
         }
 
         @Override
@@ -102,11 +94,6 @@ public class EventValidatorBuilder {
                 recursiveCollectErrors(e, builder);
                 return Optional.of(new ValidationError(builder.toString()));
             }
-        }
-
-        @Override
-        public EventTypeSchema getSchema() {
-            return eventTypeSchema;
         }
 
         private static void recursiveCollectErrors(final ValidationException e, final StringBuilder builder) {

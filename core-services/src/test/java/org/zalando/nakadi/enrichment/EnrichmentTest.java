@@ -11,10 +11,10 @@ import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.domain.EventCategory.DATA;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 
 public class EnrichmentTest {
     private final EnrichmentsRegistry registry = mock(EnrichmentsRegistry.class);
@@ -60,7 +60,6 @@ public class EnrichmentTest {
         eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
         final JSONObject event = new JSONObject();
         final BatchItem batchItem = createBatchItem(event);
-        final String schemaVersion = "1.2.3";
 
         final EnrichmentStrategy strategy = mock(EnrichmentStrategy.class);
         Mockito
@@ -68,8 +67,8 @@ public class EnrichmentTest {
                 .when(registry)
                 .getStrategy(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
 
-        enrichment.enrich(batchItem, eventType, schemaVersion);
+        enrichment.enrich(batchItem, eventType);
 
-        verify(strategy, times(1)).enrich(batchItem, eventType, schemaVersion);
+        verify(strategy, times(1)).enrich(batchItem, eventType);
     }
 }

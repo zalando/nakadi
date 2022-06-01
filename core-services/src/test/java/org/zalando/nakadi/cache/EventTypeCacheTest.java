@@ -169,8 +169,8 @@ public class EventTypeCacheTest {
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
         when(schemaService.getLatestSchemaForType(eventTypeName, EventTypeSchema.Type.JSON_SCHEMA))
                 .thenReturn(Optional.of(etSchema));
-        when(eventValidatorBuilder.build(eq(et1), any())).thenReturn(validator1);
-        when(eventValidatorBuilder.build(eq(et2), any())).thenReturn(validator2);
+        when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
+        when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(expectedTimelines1, expectedTimelines2);
 

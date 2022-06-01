@@ -64,11 +64,11 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
                 .name(name)
                 .build();
         insertEventType(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "1.0.2", DateTime.parse("2016-12-07T10:44:16.378+01:00")));
+        eventType.setLatestSchemaByType(new EventTypeSchema(schemaBase, "1.0.2", DateTime.parse("2016-12-07T10:44:16.378+01:00")));
         insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "2.10.3", DateTime.parse("2016-12-07T10:54:16.778+01:00")));
+        eventType.setLatestSchemaByType(new EventTypeSchema(schemaBase, "2.10.3", DateTime.parse("2016-12-07T10:54:16.778+01:00")));
         insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "10.0.0", DateTime.parse("2016-12-07T10:57:16.200+01:00")));
+        eventType.setLatestSchemaByType(new EventTypeSchema(schemaBase, "10.0.0", DateTime.parse("2016-12-07T10:57:16.200+01:00")));
         insertSchema(eventType);
     }
 

@@ -210,7 +210,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(any(), any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -259,7 +259,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(any(), any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -340,7 +340,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(enrichment, times(1)).enrich(any(), any(), any());
+        verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
@@ -355,7 +355,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(any(), any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -370,7 +370,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(any(), any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -385,7 +385,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(enrichment, times(1)).enrich(any(), any(), any());
+        verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
@@ -462,7 +462,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, atLeastOnce()).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
-        verify(enrichment, times(1)).enrich(any(), any(), any());
+        verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -548,7 +548,7 @@ public class EventPublisherTest {
         assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
         assertThat(second.getDetail(), is(isEmptyString()));
 
-        verify(enrichment, times(1)).enrich(any(), eq(eventType), any());
+        verify(enrichment, times(1)).enrich(any(), eq(eventType));
     }
 
     @Test
@@ -666,7 +666,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
-                .enrich(any(), any(), any());
+                .enrich(any(), any());
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {
@@ -681,11 +681,6 @@ public class EventPublisherTest {
                 .doReturn(faultyValidator)
                 .when(cache)
                 .getValidator(eventType.getName());
-
-        Mockito
-                .doReturn(eventType.getSchema())
-                .when(faultyValidator)
-                .getSchema();
 
         Mockito
                 .doReturn(Optional.of(new ValidationError(error)))
@@ -707,11 +702,6 @@ public class EventPublisherTest {
                 .validate(event);
 
         Mockito
-                .doReturn(eventType.getSchema())
-                .when(truthyValidator)
-                .getSchema();
-
-        Mockito
                 .doReturn(truthyValidator)
                 .when(cache)
                 .getValidator(eventType.getName());
@@ -729,11 +719,6 @@ public class EventPublisherTest {
                 .doReturn(Optional.empty())
                 .when(truthyValidator)
                 .validate(any());
-
-        Mockito
-                .doReturn(eventType.getSchema())
-                .when(truthyValidator)
-                .getSchema();
 
         Mockito
                 .doReturn(truthyValidator)

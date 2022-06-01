@@ -55,7 +55,7 @@ public class MetadataEnrichmentStrategyTest {
 
         try {
             DateTimeUtils.setCurrentMillisFixed(0);
-            strategy.enrich(batch, eventType, "1.0.0");
+            strategy.enrich(batch, eventType);
         } finally {
             DateTimeUtils.setCurrentMillisSystem();
         }
@@ -73,7 +73,7 @@ public class MetadataEnrichmentStrategyTest {
 
         event.remove("metadata");
 
-        strategy.enrich(createBatchItem(event), eventType, "1.0.0");
+        strategy.enrich(createBatchItem(event), eventType);
     }
 
     @Test
@@ -84,7 +84,7 @@ public class MetadataEnrichmentStrategyTest {
 
         assertThat(event.getJSONObject("metadata").optString("event_type"), isEmptyString());
 
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
     }
@@ -94,13 +94,15 @@ public class MetadataEnrichmentStrategyTest {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
         final BatchItem batchItem = createBatchItem(event);
-        final String schemaVersion = "3.2.1";
 
         assertThat(batchItem.getEvent().getJSONObject("metadata").optString("version"), isEmptyString());
 
-        strategy.enrich(batchItem, eventType, schemaVersion);
+        strategy.enrich(batchItem, eventType);
 
-        assertThat(batchItem.getEvent().getJSONObject("metadata").getString("version"), equalTo(schemaVersion));
+        assertThat(
+                batchItem.getEvent().getJSONObject("metadata").getString("version"),
+                equalTo(eventType.getSchema().getVersion())
+        );
     }
 
     @Test
@@ -113,7 +115,7 @@ public class MetadataEnrichmentStrategyTest {
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
@@ -126,7 +128,7 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         FlowIdUtils.push("something-else");
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo("something"));
     }
@@ -140,7 +142,7 @@ public class MetadataEnrichmentStrategyTest {
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
@@ -154,7 +156,7 @@ public class MetadataEnrichmentStrategyTest {
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
@@ -167,7 +169,7 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
         batch.setPartition(partition);
 
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("partition"), equalTo(partition));
     }
@@ -181,7 +183,7 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
         batch.setPartition(partition);
 
-        strategy.enrich(batch, eventType, "1.0.0");
+        strategy.enrich(batch, eventType);
 
         assertEquals("test-user-123", batch.getEvent().getJSONObject("metadata").getString("published_by"));
     }

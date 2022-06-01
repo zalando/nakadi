@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -138,8 +139,7 @@ public class EventTypeCache {
             final TimelineDbRepository timelineRepository,
             final TimelineSync timelineSync,
             final EventValidatorBuilder eventValidatorBuilder,
-            @Lazy
-            final SchemaService schemaService,
+            @Lazy final SchemaService schemaService,
             @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
             @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
         this.changesRegistry = changesRegistry;
@@ -307,16 +307,25 @@ public class EventTypeCache {
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
 
-        //
-        // The validator is only used for publishing JSON events, but at this point we have to
-        // prepare for all possibilities:
-        //
-        final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
-                EventTypeSchema.Type.JSON_SCHEMA);
+        final JsonSchemaValidator validator;
+        // load latest JSON schema if current schema is Avro
+        if (eventType.getSchema().getType() != EventTypeSchemaBase.Type.JSON_SCHEMA) {
+            //
+            // The validator is only used for publishing JSON events, but at this point we have to
+            // prepare for all possibilities:
+            //
+            final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
+                    EventTypeSchema.Type.JSON_SCHEMA);
 
-        final JsonSchemaValidator validator = schema
-                .map(s -> eventValidatorBuilder.build(eventType, s))
-                .orElseGet(() -> new NoJsonSchemaValidator(eventTypeName));
+            if (schema.isPresent()) {
+                eventType.setLatestSchemaByType(schema.get());
+                validator = eventValidatorBuilder.build(eventType);
+            } else {
+                validator = new NoJsonSchemaValidator(eventTypeName);
+            }
+        } else {
+            validator = eventValidatorBuilder.build(eventType);
+        }
 
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
 
@@ -335,10 +344,6 @@ public class EventTypeCache {
             return Optional.of(new ValidationError(message));
         }
 
-        @Override
-        public EventTypeSchema getSchema() {
-            throw new InternalNakadiException(message);
-        }
     }
 
     public void addInvalidationListener(final Consumer<String> listener) {
