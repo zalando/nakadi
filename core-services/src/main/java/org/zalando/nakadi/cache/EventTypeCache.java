@@ -308,12 +308,11 @@ public class EventTypeCache {
                 timelineRepository.listTimelinesOrdered(eventTypeName);
 
         final JsonSchemaValidator validator;
-        // load latest JSON schema if current schema is Avro
+        //
+        // The validator is used for publishing JSON events, but the event type may be already
+        // converted to Avro, so try to find latest JSON schema, if any:
+        //
         if (eventType.getSchema().getType() != EventTypeSchemaBase.Type.JSON_SCHEMA) {
-            //
-            // The validator is only used for publishing JSON events, but at this point we have to
-            // prepare for all possibilities:
-            //
             final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
                     EventTypeSchema.Type.JSON_SCHEMA);
 
@@ -336,14 +335,13 @@ public class EventTypeCache {
         final String message;
 
         private NoJsonSchemaValidator(final String eventTypeName) {
-            this.message = "no json_schema found for event type: " + eventTypeName;
+            this.message = "No json_schema found for event type: " + eventTypeName;
         }
 
         @Override
         public Optional<ValidationError> validate(final JSONObject event) {
             return Optional.of(new ValidationError(message));
         }
-
     }
 
     public void addInvalidationListener(final Consumer<String> listener) {
