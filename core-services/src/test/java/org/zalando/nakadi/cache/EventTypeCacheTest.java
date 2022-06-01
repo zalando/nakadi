@@ -167,7 +167,7 @@ public class EventTypeCacheTest {
         when(et1.getSchema()).thenReturn(etSchema);
         when(et2.getSchema()).thenReturn(etSchema);
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
-        when(schemaService.getLatestSchemaForType(eventTypeName, EventTypeSchema.Type.JSON_SCHEMA))
+        when(schemaService.getLatestSchemaByType(eventTypeName, EventTypeSchema.Type.JSON_SCHEMA))
                 .thenReturn(Optional.of(etSchema));
         when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
         when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);

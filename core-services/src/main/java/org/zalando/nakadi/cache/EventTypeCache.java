@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
@@ -312,8 +311,8 @@ public class EventTypeCache {
         // The validator is used for publishing JSON events, but the event type may be already
         // converted to Avro, so try to find latest JSON schema, if any:
         //
-        if (eventType.getSchema().getType() != EventTypeSchemaBase.Type.JSON_SCHEMA) {
-            final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaForType(eventTypeName,
+        if (eventType.getSchema().getType() != EventTypeSchema.Type.JSON_SCHEMA) {
+            final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaByType(eventTypeName,
                     EventTypeSchema.Type.JSON_SCHEMA);
 
             if (schema.isPresent()) {

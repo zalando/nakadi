@@ -44,7 +44,7 @@ public class SchemaRepository extends AbstractDbRepository {
         }
     }
 
-    public Optional<EventTypeSchema> getLatestSchemaForType(final String name, final EventTypeSchema.Type schemaType) {
+    public Optional<EventTypeSchema> getLatestSchemaByType(final String name, final EventTypeSchema.Type schemaType) {
         //
         // TODO: actually we should order by version, but that is harder to do in the DB
         //
