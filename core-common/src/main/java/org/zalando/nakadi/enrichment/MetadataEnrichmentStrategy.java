@@ -8,9 +8,9 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -38,13 +38,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
             setPartition(metadata, batchItem);
-
-            final Optional<EventTypeSchema> schema =
-                    eventType.getLatestSchemaByType(EventTypeSchemaBase.Type.JSON_SCHEMA);
-            if (!schema.isPresent()) {
-                throw new RuntimeException();
-            }
-            setVersion(metadata, schema.get().getVersion());
+            setVersion(metadata, eventType);
             batchItem.inject(BatchItem.Injection.METADATA, metadata.toString());
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
@@ -72,8 +66,12 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
                 .orElse(SecuritySettings.UNAUTHENTICATED_CLIENT_ID);
     }
 
-    private void setVersion(final JSONObject metadata, final String version) {
-        metadata.put("version", version);
+    private void setVersion(final JSONObject metadata, final EventType eventType) {
+        final Optional<EventTypeSchema> schema = eventType.getLatestSchemaByType(EventTypeSchema.Type.JSON_SCHEMA);
+        if (!schema.isPresent()) {
+            throw new InternalNakadiException("No json_schema found for event type: " + eventType.getName());
+        }
+        metadata.put("version", schema.get().getVersion());
     }
 
     private void setFlowId(final JSONObject metadata) {
