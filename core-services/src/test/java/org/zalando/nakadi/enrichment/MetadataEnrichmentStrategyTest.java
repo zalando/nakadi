@@ -99,10 +99,7 @@ public class MetadataEnrichmentStrategyTest {
 
         strategy.enrich(batchItem, eventType);
 
-        assertThat(
-                batchItem.getEvent().getJSONObject("metadata").getString("version"),
-                equalTo(eventType.getSchema().getVersion())
-        );
+        assertThat(batchItem.getEvent().getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
     }
 
     @Test
