@@ -46,7 +46,7 @@ public class EventType extends EventTypeBase {
         this.schema = schema;
     }
 
-    public Optional<EventTypeSchema> getSchema(final EventTypeSchemaBase.Type schemaType) {
+    public Optional<EventTypeSchema> getLatestSchemaByType(final EventTypeSchemaBase.Type schemaType) {
         return Optional.ofNullable(latestSchemas.get(schemaType));
     }
 

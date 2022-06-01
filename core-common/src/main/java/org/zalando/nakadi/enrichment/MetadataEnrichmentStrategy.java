@@ -40,7 +40,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setPartition(metadata, batchItem);
 
             final Optional<EventTypeSchema> schema =
-                    eventType.getSchema(EventTypeSchemaBase.Type.JSON_SCHEMA);
+                    eventType.getLatestSchemaByType(EventTypeSchemaBase.Type.JSON_SCHEMA);
             if (!schema.isPresent()) {
                 throw new RuntimeException();
             }

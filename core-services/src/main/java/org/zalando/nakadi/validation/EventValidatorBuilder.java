@@ -26,7 +26,7 @@ public class EventValidatorBuilder {
 
     public JsonSchemaValidator build(final EventType eventType) {
         final Optional<EventTypeSchema> eventTypeSchemaOpt =
-                eventType.getSchema(EventTypeSchemaBase.Type.JSON_SCHEMA);
+                eventType.getLatestSchemaByType(EventTypeSchemaBase.Type.JSON_SCHEMA);
         if (!eventTypeSchemaOpt.isPresent()) {
             throw new RuntimeException();
         }
