@@ -10,7 +10,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -69,7 +69,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     private void setVersion(final JSONObject metadata, final EventType eventType) {
         final Optional<EventTypeSchema> schema = eventType.getLatestSchemaByType(EventTypeSchema.Type.JSON_SCHEMA);
         if (!schema.isPresent()) {
-            throw new InternalNakadiException("No json_schema found for event type: " + eventType.getName());
+            throw new NoSuchSchemaException("No json_schema found for event type: " + eventType.getName());
         }
         metadata.put("version", schema.get().getVersion());
     }
