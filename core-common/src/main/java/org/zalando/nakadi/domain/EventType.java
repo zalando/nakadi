@@ -42,10 +42,11 @@ public class EventType extends EventTypeBase {
     public void setSchema(final EventTypeSchema schema) {
         this.schema = schema;
 
+        // overwrite any previously known schema
+        latestSchemas.clear();
+
         if (schema != null) {
             setLatestSchemaByType(schema);
-        } else {
-            latestSchemas.clear();
         }
     }
 
