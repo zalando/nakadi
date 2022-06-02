@@ -22,7 +22,7 @@ public class PartitioningCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records, final boolean delete) {
         for (final NakadiRecord record : records) {
             final NakadiMetadata metadata = record.getMetadata();
             try {

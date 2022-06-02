@@ -11,7 +11,14 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -44,22 +51,31 @@ public class BinaryEventPublisher {
     public List<NakadiRecordResult> publishWithChecks(final EventType eventType,
                                                       final List<NakadiRecord> records,
                                                       final List<Check> checks) {
+        return processInternal(eventType, records, checks, false);
+    }
+
+    public List<NakadiRecordResult> processInternal(final EventType eventType,
+                                                    final List<NakadiRecord> records,
+                                                    final List<Check> checks,
+                                                    final boolean delete) {
         for (final Check check : checks) {
-            final List<NakadiRecordResult> res = check.execute(eventType, records);
+            final List<NakadiRecordResult> res = check.execute(eventType, records, delete);
             if (res != null && !res.isEmpty()) {
                 return res;
             }
         }
 
-        return publish(eventType, records);
+        return publish(eventType, records, delete);
     }
 
+    // TODO make this private
     public List<NakadiRecordResult> publish(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records,
+                                            final boolean delete) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }
-
+        // TODO Implement delete
         Closeable publishingCloser = null;
         try {
             // publish under timeline lock
@@ -97,4 +113,17 @@ public class BinaryEventPublisher {
         }
     }
 
+    public List<NakadiRecordResult> delete(final List<NakadiRecord> events,
+                                           final EventType eventType,
+                                           final List<Check> preDeletingChecks)
+            throws NoSuchEventTypeException,
+            InternalNakadiException,
+            EnrichmentException,
+            EventTypeTimeoutException,
+            AccessDeniedException,
+            PublishEventOwnershipException,
+            ServiceTemporarilyUnavailableException,
+            PartitioningException {
+        return processInternal(eventType, events, preDeletingChecks, true);
+    }
 }

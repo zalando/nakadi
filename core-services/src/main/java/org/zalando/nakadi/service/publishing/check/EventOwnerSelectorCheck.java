@@ -24,7 +24,7 @@ public class EventOwnerSelectorCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records, final boolean delete) {
 
         final EventOwnerExtractor extractor = eventOwnerExtractorFactory.createExtractor(eventType);
         if (null == extractor) {

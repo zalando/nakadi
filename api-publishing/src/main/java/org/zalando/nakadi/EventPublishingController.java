@@ -82,8 +82,8 @@ public class EventPublishingController {
         this.authValidator = authValidator;
         this.prePublishingChecks = prePublishingChecks;
         if (prePublishingChecks.isEmpty()) {
-            // Safeguard against silent failure one spring injecting empty list
-            throw new RuntimeException("Checks should not be empty");
+            // Safeguard against silent failure if spring inject an empty list
+            throw new RuntimeException("prePublishingChecks should not be empty");
         }
     }
 
@@ -118,6 +118,21 @@ public class EventPublishingController {
         return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
     }
 
+    @RequestMapping(
+            value = "/event-types/{eventTypeName}/deleted-events",
+            method = POST,
+            consumes = "application/avro-binary; charset=utf-8",
+            produces = "application/json; charset=utf-8"
+    )
+    public ResponseEntity deleteBinaryEvents(@PathVariable final String eventTypeName,
+                                             @RequestBody final byte[] batch,
+                                             final HttpServletRequest request,
+                                             final Client client) {
+        //return postBinaryEvents(eventTypeName, batch, request, client, true);
+        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
+    }
+
+
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final byte[] batch,
                                             final HttpServletRequest request,
@@ -143,21 +158,18 @@ public class EventPublishingController {
                 final int totalSizeBytes = batch.length;
                 TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
-                // todo implement delete
-//                if (delete) {
-//                    result = publisher.delete(eventsAsString, eventTypeName);
-//                }
-
-                final EventPublishResult result;
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
-                final List<NakadiRecordResult> recordResults = binaryPublisher
-                        .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
+                final List<NakadiRecordResult> recordResults;
+                if (delete) {
+                    recordResults = binaryPublisher.delete(nakadiRecords, eventType, prePublishingChecks);
+                } else {
+                    recordResults = binaryPublisher.publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
+                }
                 if (recordResults.isEmpty()) {
                     throw new InternalNakadiException("unexpected empty record result list, " +
                             "publishing record result can not be empty");
                 }
-                result = publishingResultConverter.mapPublishingResultToView(recordResults);
-
+                final EventPublishResult result = publishingResultConverter.mapPublishingResultToView(recordResults);
                 final int eventCount = result.getResponses().size();
 
                 reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);

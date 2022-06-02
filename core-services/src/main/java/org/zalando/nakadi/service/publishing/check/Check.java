@@ -11,7 +11,7 @@ public abstract class Check {
 
     public abstract List<NakadiRecordResult> execute(
             EventType eventType,
-            List<NakadiRecord> records);
+            List<NakadiRecord> records, boolean delete);
 
     public abstract NakadiRecordResult.Step getCurrentStep();
 

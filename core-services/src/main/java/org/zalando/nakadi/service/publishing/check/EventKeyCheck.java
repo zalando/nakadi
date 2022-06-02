@@ -11,7 +11,7 @@ public class EventKeyCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records, final boolean delete) {
         return Collections.emptyList();
     }
 

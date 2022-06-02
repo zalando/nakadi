@@ -12,7 +12,7 @@ public class EventTypeCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records, final boolean delete) {
 
         for (final NakadiRecord record : records) {
             final String recordEventType = record.getMetadata().getEventType();

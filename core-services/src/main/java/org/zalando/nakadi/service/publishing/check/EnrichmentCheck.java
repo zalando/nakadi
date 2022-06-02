@@ -25,7 +25,12 @@ public class EnrichmentCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+                                            final List<NakadiRecord> records,
+                                            final boolean delete) {
+
+        if (delete) { // Enrichment check is not necessary for event delete operation
+            return Collections.emptyList();
+        }
 
         for (final NakadiRecord record : records) {
             try {
