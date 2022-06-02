@@ -54,10 +54,10 @@ public class BinaryEventPublisher {
         return processInternal(eventType, records, checks, false);
     }
 
-    public List<NakadiRecordResult> processInternal(final EventType eventType,
-                                                    final List<NakadiRecord> records,
-                                                    final List<Check> checks,
-                                                    final boolean delete) {
+    private List<NakadiRecordResult> processInternal(final EventType eventType,
+                                                     final List<NakadiRecord> records,
+                                                     final List<Check> checks,
+                                                     final boolean delete) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records, delete);
             if (res != null && !res.isEmpty()) {
@@ -68,10 +68,9 @@ public class BinaryEventPublisher {
         return publish(eventType, records, delete);
     }
 
-    // TODO make this private
-    public List<NakadiRecordResult> publish(final EventType eventType,
-                                            final List<NakadiRecord> records,
-                                            final boolean delete) {
+    private List<NakadiRecordResult> publish(final EventType eventType,
+                                             final List<NakadiRecord> records,
+                                             final boolean delete) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }

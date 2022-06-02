@@ -59,6 +59,7 @@ public class EventPublishingController {
     private final EventTypeCache eventTypeCache;
     private final AuthorizationValidator authValidator;
     private final List<Check> prePublishingChecks;
+    private final List<Check> preDeletingChecks;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -70,7 +71,8 @@ public class EventPublishingController {
                                      final PublishingResultConverter publishingResultConverter,
                                      final EventTypeCache eventTypeCache,
                                      final AuthorizationValidator authValidator,
-                                     @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks) {
+                                     @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks,
+                                     @Qualifier("pre-deleting-checks") final List<Check> preDeletingChecks) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
@@ -84,6 +86,11 @@ public class EventPublishingController {
         if (prePublishingChecks.isEmpty()) {
             // Safeguard against silent failure if spring inject an empty list
             throw new RuntimeException("prePublishingChecks should not be empty");
+        }
+        this.preDeletingChecks = preDeletingChecks;
+        if (preDeletingChecks.isEmpty()) {
+            // Safeguard against silent failure if spring inject an empty list
+            throw new RuntimeException("preDeletingChecks should not be empty");
         }
     }
 
@@ -161,7 +168,7 @@ public class EventPublishingController {
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
                 final List<NakadiRecordResult> recordResults;
                 if (delete) {
-                    recordResults = binaryPublisher.delete(nakadiRecords, eventType, prePublishingChecks);
+                    recordResults = binaryPublisher.delete(nakadiRecords, eventType, preDeletingChecks);
                 } else {
                     recordResults = binaryPublisher.publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
                 }

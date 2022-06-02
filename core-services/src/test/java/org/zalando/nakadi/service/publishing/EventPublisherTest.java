@@ -644,7 +644,7 @@ public class EventPublisherTest {
                 .fromAvroGenericRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
-        eventPublisher.publish(eventType, records, false);
+        eventPublisher.publishWithChecks(eventType, records, Collections.emptyList());
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
     }
 
