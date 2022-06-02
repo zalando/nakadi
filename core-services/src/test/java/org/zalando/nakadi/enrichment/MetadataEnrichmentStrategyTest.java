@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -194,7 +195,7 @@ public class MetadataEnrichmentStrategyTest {
 
         final var metadata = nakadiRecord.getMetadata();
         assertEquals("unauthenticated", metadata.getPublishedBy());
-        assertTrue(metadata.getReceivedAt() > metadata.getOccurredAt());
+        assertNotNull(metadata.getReceivedAt());
     }
 
     private NakadiRecord getTestNakadiRecord() throws IOException {
