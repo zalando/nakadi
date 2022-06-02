@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.avro.AvroMapper;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -13,6 +14,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.VersionedAvroSchema;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
@@ -26,12 +28,14 @@ public class KafkaRecordDeserializerTest {
     private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
     private final LocalSchemaRegistry localSchemaRegistry;
     private final SchemaProviderService schemaService;
+    private VersionedAvroSchema metadataSchema;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
         localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
+        metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
     }
 
     @Test
@@ -45,13 +49,13 @@ public class KafkaRecordDeserializerTest {
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data0 = EnvelopeHolder.produceBytes(
-                (byte) 1, // metadata version
-                getMetadataWriter("1", "1", jsonObject),
+                metadataSchema.getVersionAsByte(),
+                getMetadataWriter(metadataSchema.getSchema(), "0", jsonObject),
                 getEventWriter1());
 
         final byte[] data1 = EnvelopeHolder.produceBytes(
-                (byte) 1, // metadata version
-                getMetadataWriter("1", "2", jsonObject),
+                metadataSchema.getVersionAsByte(),
+                getMetadataWriter(metadataSchema.getSchema(), "1", jsonObject),
                 getEventWriter2());
 
         // try to deserialize that data when we would read Kafka record
@@ -73,19 +77,17 @@ public class KafkaRecordDeserializerTest {
 
     @Test
     public void testDeserializeAvroMetadata0() throws IOException {
-        final var metadataVersion = "1";
-
         final JSONObject jsonObject = new JSONObject()
                 .put("flow_id", "hek")
                 .put("partition", "0")
                 .put("published_by", "nakadi-test");
 
-        final var actualJson = getSerializedJsonObject(metadataVersion, jsonObject);
+        final var actualJson = getSerializedJsonObject(metadataSchema, jsonObject);
         final var expectedJson = getExpectedNode1(jsonObject);
         Assert.assertTrue(expectedJson.similar(actualJson));
     }
 
-    private JSONObject getSerializedJsonObject(final String metadataVersion,
+    private JSONObject getSerializedJsonObject(final VersionedAvroSchema metadataVersion,
                                                final JSONObject metadataOverride) throws IOException {
         final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
 
@@ -93,8 +95,8 @@ public class KafkaRecordDeserializerTest {
 
         // prepare the same bytes as we would put in Kafka record
         final byte[] data = EnvelopeHolder.produceBytes(
-                Byte.parseByte(metadataVersion),
-                getMetadataWriter(metadataVersion, "1", metadataOverride),
+                metadataVersion.getVersionAsByte(),
+                getMetadataWriter(metadataVersion.getSchema(), "0", metadataOverride),
                 eventWriter);
 
         // try to deserialize that data when we would read Kafka record
@@ -123,7 +125,7 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter1() {
         return os -> {
-            final GenericRecord event = getBaseRecord("1");
+            final GenericRecord event = getBaseRecord("0");
 
             final GenericDatumWriter eventWriter = new GenericDatumWriter(event.getSchema());
             eventWriter.write(event, EncoderFactory.get()
@@ -133,7 +135,7 @@ public class KafkaRecordDeserializerTest {
 
     private EnvelopeHolder.EventWriter getEventWriter2() {
         return os -> {
-            final GenericRecord event = getBaseRecord("2");
+            final GenericRecord event = getBaseRecord("1");
             event.put("user_agent", "test-user-agent");
             event.put("request_length", 111);
             event.put("response_length", 222);
@@ -144,13 +146,11 @@ public class KafkaRecordDeserializerTest {
         };
     }
 
-    private EnvelopeHolder.EventWriter getMetadataWriter(final String metadataVersion,
+    private EnvelopeHolder.EventWriter getMetadataWriter(final Schema metadataSchema,
                                                          final String schemaVersion,
                                                          final JSONObject metadataOverride) {
         return os -> {
-            final GenericRecord metadata =
-                    new GenericData.Record(localSchemaRegistry
-                            .getEventTypeSchema(LocalSchemaRegistry.METADATA_KEY, metadataVersion));
+            final GenericRecord metadata = new GenericData.Record(metadataSchema);
 
             metadata.put("occurred_at", SOME_TIME);
             metadata.put("received_at", SOME_TIME);
@@ -204,11 +204,11 @@ public class KafkaRecordDeserializerTest {
     }
 
     private JSONObject getExpectedNode1(final JSONObject metadataOverride) {
-        return getBaseExpectedNode("1", metadataOverride);
+        return getBaseExpectedNode("0", metadataOverride);
     }
 
     private JSONObject getExpectedNode2() {
-        final JSONObject event = getBaseExpectedNode("2", null);
+        final JSONObject event = getBaseExpectedNode("1", null);
         event.put("user_agent", "test-user-agent");
         event.put("request_length", 111);
         event.put("response_length", 222);

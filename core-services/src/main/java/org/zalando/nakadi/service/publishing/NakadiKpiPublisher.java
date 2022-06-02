@@ -31,7 +31,7 @@ public class NakadiKpiPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKpiPublisher.class);
 
-    private static final String VERSION_METADATA = "1";
+    private static final String VERSION_METADATA = "5";
 
     private final FeatureToggleService featureToggleService;
     private final JsonEventProcessor jsonEventsProcessor;

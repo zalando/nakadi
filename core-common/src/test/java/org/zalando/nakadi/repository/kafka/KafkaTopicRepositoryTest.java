@@ -638,7 +638,8 @@ public class KafkaTopicRepositoryTest {
 
     private NakadiRecord getTestNakadiRecord(final String partition) {
         final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
-                localSchemaRegistry.getEventTypeSchema("metadata", "1"));
+                localSchemaRegistry.getLatestEventTypeSchemaVersion(
+                        LocalSchemaRegistry.METADATA_KEY).getSchema());
         metadata.setEid(UUID.randomUUID().toString());
         metadata.setOccurredAt(Instant.now().toEpochMilli());
         metadata.setSchemaVersion("0");

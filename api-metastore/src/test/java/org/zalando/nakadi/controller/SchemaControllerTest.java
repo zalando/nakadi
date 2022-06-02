@@ -24,6 +24,8 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import javax.validation.Validation;
@@ -33,25 +35,31 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class SchemaControllerTest {
 
+    private SpringValidatorAdapter validator;
+
     private SchemaService schemaService;
     private NativeWebRequest nativeWebRequest;
     private EventTypeService eventTypeService;
     private AdminService adminService;
     private AuthorizationValidator authorizationValidator;
-    private SpringValidatorAdapter validator;
+    private NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private NakadiKpiPublisher nakadiKpiPublisher;
     private SchemaController schemaController;
 
     @Before
     public void setUp() {
+        validator = new SpringValidatorAdapter(Validation.buildDefaultValidatorFactory().getValidator());
+
         schemaService = Mockito.mock(SchemaService.class);
         nativeWebRequest = Mockito.mock(NativeWebRequest.class);
         eventTypeService = Mockito.mock(EventTypeService.class);
         adminService = Mockito.mock(AdminService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
-        validator = new SpringValidatorAdapter(
-                Validation.buildDefaultValidatorFactory().getValidator()
-        );
-        schemaController = new SchemaController(schemaService, eventTypeService, adminService, authorizationValidator);
+        nakadiAuditLogPublisher = Mockito.mock(NakadiAuditLogPublisher.class);
+        nakadiKpiPublisher = Mockito.mock(NakadiKpiPublisher.class);
+
+        schemaController = new SchemaController(schemaService, eventTypeService, adminService, authorizationValidator,
+                nakadiAuditLogPublisher, nakadiKpiPublisher);
     }
 
     @Test
@@ -59,7 +67,9 @@ public class SchemaControllerTest {
         Mockito.when(schemaService.getSchemas("et_test", 0, 1)).thenReturn(null);
         Mockito.when(eventTypeService.get("et_test")).thenReturn(EventTypeTestBuilder.builder().build());
 
-        final ResponseEntity<?> result = schemaController.getSchemas("et_test", 0, 1, nativeWebRequest);
+        final ResponseEntity<?> result =
+            schemaController.getSchemas("et_test", 0, 1, nativeWebRequest);
+
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
@@ -67,8 +77,10 @@ public class SchemaControllerTest {
     public void testGetLatestSchemaVersionThen200() {
         final EventType eventType = buildDefaultEventType();
         Mockito.when(eventTypeService.get(eventType.getName())).thenReturn(eventType);
+
         final ResponseEntity<?> result = schemaController
                 .getSchemaVersion(eventType.getName(), "latest", nativeWebRequest);
+
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
         Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
     }
@@ -78,8 +90,8 @@ public class SchemaControllerTest {
 
         Mockito.when(eventTypeService.get("et_wrong_event"))
                 .thenThrow(new NoSuchEventTypeException("no event type"));
-        final ResponseEntity<?> result = schemaController
-                .getSchemaVersion("et_wrong_event", "latest", nativeWebRequest);
+
+        schemaController.getSchemaVersion("et_wrong_event", "latest", nativeWebRequest);
     }
 
     @Test
@@ -87,9 +99,11 @@ public class SchemaControllerTest {
         final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaService.getSchemaVersion(eventType.getName(),
                 eventType.getSchema().getVersion().toString())).thenReturn(eventType.getSchema());
+
         final ResponseEntity<?> result =
                 schemaController.getSchemaVersion(eventType.getName(),
                         eventType.getSchema().getVersion().toString(), nativeWebRequest);
+
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
         Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
     }
@@ -133,7 +147,7 @@ public class SchemaControllerTest {
         );
         final EventType eventTypeOriginal =
                 EventTypeTestBuilder.builder().
-                compatibilityMode(CompatibilityMode.FORWARD).
+                        compatibilityMode(CompatibilityMode.FORWARD).
                         schema(etSchema).build();
 
         final var newSchema = "[{\"type\":\"record\",\"name\":\"NAME_PLACE_HOLDER\"," +
@@ -172,6 +186,7 @@ public class SchemaControllerTest {
         final var csr = new CompatibilitySchemaRequest(null);
         final var errors = new BeanPropertyBindingResult(csr, "csr");
         validator.validate(csr, errors);
+
         schemaController.checkCompatibility("name", "latest", csr, errors);
     }
 
@@ -180,15 +195,16 @@ public class SchemaControllerTest {
         final var etSchemaBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, null);
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
-        schemaController.create("test", etSchemaBase, errors);
 
+        schemaController.create("test", etSchemaBase, errors);
     }
 
     @Test(expected = ValidationException.class)
-    public void testValidationExceptionOnNullTypeWhenSchemaCreated()  {
+    public void testValidationExceptionOnNullTypeWhenSchemaCreated() {
         final var etSchemaBase = new EventTypeSchemaBase(null, "");
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
+
         schemaController.create("test", etSchemaBase, errors);
     }
 }

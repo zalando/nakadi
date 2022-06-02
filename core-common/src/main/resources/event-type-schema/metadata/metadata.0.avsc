@@ -5,17 +5,13 @@
   "fields": [
     {
       "name": "occurred_at",
-      "type": {
-        "type": "long",
-        "logicalType": "timestamp-millis"
-      }
+      "type": "long",
+      "logicalType": "timestamp"
     },
     {
       "name": "eid",
-      "type": {
-        "type": "string",
-        "logicalType": "uuid"
-      }
+      "type": "string",
+      "logicalType": "uuid"
     },
     {
       "name": "flow_id",
@@ -23,10 +19,8 @@
     },
     {
       "name": "received_at",
-      "type": {
-        "type": "long",
-        "logicalType": "timestamp-millis"
-      }
+      "type": "long",
+      "logicalType": "timestamp"
     },
     {
       "name": "schema_version",

@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -53,7 +52,6 @@ import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.StaticStorageWorkerFactory;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -78,7 +76,6 @@ public class TimelineService {
     private final AdminService adminService;
     private final FeatureToggleService featureToggleService;
     private final String compactedStorageName;
-    private final NakadiAuditLogPublisher auditLogPublisher;
     // one man said, it is fine to add 11th argument
     private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
@@ -94,7 +91,6 @@ public class TimelineService {
                            final AdminService adminService,
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
-                           @Lazy final NakadiAuditLogPublisher auditLogPublisher,
                            final SchemaProviderService schemaService,
                            final LocalSchemaRegistry localSchemaRegistry) {
         this.eventTypeCache = eventTypeCache;
@@ -107,12 +103,11 @@ public class TimelineService {
         this.adminService = adminService;
         this.featureToggleService = featureToggleService;
         this.compactedStorageName = compactedStorageName;
-        this.auditLogPublisher = auditLogPublisher;
         this.schemaService = schemaService;
         this.localSchemaRegistry = localSchemaRegistry;
     }
 
-    public void createTimeline(final String eventTypeName, final String storageId)
+    public Timeline createTimeline(final String eventTypeName, final String storageId)
             throws AccessDeniedException, TimelineException, TopicRepositoryException, InconsistentStateException,
             RepositoryProblemException, DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
@@ -147,14 +142,9 @@ public class TimelineService {
 
             switchTimelines(activeTimeline, nextTimeline);
 
-            auditLogPublisher.publish(
-                    Optional.empty(),
-                    Optional.of(nextTimeline),
-                    NakadiAuditLogPublisher.ResourceType.TIMELINE,
-                    NakadiAuditLogPublisher.ActionType.CREATED,
-                    String.valueOf(nextTimeline.getId()));
+            return nextTimeline;
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
-                InternalNakadiException e) {
+                       InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");

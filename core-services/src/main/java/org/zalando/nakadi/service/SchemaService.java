@@ -15,7 +15,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -27,7 +26,6 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.StrictJsonParser;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
@@ -37,8 +35,6 @@ import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -69,8 +65,6 @@ public class SchemaService implements SchemaProviderService {
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
-    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
-    private final NakadiKpiPublisher nakadiKpiPublisher;
     private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
     private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
     private final Map<NameSchema, String> schemaVersionCache;
@@ -83,10 +77,7 @@ public class SchemaService implements SchemaProviderService {
                          final EventTypeRepository eventTypeRepository,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
-                         final NakadiSettings nakadiSettings,
-                         // dirty hack to resolve cycling dep, but they both need each other
-                         @Lazy final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                         @Lazy final NakadiKpiPublisher nakadiKpiPublisher) {
+                         final NakadiSettings nakadiSettings) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
@@ -95,8 +86,6 @@ public class SchemaService implements SchemaProviderService {
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
-        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
-        this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.schemasCache = CacheBuilder.newBuilder()
                 .build(new CacheLoader<>() {
                     @Override
@@ -109,36 +98,30 @@ public class SchemaService implements SchemaProviderService {
         this.schemaVersionCache = new ConcurrentHashMap<>();
     }
 
-    public void addSchema(final EventType eventType, final EventTypeSchemaBase newSchema) {
+    public Optional<EventType> addSchema(final EventType originalEventType, final EventTypeSchemaBase newSchema) {
         Closeable closeable = null;
         try {
-            closeable = timelineSync.workWithEventType(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
+            closeable = timelineSync.workWithEventType(originalEventType.getName(),
+                    nakadiSettings.getTimelineWaitTimeoutMs());
 
-            final EventTypeBase updatedEventType = new EventTypeBase(eventType);
+            final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
             updatedEventType.setSchema(newSchema);
 
-            final EventType evolvedEventType = getValidEvolvedEventType(eventType, updatedEventType);
-            eventTypeRepository.update(evolvedEventType);
-            eventTypeCache.invalidate(eventType.getName());
-
-            if (!evolvedEventType.getSchema().getVersion().equals(eventType.getSchema().getVersion())) {
-                nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
-                        .setEventType(eventType.getName())
-                        .setStatus("updated")
-                        .setCategory(eventType.getCategory().name())
-                        .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
-                        .setCompatibilityMode(eventType.getCompatibilityMode().name()));
-
-                nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.of(evolvedEventType),
-                        NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
-                        eventType.getName());
+            final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
+            // The version of the schema of the evolved event type will be different if there is a change,
+            // and the schema got evolved, otherwise the version of schema remains the same.
+            if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
+                eventTypeRepository.update(eventType);
+                eventTypeCache.invalidate(eventType.getName());
+                return Optional.of(eventType);
             }
+            return Optional.empty();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new EventTypeUnavailableException("Event type " + eventType.getName()
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            throw new EventTypeUnavailableException("Event type " + eventType.getName()
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } finally {
             try {

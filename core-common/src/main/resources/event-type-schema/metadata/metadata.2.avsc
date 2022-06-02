@@ -42,7 +42,7 @@
     },
     {
       "name": "partition",
-      "type": "int"
+      "type": "string"
     }
   ]
 }
