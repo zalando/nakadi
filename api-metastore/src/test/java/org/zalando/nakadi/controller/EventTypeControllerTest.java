@@ -138,10 +138,11 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void eventTypeWithoutSchemaReturns422() throws Exception {
         final EventType invalidEventType = TestUtils.buildDefaultEventType();
-        invalidEventType.setSchema(null);
+        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
+        jsonObject.remove("schema");
 
         final Problem expectedProblem = TestUtils.invalidProblem("schema", "must not be null");
-        postETAndExpect422WithProblem(invalidEventType, expectedProblem);
+        postETAndExpect422WithProblem(jsonObject.toString(), expectedProblem);
     }
 
     @Test

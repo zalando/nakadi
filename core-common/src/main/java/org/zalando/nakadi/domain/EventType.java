@@ -40,14 +40,11 @@ public class EventType extends EventTypeBase {
     }
 
     public void setSchema(final EventTypeSchema schema) {
-        this.schema = schema;
-
-        // overwrite any previously known schema
-        latestSchemas.clear();
-
-        if (schema != null) {
-            setLatestSchemaByType(schema);
+        if (schema == null) {
+            throw new IllegalArgumentException("The event type schema must not be null!");
         }
+        this.schema = schema;
+        setLatestSchemaByType(schema);
     }
 
     public Optional<EventTypeSchema> getLatestSchemaByType(final EventTypeSchema.Type schemaType) {
