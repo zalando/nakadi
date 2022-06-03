@@ -26,6 +26,9 @@ import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
@@ -41,16 +44,22 @@ public class SchemaController {
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
+    private final AdminService adminService;
+    private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
     public SchemaController(final SchemaService schemaService,
                             final EventTypeService eventTypeService,
+                            final AdminService adminService,
+                            final AuthorizationValidator authorizationValidator,
                             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                             final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaService = schemaService;
         this.eventTypeService = eventTypeService;
+        this.adminService = adminService;
+        this.authorizationValidator = authorizationValidator;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
@@ -64,6 +73,11 @@ public class SchemaController {
         }
 
         final var originalEventType = eventTypeService.fetchFromRepository(name);
+
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+            authorizationValidator.authorizeEventTypeAdmin(originalEventType);
+        }
+
         schemaService.addSchema(originalEventType, schema)
                 .ifPresent(updatedEventType -> {
                     nakadiAuditLogPublisher.publish(
@@ -81,7 +95,8 @@ public class SchemaController {
                             .setCompatibilityMode(originalEventType.getCompatibilityMode().name()));
                 });
 
-        return status(HttpStatus.OK).build(); // Maybe return different status code when there is no change
+        // TODO: return different status code when there is no change
+        return status(HttpStatus.OK).build();
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)

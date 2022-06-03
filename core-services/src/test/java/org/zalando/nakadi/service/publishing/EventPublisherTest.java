@@ -43,7 +43,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
@@ -210,7 +210,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(createBatchItem(event), eventType);
+        verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -460,7 +460,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(cache, times(1)).getValidator(eventType.getName());
+        verify(cache, atLeastOnce()).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
@@ -670,7 +670,7 @@ public class EventPublisherTest {
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {
-        final EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
+        final JsonSchemaValidator faultyValidator = mock(JsonSchemaValidator.class);
 
         Mockito
                 .doReturn(eventType)
@@ -689,7 +689,7 @@ public class EventPublisherTest {
     }
 
     private void mockSuccessfulValidation(final EventType eventType, final JSONObject event) throws Exception {
-        final EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
+        final JsonSchemaValidator truthyValidator = mock(JsonSchemaValidator.class);
 
         Mockito
                 .doReturn(eventType)
@@ -708,7 +708,7 @@ public class EventPublisherTest {
     }
 
     private void mockSuccessfulValidation(final EventType eventType) throws Exception {
-        final EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
+        final JsonSchemaValidator truthyValidator = mock(JsonSchemaValidator.class);
 
         Mockito
                 .doReturn(eventType)

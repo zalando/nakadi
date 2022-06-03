@@ -33,7 +33,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -63,8 +62,6 @@ public class SchemaService implements SchemaProviderService {
     private final JsonSchemaEnrichment jsonSchemaEnrichment;
     private final SchemaEvolutionService schemaEvolutionService;
     private final EventTypeRepository eventTypeRepository;
-    private final AdminService adminService;
-    private final AuthorizationValidator authorizationValidator;
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
@@ -78,8 +75,6 @@ public class SchemaService implements SchemaProviderService {
                          final JsonSchemaEnrichment jsonSchemaEnrichment,
                          final SchemaEvolutionService schemaEvolutionService,
                          final EventTypeRepository eventTypeRepository,
-                         final AdminService adminService,
-                         final AuthorizationValidator authorizationValidator,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
                          final NakadiSettings nakadiSettings) {
@@ -88,8 +83,6 @@ public class SchemaService implements SchemaProviderService {
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
         this.schemaEvolutionService = schemaEvolutionService;
         this.eventTypeRepository = eventTypeRepository;
-        this.adminService = adminService;
-        this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
@@ -110,10 +103,6 @@ public class SchemaService implements SchemaProviderService {
         try {
             closeable = timelineSync.workWithEventType(originalEventType.getName(),
                     nakadiSettings.getTimelineWaitTimeoutMs());
-
-            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-                authorizationValidator.authorizeEventTypeAdmin(originalEventType);
-            }
 
             final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
             updatedEventType.setSchema(newSchema);
@@ -185,6 +174,10 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
+    public Optional<EventTypeSchema> getLatestSchemaByType(final String name, final EventTypeSchema.Type schemaType) {
+        return schemaRepository.getLatestSchemaByType(name, schemaType);
+    }
+
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
@@ -243,7 +236,7 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, schemaAsJson);
         final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);

@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-
 import com.google.common.collect.Lists;
 import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;

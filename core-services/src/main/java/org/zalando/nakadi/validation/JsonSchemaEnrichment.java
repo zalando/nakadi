@@ -2,7 +2,6 @@ package org.zalando.nakadi.validation;
 
 import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,8 +53,7 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
-        final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
+    public JSONObject effectiveSchema(final EventTypeBase eventType, final JSONObject schema) {
 
         if (eventType.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
             this.enforceStrictValidation(schema);

@@ -1,7 +1,8 @@
 {
   "name": "NAME_PLACEHOLDER",
   "owning_application": "OWNING_APP_PLACEHOLDER",
-  "category": "undefined",
+  "category": "business",
+  "enrichment_strategies": ["metadata_enrichment"],
   "compatibility_mode": "compatible",
   "schema": {
     "type": "json_schema",

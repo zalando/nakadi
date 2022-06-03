@@ -7,11 +7,15 @@ import org.json.JSONObject;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
+
+import java.util.Optional;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
 
@@ -22,7 +26,8 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     }
 
     @Override
-    public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
+    public void enrich(final BatchItem batchItem, final EventType eventType)
+            throws EnrichmentException {
         try {
             final JSONObject metadata = batchItem
                     .getEvent()
@@ -62,7 +67,11 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     }
 
     private void setVersion(final JSONObject metadata, final EventType eventType) {
-        metadata.put("version", eventType.getSchema().getVersion().toString());
+        final Optional<EventTypeSchema> schema = eventType.getLatestSchemaByType(EventTypeSchema.Type.JSON_SCHEMA);
+        if (!schema.isPresent()) {
+            throw new NoSuchSchemaException("No json_schema found for event type: " + eventType.getName());
+        }
+        metadata.put("version", schema.get().getVersion());
     }
 
     private void setFlowId(final JSONObject metadata) {

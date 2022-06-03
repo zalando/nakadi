@@ -594,7 +594,9 @@ public class EventTypeService {
      * @throws NoSuchEventTypeException if event-type does not exist
      */
     public EventType fetchFromRepository(final String eventTypeName) throws NoSuchEventTypeException {
-        return eventTypeRepository.findByName(eventTypeName);
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+        return eventType;
     }
 
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
