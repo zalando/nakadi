@@ -37,7 +37,7 @@ function acceptanceTests() {
   export SPRING_PROFILES_ACTIVE=acceptanceTest
   docker-compose up -d --build
   waitForNakadi
-  if ./gradlew :acceptance-test:acceptanceTest --tests org.zalando.nakadi.webservice.hila.HilaRebalanceAT
+  if ./gradlew :acceptance-test:acceptanceTest
   then
       errcode=0
   else
