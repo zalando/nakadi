@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -134,9 +135,10 @@ public class EventPublishingController {
     public ResponseEntity deleteBinaryEvents(@PathVariable final String eventTypeName,
                                              @RequestBody final byte[] batch,
                                              final HttpServletRequest request,
-                                             final Client client) {
-        //return postBinaryEvents(eventTypeName, batch, request, client, true);
-        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
+                                             final Client client)
+            throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
+            InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
+        return postBinaryEvents(eventTypeName, batch, request, client, true);
     }
 
 
@@ -144,7 +146,7 @@ public class EventPublishingController {
                                             final byte[] batch,
                                             final HttpServletRequest request,
                                             final Client client,
-                                            final boolean delete) throws IOException {
+                                            final boolean delete) {
         TracingService.setOperationName("publish_events")
                 .setTag("event_type", eventTypeName)
                 .setTag("сontent-type", "application/avro-binary")
@@ -165,7 +167,12 @@ public class EventPublishingController {
                 final int totalSizeBytes = batch.length;
                 TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
-                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
+                final List<NakadiRecord> nakadiRecords;
+                try {
+                    nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
+                } catch (final IOException ioe) {
+                    throw new UnprocessableEntityException("Unable to parse batch", ioe);
+                }
                 final List<NakadiRecordResult> recordResults;
                 if (delete) {
                     recordResults = binaryPublisher.delete(nakadiRecords, eventType, preDeletingChecks);
