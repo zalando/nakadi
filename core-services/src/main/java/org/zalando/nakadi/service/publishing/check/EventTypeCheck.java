@@ -11,8 +11,7 @@ import java.util.List;
 public class EventTypeCheck extends Check {
 
     @Override
-    public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records, final boolean delete) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
 
         for (final NakadiRecord record : records) {
             final String recordEventType = record.getMetadata().getEventType();

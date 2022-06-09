@@ -10,8 +10,7 @@ import java.util.List;
 public class EventKeyCheck extends Check {
 
     @Override
-    public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records, final boolean delete) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
         return Collections.emptyList();
     }
 

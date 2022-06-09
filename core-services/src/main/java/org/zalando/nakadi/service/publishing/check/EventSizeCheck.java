@@ -9,8 +9,7 @@ import java.util.List;
 
 public class EventSizeCheck extends Check {
     @Override
-    public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records, final boolean delete) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
         // TODO - team-aruha/issues/1136 - Implement event size check for avro events
         return Collections.emptyList();
     }

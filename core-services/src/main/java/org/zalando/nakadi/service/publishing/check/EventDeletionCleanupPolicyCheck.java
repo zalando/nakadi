@@ -11,9 +11,7 @@ import java.util.List;
 
 public class EventDeletionCleanupPolicyCheck extends Check {
     @Override
-    public List<NakadiRecordResult> execute(
-            final EventType eventType,
-            final List<NakadiRecord> records, final boolean delete) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
         if (eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
             processError(records, null,
                     new EventValidationException("It is not allowed to delete events from non compacted event type"));

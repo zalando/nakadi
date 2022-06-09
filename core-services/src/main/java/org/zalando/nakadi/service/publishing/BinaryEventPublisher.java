@@ -59,18 +59,11 @@ public class BinaryEventPublisher {
                                                      final List<Check> checks,
                                                      final boolean delete) {
         for (final Check check : checks) {
-            final List<NakadiRecordResult> res = check.execute(eventType, records, delete);
+            final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {
                 return res;
             }
         }
-
-        return publish(eventType, records, delete);
-    }
-
-    private List<NakadiRecordResult> publish(final EventType eventType,
-                                             final List<NakadiRecord> records,
-                                             final boolean delete) {
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }
@@ -83,8 +76,8 @@ public class BinaryEventPublisher {
                     nakadiSettings.getTimelineWaitTimeoutMs());
             final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
             final String topic = activeTimeline.getTopic();
-            final Span publishingSpan = TracingService
-                    .buildNewSpan("publishing_to_kafka")
+
+            final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                     .withTag("event_type", eventType.getName())
                     .withTag("type", "binary")
