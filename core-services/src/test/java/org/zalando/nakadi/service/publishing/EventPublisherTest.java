@@ -33,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -593,7 +594,7 @@ public class EventPublisherTest {
     @Test
     public void testAvroEventWasSerialized() throws Exception {
         final org.springframework.core.io.Resource eventTypeRes =
-                new DefaultResourceLoader().getResource("event-type-schema/");
+                new DefaultResourceLoader().getResource("avro-schema/");
         final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(
                 new AvroMapper(), new ObjectMapper(), eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(

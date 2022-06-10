@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
 import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.KPIEventMapper;

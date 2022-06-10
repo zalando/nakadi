@@ -17,8 +17,8 @@ public class AccessLogEventTest {
     private final KPIEventMapper eventMapper;
 
     public AccessLogEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         this.eventMapper = new KPIEventMapper(Set.of(AccessLogEvent.class));
     }
 

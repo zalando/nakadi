@@ -14,7 +14,7 @@ public class BatchPublishedEventTest {
     private final KPIEventMapper eventMapper;
 
     public BatchPublishedEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
+        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
         this.eventMapper = new KPIEventMapper(Set.of(BatchPublishedEvent.class));
     }
 

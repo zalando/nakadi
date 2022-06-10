@@ -1,7 +1,9 @@
 package org.zalando.nakadi.domain;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.zalando.nakadi.generated.avro.EnvelopeV0;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class NakadiRecord {
@@ -73,14 +75,4 @@ public class NakadiRecord {
         return this;
     }
 
-    public ProducerRecord<byte[], byte[]> toProducerRecord(final String topic) throws IOException {
-
-        final var partition = metadata.getPartition();
-        final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
-
-        final var eventData = EnvelopeHolder.produceBytes(
-                metadata.getMetadataVersion(), metadata, os -> os.write(payload));
-
-        return new ProducerRecord<>(topic, partitionInt, eventKey, eventData);
-    }
 }

@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class MetadataEnrichmentStrategyTest {
 
     public MetadataEnrichmentStrategyTest() throws IOException {
         this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(),
-                new DefaultResourceLoader().getResource("event-type-schema/"));
+                new DefaultResourceLoader().getResource("avro-schema/"));
     }
 
     @Test

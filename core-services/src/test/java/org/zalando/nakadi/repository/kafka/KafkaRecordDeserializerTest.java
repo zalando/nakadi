@@ -32,7 +32,7 @@ public class KafkaRecordDeserializerTest {
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
+        final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
         localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
         metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);

@@ -94,7 +94,7 @@ dependencies {
     compile 'org.zalando:problem-spring-web:0.23.0'
 
     // avro
-    compile "org.apache.avro:avro:1.10.2"
+    compile "org.apache.avro:avro:1.11.0"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
 
     compile 'com.github.luben:zstd-jni:1.5.2-2'

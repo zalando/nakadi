@@ -1,17 +1,16 @@
 package org.zalando.nakadi.domain;
 
+import java.time.Instant;
 import java.util.List;
 
-public abstract class NakadiMetadata implements EnvelopeHolder.EventWriter {
-
-    private final byte metadataVersion;
+public class NakadiMetadata {
 
     private String eid;
-    private Long occurredAt;
+    private Instant occurredAt;
     private String eventType;
     private String partition;
     private String publishedBy;
-    private Long receivedAt;
+    private Instant receivedAt;
     private String flowId;
     private String spanCtx;
     private String schemaVersion;
@@ -19,14 +18,6 @@ public abstract class NakadiMetadata implements EnvelopeHolder.EventWriter {
     private List<String> partitionKeys;
     private String partitionCompactionKey;
     private String eventOwner;
-
-    public NakadiMetadata(final byte metadataVersion) {
-        this.metadataVersion = metadataVersion;
-    }
-
-    public byte getMetadataVersion() {
-        return metadataVersion;
-    }
 
     public String getEid() {
         return eid;
@@ -37,11 +28,11 @@ public abstract class NakadiMetadata implements EnvelopeHolder.EventWriter {
         return this;
     }
 
-    public Long getOccurredAt() {
+    public Instant getOccurredAt() {
         return occurredAt;
     }
 
-    public NakadiMetadata setOccurredAt(final Long occurredAt) {
+    public NakadiMetadata setOccurredAt(final Instant occurredAt) {
         this.occurredAt = occurredAt;
         return this;
     }
@@ -73,11 +64,11 @@ public abstract class NakadiMetadata implements EnvelopeHolder.EventWriter {
         return this;
     }
 
-    public Long getReceivedAt() {
+    public Instant getReceivedAt() {
         return receivedAt;
     }
 
-    public NakadiMetadata setReceivedAt(final Long receivedAt) {
+    public NakadiMetadata setReceivedAt(final Instant receivedAt) {
         this.receivedAt = receivedAt;
         return this;
     }

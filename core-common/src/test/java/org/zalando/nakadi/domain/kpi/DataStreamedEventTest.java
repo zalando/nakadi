@@ -19,8 +19,8 @@ public class DataStreamedEventTest {
     private final KPIEventMapper eventMapper;
 
     public DataStreamedEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         this.eventMapper = new KPIEventMapper(Set.of(DataStreamedEvent.class));
     }
 

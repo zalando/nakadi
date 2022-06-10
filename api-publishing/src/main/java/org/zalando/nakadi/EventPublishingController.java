@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -32,7 +33,7 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
@@ -105,6 +106,7 @@ public class EventPublishingController {
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
                                            @RequestBody final byte[] batch,
+                                           @RequestHeader("X-Nakadi-Batch-Version") final String batchVersion,
                                            final HttpServletRequest request,
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
@@ -122,6 +124,7 @@ public class EventPublishingController {
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final byte[] batch,
+                                            final byte batchVersion,
                                             final HttpServletRequest request,
                                             final Client client,
                                             final boolean delete) throws IOException {
@@ -151,7 +154,7 @@ public class EventPublishingController {
 //                }
 
                 final EventPublishResult result;
-                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
+                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch, batchVersion);
                 final List<NakadiRecordResult> recordResults = binaryPublisher
                         .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
                 if (recordResults.isEmpty()) {

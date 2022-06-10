@@ -37,7 +37,7 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.utils.TestUtils;
 

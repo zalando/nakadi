@@ -26,7 +26,6 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -137,8 +136,8 @@ public class KafkaTopicRepositoryTest {
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
         MockitoAnnotations.initMocks(this);
-        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
     }
 
 
@@ -637,11 +636,9 @@ public class KafkaTopicRepositoryTest {
     }
 
     private NakadiRecord getTestNakadiRecord(final String partition) {
-        final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
-                localSchemaRegistry.getLatestEventTypeSchemaVersion(
-                        LocalSchemaRegistry.METADATA_KEY).getSchema());
+        final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setEid(UUID.randomUUID().toString());
-        metadata.setOccurredAt(Instant.now().toEpochMilli());
+        metadata.setOccurredAt(Instant.now());
         metadata.setSchemaVersion("0");
         metadata.setPartition(partition);
         metadata.setEventType("test-event");
