@@ -88,7 +88,6 @@ public class NakadiConfig {
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
                 new EventDeletionCleanupPolicyCheck(),
                 new EventDeletionEmptyPayloadCheck(),
-                new EventSizeCheck(),
                 partitioningCheck,
                 new EventKeyCheck()
         );
