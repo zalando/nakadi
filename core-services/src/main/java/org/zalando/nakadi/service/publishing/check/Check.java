@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.NakadiRecordResult;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class Check {
 
@@ -18,7 +19,16 @@ public abstract class Check {
             final NakadiRecord failedRecord,
             final Exception exception) {
         final List<NakadiRecordResult> recordResults = new LinkedList<>();
-        boolean metFailedRecord = failedRecord == null;
+        if (failedRecord == null) { //This means all records are aborted due to some exception
+            return records.stream()
+                    .map(record -> new NakadiRecordResult(
+                            record.getMetadata(),
+                            NakadiRecordResult.Status.ABORTED,
+                            getCurrentStep(),
+                            exception))
+                    .collect(Collectors.toList());
+        }
+        boolean metFailedRecord = false;
         for (final NakadiRecord nakadiRecord : records) {
             if (failedRecord == nakadiRecord) {
                 recordResults.add(new NakadiRecordResult(
