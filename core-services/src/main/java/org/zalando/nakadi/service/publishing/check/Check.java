@@ -18,7 +18,7 @@ public abstract class Check {
             final NakadiRecord failedRecord,
             final Exception exception) {
         final List<NakadiRecordResult> recordResults = new LinkedList<>();
-        boolean metFailedRecord = false;
+        boolean metFailedRecord = failedRecord == null;
         for (final NakadiRecord nakadiRecord : records) {
             if (failedRecord == nakadiRecord) {
                 recordResults.add(new NakadiRecordResult(

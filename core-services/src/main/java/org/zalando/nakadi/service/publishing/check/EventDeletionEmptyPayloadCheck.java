@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing.check;
 
-import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
@@ -9,12 +8,14 @@ import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import java.util.Collections;
 import java.util.List;
 
-public class EventDeletionCleanupPolicyCheck extends Check {
+public class EventDeletionEmptyPayloadCheck extends Check {
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
-        if (eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
-            return processError(records, null,
-                    new EventValidationException("It is not allowed to delete events from non compacted event type"));
+        for (final var record : records) {
+            if (record.getPayload() != null && record.getPayload().length > 0) {
+                return processError(records, record,
+                        new EventValidationException("Payload must be empty to delete events."));
+            }
         }
         return Collections.emptyList();
     }

@@ -51,23 +51,23 @@ public class BinaryEventPublisher {
     public List<NakadiRecordResult> publishWithChecks(final EventType eventType,
                                                       final List<NakadiRecord> records,
                                                       final List<Check> checks) {
-        return processInternal(eventType, records, checks, false);
+        return processInternal(eventType, records, checks);
     }
 
     private List<NakadiRecordResult> processInternal(final EventType eventType,
                                                      final List<NakadiRecord> records,
-                                                     final List<Check> checks,
-                                                     final boolean delete) {
+                                                     final List<Check> checks) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {
+                LOG.debug("Events sent to {} failed check {}; results are {}",
+                        eventType.getName(), check.getClass().getName(), res);
                 return res;
             }
         }
         if (records == null || records.isEmpty()) {
             throw new IllegalStateException("events have to be present when publishing");
         }
-        // TODO Implement delete
         Closeable publishingCloser = null;
         try {
             // publish under timeline lock
@@ -116,6 +116,8 @@ public class BinaryEventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(eventType, events, preDeletingChecks, true);
+        LOG.debug("Deleting {} binary events from {}, with {} checks",
+                events.size(), eventType.getName(), preDeletingChecks.size());
+        return processInternal(eventType, events, preDeletingChecks);
     }
 }
