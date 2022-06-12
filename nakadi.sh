@@ -37,11 +37,15 @@ function acceptanceTests() {
   export SPRING_PROFILES_ACTIVE=acceptanceTest
   docker-compose up -d --build
   waitForNakadi
-  set -e
-  ./gradlew :acceptance-test:acceptanceTest
-  set +e
-  docker-compose logs nakadi
+  if ./gradlew :acceptance-test:acceptanceTest
+  then
+      errcode=0
+  else
+      errcode=1
+      docker-compose logs nakadi
+  fi
   docker-compose down
+  return $errcode
 }
 
 function buildNakadi() {

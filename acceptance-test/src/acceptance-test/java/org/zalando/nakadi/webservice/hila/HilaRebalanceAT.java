@@ -302,7 +302,7 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(autoClient2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value())));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void testCommitWhenDirectAssignment() throws Exception {
         // connect with 1 stream directly requesting one partition
         final TestStreamingClient client = new TestStreamingClient(URL, subscription.getId(), "batch_flush_timeout=1",
@@ -325,7 +325,7 @@ public class HilaRebalanceAT extends BaseAT {
         assertThat(commitStatusCode, Matchers.is(HttpStatus.NO_CONTENT.value()));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void testAtLeastOneClientGets409OnTheSamePartitionRequest() throws Exception {
         final TestStreamingClient client1 = new TestStreamingClient(
                 URL, subscription.getId(), "batch_flush_timeout=1",
@@ -342,7 +342,7 @@ public class HilaRebalanceAT extends BaseAT {
 
         waitFor(() -> assertThat("at least one client should get 409 conflict",
                 client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
-                        client1.getResponseCode() == HttpStatus.CONFLICT.value()));
+                        client2.getResponseCode() == HttpStatus.CONFLICT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,

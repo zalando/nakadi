@@ -15,7 +15,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -27,7 +26,6 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.StrictJsonParser;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
@@ -35,11 +33,8 @@ import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
@@ -67,13 +62,9 @@ public class SchemaService implements SchemaProviderService {
     private final JsonSchemaEnrichment jsonSchemaEnrichment;
     private final SchemaEvolutionService schemaEvolutionService;
     private final EventTypeRepository eventTypeRepository;
-    private final AdminService adminService;
-    private final AuthorizationValidator authorizationValidator;
     private final EventTypeCache eventTypeCache;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
-    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
-    private final NakadiKpiPublisher nakadiKpiPublisher;
     private final LoadingCache<SchemaId, EventTypeSchema> schemasCache;
     private final Map<SchemaId, org.apache.avro.Schema> avroSchemasCache;
     private final Map<NameSchema, String> schemaVersionCache;
@@ -84,26 +75,17 @@ public class SchemaService implements SchemaProviderService {
                          final JsonSchemaEnrichment jsonSchemaEnrichment,
                          final SchemaEvolutionService schemaEvolutionService,
                          final EventTypeRepository eventTypeRepository,
-                         final AdminService adminService,
-                         final AuthorizationValidator authorizationValidator,
                          final EventTypeCache eventTypeCache,
                          final TimelineSync timelineSync,
-                         final NakadiSettings nakadiSettings,
-                         // dirty hack to resolve cycling dep, but they both need each other
-                         @Lazy final NakadiAuditLogPublisher nakadiAuditLogPublisher,
-                         @Lazy final NakadiKpiPublisher nakadiKpiPublisher) {
+                         final NakadiSettings nakadiSettings) {
         this.schemaRepository = schemaRepository;
         this.paginationService = paginationService;
         this.jsonSchemaEnrichment = jsonSchemaEnrichment;
         this.schemaEvolutionService = schemaEvolutionService;
         this.eventTypeRepository = eventTypeRepository;
-        this.adminService = adminService;
-        this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
-        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
-        this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.schemasCache = CacheBuilder.newBuilder()
                 .build(new CacheLoader<>() {
                     @Override
@@ -116,41 +98,30 @@ public class SchemaService implements SchemaProviderService {
         this.schemaVersionCache = new ConcurrentHashMap<>();
     }
 
-    public void addSchema(final String eventTypeName, final EventTypeSchemaBase newSchema) {
+    public Optional<EventType> addSchema(final EventType originalEventType, final EventTypeSchemaBase newSchema) {
         Closeable closeable = null;
         try {
-            closeable = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
-            final EventType originalEventType = eventTypeRepository.findByName(eventTypeName);
-
-            if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
-                authorizationValidator.authorizeEventTypeAdmin(originalEventType);
-            }
+            closeable = timelineSync.workWithEventType(originalEventType.getName(),
+                    nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventTypeBase updatedEventType = new EventTypeBase(originalEventType);
             updatedEventType.setSchema(newSchema);
 
             final EventType eventType = getValidEvolvedEventType(originalEventType, updatedEventType);
-            eventTypeRepository.update(eventType);
-
-            eventTypeCache.invalidate(eventType.getName());
+            // The version of the schema of the evolved event type will be different if there is a change,
+            // and the schema got evolved, otherwise the version of schema remains the same.
             if (!eventType.getSchema().getVersion().equals(originalEventType.getSchema().getVersion())) {
-                nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
-                        .setEventType(eventTypeName)
-                        .setStatus("updated")
-                        .setCategory(eventType.getCategory().name())
-                        .setAuthz(eventType.getAuthorization() == null ? "disabled" : "enabled")
-                        .setCompatibilityMode(eventType.getCompatibilityMode().name()));
-
-                nakadiAuditLogPublisher.publish(Optional.of(originalEventType), Optional.of(eventType),
-                        NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
-                        eventType.getName());
+                eventTypeRepository.update(eventType);
+                eventTypeCache.invalidate(eventType.getName());
+                return Optional.of(eventType);
             }
+            return Optional.empty();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
-            throw new EventTypeUnavailableException("Event type " + eventTypeName
+            throw new EventTypeUnavailableException("Event type " + originalEventType.getName()
                     + " is currently in maintenance, please repeat request");
         } finally {
             try {
@@ -201,6 +172,10 @@ public class SchemaService implements SchemaProviderService {
         } catch (final ExecutionException e) {
             throw new ServiceTemporarilyUnavailableException("Failed to access schemas cache", e.getCause());
         }
+    }
+
+    public Optional<EventTypeSchema> getLatestSchemaByType(final String name, final EventTypeSchema.Type schemaType) {
+        return schemaRepository.getLatestSchemaByType(name, schemaType);
     }
 
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
@@ -261,7 +236,7 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType);
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, schemaAsJson);
         final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);

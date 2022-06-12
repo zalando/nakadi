@@ -68,7 +68,7 @@ public class LocalSchemaRegistry {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
 
-        for (int i = 1; ; ++i) {
+        for (int i = 0; ; ++i) {
             try {
                 final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
                 final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();

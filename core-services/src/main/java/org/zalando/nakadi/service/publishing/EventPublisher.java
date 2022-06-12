@@ -42,7 +42,7 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.JsonPathAccess;
-import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
@@ -178,6 +178,7 @@ public class EventPublisher {
 
     private void enrich(final List<BatchItem> batch, final EventType eventType)
             throws EnrichmentException {
+
         for (final BatchItem batchItem : batch) {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
@@ -320,7 +321,7 @@ public class EventPublisher {
     private void validateSchema(final JSONObject event, final EventType eventType)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
 
-        final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
+        final JsonSchemaValidator validator = eventTypeCache.getValidator(eventType.getName());
         final Optional<ValidationError> validationError = validator.validate(event);
         if (validationError.isPresent()) {
             throw new EventValidationException(validationError.get().getMessage());

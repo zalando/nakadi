@@ -55,11 +55,11 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
 
+
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
                     metadata.get(NakadiAvroMetadata.SCHEMA_VERSION).toString(),
                     (v) -> new SequenceDecoder(
-                            schemaService.getAvroSchema(eventType, v)
-                    )
+                            schemaService.getAvroSchema(eventType, v))
             );
 
             final GenericRecord event = eventDecoder.read(envelope.getPayload());

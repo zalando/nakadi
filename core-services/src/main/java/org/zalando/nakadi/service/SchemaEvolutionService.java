@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-
 import com.google.common.collect.Lists;
 import org.apache.avro.AvroRuntimeException;
 import org.everit.json.schema.Schema;
@@ -105,22 +104,36 @@ public class SchemaEvolutionService {
     }
 
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws SchemaEvolutionException {
-        checkEvolutionIncompatibilities(original, eventType);
-        final var version = original.getSchema().getVersion();
-        final var typeChanged = !original.getSchema().getType().
-                equals(eventType.getSchema().getType());
 
-        if(typeChanged) {
-            return bumpVersion(original, eventType, MAJOR, new Version(version));
-        }
+        final EventTypeSchema originalSchema = original.getSchema();
+        final EventTypeSchemaBase schema = eventType.getSchema();
 
-        switch (eventType.getSchema().getType()) {
+        switch (schema.getType()) {
             case JSON_SCHEMA:
-                return evolveJsonSchema(original, eventType, new Version(version));
+                switch (originalSchema.getType()) {
+                    case JSON_SCHEMA:
+                        checkEvolutionIncompatibilities(original, eventType);
+                        return evolveJsonSchema(original, eventType, new Version(originalSchema.getVersion()));
+
+                    case AVRO_SCHEMA:
+                        throw new SchemaEvolutionException("Cannot change from avro_schema to json_schema!");
+
+                    default:
+                        throw new SchemaEvolutionException("Unsupported schema type: " + originalSchema.getType());
+                }
             case AVRO_SCHEMA:
-                return evolveAvroSchema(original, eventType, new Version(version));
+                switch (originalSchema.getType()) {
+                    case JSON_SCHEMA:
+                        return bumpVersion(original, eventType, MAJOR, new Version(originalSchema.getVersion()));
+
+                    case AVRO_SCHEMA:
+                        return evolveAvroSchema(original, eventType, new Version(originalSchema.getVersion()));
+
+                    default:
+                        throw new SchemaEvolutionException("Unsupported schema type: " + originalSchema.getType());
+                }
             default:
-                throw new RuntimeException("unsupported type for evolving " + eventType.getSchema().getType());
+                throw new SchemaEvolutionException("Unsupported schema type: " + schema.getType());
         }
     }
 

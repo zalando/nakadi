@@ -586,6 +586,19 @@ public class EventTypeService {
         return eventType;
     }
 
+    /**
+     * Same as get(final String eventTypeName), but without using cache.
+     *
+     * @param eventTypeName Name of event-type to be fetched
+     * @return EventType
+     * @throws NoSuchEventTypeException if event-type does not exist
+     */
+    public EventType fetchFromRepository(final String eventTypeName) throws NoSuchEventTypeException {
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+        return eventType;
+    }
+
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
             throws EventTypeDeletionException {
         try {
