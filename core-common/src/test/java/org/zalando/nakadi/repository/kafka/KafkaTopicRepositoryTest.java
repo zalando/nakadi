@@ -642,8 +642,7 @@ public class KafkaTopicRepositoryTest {
 
         return new NakadiRecord()
                 .setMetadata(metadata)
-                .setPayload(new byte[0])
-                .setFormat(NakadiRecord.Format.AVRO.getFormat());
+                .setPayload(new byte[0]);
     }
 
 }

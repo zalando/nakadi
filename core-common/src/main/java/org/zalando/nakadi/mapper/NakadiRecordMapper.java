@@ -18,6 +18,7 @@ import org.zalando.nakadi.service.LocalSchemaRegistry;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -26,6 +27,8 @@ import java.util.Map;
 
 @Service
 public class NakadiRecordMapper {
+
+    public static final String HEADER_FORMAT = new String(Format.AVRO.format);
 
     public enum Format {
         // the hope is that it is enough values from 0xFF till 0x7F (127) to cover possible.
@@ -45,24 +48,32 @@ public class NakadiRecordMapper {
 
     private final LocalSchemaRegistry localSchemaRegistry;
     private final RawMessageEncoder<EnvelopeV0> encoder;
-    private final Map<String, RawMessageDecoder<PublishingBatchV0>> decoders;
+    private final Map<String, RawMessageDecoder<PublishingBatchV0>> batchDecoders;
+    private final Map<String, RawMessageDecoder<EnvelopeV0>> envelopeDecoders;
     private final byte latestEnvelopeVersion;
 
     public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
         this.localSchemaRegistry = localSchemaRegistry;
         this.encoder = new RawMessageEncoder<>(new SpecificData(), EnvelopeV0.SCHEMA$);
-        this.decoders = new HashMap<>(2);
+        this.envelopeDecoders = new HashMap<>(2);
+        this.batchDecoders = new HashMap<>(2);
         this.localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
-                .entrySet().forEach(entry ->
-                decoders.put(entry.getKey(), new RawMessageDecoder<>(
-                        new SpecificData(), entry.getValue(), PublishingBatchV0.SCHEMA$)));
+                .entrySet().forEach(entry -> {
+                    envelopeDecoders.put(entry.getKey(), new RawMessageDecoder<>(
+                            new SpecificData(), entry.getValue().getField("events").schema()
+                            .getElementType(), EnvelopeV0.SCHEMA$));
+
+                    batchDecoders.put(entry.getKey(), new RawMessageDecoder<>(
+                            new SpecificData(), entry.getValue(), PublishingBatchV0.SCHEMA$));
+                }
+        );
         this.latestEnvelopeVersion = Byte.valueOf(this.localSchemaRegistry
                 .getLatestEventTypeSchemaVersion(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
                 .getVersion());
     }
 
     public List<NakadiRecord> fromBytesBatch(final byte[] batch, final byte batchVersion) {
-        final RawMessageDecoder<PublishingBatchV0> decoder = decoders.get(String.valueOf(batchVersion));
+        final RawMessageDecoder<PublishingBatchV0> decoder = batchDecoders.get(String.valueOf(batchVersion));
         if (decoder == null) {
             throw new RuntimeException("unsupported batch version");
         }
@@ -78,6 +89,14 @@ public class NakadiRecordMapper {
         }
 
         return records;
+    }
+
+    public EnvelopeV0 fromBytesEnvelope(final InputStream data, final String envelopeVersion) {
+        final RawMessageDecoder<EnvelopeV0> decoder = envelopeDecoders.get(envelopeVersion);
+        if (decoder == null) {
+            throw new RuntimeException("unsupported envelope version");
+        }
+        return decoder.decode(data, new EnvelopeV0());
     }
 
     public NakadiMetadata mapToNakadiMetadata(final MetadataV0 metadata) {

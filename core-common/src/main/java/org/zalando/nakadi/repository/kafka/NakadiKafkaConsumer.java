@@ -8,8 +8,8 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
-import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.util.ArrayList;
@@ -68,8 +68,8 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
 
             result.add(new ConsumedEvent(
-                    recordDeserializer.deserialize(
-                            getHeaderValue(record.headers(), NakadiRecord.HEADER_FORMAT),
+                    recordDeserializer.deserializeToJsonBytes(
+                            getHeaderValue(record.headers(), NakadiRecordMapper.HEADER_FORMAT),
                             record.value()),
                     cursor.toNakadiCursor(timeline),
                     record.timestamp(),

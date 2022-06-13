@@ -11,8 +11,8 @@ import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
@@ -57,12 +57,12 @@ public class KafkaRecordDeserializerTest {
                 getEventWriter2());
 
         // try to deserialize that data when we would read Kafka record
-        final byte[] deserializedEvent0 = deserializer.deserialize(
-                NakadiRecord.Format.AVRO.getFormat(),
+        final byte[] deserializedEvent0 = deserializer.deserializeToJsonBytes(
+                NakadiRecordMapper.Format.AVRO.getFormat(),
                 data0
         );
-        final byte[] deserializedEvent1 = deserializer.deserialize(
-                NakadiRecord.Format.AVRO.getFormat(),
+        final byte[] deserializedEvent1 = deserializer.deserializeToJsonBytes(
+                NakadiRecordMapper.Format.AVRO.getFormat(),
                 data1
         );
 
@@ -71,6 +71,13 @@ public class KafkaRecordDeserializerTest {
 
         Assert.assertTrue(
                 getExpectedNode2().similar(new JSONObject(new String(deserializedEvent1))));
+    }
+
+    @Test
+    public void testDeserializeAvroNullEventInLogCompactedEventType() {
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
+
+        Assert.assertNull(deserializer.deserializeToJsonBytes(null, null));
     }
 
     @Test
@@ -98,8 +105,8 @@ public class KafkaRecordDeserializerTest {
                 eventWriter);
 
         // try to deserialize that data when we would read Kafka record
-        final byte[] deserializedEvent = deserializer.deserialize(
-                NakadiRecord.Format.AVRO.getFormat(),
+        final byte[] deserializedEvent = deserializer.deserializeToJsonBytes(
+                NakadiRecordMapper.Format.AVRO.getFormat(),
                 data
         );
 

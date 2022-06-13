@@ -5,9 +5,10 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
+import org.zalando.nakadi.generated.avro.EnvelopeV0;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.service.SchemaProviderService;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -15,22 +16,18 @@ import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
 
-    private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
     private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(
-            final SchemaProviderService schemaService,
-            final LocalSchemaRegistry localSchemaRegistry) {
-        this.schemaService = schemaService;
+    public AvroDeserializerWithSequenceDecoder(final LocalSchemaRegistry localSchemaRegistry) {
         this.localSchemaRegistry = localSchemaRegistry;
 
         this.metadataSequenceDecoders = new HashMap<>();
         this.eventSequenceDecoders = new HashMap<>();
     }
 
-    public byte[] deserializeAvro(final EnvelopeHolder envelope) throws RuntimeException {
+    public byte[] deserializeAvroToJsonBytes(final EnvelopeHolder envelope) throws RuntimeException {
         try {
             final byte metadataVersion = envelope.getMetadataVersion();
 
