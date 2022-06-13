@@ -11,6 +11,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
@@ -68,6 +69,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final Comparator<NakadiCursor> comparator;
     private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     public MultiTimelineEventConsumer(
             final String clientId,
@@ -75,13 +77,15 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
             final TimelineSync timelineSync,
             final Comparator<NakadiCursor> comparator,
             final SchemaProviderService schemaService,
-            final LocalSchemaRegistry localSchemaRegistry) {
+            final LocalSchemaRegistry localSchemaRegistry,
+            final NakadiRecordMapper nakadiRecordMapper) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.comparator = comparator;
         this.schemaService = schemaService;
         this.localSchemaRegistry = localSchemaRegistry;
+        this.nakadiRecordMapper = nakadiRecordMapper;
     }
 
     @Override
@@ -258,7 +262,8 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
-                        clientId, entry.getValue(), new KafkaRecordDeserializer(schemaService, localSchemaRegistry));
+                        clientId, entry.getValue(), new KafkaRecordDeserializer(
+                                nakadiRecordMapper, schemaService, localSchemaRegistry));
                 eventConsumers.put(repo, consumer);
             }
         }

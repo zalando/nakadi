@@ -1,31 +1,47 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.avro.generic.GenericRecord;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
+import org.apache.avro.message.RawMessageDecoder;
+import org.apache.avro.specific.SpecificData;
+import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
+import org.zalando.nakadi.enrichment.MetadataEnrichmentStrategy;
 import org.zalando.nakadi.generated.avro.EnvelopeV0;
 import org.zalando.nakadi.generated.avro.MetadataV0;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.service.SchemaProviderService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
     private final AvroDeserializerWithSequenceDecoder decoder;
+    private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
+    private final Map<String, RawMessageDecoder<GenericRecord>> decoders;
 
     public KafkaRecordDeserializer(final NakadiRecordMapper nakadiRecordMapper,
+                                   final SchemaProviderService schemaService,
                                    final LocalSchemaRegistry localSchemaRegistry) {
         this.nakadiRecordMapper = nakadiRecordMapper;
+        this.schemaService = schemaService;
         this.decoder = new AvroDeserializerWithSequenceDecoder(localSchemaRegistry);
+        this.decoders = new HashMap<>(1);
     }
 
     public byte[] deserializeToJsonBytes(final byte[] eventFormat, final byte[] data) {
+        if (data == null) {
+            return null;
+        }
+
         if (eventFormat == null) {
             final int formatLength = NakadiRecordMapper.Format.AVRO.getFormat().length - 1;
             if (Arrays.equals(data, 0, formatLength,
@@ -55,36 +71,36 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         try {
             final MetadataV0 metadata = envelope.getMetadata();
 
-            metadata.put("occurred_at", new DateTime(
-                    (long) metadata.get("occurred_at"), DateTimeZone.UTC).toString());
-
-            final var receivedAt = metadata.get("received_at");
-            if (receivedAt != null) {
-                metadata.put("received_at", new DateTime(
-                        (long) receivedAt, DateTimeZone.UTC).toString());
-            }
-
-            final String eventType = metadata.get("event_type").toString();
-
-            final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
-                    metadata.get("version").toString(),
-                    (v) -> new SequenceDecoder(
-                            localSchemaRegistry.getEventTypeSchema(eventType, v))
+            final RawMessageDecoder<GenericRecord> decoder = decoders.computeIfAbsent(
+                    metadata.getVersion(),
+                    (v) -> new RawMessageDecoder<>(
+                            new SpecificData(), schemaService.getAvroSchema(metadata.getEventType(), v))
             );
 
-            final GenericRecord event = eventDecoder.read(envelope.getPayload());
+            final GenericRecord event = decoder.decode(envelope.getPayload());
             final StringBuilder sEvent = new StringBuilder(event.toString());
 
-            final var sanitizedMetadata = getJsonWithNonNullValues(metadata.toString()).toString();
+            final var sanitizedMetadata = mapToJson(metadata).toString();
+
             sEvent.deleteCharAt(sEvent.length() - 1)
                     .append(", \"metadata\":")
                     .append(sanitizedMetadata).append('}');
 
             return sEvent.toString().getBytes(StandardCharsets.UTF_8);
-        } catch (
-                final IOException io) {
+        } catch (final IOException io) {
             throw new RuntimeException("failed to deserialize avro event", io);
         }
+    }
 
+    private JSONObject mapToJson(final MetadataV0 metadata) {
+        final JSONObject metadataObj = new JSONObject(metadata.toString());
+        final var iterator = metadataObj.keys();
+        while (iterator.hasNext()) {
+            final var key = iterator.next();
+            if (metadataObj.get(key).equals(JSONObject.NULL)) {
+                iterator.remove();
+            }
+        }
+        return metadataObj;
     }
 }

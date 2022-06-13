@@ -4,7 +4,10 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -12,12 +15,18 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
+import org.zalando.nakadi.generated.avro.EnvelopeV0;
+import org.zalando.nakadi.generated.avro.MetadataV0;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
+import org.zalando.nakadi.util.AvroUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.Optional;
 
 public class KafkaRecordDeserializerTest {
@@ -26,7 +35,8 @@ public class KafkaRecordDeserializerTest {
     private static final String SOME_TIME_DATE_STRING = "2022-01-27T13:30:32.172Z";
     private final LocalSchemaRegistry localSchemaRegistry;
     private final SchemaProviderService schemaService;
-    private VersionedAvroSchema metadataSchema;
+    private final VersionedAvroSchema metadataSchema;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
@@ -34,11 +44,13 @@ public class KafkaRecordDeserializerTest {
         localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
         metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
+        nakadiRecordMapper = new NakadiRecordMapper(localSchemaRegistry);
     }
 
     @Test
     public void testDeserializeAvro() throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
+                nakadiRecordMapper, schemaService, localSchemaRegistry);
 
         final JSONObject jsonObject = new JSONObject()
                 .put("flow_id", "hek")
@@ -75,7 +87,8 @@ public class KafkaRecordDeserializerTest {
 
     @Test
     public void testDeserializeAvroNullEventInLogCompactedEventType() {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
+                nakadiRecordMapper, schemaService, localSchemaRegistry);
 
         Assert.assertNull(deserializer.deserializeToJsonBytes(null, null));
     }
@@ -92,9 +105,59 @@ public class KafkaRecordDeserializerTest {
         Assert.assertTrue(expectedJson.similar(actualJson));
     }
 
+    @Test
+    public void testDeserializeAvroEnvelope() throws IOException {
+        final Schema schema = AvroUtils.getParsedSchema(new DefaultResourceLoader()
+                .getResource("test.deserialize.avro.avsc").getInputStream());
+        final SchemaProviderService schemaService = new SchemaProviderService() {
+            @Override
+            public Schema getAvroSchema(String etName, String version) {
+                return schema;
+            }
+
+            @Override
+            public String getAvroSchemaVersion(String etName, Schema schema) {
+                return null;
+            }
+        };
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
+                nakadiRecordMapper, schemaService, localSchemaRegistry);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        new GenericDatumWriter<>(schema).write(
+                new GenericRecordBuilder(schema).set("foo", "bar").build(),
+                EncoderFactory.get().directBinaryEncoder(baos, null));
+
+        final Instant now = Instant.now();
+        final EnvelopeV0 envelope = EnvelopeV0.newBuilder()
+                .setMetadata(MetadataV0.newBuilder()
+                        .setEid("4623130E-2983-4134-A472-F35154CFF980")
+                        .setEventOwner("nakadi")
+                        .setFlowId("xxx-event-flow-id")
+                        .setOccurredAt(now)
+                        .setEventType("nakadi-test-event-type")
+                        .setVersion("1.0.0")
+                        .build())
+                .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                .build();
+
+        baos = new ByteArrayOutputStream();
+        baos.write((byte) 0xFF);
+        baos.write((byte) 0x00);
+        new SpecificDatumWriter<EnvelopeV0>(EnvelopeV0.SCHEMA$)
+                .write(envelope, EncoderFactory.get().directBinaryEncoder(baos, null));
+
+        byte[] bytes = deserializer.deserializeToJsonBytes(null, baos.toByteArray());
+
+        System.out.println(new String(bytes));
+
+
+    }
+
     private JSONObject getSerializedJsonObject(final VersionedAvroSchema metadataVersion,
                                                final JSONObject metadataOverride) throws IOException {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(schemaService, localSchemaRegistry);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
+                nakadiRecordMapper, schemaService, localSchemaRegistry);
 
         final var eventWriter = getEventWriter1();
 
