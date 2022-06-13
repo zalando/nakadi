@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,8 +19,8 @@ import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -97,7 +95,7 @@ public class NakadiKpiPublisherTest {
 
         // Publish the above KPIEvent and capture it.
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        final var localRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final var localRegistry = new LocalSchemaRegistry(eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), new UUIDGenerator(),
                 new TestSchemaProviderService(localRegistry), localRegistryMock, recordMapper)

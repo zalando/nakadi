@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.kpi.AccessLogEvent;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
@@ -24,6 +24,7 @@ import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -84,8 +85,7 @@ public class NakadiKpiPublisher {
             if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
                 final String eventVersion = schemaService.getAvroSchemaVersion(
                         eventTypeName, kpiEvent.getSchema());
-                final NakadiAvroMetadata metadata = buildMetaData(
-                        eventTypeName, VERSION_METADATA, eventVersion);
+                final NakadiMetadata metadata = buildMetaData(eventTypeName, eventVersion);
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent);
 
                 final NakadiRecord nakadiRecord =
@@ -101,16 +101,10 @@ public class NakadiKpiPublisher {
         }
     }
 
-    private NakadiAvroMetadata buildMetaData(final String eventTypeName,
-                                             final String metadataVersion,
-                                             final String eventVersion) {
-        final var metaSchemaEntry = localSchemaRegistry
-                .getEventTypeSchema(LocalSchemaRegistry.METADATA_KEY, VERSION_METADATA);
-
-        final var metadata = new NakadiAvroMetadata(
-                Byte.parseByte(metadataVersion),
-                metaSchemaEntry);
-        metadata.setOccurredAt(System.currentTimeMillis());
+    private NakadiMetadata buildMetaData(final String eventTypeName,
+                                         final String eventVersion) {
+        final var metadata = new NakadiMetadata();
+        metadata.setOccurredAt(Instant.now());
         metadata.setEid(uuidGenerator.randomUUID().toString());
         metadata.setEventType(eventTypeName);
         metadata.setSchemaVersion(eventVersion);

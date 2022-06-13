@@ -5,7 +5,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 
@@ -44,29 +43,21 @@ public class AvroDeserializerWithSequenceDecoder {
 
             final GenericRecord metadata = metadataDecoder.read(envelope.getMetadata());
 
-            metadata.put(NakadiAvroMetadata.OCCURRED_AT, new DateTime(
-                    (long) metadata.get(NakadiAvroMetadata.OCCURRED_AT), DateTimeZone.UTC).toString());
+            metadata.put("occurred_at", new DateTime(
+                    (long) metadata.get("occurred_at"), DateTimeZone.UTC).toString());
 
-            final var receivedAt = metadata.get(NakadiAvroMetadata.RECEIVED_AT);
+            final var receivedAt = metadata.get("received_at");
             if (receivedAt != null) {
-                metadata.put(NakadiAvroMetadata.RECEIVED_AT, new DateTime(
+                metadata.put("received_at", new DateTime(
                         (long) receivedAt, DateTimeZone.UTC).toString());
             }
 
-            final String eventType = metadata.get(NakadiAvroMetadata.EVENT_TYPE).toString();
-
+            final String eventType = metadata.get("event_type").toString();
 
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
-                    metadata.get(NakadiAvroMetadata.SCHEMA_VERSION).toString(),
-                    (v) -> {
-                        if (v.contains(".")) {
-                            return new SequenceDecoder(
-                                    schemaService.getAvroSchema(eventType, v));
-                        } else {
-                            return new SequenceDecoder(
-                                    localSchemaRegistry.getEventTypeSchema(eventType, v));
-                        }
-                    }
+                    metadata.get("version").toString(),
+                    (v) -> new SequenceDecoder(
+                            localSchemaRegistry.getEventTypeSchema(eventType, v))
             );
 
             final GenericRecord event = eventDecoder.read(envelope.getPayload());
@@ -78,9 +69,11 @@ public class AvroDeserializerWithSequenceDecoder {
                     .append(sanitizedMetadata).append('}');
 
             return sEvent.toString().getBytes(StandardCharsets.UTF_8);
-        } catch (final IOException io) {
+        } catch (
+                final IOException io) {
             throw new RuntimeException("failed to deserialize avro event", io);
         }
+
     }
 
     private static JSONObject getJsonWithNonNullValues(final String json) {

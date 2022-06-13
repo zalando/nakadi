@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -36,6 +33,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.view.Cursor;
@@ -84,6 +82,7 @@ public class KafkaTopicRepositoryTest {
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
+    private final NakadiRecordMapper nakadiRecordMapper = mock(NakadiRecordMapper.class);
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
     private final LocalSchemaRegistry localSchemaRegistry;
@@ -134,7 +133,7 @@ public class KafkaTopicRepositoryTest {
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
         kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
         MockitoAnnotations.initMocks(this);
         final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
         this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
@@ -548,18 +547,16 @@ public class KafkaTopicRepositoryTest {
         return new Cursor(partition, offset);
     }
 
-    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory,
-                                                       final MetricRegistry metricRegistry) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
             return new KafkaTopicRepository.Builder()
                     .setKafkaZookeeper(createKafkaZookeeper())
                     .setKafkaFactory(kafkaFactory)
                     .setNakadiSettings(nakadiSettings)
                     .setKafkaSettings(kafkaSettings)
-                    .setZookeeperSettings(zookeeperSettings)
                     .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                     .setKafkaLocationManager(kafkaLocationManager)
-                    .setMetricRegistry(metricRegistry)
+                    .setNakadiRecordMapper(nakadiRecordMapper)
                     .build();
         } catch (final Exception e) {
             throw new RuntimeException(e);

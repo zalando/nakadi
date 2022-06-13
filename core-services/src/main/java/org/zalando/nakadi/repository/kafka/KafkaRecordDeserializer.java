@@ -1,7 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 
@@ -11,6 +11,7 @@ import java.util.Arrays;
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
     private final AvroDeserializerWithSequenceDecoder decoder;
+    private final AvroDeserializerWithSequenceDecoder decoder1;
 
     public KafkaRecordDeserializer(final SchemaProviderService schemaService,
                                    final LocalSchemaRegistry localSchemaRegistry) {
@@ -19,11 +20,16 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
 
     public byte[] deserialize(final byte[] eventFormat, final byte[] data) {
         if (eventFormat == null) {
-            // JSON
+            final int formatLength = NakadiRecordMapper.Format.AVRO.getFormat().length - 1;
+            if (Arrays.equals(data, 0, formatLength,
+                    NakadiRecordMapper.Format.AVRO.getFormat(), 0, formatLength)) {
+                return decoder1.deserializeAvro();
+            }
+
             return data;
         }
 
-        if (Arrays.equals(eventFormat, NakadiRecord.Format.AVRO.getFormat())) {
+        if (Arrays.equals(eventFormat, NakadiRecordMapper.Format.AVRO.getFormat())) {
             try {
                 return decoder.deserializeAvro(EnvelopeHolder.fromBytes(data));
             } catch (IOException e) {

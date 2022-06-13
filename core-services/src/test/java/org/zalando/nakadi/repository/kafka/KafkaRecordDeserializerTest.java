@@ -1,7 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -33,7 +31,7 @@ public class KafkaRecordDeserializerTest {
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
         metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
     }
