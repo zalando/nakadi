@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.avro.Schema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -8,6 +9,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.Resource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -31,12 +34,17 @@ import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.TestSchemaProviderService;
+import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.IntStream.range;
@@ -66,13 +74,13 @@ public class TimelineServiceTest {
     private TimelineService timelineService;
 
     @Before
-    public void setupService() {
+    public void setupService() throws IOException {
         timelineService = new TimelineService(eventTypeCache,
                 storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
                 topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
                 adminService, featureToggleService, "compacted-storage",
                 new TestSchemaProviderService(localSchemaRegistry), localSchemaRegistry,
-                new NakadiRecordMapper(localSchemaRegistry));
+                TestUtils.getNakadiRecordMapper());
     }
 
     @Test(expected = NotFoundException.class)

@@ -103,7 +103,7 @@ public class NakadiKpiPublisher {
 
     private NakadiMetadata buildMetaData(final String eventTypeName,
                                          final String eventVersion) {
-        final var metadata = new NakadiMetadata();
+        final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setOccurredAt(Instant.now());
         metadata.setEid(uuidGenerator.randomUUID().toString());
         metadata.setEventType(eventTypeName);

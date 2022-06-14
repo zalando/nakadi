@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.avro.Schema;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -18,6 +19,7 @@ import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.Resource;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
@@ -34,8 +36,9 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.util.AvroUtils;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 
 import java.io.IOException;
@@ -48,6 +51,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -79,13 +83,11 @@ public class KafkaTopicRepositoryTest {
     private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
-    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
-    private final NakadiRecordMapper nakadiRecordMapper = mock(NakadiRecordMapper.class);
+    private NakadiRecordMapper nakadiRecordMapper;
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
-    private final LocalSchemaRegistry localSchemaRegistry;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -132,13 +134,11 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
+        nakadiRecordMapper = TestUtils.getNakadiRecordMapper();
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
         MockitoAnnotations.initMocks(this);
-        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
     }
-
 
     @Test
     public void canListAllTopics() {
