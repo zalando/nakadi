@@ -31,7 +31,7 @@ public class EventValidatorBuilder {
         }
 
         final Schema schema = SchemaLoader.builder()
-                .schemaJson(loader.effectiveSchema(eventType, new JSONObject(jsonSchema.get().getSchema())))
+                .schemaJson(loader.effectiveSchema(eventType, jsonSchema.get().getSchema()))
                 .addFormatValidator(new RFC3339DateTimeValidator())
                 .build()
                 .load()
