@@ -277,7 +277,7 @@ public class SchemaServiceTest {
     }
 
     @Test
-    public void whenSomething() throws Exception {
+    public void testNoExceptionThrownWhenSchemaHasArrayItems() throws Exception {
         final String jsonSchemaString = Resources.toString(
                 Resources.getResource("compatible-additional-item-schema.json"),
                 Charsets.UTF_8);
