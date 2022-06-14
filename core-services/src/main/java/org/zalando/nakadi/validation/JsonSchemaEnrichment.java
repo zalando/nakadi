@@ -53,8 +53,8 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    public JSONObject effectiveSchema(final EventTypeBase eventType, final JSONObject schema) {
-
+    public JSONObject effectiveSchema(final EventTypeBase eventType, final String schemaString) {
+        final JSONObject schema = new JSONObject(schemaString);
         if (eventType.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
             this.enforceStrictValidation(schema);
         }
