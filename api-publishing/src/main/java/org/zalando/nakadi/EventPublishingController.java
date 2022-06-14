@@ -107,8 +107,8 @@ public class EventPublishingController {
             produces = "application/json; charset=utf-8"
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
-                                           @RequestBody final InputStream batch,
                                            @RequestHeader("X-Nakadi-Batch-Version") final String batchVersion,
+                                           final HttpServletRequest request,
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
@@ -116,7 +116,7 @@ public class EventPublishingController {
         // TODO: check that event type schema type is AVRO!
 
         try {
-            return postBinaryEvents(eventTypeName, batch, batchVersion, client, false);
+            return postBinaryEvents(eventTypeName, request.getInputStream(), batchVersion, client, false);
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
