@@ -5,7 +5,6 @@ import org.apache.avro.message.RawMessageDecoder;
 import org.apache.avro.specific.SpecificData;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.enrichment.MetadataEnrichmentStrategy;
 import org.zalando.nakadi.generated.avro.EnvelopeV0;
 import org.zalando.nakadi.generated.avro.MetadataV0;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -17,9 +16,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
@@ -43,10 +40,10 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         }
 
         if (eventFormat == null) {
-            final int formatLength = NakadiRecordMapper.Format.AVRO.getFormat().length - 1;
+            final int formatLength = NakadiRecordMapper.Format.AVRO.getFormat().length;
             if (Arrays.equals(data, 0, formatLength,
                     NakadiRecordMapper.Format.AVRO.getFormat(), 0, formatLength)) {
-                final ByteArrayInputStream bais = new ByteArrayInputStream(data, 2, data.length - 1);
+                final ByteArrayInputStream bais = new ByteArrayInputStream(data, 2, data.length - 2);
                 final EnvelopeV0 envelope = nakadiRecordMapper.fromBytesEnvelope(bais, String.valueOf(data[1]));
                 return deserializeToJsonBytes(envelope);
             }

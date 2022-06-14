@@ -21,7 +21,7 @@ public class BatchPublishedEvent extends KPIEvent {
     @KPIField("ms_spent")
     private long msSpent;
     @KPIField("batch_size")
-    private int totalSizeBytes;
+    private long totalSizeBytes;
 
     public BatchPublishedEvent() {
         super(KPIEventTypes.BATCH_PUBLISHED);
@@ -81,11 +81,11 @@ public class BatchPublishedEvent extends KPIEvent {
         return this;
     }
 
-    public int getTotalSizeBytes() {
+    public long getTotalSizeBytes() {
         return totalSizeBytes;
     }
 
-    public BatchPublishedEvent setTotalSizeBytes(final int totalSizeBytes) {
+    public BatchPublishedEvent setTotalSizeBytes(final long totalSizeBytes) {
         this.totalSizeBytes = totalSizeBytes;
         return this;
     }

@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -290,10 +289,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 .setKafkaFactory(factory)
                 .setNakadiSettings(nakadiSettings)
                 .setKafkaSettings(kafkaSettings)
-                .setZookeeperSettings(zookeeperSettings)
                 .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                 .setKafkaLocationManager(kafkaLocationManager)
-                .setMetricRegistry(new MetricRegistry())
                 .build();
     }
 

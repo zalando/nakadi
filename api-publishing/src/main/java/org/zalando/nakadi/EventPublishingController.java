@@ -1,6 +1,7 @@
 package org.zalando.nakadi;
 
 import com.google.common.base.Charsets;
+import com.google.common.io.CountingInputStream;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -33,11 +35,11 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -105,7 +107,7 @@ public class EventPublishingController {
             produces = "application/json; charset=utf-8"
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
-                                           @RequestBody final byte[] batch,
+                                           @RequestBody final InputStream batch,
                                            @RequestHeader("X-Nakadi-Batch-Version") final String batchVersion,
                                            final HttpServletRequest request,
                                            final Client client)
@@ -123,7 +125,7 @@ public class EventPublishingController {
     }
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
-                                            final byte[] batch,
+                                            final InputStream batch,
                                             final byte batchVersion,
                                             final HttpServletRequest request,
                                             final Client client,
@@ -145,16 +147,15 @@ public class EventPublishingController {
         try {
             final long startingNanos = System.nanoTime();
             try {
-                final int totalSizeBytes = batch.length;
-                TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
-
                 // todo implement delete
 //                if (delete) {
 //                    result = publisher.delete(eventsAsString, eventTypeName);
 //                }
 
+                final CountingInputStream countingInputStream = new CountingInputStream(batch);
                 final EventPublishResult result;
-                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch, batchVersion);
+                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(
+                        countingInputStream, batchVersion);
                 final List<NakadiRecordResult> recordResults = binaryPublisher
                         .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
                 if (recordResults.isEmpty()) {
@@ -164,6 +165,9 @@ public class EventPublishingController {
                 result = publishingResultConverter.mapPublishingResultToView(recordResults);
 
                 final int eventCount = result.getResponses().size();
+
+                final long totalSizeBytes = countingInputStream.getCount();
+                TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
                 reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
                 reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
@@ -257,7 +261,7 @@ public class EventPublishingController {
         }
     }
 
-    private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount,
+    private void reportSLOs(final long startingNanos, final long totalSizeBytes, final int eventCount,
                             final EventPublishResult eventPublishResult, final String eventTypeName,
                             final Client client) {
         if (eventPublishResult.getStatus() == EventPublishingStatus.SUBMITTED) {
@@ -276,7 +280,7 @@ public class EventPublishingController {
     }
 
     private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
-                               final int totalSizeBytes, final int eventCount) {
+                               final long totalSizeBytes, final int eventCount) {
         if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
             eventTypeMetrics.reportSizing(eventCount, totalSizeBytes - eventCount - 1);
         } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {

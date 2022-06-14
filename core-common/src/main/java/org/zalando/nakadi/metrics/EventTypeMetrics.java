@@ -39,7 +39,7 @@ public class EventTypeMetrics {
         publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 
-    public void reportSizing(final int eventsPerBatch, final int totalEventSize) {
+    public void reportSizing(final int eventsPerBatch, final long totalEventSize) {
         eventsPerBatchHistogram.update(eventsPerBatch);
         eventCountMeter.mark(eventsPerBatch);
         trafficInBytesMeter.mark(totalEventSize);

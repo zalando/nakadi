@@ -19,6 +19,7 @@ import org.zalando.nakadi.generated.avro.TestPublishingBatch;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.util.AvroUtils;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,7 +56,7 @@ public class NakadiRecordMapperTest {
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(localSchemaRegistry);
         final List<NakadiRecord> nakadiRecords =
-                mapper.fromBytesBatch(baos.toByteArray(), Byte.valueOf("0"));
+                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), Byte.valueOf("0"));
 
         Assert.assertEquals(
                 batch.getEvents().get(0).getMetadata().getEid(),
@@ -90,7 +91,7 @@ public class NakadiRecordMapperTest {
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(localSchemaRegistry);
         final List<NakadiRecord> nakadiRecords =
-                mapper.fromBytesBatch(baos.toByteArray(), Byte.valueOf("0"));
+                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), Byte.valueOf("0"));
 
         Assert.assertNull(nakadiRecords.get(0).getMetadata().getEventOwner());
     }
