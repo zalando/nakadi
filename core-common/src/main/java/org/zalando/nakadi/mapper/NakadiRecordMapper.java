@@ -70,8 +70,8 @@ public class NakadiRecordMapper {
                 .getVersion());
     }
 
-    public List<NakadiRecord> fromBytesBatch(final InputStream batch, final byte batchVersion) {
-        final RawMessageDecoder<PublishingBatchV0> decoder = batchDecoders.get(String.valueOf(batchVersion));
+    public List<NakadiRecord> fromBytesBatch(final InputStream batch, final String batchVersion) {
+        final RawMessageDecoder<PublishingBatchV0> decoder = batchDecoders.get(batchVersion);
         if (decoder == null) {
             throw new RuntimeException("unsupported batch version");
         }

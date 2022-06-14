@@ -1,0 +1,11 @@
+{
+  "name": "TestEnd2End",
+  "namespace": "org.zalando.nakadi.generated.avro",
+  "type": "record",
+  "fields": [
+    {
+      "name": "foo",
+      "type": "string"
+    }
+  ]
+}

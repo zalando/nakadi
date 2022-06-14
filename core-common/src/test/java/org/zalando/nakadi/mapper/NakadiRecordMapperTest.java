@@ -56,7 +56,7 @@ public class NakadiRecordMapperTest {
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(localSchemaRegistry);
         final List<NakadiRecord> nakadiRecords =
-                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), Byte.valueOf("0"));
+                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), "0");
 
         Assert.assertEquals(
                 batch.getEvents().get(0).getMetadata().getEid(),
@@ -91,7 +91,7 @@ public class NakadiRecordMapperTest {
 
         final NakadiRecordMapper mapper = new NakadiRecordMapper(localSchemaRegistry);
         final List<NakadiRecord> nakadiRecords =
-                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), Byte.valueOf("0"));
+                mapper.fromBytesBatch(new ByteArrayInputStream(baos.toByteArray()), "0");
 
         Assert.assertNull(nakadiRecords.get(0).getMetadata().getEventOwner());
     }

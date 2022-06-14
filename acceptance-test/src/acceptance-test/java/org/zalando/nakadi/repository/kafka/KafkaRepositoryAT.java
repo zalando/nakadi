@@ -77,7 +77,6 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
-    private ZookeeperSettings zookeeperSettings;
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
     private NakadiTopicConfig defaultTopicConfig;

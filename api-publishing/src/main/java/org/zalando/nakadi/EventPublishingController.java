@@ -109,25 +109,22 @@ public class EventPublishingController {
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
                                            @RequestBody final InputStream batch,
                                            @RequestHeader("X-Nakadi-Batch-Version") final String batchVersion,
-                                           final HttpServletRequest request,
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
 
         // TODO: check that event type schema type is AVRO!
 
-        //try {
-        //    return postBinaryEvents(eventTypeName, batch, request, client, false);
-        //} catch (IOException e) {
-        //    throw new InternalNakadiException("failed to parse batch", e);
-        //}
-        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
+        try {
+            return postBinaryEvents(eventTypeName, batch, batchVersion, client, false);
+        } catch (IOException e) {
+            throw new InternalNakadiException("failed to parse batch", e);
+        }
     }
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final InputStream batch,
-                                            final byte batchVersion,
-                                            final HttpServletRequest request,
+                                            final String batchVersion,
                                             final Client client,
                                             final boolean delete) throws IOException {
         TracingService.setOperationName("publish_events")
