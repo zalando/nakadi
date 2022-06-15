@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
@@ -78,8 +79,7 @@ public class BinaryEndToEndAT extends BaseAT {
         response.print();
         response.then().statusCode(200);
 
-        // check consumption
-
+        // check event is consumed and format is correct
         final Subscription subscription = createSubscription(
                 RandomSubscriptionBuilder.builder()
                         .withEventType(TEST_ET_NAME)
@@ -88,6 +88,12 @@ public class BinaryEndToEndAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient.create(subscription.getId()).start();
 
         TestUtils.waitFor(() -> Assert.assertEquals(1, client.getBatches().size()));
-        Assert.assertEquals("bar", client.getBatches().get(0).getEvents().get(0).get("foo"));
+        final Map event = client.getBatches().get(0).getEvents().get(0);
+        Assert.assertEquals("bar", event.get("foo"));
+
+        final Map<String, Object> metadata = (Map<String, Object>) event.get("metadata");
+        Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", metadata.get("eid"));
+        Assert.assertEquals("1.0.0", metadata.get("version"));
+        Assert.assertEquals(TEST_ET_NAME, metadata.get("event_type"));
     }
 }
