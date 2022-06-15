@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @DB
@@ -103,7 +105,7 @@ public class EventTypeRepository extends AbstractDbRepository {
 
     public List<EventType> listEventTypesWithRowLock(final Set<String> eventTypes, final RowLockMode lock) {
         final String whereClause = "WHERE zn_data.event_type.et_name in ( "
-                + String.join(",", Collections.nCopies(eventTypes.size(), "?") ) +")";
+                + String.join(",", Collections.nCopies(eventTypes.size(), "?")) + ")";
         return jdbcTemplate.query(
                 "SELECT et_event_type_object FROM zn_data.event_type " + whereClause + " FOR " + lock.get(),
                 eventTypes.toArray(),
@@ -117,16 +119,20 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> list(final AuthorizationAttribute writer) {
-        return jdbcTemplate.query(
-                "SELECT et_event_type_object " +
-                        "FROM zn_data.event_type," +
-                        "jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
-                        "AS writers(data_type text, value text) " +
-                        "WHERE writers.data_type = ? AND writers.value = ? " +
-                        "ORDER BY et_name",
-                new String[]{ writer.getDataType(), writer.getValue() },
-                new EventTypeMapper());
+    public List<EventType> list(final Optional<AuthorizationAttribute> writer) {
+        final List<Object> params = Lists.newArrayList();
+        final StringBuilder query = new StringBuilder("SELECT et_event_type_object FROM zn_data.event_type");
+
+        if (writer.isPresent()) {
+            query.append(",jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
+                    "AS writers(data_type text, value text) " +
+                    "WHERE writers.data_type = ? AND writers.value = ? ");
+            params.add(new String[]{writer.get().getDataType(), writer.get().getValue()});
+        }
+
+        query.append("ORDER BY et_name");
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), new EventTypeMapper());
     }
 
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
@@ -141,7 +147,7 @@ public class EventTypeRepository extends AbstractDbRepository {
         }
     }
 
-    private String getStartVersion(){
+    private String getStartVersion() {
         return new Version().toString();
     }
 
@@ -150,11 +156,11 @@ public class EventTypeRepository extends AbstractDbRepository {
 
         private String value;
 
-        RowLockMode(final String value){
+        RowLockMode(final String value) {
             this.value = value;
         }
 
-        public String get(){
+        public String get() {
             return value;
         }
     }

@@ -199,7 +199,11 @@ public class EventTypeControllerTestCase {
     }
 
     protected ResultActions getEventTypes(final String writer) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
+        final StringBuilder query = new StringBuilder();
+        if (writer != null && !writer.isEmpty()) {
+            query.append("writer=" + writer);
+        }
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?" + query);
         return mockMvc.perform(requestBuilder);
     }
 
