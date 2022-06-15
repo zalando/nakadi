@@ -1,5 +1,5 @@
 {
-  "name": "TestPublishingBatch",
+  "name": "PublishingBatch",
   "namespace": "org.zalando.nakadi.generated.avro",
   "type": "record",
   "fields": [
@@ -8,14 +8,14 @@
       "type": {
         "type": "array",
         "items": {
-          "name": "TestEnvelope",
+          "name": "Envelope",
           "namespace": "org.zalando.nakadi.generated.avro",
           "type": "record",
           "fields": [
             {
               "name": "metadata",
               "type": {
-                "name": "TestMetadata",
+                "name": "Metadata",
                 "type": "record",
                 "namespace": "org.zalando.nakadi.generated.avro",
                 "doc": "Event metadata defines data about the payload and additional information for Nakadi operations",
@@ -117,6 +117,14 @@
                       "string"
                     ],
                     "default": null
+                  },
+                  {
+                    "name": "event_owner",
+                    "type": [
+                      "null",
+                      "string"
+                    ],
+                    "default": null
                   }
                 ]
               }
@@ -133,4 +141,3 @@
     }
   ]
 }
-

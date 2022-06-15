@@ -5,10 +5,9 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.generated.avro.EnvelopeV0;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.service.SchemaProviderService;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -16,13 +15,16 @@ import java.util.Map;
 
 public class AvroDeserializerWithSequenceDecoder {
 
+    private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
     private final Map<String, SequenceDecoder> metadataSequenceDecoders;
     private final Map<String, SequenceDecoder> eventSequenceDecoders;
 
-    public AvroDeserializerWithSequenceDecoder(final LocalSchemaRegistry localSchemaRegistry) {
+    public AvroDeserializerWithSequenceDecoder(
+            final SchemaProviderService schemaService,
+            final LocalSchemaRegistry localSchemaRegistry) {
+        this.schemaService = schemaService;
         this.localSchemaRegistry = localSchemaRegistry;
-
         this.metadataSequenceDecoders = new HashMap<>();
         this.eventSequenceDecoders = new HashMap<>();
     }
@@ -54,7 +56,7 @@ public class AvroDeserializerWithSequenceDecoder {
             final SequenceDecoder eventDecoder = eventSequenceDecoders.computeIfAbsent(
                     metadata.get("version").toString(),
                     (v) -> new SequenceDecoder(
-                            localSchemaRegistry.getEventTypeSchema(eventType, v))
+                            schemaService.getAvroSchema(eventType, v))
             );
 
             final GenericRecord event = eventDecoder.read(envelope.getPayload());
@@ -66,8 +68,7 @@ public class AvroDeserializerWithSequenceDecoder {
                     .append(sanitizedMetadata).append('}');
 
             return sEvent.toString().getBytes(StandardCharsets.UTF_8);
-        } catch (
-                final IOException io) {
+        } catch (final IOException io) {
             throw new RuntimeException("failed to deserialize avro event", io);
         }
 

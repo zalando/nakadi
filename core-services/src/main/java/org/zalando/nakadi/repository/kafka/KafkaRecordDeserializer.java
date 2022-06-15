@@ -1,12 +1,15 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.message.BinaryMessageDecoder;
 import org.apache.avro.message.RawMessageDecoder;
 import org.apache.avro.specific.SpecificData;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EnvelopeHolder;
-import org.zalando.nakadi.generated.avro.EnvelopeV0;
-import org.zalando.nakadi.generated.avro.MetadataV0;
+import org.zalando.nakadi.generated.avro.Envelope;
+import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
@@ -15,23 +18,27 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaRecordDeserializer implements RecordDeserializer {
+
+    // https://avro.apache.org/docs/current/spec.html#single_object_encoding_spec
+    private static final byte[] AVRO_V1_HEADER = new byte[]{(byte) 0xC3, (byte) 0x01};
+
+    private static final Map<Schema, RawMessageDecoder<GenericRecord>> RAW_DECODERS = new ConcurrentHashMap<>();
+    private static final Map<Schema, BinaryMessageDecoder<GenericRecord>> BINARY_DECODERS = new ConcurrentHashMap<>();
 
     private final AvroDeserializerWithSequenceDecoder decoder;
     private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
-    private final Map<String, RawMessageDecoder<GenericRecord>> decoders;
 
     public KafkaRecordDeserializer(final NakadiRecordMapper nakadiRecordMapper,
                                    final SchemaProviderService schemaService,
                                    final LocalSchemaRegistry localSchemaRegistry) {
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.schemaService = schemaService;
-        this.decoder = new AvroDeserializerWithSequenceDecoder(localSchemaRegistry);
-        this.decoders = new HashMap<>(1);
+        this.decoder = new AvroDeserializerWithSequenceDecoder(schemaService, localSchemaRegistry);
     }
 
     public byte[] deserializeToJsonBytes(final byte[] eventFormat, final byte[] data) {
@@ -40,18 +47,16 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         }
 
         if (eventFormat == null) {
-            final int formatLength = NakadiRecordMapper.Format.AVRO.getFormat().length;
-            if (Arrays.equals(data, 0, formatLength,
-                    NakadiRecordMapper.Format.AVRO.getFormat(), 0, formatLength)) {
-                final ByteArrayInputStream bais = new ByteArrayInputStream(data, 2, data.length - 2);
-                final EnvelopeV0 envelope = nakadiRecordMapper.fromBytesEnvelope(bais, String.valueOf(data[1]));
+            if (data[0] == AVRO_V1_HEADER[0] && data[1] == AVRO_V1_HEADER[1]) {
+                final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(new ByteArrayInputStream(data));
                 return deserializeToJsonBytes(envelope);
             }
 
             return data;
         }
 
-        if (Arrays.equals(eventFormat, NakadiRecordMapper.Format.AVRO.getFormat())) {
+        if (eventFormat.length == 1 &&
+                eventFormat[0] == NakadiRecordMapper.AVRO_FORMAT[0]) {
             try {
                 return decoder.deserializeAvroToJsonBytes(EnvelopeHolder.fromBytes(data));
             } catch (IOException e) {
@@ -64,19 +69,26 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                 Arrays.toString(eventFormat)));
     }
 
-    private byte[] deserializeToJsonBytes(final EnvelopeV0 envelope) {
+    private byte[] deserializeToJsonBytes(final Envelope envelope) {
         try {
-            final MetadataV0 metadata = envelope.getMetadata();
+            final Metadata metadata = envelope.getMetadata();
+            final Schema schema = schemaService.getAvroSchema(
+                    metadata.getEventType(), metadata.getVersion());
 
-            final RawMessageDecoder<GenericRecord> decoder = decoders.computeIfAbsent(
-                    metadata.getVersion(),
-                    (v) -> new RawMessageDecoder<>(
-                            new SpecificData(), schemaService.getAvroSchema(metadata.getEventType(), v))
-            );
-
-            final GenericRecord event = decoder.decode(envelope.getPayload());
+            final GenericRecord event;
+            if (envelope.getPayload().array()[0] == AVRO_V1_HEADER[0] &&
+                    envelope.getPayload().array()[1] == AVRO_V1_HEADER[1]) {
+                final BinaryMessageDecoder<GenericRecord> decoder = BINARY_DECODERS.computeIfAbsent(
+                        schema, (s) -> new BinaryMessageDecoder<>(GenericData.get(), s)
+                );
+                event = decoder.decode(envelope.getPayload());
+            } else {
+                final RawMessageDecoder<GenericRecord> decoder = RAW_DECODERS.computeIfAbsent(
+                        schema, (s) -> new RawMessageDecoder<>(SpecificData.get(), s)
+                );
+                event = decoder.decode(envelope.getPayload());
+            }
             final StringBuilder sEvent = new StringBuilder(event.toString());
-
             final var sanitizedMetadata = mapToJson(metadata).toString();
 
             sEvent.deleteCharAt(sEvent.length() - 1)
@@ -89,7 +101,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         }
     }
 
-    private JSONObject mapToJson(final MetadataV0 metadata) {
+    private JSONObject mapToJson(final Metadata metadata) {
         final JSONObject metadataObj = new JSONObject(metadata.toString());
         final var iterator = metadataObj.keys();
         while (iterator.hasNext()) {

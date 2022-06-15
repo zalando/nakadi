@@ -6,8 +6,7 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.avro.message.BinaryMessageEncoder;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -15,8 +14,8 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.VersionedAvroSchema;
-import org.zalando.nakadi.generated.avro.EnvelopeV0;
-import org.zalando.nakadi.generated.avro.MetadataV0;
+import org.zalando.nakadi.generated.avro.Envelope;
+import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
@@ -37,6 +36,20 @@ public class KafkaRecordDeserializerTest {
     private final SchemaProviderService schemaService;
     private final VersionedAvroSchema metadataSchema;
     private final NakadiRecordMapper nakadiRecordMapper;
+    private final Schema schema = AvroUtils.getParsedSchema(new DefaultResourceLoader()
+            .getResource("test.deserialize.avro.avsc").getInputStream());
+    final SchemaProviderService singleSchemaProvider = new SchemaProviderService() {
+        @Override
+        public Schema getAvroSchema(final String etName, final String version) {
+            return schema;
+        }
+
+        @Override
+        public String getAvroSchemaVersion(final String etName, final Schema schema) {
+            return null;
+        }
+    };
+    final KafkaRecordDeserializer deserializer;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
@@ -45,6 +58,7 @@ public class KafkaRecordDeserializerTest {
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
         metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         nakadiRecordMapper = new NakadiRecordMapper(localSchemaRegistry);
+        deserializer = new KafkaRecordDeserializer(nakadiRecordMapper, singleSchemaProvider, localSchemaRegistry);
     }
 
     @Test
@@ -70,11 +84,11 @@ public class KafkaRecordDeserializerTest {
 
         // try to deserialize that data when we would read Kafka record
         final byte[] deserializedEvent0 = deserializer.deserializeToJsonBytes(
-                NakadiRecordMapper.Format.AVRO.getFormat(),
+                NakadiRecordMapper.AVRO_FORMAT,
                 data0
         );
         final byte[] deserializedEvent1 = deserializer.deserializeToJsonBytes(
-                NakadiRecordMapper.Format.AVRO.getFormat(),
+                NakadiRecordMapper.AVRO_FORMAT,
                 data1
         );
 
@@ -107,30 +121,15 @@ public class KafkaRecordDeserializerTest {
 
     @Test
     public void testDeserializeAvroEnvelope() throws IOException {
-        final Schema schema = AvroUtils.getParsedSchema(new DefaultResourceLoader()
-                .getResource("test.deserialize.avro.avsc").getInputStream());
-        final SchemaProviderService schemaService = new SchemaProviderService() {
-            @Override
-            public Schema getAvroSchema(String etName, String version) {
-                return schema;
-            }
-
-            @Override
-            public String getAvroSchemaVersion(String etName, Schema schema) {
-                return null;
-            }
-        };
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
-                nakadiRecordMapper, schemaService, localSchemaRegistry);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final ByteArrayOutputStream payload = new ByteArrayOutputStream();
         new GenericDatumWriter<>(schema).write(
                 new GenericRecordBuilder(schema).set("foo", "bar").build(),
-                EncoderFactory.get().directBinaryEncoder(baos, null));
+                EncoderFactory.get().directBinaryEncoder(payload, null));
 
-        final Instant now = Instant.now();
-        final EnvelopeV0 envelope = EnvelopeV0.newBuilder()
-                .setMetadata(MetadataV0.newBuilder()
+        final String expectedOccurredAt = "2022-06-15T15:17:00Z";
+        final Instant now = Instant.parse(expectedOccurredAt);
+        final Envelope envelope = Envelope.newBuilder()
+                .setMetadata(Metadata.newBuilder()
                         .setEid("4623130E-2983-4134-A472-F35154CFF980")
                         .setEventOwner("nakadi")
                         .setFlowId("xxx-event-flow-id")
@@ -138,20 +137,48 @@ public class KafkaRecordDeserializerTest {
                         .setEventType("nakadi-test-event-type")
                         .setVersion("1.0.0")
                         .build())
-                .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                .setPayload(ByteBuffer.wrap(payload.toByteArray()))
                 .build();
 
-        baos = new ByteArrayOutputStream();
-        baos.write((byte) 0xFF);
-        baos.write((byte) 0x00);
-        new SpecificDatumWriter<EnvelopeV0>(EnvelopeV0.SCHEMA$)
-                .write(envelope, EncoderFactory.get().directBinaryEncoder(baos, null));
+        final ByteBuffer byteBuffer = Envelope.getEncoder().encode(envelope);
+        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(null, byteBuffer.array());
 
-        byte[] bytes = deserializer.deserializeToJsonBytes(null, baos.toByteArray());
+        final JSONObject event = new JSONObject(new String(jsonBytes));
+        Assert.assertEquals("bar", event.get("foo"));
+        Assert.assertEquals("4623130E-2983-4134-A472-F35154CFF980",
+                event.getJSONObject("metadata").get("eid"));
+        Assert.assertEquals(expectedOccurredAt,
+                event.getJSONObject("metadata").get("occurred_at"));
+    }
 
-        System.out.println(new String(bytes));
+    @Test
+    public void testDeserializeAvroSingleObjectEncoding() throws IOException {
+        final ByteBuffer payload = new BinaryMessageEncoder<GenericRecord>(GenericData.get(), schema)
+                .encode(new GenericRecordBuilder(schema).set("foo", "bar").build());
 
+        final String expectedOccurredAt = "2022-06-15T15:17:00Z";
+        final Instant now = Instant.parse(expectedOccurredAt);
+        final Envelope envelope = Envelope.newBuilder()
+                .setMetadata(Metadata.newBuilder()
+                        .setEid("4623130E-2983-4134-A472-F35154CFF980")
+                        .setEventOwner("nakadi")
+                        .setFlowId("xxx-event-flow-id")
+                        .setOccurredAt(now)
+                        .setEventType("nakadi-test-event-type")
+                        .setVersion("1.0.0")
+                        .build())
+                .setPayload(ByteBuffer.wrap(payload.array()))
+                .build();
 
+        final ByteBuffer byteBuffer = Envelope.getEncoder().encode(envelope);
+        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(null, byteBuffer.array());
+
+        final JSONObject event = new JSONObject(new String(jsonBytes));
+        Assert.assertEquals("bar", event.get("foo"));
+        Assert.assertEquals("4623130E-2983-4134-A472-F35154CFF980",
+                event.getJSONObject("metadata").get("eid"));
+        Assert.assertEquals(expectedOccurredAt,
+                event.getJSONObject("metadata").get("occurred_at"));
     }
 
     private JSONObject getSerializedJsonObject(final VersionedAvroSchema metadataVersion,
@@ -169,7 +196,7 @@ public class KafkaRecordDeserializerTest {
 
         // try to deserialize that data when we would read Kafka record
         final byte[] deserializedEvent = deserializer.deserializeToJsonBytes(
-                NakadiRecordMapper.Format.AVRO.getFormat(),
+                NakadiRecordMapper.AVRO_FORMAT,
                 data
         );
 

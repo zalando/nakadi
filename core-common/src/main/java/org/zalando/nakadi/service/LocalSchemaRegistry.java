@@ -55,11 +55,6 @@ public class LocalSchemaRegistry {
         }
     }
 
-    public LocalSchemaRegistry(
-            final Map<String, TreeMap<String, Schema>> eventTypeSchema) {
-        this.eventTypeSchema = eventTypeSchema;
-    }
-
     private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
             final Resource eventTypeSchemaRes, final String eventTypeName) {
 

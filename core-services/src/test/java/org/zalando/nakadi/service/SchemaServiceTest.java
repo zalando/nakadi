@@ -10,6 +10,7 @@ import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
@@ -51,7 +53,7 @@ public class SchemaServiceTest {
     public void setUp() throws IOException {
         schemaRepository = Mockito.mock(SchemaRepository.class);
         paginationService = Mockito.mock(PaginationService.class);
-        jsonSchemaEnrichment = Mockito.mock(JsonSchemaEnrichment.class);
+        jsonSchemaEnrichment = new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json");
         schemaEvolutionService = Mockito.mock(SchemaEvolutionService.class);
         eventTypeRepository = Mockito.mock(EventTypeRepository.class);
         eventTypeCache = Mockito.mock(EventTypeCache.class);
@@ -272,6 +274,18 @@ public class SchemaServiceTest {
         schemaService.getAvroSchemaVersion("nakadi.batch.published", new BatchPublishedEvent().getSchema());
 
         Mockito.reset(schemaRepository);
+    }
+
+    @Test
+    public void testNoExceptionThrownWhenSchemaHasArrayItems() throws Exception {
+        final String jsonSchemaString = Resources.toString(
+                Resources.getResource("compatible-additional-item-schema.json"),
+                Charsets.UTF_8);
+
+        eventType.getSchema().setSchema(jsonSchemaString);
+        eventType.setCategory(BUSINESS);
+        eventType.setCompatibilityMode(CompatibilityMode.COMPATIBLE);
+        assertDoesNotThrow(() -> schemaService.validateSchema(eventType));
     }
 
 }

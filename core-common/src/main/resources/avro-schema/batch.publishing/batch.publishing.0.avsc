@@ -117,14 +117,6 @@
                       "string"
                     ],
                     "default": null
-                  },
-                  {
-                    "name": "event_owner",
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "default": null
                   }
                 ]
               }

@@ -236,7 +236,7 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, schemaAsJson);
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, eventTypeSchema);
         final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);

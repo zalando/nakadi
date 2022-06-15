@@ -3,7 +3,6 @@ package org.zalando.nakadi.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import org.apache.avro.Schema;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.joda.time.DateTime;
@@ -31,7 +30,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -39,9 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -256,12 +252,8 @@ public class TestUtils {
     }
 
     public static NakadiRecordMapper getNakadiRecordMapper() throws IOException {
-        final org.springframework.core.io.Resource eventTypeRes = new DefaultResourceLoader()
-                .getResource("schemas/batch.publishing.avsc");
-        final Schema schema = AvroUtils.getParsedSchema(eventTypeRes.getInputStream());
-        return new NakadiRecordMapper(
-                new LocalSchemaRegistry(Map.of(LocalSchemaRegistry.BATCH_PUBLISHING_KEY,
-                        new TreeMap<>(Map.of("0", schema)))));
+        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+        return new NakadiRecordMapper(new LocalSchemaRegistry(eventTypeRes));
     }
 
 }

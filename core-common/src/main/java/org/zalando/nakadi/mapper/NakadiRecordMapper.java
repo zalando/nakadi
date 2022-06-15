@@ -1,85 +1,59 @@
 package org.zalando.nakadi.mapper;
 
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.message.RawMessageDecoder;
-import org.apache.avro.message.RawMessageEncoder;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.generated.avro.EnvelopeV0;
-import org.zalando.nakadi.generated.avro.MetadataV0;
-import org.zalando.nakadi.generated.avro.PublishingBatchV0;
+import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.generated.avro.Envelope;
+import org.zalando.nakadi.generated.avro.Metadata;
+import org.zalando.nakadi.generated.avro.PublishingBatch;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class NakadiRecordMapper {
 
-    public static final String HEADER_FORMAT = new String(Format.AVRO.format);
-
-    public enum Format {
-        // the hope is that it is enough values from 0xFF till 0x7F (127) to cover possible.
-        // the format comes as a first byte in kafka record so it could intersect with JSON
-        AVRO(new byte[]{(byte) 0xFF});
-
-        private final byte[] format;
-
-        Format(final byte[] format) {
-            this.format = format;
-        }
-
-        public byte[] getFormat() {
-            return this.format;
-        }
-    }
+    public static final byte[] AVRO_FORMAT = new byte[]{(byte) 0x0};
+    public static final String HEADER_FORMAT = new String();
 
     private final LocalSchemaRegistry localSchemaRegistry;
-    private final RawMessageEncoder<EnvelopeV0> encoder;
-    private final Map<String, RawMessageDecoder<PublishingBatchV0>> batchDecoders;
-    private final Map<String, RawMessageDecoder<EnvelopeV0>> envelopeDecoders;
-    private final byte latestEnvelopeVersion;
 
     public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
         this.localSchemaRegistry = localSchemaRegistry;
-        this.encoder = new RawMessageEncoder<>(new EnvelopeV0().getSpecificData(), EnvelopeV0.SCHEMA$);
-        this.envelopeDecoders = new HashMap<>(2);
-        this.batchDecoders = new HashMap<>(2);
         this.localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
                 .entrySet().forEach(entry -> {
-                    envelopeDecoders.put(entry.getKey(), new RawMessageDecoder<>(
-                            new EnvelopeV0().getSpecificData(), entry.getValue().getField("events").schema()
-                            .getElementType(), EnvelopeV0.SCHEMA$));
-
-                    batchDecoders.put(entry.getKey(), new RawMessageDecoder<>(
-                            new PublishingBatchV0().getSpecificData(), entry.getValue(), PublishingBatchV0.SCHEMA$));
+                    PublishingBatch.getDecoder().addSchema(entry.getValue());
+                    Envelope.getDecoder().addSchema(entry.getValue()
+                            .getField("events").schema().getElementType());
                 }
         );
-        this.latestEnvelopeVersion = Byte.valueOf(this.localSchemaRegistry
-                .getLatestEventTypeSchemaVersion(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
-                .getVersion());
     }
 
-    public List<NakadiRecord> fromBytesBatch(final InputStream batch, final String batchVersion) {
-        final RawMessageDecoder<PublishingBatchV0> decoder = batchDecoders.get(batchVersion);
-        if (decoder == null) {
-            throw new RuntimeException("unsupported batch version");
+    public List<NakadiRecord> fromBytesBatch(final InputStream batch) {
+        final PublishingBatch publishingBatch;
+        try {
+            publishingBatch = PublishingBatch.getDecoder()
+                    .decode(batch, new PublishingBatch());
+        } catch (AvroRuntimeException are) {
+            throw are;
+        } catch (IOException e) {
+            // fixme, should be bad request
+            throw new NakadiRuntimeException("failed to decode publishing batch", e);
         }
 
-        final PublishingBatchV0 publishingBatch = decoder.decode(batch, new PublishingBatchV0());
-
         final List<NakadiRecord> records = new LinkedList<>();
-        for (final EnvelopeV0 envelope : publishingBatch.getEvents()) {
+        for (final Envelope envelope : publishingBatch.getEvents()) {
             records.add(new NakadiRecord()
                     .setMetadata(mapToNakadiMetadata(envelope.getMetadata()))
                     .setPayload(envelope.getPayload().array()));
@@ -88,15 +62,17 @@ public class NakadiRecordMapper {
         return records;
     }
 
-    public EnvelopeV0 fromBytesEnvelope(final InputStream data, final String envelopeVersion) {
-        final RawMessageDecoder<EnvelopeV0> decoder = envelopeDecoders.get(envelopeVersion);
-        if (decoder == null) {
-            throw new RuntimeException(String.format("unsupported envelope version %s", envelopeVersion));
+    public Envelope fromBytesEnvelope(final InputStream data) {
+        try {
+            return Envelope.getDecoder().decode(data, new Envelope());
+        } catch (AvroRuntimeException are) {
+            throw are;
+        } catch (IOException io) {
+            throw new NakadiRuntimeException("failed to decode envelope", io);
         }
-        return decoder.decode(data, new EnvelopeV0());
     }
 
-    public NakadiMetadata mapToNakadiMetadata(final MetadataV0 metadata) {
+    public NakadiMetadata mapToNakadiMetadata(final Metadata metadata) {
         final NakadiMetadata nakadiMetadata = new NakadiMetadata();
         nakadiMetadata.setEid(metadata.getEid());
         nakadiMetadata.setEventType(metadata.getEventType());
@@ -120,18 +96,15 @@ public class NakadiRecordMapper {
         final var partition = nakadiRecord.getMetadata().getPartition();
         final var partitionInt = (partition != null) ? Integer.valueOf(partition) : null;
 
-        final EnvelopeV0 env = mapToEnvelope(nakadiRecord);
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(Format.AVRO.format);
-        baos.write(latestEnvelopeVersion);
-        encoder.encode(env, baos);
+        final Envelope env = mapToEnvelope(nakadiRecord);
+        final ByteBuffer byteBuffer = Envelope.getEncoder().encode(env);
 
-        return new ProducerRecord<>(topic, partitionInt, nakadiRecord.getEventKey(), baos.toByteArray());
+        return new ProducerRecord<>(topic, partitionInt, nakadiRecord.getEventKey(), byteBuffer.array());
     }
 
-    private EnvelopeV0 mapToEnvelope(final NakadiRecord nakadiRecord) {
+    private Envelope mapToEnvelope(final NakadiRecord nakadiRecord) {
         final NakadiMetadata nakadiMetadata = nakadiRecord.getMetadata();
-        final MetadataV0 metadata = MetadataV0.newBuilder()
+        final Metadata metadata = Metadata.newBuilder()
                 .setEid(nakadiMetadata.getEid())
                 .setEventType(nakadiMetadata.getEventType())
                 .setFlowId(nakadiMetadata.getFlowId())
@@ -146,7 +119,7 @@ public class NakadiRecordMapper {
                 .setPublishedBy(nakadiMetadata.getPublishedBy())
                 .setPartitionKeys(nakadiMetadata.getPartitionKeys())
                 .build();
-        return EnvelopeV0.newBuilder()
+        return Envelope.newBuilder()
                 .setMetadata(metadata)
                 .setPayload(ByteBuffer.wrap(nakadiRecord.getPayload()))
                 .build();

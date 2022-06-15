@@ -1,11 +1,9 @@
 package org.zalando.nakadi.domain.kpi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.KPIEventMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 
 import java.io.IOException;
 import java.util.Set;

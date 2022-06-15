@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import org.apache.avro.Schema;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,15 +23,12 @@ import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
-import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.equalTo;

@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -107,7 +106,6 @@ public class EventPublishingController {
             produces = "application/json; charset=utf-8"
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
-                                           @RequestHeader("X-Nakadi-Batch-Version") final String batchVersion,
                                            final HttpServletRequest request,
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
@@ -116,7 +114,7 @@ public class EventPublishingController {
         // TODO: check that event type schema type is AVRO!
 
         try {
-            return postBinaryEvents(eventTypeName, request.getInputStream(), batchVersion, client, false);
+            return postBinaryEvents(eventTypeName, request.getInputStream(), client, false);
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
@@ -124,7 +122,6 @@ public class EventPublishingController {
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final InputStream batch,
-                                            final String batchVersion,
                                             final Client client,
                                             final boolean delete) throws IOException {
         TracingService.setOperationName("publish_events")
@@ -151,8 +148,7 @@ public class EventPublishingController {
 
                 final CountingInputStream countingInputStream = new CountingInputStream(batch);
                 final EventPublishResult result;
-                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(
-                        countingInputStream, batchVersion);
+                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(countingInputStream);
                 final List<NakadiRecordResult> recordResults = binaryPublisher
                         .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
                 if (recordResults.isEmpty()) {
