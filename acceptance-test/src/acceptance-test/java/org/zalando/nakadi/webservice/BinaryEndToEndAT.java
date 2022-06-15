@@ -4,7 +4,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumWriter;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -13,9 +12,9 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.generated.avro.EnvelopeV0;
-import org.zalando.nakadi.generated.avro.MetadataV0;
-import org.zalando.nakadi.generated.avro.PublishingBatchV0;
+import org.zalando.nakadi.generated.avro.Envelope;
+import org.zalando.nakadi.generated.avro.Metadata;
+import org.zalando.nakadi.generated.avro.PublishingBatch;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -50,14 +49,14 @@ public class BinaryEndToEndAT extends BaseAT {
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         new GenericDatumWriter(schema).write(
                 new GenericRecordBuilder(schema).set("foo", "bar").build(),
                 EncoderFactory.get().directBinaryEncoder(baos, null));
 
-        final PublishingBatchV0 batch = PublishingBatchV0.newBuilder()
-                .setEvents(List.of(EnvelopeV0.newBuilder()
-                        .setMetadata(MetadataV0.newBuilder()
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
                                 .setEventType(TEST_ET_NAME)
                                 .setVersion("1.0.0")
                                 .setOccurredAt(Instant.now())
@@ -67,14 +66,10 @@ public class BinaryEndToEndAT extends BaseAT {
                         .build()))
                 .build();
 
-        baos = new ByteArrayOutputStream();
-        new SpecificDatumWriter<>(PublishingBatchV0.SCHEMA$).write(batch,
-                EncoderFactory.get().directBinaryEncoder(baos, null));
-
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
         final var response = given()
                 .contentType("application/avro-binary")
-                .header("X-Nakadi-Batch-Version", "0")
-                .body(baos.toByteArray())
+                .body(body.array())
                 .post(String.format("/event-types/%s/events", TEST_ET_NAME));
         response.print();
         response.then().statusCode(200);
