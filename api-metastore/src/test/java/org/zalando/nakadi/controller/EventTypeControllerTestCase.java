@@ -1,6 +1,7 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -47,6 +48,7 @@ import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -198,12 +200,15 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions getEventTypes(final String writer) throws Exception {
-        final StringBuilder query = new StringBuilder();
+    protected ResultActions getEventTypes(final String writer, final String owningApp) throws Exception {
+        final List<String> query = Lists.newArrayList();
         if (writer != null && !writer.isEmpty()) {
-            query.append("writer=" + writer);
+            query.add("writer=" + writer);
         }
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?" + query);
+        if (owningApp != null && !owningApp.isEmpty()) {
+            query.add("owning_application=" + owningApp);
+        }
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?" + String.join("&", query));
         return mockMvc.perform(requestBuilder);
     }
 

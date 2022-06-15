@@ -147,8 +147,8 @@ public class EventTypeService {
         this.applicationService = applicationService;
     }
 
-    public List<EventType> list(@Nullable  final AuthorizationAttribute writers) {
-        return eventTypeRepository.list(Optional.ofNullable(writers));
+    public List<EventType> list(@Nullable  final AuthorizationAttribute writers, @Nullable final String owningApplication) {
+        return eventTypeRepository.list(Optional.ofNullable(writers), Optional.ofNullable(owningApplication));
     }
 
     public void create(final EventTypeBase eventType, final boolean checkAuth)

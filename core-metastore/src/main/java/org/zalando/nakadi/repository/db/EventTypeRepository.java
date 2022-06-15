@@ -112,25 +112,32 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-
-    public List<EventType> list() {
-        return jdbcTemplate.query(
-                "SELECT et_event_type_object FROM zn_data.event_type ORDER BY et_name",
-                new EventTypeMapper());
-    }
-
-    public List<EventType> list(final Optional<AuthorizationAttribute> writer) {
+    public List<EventType> list(final Optional<AuthorizationAttribute> writer, final Optional<String> owningApplication) {
         final List<Object> params = Lists.newArrayList();
+        final List<String> clauses = Lists.newArrayList();
+
         final StringBuilder query = new StringBuilder("SELECT et_event_type_object FROM zn_data.event_type");
 
-        if (writer.isPresent()) {
-            query.append(",jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
-                    "AS writers(data_type text, value text) " +
-                    "WHERE writers.data_type = ? AND writers.value = ? ");
-            params.add(new String[]{writer.get().getDataType(), writer.get().getValue()});
+        writer.ifPresent(_writer -> {
+            query.append(" ,jsonb_to_recordset(et_event_type_object->'authorization'->'writers') " +
+                    "AS writers(data_type text, value text) ");
+            clauses.add("writers.data_type = ?");
+            clauses.add("writers.value = ? ");
+            params.add(_writer.getDataType());
+            params.add(_writer.getValue());
+        });
+
+        owningApplication.ifPresent(owningApp -> {
+            clauses.add(" et_event_type_object->>'owning_application' = ? ");
+            params.add(owningApp);
+        });
+
+        if (!clauses.isEmpty()) {
+            query.append(" WHERE ");
+            query.append(String.join(" AND ", clauses));
         }
 
-        query.append("ORDER BY et_name");
+        query.append(" ORDER BY et_name ");
 
         return jdbcTemplate.query(query.toString(), params.toArray(), new EventTypeMapper());
     }

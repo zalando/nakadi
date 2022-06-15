@@ -890,11 +890,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final String writer = "user:bshala";
         final Optional<AuthorizationAttribute> authorizationAttribute =
                 Optional.ofNullable(new ResourceAuthorizationAttribute("user", "bshala"));
+        final Optional<String> owningApplication = Optional.ofNullable("someApplication");
         final EventType eventType = TestUtils.buildDefaultEventType();
         doReturn(List.of(eventType)).when(eventTypeRepository)
-                .list(authorizationAttribute);
-        getEventTypes(writer)
+                .list(authorizationAttribute, owningApplication);
+        getEventTypes(writer, "someApplication")
                 .andExpect(status().is2xxSuccessful());
-        verify(eventTypeRepository, times(1)).list(authorizationAttribute);
+        verify(eventTypeRepository, times(1)).list(authorizationAttribute, owningApplication);
     }
 }
