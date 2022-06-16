@@ -21,6 +21,7 @@ import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.util.AvroUtils;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -38,26 +39,26 @@ public class KafkaRecordDeserializerTest {
     private final NakadiRecordMapper nakadiRecordMapper;
     private final Schema schema = AvroUtils.getParsedSchema(new DefaultResourceLoader()
             .getResource("test.deserialize.avro.avsc").getInputStream());
-    final SchemaProviderService singleSchemaProvider = new SchemaProviderService() {
-        @Override
-        public Schema getAvroSchema(final String etName, final String version) {
-            return schema;
-        }
-
-        @Override
-        public String getAvroSchemaVersion(final String etName, final Schema schema) {
-            return null;
-        }
-    };
-    final KafkaRecordDeserializer deserializer;
+    private final KafkaRecordDeserializer deserializer;
 
     public KafkaRecordDeserializerTest() throws IOException {
         // FIXME: doesn't work without the trailing slash
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+        localSchemaRegistry = TestUtils.getLocalSchemaRegistry();
         schemaService = new TestSchemaProviderService(localSchemaRegistry);
         metadataSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         nakadiRecordMapper = new NakadiRecordMapper(localSchemaRegistry);
+        final SchemaProviderService singleSchemaProvider = new SchemaProviderService() {
+            @Override
+            public Schema getAvroSchema(final String etName, final String version) {
+                return schema;
+            }
+
+            @Override
+            public String getAvroSchemaVersion(final String etName, final Schema schema) {
+                return null;
+            }
+        };
         deserializer = new KafkaRecordDeserializer(nakadiRecordMapper, singleSchemaProvider, localSchemaRegistry);
     }
 

@@ -1,11 +1,8 @@
 package org.zalando.nakadi.domain.kpi;
 
 import org.junit.Test;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.service.KPIEventMapper;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 
-import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,12 +10,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class DataStreamedEventTest {
-    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper eventMapper;
 
-    public DataStreamedEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+    public DataStreamedEventTest() {
         this.eventMapper = new KPIEventMapper(Set.of(DataStreamedEvent.class));
     }
 

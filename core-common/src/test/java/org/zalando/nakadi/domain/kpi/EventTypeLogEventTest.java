@@ -1,23 +1,17 @@
 package org.zalando.nakadi.domain.kpi;
 
 import org.junit.Test;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.service.KPIEventMapper;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 
-import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class EventTypeLogEventTest {
-    private final LocalSchemaRegistry localSchemaRegistry;
     private final KPIEventMapper eventMapper;
 
-    public EventTypeLogEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+    public EventTypeLogEventTest() {
         this.eventMapper = new KPIEventMapper(Set.of(EventTypeLogEvent.class));
     }
 

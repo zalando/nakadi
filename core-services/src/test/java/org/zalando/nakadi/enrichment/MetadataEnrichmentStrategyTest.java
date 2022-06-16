@@ -6,7 +6,6 @@ import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiMetadata;
@@ -16,6 +15,7 @@ import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -40,8 +40,7 @@ public class MetadataEnrichmentStrategyTest {
     private LocalSchemaRegistry localSchemaRegistry;
 
     public MetadataEnrichmentStrategyTest() throws IOException {
-        this.localSchemaRegistry = new LocalSchemaRegistry(
-                new DefaultResourceLoader().getResource("avro-schema/"));
+        this.localSchemaRegistry = TestUtils.getLocalSchemaRegistry();
     }
 
     @Test

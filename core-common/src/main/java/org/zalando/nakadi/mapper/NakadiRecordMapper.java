@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.exceptions.runtime.AvroPayloadDecodingException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
@@ -25,13 +26,10 @@ import java.util.List;
 public class NakadiRecordMapper {
 
     public static final byte[] AVRO_FORMAT = new byte[]{(byte) 0x0};
-    public static final String HEADER_FORMAT = new String();
-
-    private final LocalSchemaRegistry localSchemaRegistry;
+    public static final String HEADER_FORMAT = new String(AVRO_FORMAT);
 
     public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
-        this.localSchemaRegistry = localSchemaRegistry;
-        this.localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
+        localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
                 .entrySet().forEach(entry -> {
                     PublishingBatch.getDecoder().addSchema(entry.getValue());
                     Envelope.getDecoder().addSchema(entry.getValue()
@@ -46,9 +44,8 @@ public class NakadiRecordMapper {
             publishingBatch = PublishingBatch.getDecoder()
                     .decode(batch, new PublishingBatch());
         } catch (AvroRuntimeException are) {
-            throw are;
+            throw new AvroPayloadDecodingException("failed to decode envelope", are);
         } catch (IOException e) {
-            // fixme, should be bad request
             throw new NakadiRuntimeException("failed to decode publishing batch", e);
         }
 
@@ -66,7 +63,7 @@ public class NakadiRecordMapper {
         try {
             return Envelope.getDecoder().decode(data, new Envelope());
         } catch (AvroRuntimeException are) {
-            throw are;
+            throw new AvroPayloadDecodingException("failed to decode envelope", are);
         } catch (IOException io) {
             throw new NakadiRuntimeException("failed to decode envelope", io);
         }
@@ -76,15 +73,16 @@ public class NakadiRecordMapper {
         final NakadiMetadata nakadiMetadata = new NakadiMetadata();
         nakadiMetadata.setEid(metadata.getEid());
         nakadiMetadata.setEventType(metadata.getEventType());
-        nakadiMetadata.setPartition(metadata.getPartition());
+        nakadiMetadata.setEventOwner(metadata.getEventOwner());
+        nakadiMetadata.setFlowId(metadata.getFlowId());
         nakadiMetadata.setOccurredAt(metadata.getOccurredAt());
+        nakadiMetadata.setPartition(metadata.getPartition());
+        nakadiMetadata.setParentEids(metadata.getParentEids());
+        nakadiMetadata.setPartitionCompactionKey(metadata.getPartitionCompactionKey());
+        nakadiMetadata.setPartitionKeys(metadata.getPartitionKeys());
         nakadiMetadata.setPublishedBy(metadata.getPublishedBy());
         nakadiMetadata.setReceivedAt(metadata.getReceivedAt());
-        nakadiMetadata.setFlowId(metadata.getFlowId());
         nakadiMetadata.setSchemaVersion(metadata.getVersion());
-        nakadiMetadata.setPartitionKeys(metadata.getPartitionKeys());
-        nakadiMetadata.setPartitionCompactionKey(metadata.getPartitionCompactionKey());
-        nakadiMetadata.setParentEids(metadata.getParentEids());
         nakadiMetadata.setSpanCtx(metadata.getSpanCtx());
 
         return nakadiMetadata;
@@ -107,17 +105,17 @@ public class NakadiRecordMapper {
         final Metadata metadata = Metadata.newBuilder()
                 .setEid(nakadiMetadata.getEid())
                 .setEventType(nakadiMetadata.getEventType())
+                .setEventOwner(nakadiMetadata.getEventOwner())
                 .setFlowId(nakadiMetadata.getFlowId())
                 .setOccurredAt(nakadiMetadata.getOccurredAt())
-                .setParentEids(nakadiMetadata.getParentEids())
                 .setPartition(nakadiMetadata.getPartition())
+                .setParentEids(nakadiMetadata.getParentEids())
                 .setPartitionCompactionKey(nakadiMetadata.getPartitionCompactionKey())
-                .setReceivedAt(nakadiMetadata.getReceivedAt())
-                .setVersion(nakadiMetadata.getSchemaVersion())
-                .setEventOwner(nakadiMetadata.getEventOwner())
-                .setSpanCtx(nakadiMetadata.getSpanCtx())
-                .setPublishedBy(nakadiMetadata.getPublishedBy())
                 .setPartitionKeys(nakadiMetadata.getPartitionKeys())
+                .setPublishedBy(nakadiMetadata.getPublishedBy())
+                .setReceivedAt(nakadiMetadata.getReceivedAt())
+                .setSpanCtx(nakadiMetadata.getSpanCtx())
+                .setVersion(nakadiMetadata.getSchemaVersion())
                 .build();
         return Envelope.newBuilder()
                 .setMetadata(metadata)

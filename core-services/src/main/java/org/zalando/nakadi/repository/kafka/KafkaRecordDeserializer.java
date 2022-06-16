@@ -52,6 +52,7 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                 return deserializeToJsonBytes(envelope);
             }
 
+            // then it should be JSON
             return data;
         }
 

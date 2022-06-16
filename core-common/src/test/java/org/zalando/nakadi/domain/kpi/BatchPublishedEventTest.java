@@ -1,10 +1,8 @@
 package org.zalando.nakadi.domain.kpi;
 
 import org.junit.Test;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.service.KPIEventMapper;
 
-import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,8 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class BatchPublishedEventTest {
     private final KPIEventMapper eventMapper;
 
-    public BatchPublishedEventTest() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+    public BatchPublishedEventTest() {
         this.eventMapper = new KPIEventMapper(Set.of(BatchPublishedEvent.class));
     }
 

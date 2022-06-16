@@ -85,7 +85,7 @@ public class NakadiKpiPublisher {
             if (featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)) {
                 final String eventVersion = schemaService.getAvroSchemaVersion(
                         eventTypeName, kpiEvent.getSchema());
-                final NakadiMetadata metadata = buildMetaData(eventTypeName, eventVersion);
+                final NakadiMetadata metadata = buildMetadata(eventTypeName, eventVersion);
                 final GenericRecord event = kpiEventMapper.mapToGenericRecord(kpiEvent);
 
                 final NakadiRecord nakadiRecord =
@@ -101,7 +101,7 @@ public class NakadiKpiPublisher {
         }
     }
 
-    private NakadiMetadata buildMetaData(final String eventTypeName,
+    private NakadiMetadata buildMetadata(final String eventTypeName,
                                          final String eventVersion) {
         final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setOccurredAt(Instant.now());
