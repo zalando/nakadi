@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
@@ -17,7 +16,6 @@ import org.zalando.nakadi.repository.kafka.KafkaSettings;
 import org.zalando.nakadi.repository.kafka.KafkaTopicConfigFactory;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaZookeeper;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import javax.annotation.Nullable;
@@ -316,10 +314,8 @@ public class CursorOperationsServiceTest {
                 .setKafkaFactory(Mockito.mock(KafkaFactory.class))
                 .setNakadiSettings(Mockito.mock(NakadiSettings.class))
                 .setKafkaSettings(Mockito.mock(KafkaSettings.class))
-                .setZookeeperSettings(Mockito.mock(ZookeeperSettings.class))
                 .setKafkaTopicConfigFactory(Mockito.mock(KafkaTopicConfigFactory.class))
                 .setKafkaLocationManager(Mockito.mock(KafkaLocationManager.class))
-                .setMetricRegistry(new MetricRegistry())
                 .build();
 
         Mockito.when(timelineService.getTopicRepository(timeline)).thenReturn(repository);

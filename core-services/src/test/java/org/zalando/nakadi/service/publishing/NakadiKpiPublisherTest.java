@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,14 +15,16 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.SequenceDecoder;
 import org.zalando.nakadi.security.UsernameHasher;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -50,7 +50,7 @@ public class NakadiKpiPublisherTest {
     private final SchemaProviderService schemaProviderService = new TestSchemaProviderService(localRegistryMock);
     private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
-    private final NakadiRecordMapper recordMapper = new NakadiRecordMapper(localRegistryMock);
+    private final NakadiRecordMapper recordMapper;
 
     @Captor
     private ArgumentCaptor<String> eventTypeCaptor;
@@ -58,6 +58,10 @@ public class NakadiKpiPublisherTest {
     private ArgumentCaptor<NakadiRecord> nakadiRecordCaptor;
     @Captor
     private ArgumentCaptor<JSONObject> jsonObjectCaptor;
+
+    public NakadiKpiPublisherTest() throws IOException {
+        this.recordMapper = TestUtils.getNakadiRecordMapper();
+    }
 
     @Test
     public void testPublishJsonKPIEventWithFeatureToggleOn() {
@@ -95,8 +99,8 @@ public class NakadiKpiPublisherTest {
         when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(true);
 
         // Publish the above KPIEvent and capture it.
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final var localRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
+        final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
+        final var localRegistry = new LocalSchemaRegistry(eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), new UUIDGenerator(),
                 new TestSchemaProviderService(localRegistry), localRegistryMock, recordMapper)

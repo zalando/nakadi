@@ -4,7 +4,6 @@ import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventOwnerHeader;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.StrictJsonParser;
 
@@ -14,7 +13,7 @@ public class EventOwnerExtractorTest {
     private static final JSONObject MOCK_EVENT = StrictJsonParser.parse("{" +
             "\"other\": null, \n" +
             "\"example\": {\n" +
-                "\"security\": {\"final\": \"test_value\"}}" +
+            "\"security\": {\"final\": \"test_value\"}}" +
             "}", false);
 
     @Test
@@ -55,7 +54,7 @@ public class EventOwnerExtractorTest {
 
     @Test
     public void testCorrectValueSetWhenMetadata() throws IOException {
-        final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1, null);
+        final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setEventOwner("owner-123");
 
         final EventOwnerExtractor extractor = EventOwnerExtractorFactory.createMetadataExtractor("retailer_id");

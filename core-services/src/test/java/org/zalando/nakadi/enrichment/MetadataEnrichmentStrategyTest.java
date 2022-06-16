@@ -1,25 +1,24 @@
 package org.zalando.nakadi.enrichment;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,8 +40,7 @@ public class MetadataEnrichmentStrategyTest {
     private LocalSchemaRegistry localSchemaRegistry;
 
     public MetadataEnrichmentStrategyTest() throws IOException {
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(),
-                new DefaultResourceLoader().getResource("event-type-schema/"));
+        this.localSchemaRegistry = TestUtils.getLocalSchemaRegistry();
     }
 
     @Test
@@ -199,12 +197,12 @@ public class MetadataEnrichmentStrategyTest {
 
     private NakadiRecord getTestNakadiRecord() throws IOException {
 
-        final long now = System.currentTimeMillis();
+        final Instant now = Instant.now();
         final var nakadiAccessLog = "nakadi.access.log";
         final var latestMeta = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final var latestSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
-        final var nakadiAvroMetadata = new NakadiAvroMetadata(latestMeta.getVersionAsByte(), latestMeta.getSchema());
+        final var nakadiAvroMetadata = new NakadiMetadata();
         nakadiAvroMetadata.setOccurredAt(now);
         nakadiAvroMetadata.setEid(UUID.randomUUID().toString());
         nakadiAvroMetadata.setFlowId("test-flow");

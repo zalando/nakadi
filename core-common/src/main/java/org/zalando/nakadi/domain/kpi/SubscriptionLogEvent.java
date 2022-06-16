@@ -6,7 +6,7 @@ import org.zalando.nakadi.config.KPIEventTypes;
 public class SubscriptionLogEvent extends KPIEvent {
 
     private static final String PATH_SCHEMA =
-            "event-type-schema/nakadi.subscription.log/nakadi.subscription.log.0.avsc";
+            "avro-schema/nakadi.subscription.log/nakadi.subscription.log.0.avsc";
     private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("subscription_id")

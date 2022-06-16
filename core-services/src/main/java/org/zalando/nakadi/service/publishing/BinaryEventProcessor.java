@@ -55,7 +55,7 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
             eventRecordMetadata.stream()
                     .filter(nrr -> nrr.getStatus() != Status.SUCCEEDED)
                     .forEach(nrr ->
-                            LOG.warn("failed to publish events to {} status {} exception {}",
+                            LOG.warn("failed to publish events to {} status {}",
                                     etName, nrr.getStatus(), nrr.getException()));
         } catch (final RuntimeException ex) {
             LOG.error("failed to send single batch for unknown reason", ex);

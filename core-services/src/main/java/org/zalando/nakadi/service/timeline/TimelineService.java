@@ -39,6 +39,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
@@ -79,6 +80,7 @@ public class TimelineService {
     // one man said, it is fine to add 11th argument
     private final SchemaProviderService schemaService;
     private final LocalSchemaRegistry localSchemaRegistry;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     @Autowired
     public TimelineService(final EventTypeCache eventTypeCache,
@@ -92,7 +94,8 @@ public class TimelineService {
                            final FeatureToggleService featureToggleService,
                            @Value("${nakadi.timelines.storage.compacted}") final String compactedStorageName,
                            final SchemaProviderService schemaService,
-                           final LocalSchemaRegistry localSchemaRegistry) {
+                           final LocalSchemaRegistry localSchemaRegistry,
+                           final NakadiRecordMapper nakadiRecordMapper) {
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
@@ -105,6 +108,7 @@ public class TimelineService {
         this.compactedStorageName = compactedStorageName;
         this.schemaService = schemaService;
         this.localSchemaRegistry = localSchemaRegistry;
+        this.nakadiRecordMapper = nakadiRecordMapper;
     }
 
     public Timeline createTimeline(final String eventTypeName, final String storageId)
@@ -286,7 +290,7 @@ public class TimelineService {
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
                 clientId, this, timelineSync,
-                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry, nakadiRecordMapper);
         result.reassign(positions);
         return result;
     }
@@ -294,7 +298,7 @@ public class TimelineService {
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
                 clientId, this, timelineSync,
-                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry);
+                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry, nakadiRecordMapper);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

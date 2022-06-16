@@ -15,6 +15,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.util.FlowIdUtils;
 
+import java.time.Instant;
 import java.util.Optional;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
@@ -49,8 +50,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     public void enrich(final NakadiRecord nakadiRecord, final EventType eventType) throws EnrichmentException {
         final var metadata = nakadiRecord.getMetadata();
         metadata.setPublishedBy(getPublisher());
-        final DateTime dateTime = new DateTime(DateTimeZone.UTC);
-        metadata.setReceivedAt(dateTime.getMillis());
+        metadata.setReceivedAt(Instant.now());
         if (metadata.getFlowId() == null || metadata.getFlowId().isEmpty()) {
             metadata.setFlowId(FlowIdUtils.peek());
         }

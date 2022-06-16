@@ -8,7 +8,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.enrichment.EnrichmentsRegistry;
@@ -58,7 +58,7 @@ public class EnrichmentCheckTest {
                 .thenReturn(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT));
         final NakadiRecord nakadiRecord = Mockito.mock(NakadiRecord.class);
         final List<NakadiRecord> nakadiRecords = List.of(nakadiRecord);
-        final NakadiAvroMetadata metadata = Mockito.mock(NakadiAvroMetadata.class);
+        final NakadiMetadata metadata = Mockito.mock(NakadiMetadata.class);
         Mockito.when(nakadiRecord.getMetadata()).thenReturn(metadata);
         Mockito.doThrow(EnrichmentException.class).when(metadataEnrichmentStrategy).enrich(nakadiRecord, eventType);
         final List<NakadiRecordResult> recordResults = enrichmentCheck.execute(eventType, nakadiRecords);

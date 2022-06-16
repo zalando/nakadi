@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -23,7 +21,6 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -33,6 +30,7 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -47,6 +45,7 @@ import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -593,9 +592,8 @@ public class EventPublisherTest {
     @Test
     public void testAvroEventWasSerialized() throws Exception {
         final org.springframework.core.io.Resource eventTypeRes =
-                new DefaultResourceLoader().getResource("event-type-schema/");
-        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(
-                new AvroMapper(), new ObjectMapper(), eventTypeRes);
+                new DefaultResourceLoader().getResource("avro-schema/");
+        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
                 timelineService, timelineSync, nakadiSettings);
         final EventType eventType = buildDefaultEventType();
@@ -607,15 +605,14 @@ public class EventPublisherTest {
         Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class)))
                 .thenReturn("1");
 
-        final long now = System.currentTimeMillis();
+        final Instant now = Instant.now();
 
         final var latestMeta =
                 localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final var latestSchema =
                 localSchemaRegistry.getLatestEventTypeSchemaVersion("nakadi.access.log");
 
-        final NakadiAvroMetadata metadata = new NakadiAvroMetadata(
-                latestMeta.getVersionAsByte(), latestMeta.getSchema());
+        final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setOccurredAt(now);
         metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
         metadata.setFlowId(FlowIdUtils.peek());

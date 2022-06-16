@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import org.apache.avro.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,10 +25,12 @@ import java.util.TreeMap;
 public class LocalSchemaRegistry {
 
     public static final String METADATA_KEY = "metadata";
+    public static final String BATCH_PUBLISHING_KEY = "batch.publishing";
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
             METADATA_KEY,
+            BATCH_PUBLISHING_KEY,
             KPIEventTypes.ACCESS_LOG,
             KPIEventTypes.BATCH_PUBLISHED,
             KPIEventTypes.DATA_STREAMED,
@@ -38,19 +38,11 @@ public class LocalSchemaRegistry {
             KPIEventTypes.SUBSCRIPTION_LOG);
 
     private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
-    private final AvroMapper avroMapper;
-    private final ObjectMapper objectMapper;
 
     @Autowired
     public LocalSchemaRegistry(
-            final AvroMapper avroMapper,
-            final ObjectMapper objectMapper,
-            @Value("${nakadi.avro.schema.root:classpath:event-type-schema/}") final Resource eventTypeSchemaRes)
+            @Value("${nakadi.avro.schema.root:classpath:avro-schema/}") final Resource eventTypeSchemaRes)
             throws IOException {
-
-        this.avroMapper = avroMapper;
-        this.objectMapper = objectMapper;
-
         this.eventTypeSchema = new HashMap<>();
 
         for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
@@ -80,14 +72,6 @@ public class LocalSchemaRegistry {
         return versionToSchema;
     }
 
-    public AvroMapper getAvroMapper() {
-        return avroMapper;
-    }
-
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
     public VersionedAvroSchema getLatestEventTypeSchemaVersion(final String eventTypeName) {
         final var entry = getEventTypeSchemaVersions(eventTypeName).lastEntry();
         return new VersionedAvroSchema(entry.getValue(), entry.getKey());
@@ -102,7 +86,7 @@ public class LocalSchemaRegistry {
         return schema;
     }
 
-    private TreeMap<String, Schema> getEventTypeSchemaVersions(final String eventTypeName) {
+    public TreeMap<String, Schema> getEventTypeSchemaVersions(final String eventTypeName) {
         final TreeMap<String, Schema> versionToSchema = eventTypeSchema.get(eventTypeName);
         if (versionToSchema == null) {
             throw new NoSuchEventTypeException("Avro event type not found: " + eventTypeName);

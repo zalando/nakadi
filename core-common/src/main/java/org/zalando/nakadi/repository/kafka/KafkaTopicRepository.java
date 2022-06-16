@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -45,10 +44,10 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -89,20 +88,18 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaFactory kafkaFactory;
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
-    private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final KafkaLocationManager kafkaLocationManager;
-    private final MetricRegistry metricRegistry;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     public KafkaTopicRepository(final Builder builder) {
         this.kafkaZookeeper = builder.kafkaZookeeper;
         this.kafkaFactory = builder.kafkaFactory;
         this.nakadiSettings = builder.nakadiSettings;
         this.kafkaSettings = builder.kafkaSettings;
-        this.zookeeperSettings = builder.zookeeperSettings;
         this.kafkaLocationManager = builder.kafkaLocationManager;
         this.kafkaTopicConfigFactory = builder.kafkaTopicConfigFactory;
-        this.metricRegistry = builder.metricRegistry;
+        this.nakadiRecordMapper = builder.nakadiRecordMapper;
     }
 
     public static class Builder {
@@ -110,10 +107,9 @@ public class KafkaTopicRepository implements TopicRepository {
         private KafkaFactory kafkaFactory;
         private NakadiSettings nakadiSettings;
         private KafkaSettings kafkaSettings;
-        private ZookeeperSettings zookeeperSettings;
         private KafkaTopicConfigFactory kafkaTopicConfigFactory;
         private KafkaLocationManager kafkaLocationManager;
-        private MetricRegistry metricRegistry;
+        private NakadiRecordMapper nakadiRecordMapper;
 
         public Builder setKafkaZookeeper(final KafkaZookeeper kafkaZookeeper) {
             this.kafkaZookeeper = kafkaZookeeper;
@@ -135,11 +131,6 @@ public class KafkaTopicRepository implements TopicRepository {
             return this;
         }
 
-        public Builder setZookeeperSettings(final ZookeeperSettings zookeeperSettings) {
-            this.zookeeperSettings = zookeeperSettings;
-            return this;
-        }
-
         public Builder setKafkaTopicConfigFactory(final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
             this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
             return this;
@@ -150,8 +141,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return this;
         }
 
-        public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
-            this.metricRegistry = metricRegistry;
+        public Builder setNakadiRecordMapper(final NakadiRecordMapper nakadiRecordMapper) {
+            this.nakadiRecordMapper = nakadiRecordMapper;
             return this;
         }
 
@@ -204,8 +195,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return false;
         }
         return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                        UnknownServerException.class)
+                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
@@ -438,15 +429,13 @@ public class KafkaTopicRepository implements TopicRepository {
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
-                final ProducerRecord<byte[], byte[]> producerRecord = nakadiRecord.toProducerRecord(topic);
+                final ProducerRecord<byte[], byte[]> producerRecord =
+                        nakadiRecordMapper.mapToProducerRecord(nakadiRecord, topic);
 
                 if (null != nakadiRecord.getOwner()) {
                     nakadiRecord.getOwner().serialize(producerRecord);
                 }
 
-                producerRecord.headers().add(
-                        NakadiRecord.HEADER_FORMAT,
-                        nakadiRecord.getFormat());
                 producer.send(producerRecord, ((metadata, exception) -> {
                     try {
                         final NakadiRecordResult result;
