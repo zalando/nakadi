@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.runtime.AvroPayloadDecodingException;
+import org.zalando.nakadi.exceptions.runtime.AvroDecodingException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
@@ -35,8 +35,8 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
         return handlePayloadException(exception, "Error occurred when parsing event(s). ", request);
     }
 
-    @ExceptionHandler(AvroPayloadDecodingException.class)
-    public ResponseEntity<Problem> handleAvroException(final AvroPayloadDecodingException exception,
+    @ExceptionHandler(AvroDecodingException.class)
+    public ResponseEntity<Problem> handleAvroException(final AvroDecodingException exception,
                                                        final NativeWebRequest request) {
         return handlePayloadException(exception, "Error occurred when parsing avro. ", request);
     }

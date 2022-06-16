@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.EnvelopeV0;
@@ -56,10 +57,11 @@ public class NakadiRecordMapperTest {
         final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
         final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
 
+        final String eventEid = "AB5D12E9-8376-4584-802C-3AFA1CA1D97C";
         final PublishingBatchV0 batch = PublishingBatchV0.newBuilder()
                 .setEvents(List.of(EnvelopeV0.newBuilder()
                         .setMetadata(MetadataV0.newBuilder()
-                                .setEid(UUID.randomUUID().toString())
+                                .setEid(eventEid)
                                 .setOccurredAt(Instant.now())
                                 .setVersion("1.0.0")
                                 .setEventType("some.event.type")
@@ -73,7 +75,9 @@ public class NakadiRecordMapperTest {
         final List<NakadiRecord> nakadiRecords =
                 mapper.fromBytesBatch(new ByteArrayInputStream(byteBuffer.array()));
 
-        Assert.assertNull(nakadiRecords.get(0).getMetadata().getEventOwner());
+        final NakadiMetadata metadata = nakadiRecords.get(0).getMetadata();
+        Assert.assertNull(metadata.getEventOwner());
+        Assert.assertEquals(eventEid, metadata.getEid());
     }
 
 }

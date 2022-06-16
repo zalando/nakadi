@@ -8,7 +8,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.exceptions.runtime.AvroPayloadDecodingException;
+import org.zalando.nakadi.exceptions.runtime.AvroDecodingException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
@@ -44,7 +44,7 @@ public class NakadiRecordMapper {
             publishingBatch = PublishingBatch.getDecoder()
                     .decode(batch, new PublishingBatch());
         } catch (AvroRuntimeException are) {
-            throw new AvroPayloadDecodingException("failed to decode envelope", are);
+            throw new AvroDecodingException("failed to decode publishing batch", are);
         } catch (IOException e) {
             throw new NakadiRuntimeException("failed to decode publishing batch", e);
         }
@@ -63,7 +63,7 @@ public class NakadiRecordMapper {
         try {
             return Envelope.getDecoder().decode(data, new Envelope());
         } catch (AvroRuntimeException are) {
-            throw new AvroPayloadDecodingException("failed to decode envelope", are);
+            throw new AvroDecodingException("failed to decode envelope", are);
         } catch (IOException io) {
             throw new NakadiRuntimeException("failed to decode envelope", io);
         }

@@ -29,7 +29,7 @@
     },
     {
       "name": "batch_size",
-      "type": "int"
+      "type": "long"
     }
   ]
 }
