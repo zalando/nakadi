@@ -131,6 +131,14 @@ paths:
             Example: "service:stups_nakadi-ui"
           type: string
           required: false
+        - name: owning_application
+          in: query
+          description: |
+            Will query all event types where owning_application matches.
+
+            Example: "stups_nakadi-ui"
+          type: string
+          required: false
       responses:
         '200':
           description: Ok

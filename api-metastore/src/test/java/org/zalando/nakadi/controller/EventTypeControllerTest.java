@@ -29,6 +29,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -886,9 +887,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void testWhenFilteringEventTypes() throws Exception {
         final String writer = "user:bshala";
+        final Optional<AuthorizationAttribute> authorizationAttribute =
+                Optional.ofNullable(new ResourceAuthorizationAttribute("user", "bshala"));
+        final Optional<String> owningApplication = Optional.ofNullable("someApplication");
         final EventType eventType = TestUtils.buildDefaultEventType();
         doReturn(List.of(eventType)).when(eventTypeRepository)
-                .list(new ResourceAuthorizationAttribute("user", "bshala"));
-        getEventTypes(writer).andExpect(status().is2xxSuccessful());
+                .list(authorizationAttribute, owningApplication);
+        getEventTypes(writer, "someApplication")
+                .andExpect(status().is2xxSuccessful());
+        verify(eventTypeRepository, times(1)).list(authorizationAttribute, owningApplication);
     }
 }
