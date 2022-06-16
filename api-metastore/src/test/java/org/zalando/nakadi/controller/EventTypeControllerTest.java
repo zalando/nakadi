@@ -38,7 +38,6 @@ import org.zalando.nakadi.view.EventOwnerSelector;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;

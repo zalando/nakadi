@@ -112,7 +112,9 @@ public class EventTypeRepository extends AbstractDbRepository {
                 new EventTypeMapper());
     }
 
-    public List<EventType> list(final Optional<AuthorizationAttribute> writer, final Optional<String> owningApplication) {
+    public List<EventType> list(
+            final Optional<AuthorizationAttribute> writer,
+            final Optional<String> owningApplication) {
         final List<Object> params = Lists.newArrayList();
         final List<String> clauses = Lists.newArrayList();
 
