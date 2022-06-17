@@ -15,7 +15,6 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
