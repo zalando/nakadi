@@ -33,32 +33,57 @@ import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
 public class BinaryEndToEndAT extends BaseAT {
-    private static final String TEST_ET_NAME = "nakadi.test-2022-05-06.et";
-
     @Test
     public void testAvroPublishingAndJsonConsumption() throws IOException {
-        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
-                .getResource("nakadi.end2end.avsc").getInputStream());
+
+        final String jsonSchema = "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}}";
         final var et = EventTypeTestBuilder.builder()
-                .name(TEST_ET_NAME)
                 .category(EventCategory.BUSINESS)
                 .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
-                .schema(new EventTypeSchema(new EventTypeSchemaBase(
-                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
-                        schema.toString()), "1.0.0", TestUtils.randomDate()))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA, jsonSchema),
+                        "1.0.0", TestUtils.randomDate()))
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
+        final Schema avroSchema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
+        et.setSchema(new EventTypeSchema(
+                new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, avroSchema.toString()),
+                "2.0.0", TestUtils.randomDate()));
+        NakadiTestUtils.updateEventTypeInNakadi(et);
+
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        new GenericDatumWriter(schema).write(
-                new GenericRecordBuilder(schema).set("foo", "bar").build(),
+        new GenericDatumWriter(avroSchema).write(
+                new GenericRecordBuilder(avroSchema).set("foo", "bar").build(),
                 EncoderFactory.get().directBinaryEncoder(baos, null));
 
+        // try send with wrong (json) version
+        final PublishingBatch wrongVersionBatch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(et.getName())
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("6f707837-4632-401e-a1fe-475749920a4c")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                        .build()))
+                .build();
+
+        final ByteBuffer wrongVersionBody = PublishingBatch.getEncoder().encode(wrongVersionBatch);
+        given()
+                .contentType("application/avro-binary")
+                .body(wrongVersionBody.array())
+                .post(String.format("/event-types/%s/events", et.getName()))
+                .then()
+                .statusCode(207);
+
+        // send normal batch with avro
         final PublishingBatch batch = PublishingBatch.newBuilder()
                 .setEvents(List.of(Envelope.newBuilder()
                         .setMetadata(Metadata.newBuilder()
-                                .setEventType(TEST_ET_NAME)
-                                .setVersion("1.0.0")
+                                .setEventType(et.getName())
+                                .setVersion("2.0.0")
                                 .setOccurredAt(Instant.now())
                                 .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
                                 .build())
@@ -67,17 +92,38 @@ public class BinaryEndToEndAT extends BaseAT {
                 .build();
 
         final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
-        final var response = given()
+        given()
                 .contentType("application/avro-binary")
                 .body(body.array())
-                .post(String.format("/event-types/%s/events", TEST_ET_NAME));
-        response.print();
-        response.then().statusCode(200);
+                .post(String.format("/event-types/%s/events", et.getName()))
+                .then()
+                .statusCode(200);
+
+        // try send with unknown version
+        final PublishingBatch unknownVersionBatch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(et.getName())
+                                .setVersion("5.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("769864fb-a0f6-4e13-a814-77bdc5633266")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                        .build()))
+                .build();
+
+        final ByteBuffer unknownVersionBody = PublishingBatch.getEncoder().encode(unknownVersionBatch);
+        given()
+                .contentType("application/avro-binary")
+                .body(unknownVersionBody.array())
+                .post(String.format("/event-types/%s/events", et.getName()))
+                .then()
+                .statusCode(207);
 
         // check event is consumed and format is correct
         final Subscription subscription = createSubscription(
                 RandomSubscriptionBuilder.builder()
-                        .withEventType(TEST_ET_NAME)
+                        .withEventType(et.getName())
                         .withStartFrom(BEGIN)
                         .buildSubscriptionBase());
         final TestStreamingClient client = TestStreamingClient.create(subscription.getId()).start();
@@ -88,7 +134,7 @@ public class BinaryEndToEndAT extends BaseAT {
 
         final Map<String, Object> metadata = (Map<String, Object>) event.get("metadata");
         Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", metadata.get("eid"));
-        Assert.assertEquals("1.0.0", metadata.get("version"));
-        Assert.assertEquals(TEST_ET_NAME, metadata.get("event_type"));
+        Assert.assertEquals("2.0.0", metadata.get("version"));
+        Assert.assertEquals(et.getName(), metadata.get("event_type"));
     }
 }

@@ -61,12 +61,13 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("pre-publishing-checks")
-    public List<Check> prePublishingChecks(final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+    public List<Check> prePublishingChecks(final EventTypeCheck eventTypeCheck,
+                                           final EventOwnerExtractorFactory eventOwnerExtractorFactory,
                                            final AuthorizationValidator authValidator,
                                            final EnrichmentCheck enrichmentCheck,
                                            final PartitioningCheck partitioningCheck) {
         return Lists.newArrayList(
-                new EventTypeCheck(),
+                eventTypeCheck,
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
                 partitioningCheck,
                 enrichmentCheck,
