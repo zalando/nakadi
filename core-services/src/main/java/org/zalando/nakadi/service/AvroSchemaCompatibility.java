@@ -22,10 +22,10 @@ import java.util.stream.Stream;
 public class AvroSchemaCompatibility {
 
     private static BiFunction<Schema, Schema, SchemaPairCompatibility> backwardCompatibleFn = (reader, writer) ->
-            SchemaCompatibility.checkReaderWriterCompatibility(reader, writer);
+            SchemaCompatibility.checkReaderWriterCompatibility(writer, reader);
 
     private static BiFunction<Schema, Schema, SchemaPairCompatibility> forwardCompatibleFn = (reader, writer) ->
-            SchemaCompatibility.checkReaderWriterCompatibility(writer, reader);
+            SchemaCompatibility.checkReaderWriterCompatibility(reader, writer);
 
     private static BiFunction<Schema, Schema, List<SchemaPairCompatibility>> fullyCompatibleFn = (reader, writer) ->
             List.of(backwardCompatibleFn.apply(reader, writer), forwardCompatibleFn.apply(reader, writer));
@@ -59,11 +59,11 @@ public class AvroSchemaCompatibility {
         switch (compatibilityMode) {
             case FORWARD:
                 return forwardCompatibleFn.andThen(this::toAvroIncompatibility).
-                        apply(newSchema, getLastSchema.get());
+                        apply(getLastSchema.get(), newSchema);
 
             case COMPATIBLE:
                 return flatMapToIncompat.apply(
-                        fullyCompatibleFn.apply(newSchema, getLastSchema.get()).stream()
+                        fullyCompatibleFn.apply(getLastSchema.get(), newSchema).stream()
                 );
             case NONE:
                 return Collections.emptyList();
