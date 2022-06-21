@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 
@@ -48,8 +48,8 @@ public class CheckTest {
         }
     };
 
-    private NakadiAvroMetadata getTestMetadata() {
-        final NakadiAvroMetadata nakadiMetadata = new NakadiAvroMetadata((byte) 0, null);
+    private NakadiMetadata getTestMetadata() {
+        final NakadiMetadata nakadiMetadata = new NakadiMetadata();
         nakadiMetadata.setEid("12345");
         return nakadiMetadata;
     }

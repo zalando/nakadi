@@ -89,7 +89,7 @@ task checkstyle {
     subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
     subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
     dependsOn(":acceptance-test:checkstyleMain")
-    dependsOn(":acceptance-test:checkstyleTest")
+    dependsOn(":acceptance-test:checkstyleAcceptanceTest")
 }
 
 task test {

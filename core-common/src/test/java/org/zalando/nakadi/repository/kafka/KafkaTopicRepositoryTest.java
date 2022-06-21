@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -20,13 +17,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.NakadiAvroMetadata;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
@@ -37,8 +32,8 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 
 import java.io.IOException;
@@ -82,12 +77,11 @@ public class KafkaTopicRepositoryTest {
     private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
-    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
+    private NakadiRecordMapper nakadiRecordMapper;
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
     private final RecordDeserializer recordDeserializer = (f, e) -> e;
-    private final LocalSchemaRegistry localSchemaRegistry;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -134,13 +128,11 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
+        nakadiRecordMapper = TestUtils.getNakadiRecordMapper();
         kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
         MockitoAnnotations.initMocks(this);
-        final var eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        this.localSchemaRegistry = new LocalSchemaRegistry(new AvroMapper(), new ObjectMapper(), eventTypeRes);
     }
-
 
     @Test
     public void canListAllTopics() {
@@ -549,18 +541,16 @@ public class KafkaTopicRepositoryTest {
         return new Cursor(partition, offset);
     }
 
-    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory,
-                                                       final MetricRegistry metricRegistry) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
             return new KafkaTopicRepository.Builder()
                     .setKafkaZookeeper(createKafkaZookeeper())
                     .setKafkaFactory(kafkaFactory)
                     .setNakadiSettings(nakadiSettings)
                     .setKafkaSettings(kafkaSettings)
-                    .setZookeeperSettings(zookeeperSettings)
                     .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                     .setKafkaLocationManager(kafkaLocationManager)
-                    .setMetricRegistry(metricRegistry)
+                    .setNakadiRecordMapper(nakadiRecordMapper)
                     .build();
         } catch (final Exception e) {
             throw new RuntimeException(e);
@@ -637,19 +627,16 @@ public class KafkaTopicRepositoryTest {
     }
 
     private NakadiRecord getTestNakadiRecord(final String partition) {
-        final NakadiMetadata metadata = new NakadiAvroMetadata((byte) 1,
-                localSchemaRegistry.getLatestEventTypeSchemaVersion(
-                        LocalSchemaRegistry.METADATA_KEY).getSchema());
+        final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setEid(UUID.randomUUID().toString());
-        metadata.setOccurredAt(Instant.now().toEpochMilli());
+        metadata.setOccurredAt(Instant.now());
         metadata.setSchemaVersion("0");
         metadata.setPartition(partition);
         metadata.setEventType("test-event");
 
         return new NakadiRecord()
                 .setMetadata(metadata)
-                .setPayload(new byte[0])
-                .setFormat(NakadiRecord.Format.AVRO.getFormat());
+                .setPayload(new byte[0]);
     }
 
 }

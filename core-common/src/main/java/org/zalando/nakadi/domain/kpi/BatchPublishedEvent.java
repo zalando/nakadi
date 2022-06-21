@@ -5,7 +5,7 @@ import org.zalando.nakadi.config.KPIEventTypes;
 
 public class BatchPublishedEvent extends KPIEvent {
 
-    private static final String PATH_SCHEMA = "event-type-schema/nakadi.batch.published/nakadi.batch.published.0.avsc";
+    private static final String PATH_SCHEMA = "avro-schema/nakadi.batch.published/nakadi.batch.published.1.avsc";
     private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("event_type")
@@ -21,7 +21,7 @@ public class BatchPublishedEvent extends KPIEvent {
     @KPIField("ms_spent")
     private long msSpent;
     @KPIField("batch_size")
-    private int totalSizeBytes;
+    private long totalSizeBytes;
 
     public BatchPublishedEvent() {
         super(KPIEventTypes.BATCH_PUBLISHED);
@@ -81,11 +81,11 @@ public class BatchPublishedEvent extends KPIEvent {
         return this;
     }
 
-    public int getTotalSizeBytes() {
+    public long getTotalSizeBytes() {
         return totalSizeBytes;
     }
 
-    public BatchPublishedEvent setTotalSizeBytes(final int totalSizeBytes) {
+    public BatchPublishedEvent setTotalSizeBytes(final long totalSizeBytes) {
         this.totalSizeBytes = totalSizeBytes;
         return this;
     }

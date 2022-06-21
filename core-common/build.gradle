@@ -6,12 +6,17 @@ buildscript {
     }
 }
 
+plugins {
+    id "com.github.davidmc24.gradle.plugin.avro" version "1.3.0"
+}
+
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'org.owasp.dependencycheck'
+apply plugin: "com.github.davidmc24.gradle.plugin.avro-base"
 
 group 'org.zalando'
 
@@ -94,7 +99,7 @@ dependencies {
     compile 'org.zalando:problem-spring-web:0.23.0'
 
     // avro
-    compile "org.apache.avro:avro:1.10.2"
+    compile "org.apache.avro:avro:1.11.0"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
 
     compile 'com.github.luben:zstd-jni:1.5.2-2'
@@ -138,4 +143,23 @@ bootJar {
 }
 jar {
     enabled = true
+}
+
+import com.github.davidmc24.gradle.plugin.avro.GenerateAvroJavaTask
+
+def generateAvro = tasks.register("generateAvro", GenerateAvroJavaTask) {
+    source("src/main/resources/avro-schema/batch.publishing")
+    outputDir = file("build/generated/sources")
+}
+
+tasks.named("compileJava").configure {
+    source(generateAvro)
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ["src/main/java", "build/generated/sources"]
+        }
+    }
 }

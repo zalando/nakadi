@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -16,7 +15,6 @@ import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -78,7 +76,6 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
-    private ZookeeperSettings zookeeperSettings;
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
     private NakadiTopicConfig defaultTopicConfig;
@@ -110,7 +107,6 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
                 KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "", KAFKA_COMPRESSION_TYPE);
-        zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, ZK_MAX_IN_FLIGHT_REQUESTS);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));
@@ -290,10 +286,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 .setKafkaFactory(factory)
                 .setNakadiSettings(nakadiSettings)
                 .setKafkaSettings(kafkaSettings)
-                .setZookeeperSettings(zookeeperSettings)
                 .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                 .setKafkaLocationManager(kafkaLocationManager)
-                .setMetricRegistry(new MetricRegistry())
                 .build();
     }
 

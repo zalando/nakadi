@@ -1,6 +1,7 @@
 package org.zalando.nakadi;
 
 import com.google.common.base.Charsets;
+import com.google.common.io.CountingInputStream;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -33,11 +34,11 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.publishing.NakadiRecordMapper;
 import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -112,7 +113,6 @@ public class EventPublishingController {
             produces = "application/json; charset=utf-8"
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
-                                           @RequestBody final byte[] batch,
                                            final HttpServletRequest request,
                                            final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
@@ -120,12 +120,11 @@ public class EventPublishingController {
 
         // TODO: check that event type schema type is AVRO!
 
-        //try {
-        //    return postBinaryEvents(eventTypeName, batch, request, client, false);
-        //} catch (IOException e) {
-        //    throw new InternalNakadiException("failed to parse batch", e);
-        //}
-        return status(HttpStatus.NOT_IMPLEMENTED).body("the method is under development");
+        try {
+            return postBinaryEvents(eventTypeName, request.getInputStream(), client, false);
+        } catch (IOException e) {
+            throw new InternalNakadiException("failed to parse batch", e);
+        }
     }
 
     @RequestMapping(
@@ -135,18 +134,20 @@ public class EventPublishingController {
             produces = "application/json; charset=utf-8"
     )
     public ResponseEntity deleteBinaryEvents(@PathVariable final String eventTypeName,
-                                             @RequestBody final byte[] batch,
                                              final HttpServletRequest request,
                                              final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
-        return postBinaryEvents(eventTypeName, batch, request, client, true);
+        try {
+            return postBinaryEvents(eventTypeName, request.getInputStream(), client, true);
+        } catch (IOException e) {
+            throw new InternalNakadiException("failed to parse batch", e);
+        }
     }
 
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
-                                            final byte[] batch,
-                                            final HttpServletRequest request,
+                                            final InputStream batch,
                                             final Client client,
                                             final boolean delete) {
         TracingService.setOperationName("publish_events")
@@ -166,15 +167,8 @@ public class EventPublishingController {
         try {
             final long startingNanos = System.nanoTime();
             try {
-                final int totalSizeBytes = batch.length;
-                TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
-
-                final List<NakadiRecord> nakadiRecords;
-                try {
-                    nakadiRecords = nakadiRecordMapper.fromBytesBatch(batch);
-                } catch (final IOException ioe) {
-                    throw new UnprocessableEntityException("Unable to parse batch", ioe);
-                }
+                final CountingInputStream countingInputStream = new CountingInputStream(batch);
+                final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(countingInputStream);
                 final List<NakadiRecordResult> recordResults;
                 if (delete) {
                     recordResults = binaryPublisher.delete(nakadiRecords, eventType, preDeletingChecks);
@@ -187,6 +181,9 @@ public class EventPublishingController {
                 }
                 final EventPublishResult result = publishingResultConverter.mapPublishingResultToView(recordResults);
                 final int eventCount = result.getResponses().size();
+
+                final long totalSizeBytes = countingInputStream.getCount();
+                TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
                 reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
                 reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
@@ -280,7 +277,7 @@ public class EventPublishingController {
         }
     }
 
-    private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount,
+    private void reportSLOs(final long startingNanos, final long totalSizeBytes, final int eventCount,
                             final EventPublishResult eventPublishResult, final String eventTypeName,
                             final Client client) {
         if (eventPublishResult.getStatus() == EventPublishingStatus.SUBMITTED) {
@@ -299,7 +296,7 @@ public class EventPublishingController {
     }
 
     private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
-                               final int totalSizeBytes, final int eventCount) {
+                               final long totalSizeBytes, final int eventCount) {
         if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
             eventTypeMetrics.reportSizing(eventCount, totalSizeBytes - eventCount - 1);
         } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {

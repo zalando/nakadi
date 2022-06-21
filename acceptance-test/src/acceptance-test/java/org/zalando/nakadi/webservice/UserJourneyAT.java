@@ -83,7 +83,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         createEventType(eventTypeBody);
 
         eventTypeNameBusiness = eventTypeName + ".business";
-        eventTypeBodyBusiness = getEventTypeJsonFromFile("sample-event-type-business.json", eventTypeNameBusiness, owningApp);
+        eventTypeBodyBusiness = getEventTypeJsonFromFile("sample-event-type-business.json",
+                eventTypeNameBusiness, owningApp);
         createEventType(eventTypeBodyBusiness);
     }
 
