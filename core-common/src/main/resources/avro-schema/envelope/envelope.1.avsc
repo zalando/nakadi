@@ -1,0 +1,129 @@
+{
+  "name": "Envelope",
+  "namespace": "org.zalando.nakadi.generated.avro",
+  "type": "record",
+  "fields": [
+    {
+      "name": "metadata",
+      "type": {
+        "name": "Metadata",
+        "type": "record",
+        "doc": "Event metadata defines data about the payload and additional information for Nakadi operations",
+        "fields": [
+          {
+            "name": "occurred_at",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "eid",
+            "type": {
+              "type": "string",
+              "logicalType": "uuid"
+            }
+          },
+          {
+            "name": "flow_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "received_at",
+            "type": [
+              "null",
+              {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+              }
+            ],
+            "default": null
+          },
+          {
+            "name": "version",
+            "type": "string"
+          },
+          {
+            "name": "published_by",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "event_type",
+            "type": "string"
+          },
+          {
+            "name": "partition",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "partition_keys",
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": "string"
+              }
+            ],
+            "default": null
+          },
+          {
+            "name": "partition_compaction_key",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "parent_eids",
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "logicalType": "uuid"
+                }
+              }
+            ],
+            "default": null
+          },
+          {
+            "name": "span_ctx",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "event_owner",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "bytes"
+      }
+    }
+  ]
+}

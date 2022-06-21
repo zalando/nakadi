@@ -11,26 +11,31 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.util.AvroUtils;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 // temporarily storage for event type avro schemas untill schema repository supports them
 @Service
 public class LocalSchemaRegistry {
 
-    public static final String METADATA_KEY = "metadata";
     public static final String BATCH_PUBLISHING_KEY = "batch.publishing";
+    public static final String ENVELOPE_KEY = "envelope";
+    public static final String BATCH_CONSUMPTION_KEY = "batch.consumption";
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
-    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = Set.of(
-            METADATA_KEY,
+    // envelope must be first
+    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = List.of(
+            ENVELOPE_KEY,
             BATCH_PUBLISHING_KEY,
+            BATCH_CONSUMPTION_KEY,
             KPIEventTypes.ACCESS_LOG,
             KPIEventTypes.BATCH_PUBLISHED,
             KPIEventTypes.DATA_STREAMED,
@@ -46,8 +51,14 @@ public class LocalSchemaRegistry {
         this.eventTypeSchema = new HashMap<>();
 
         for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
+            final Map<String, Schema> embeddedSchemas = eventTypeSchema.values().stream()
+                    .flatMap((map) -> map.entrySet().stream())
+                    .collect(Collectors.toMap(
+                            (entry) -> entry.getValue().getFullName(),
+                            Map.Entry::getValue));
+
             final TreeMap<String, Schema> versionToSchema =
-                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName);
+                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName, embeddedSchemas);
             if (versionToSchema.isEmpty()) {
                 throw new NoSuchSchemaException("No avro schema found for: " + eventTypeName);
             }
@@ -56,15 +67,16 @@ public class LocalSchemaRegistry {
     }
 
     private TreeMap<String, Schema> loadEventTypeSchemaVersionsFromResource(
-            final Resource eventTypeSchemaRes, final String eventTypeName) {
+            final Resource eventTypeSchemaRes,
+            final String eventTypeName,
+            @Nullable final Map<String, Schema> embeddedTypes) {
 
         final TreeMap<String, Schema> versionToSchema = new TreeMap<>(SCHEMA_VERSION_COMPARATOR);
-
         for (int i = 0; ; ++i) {
             try {
                 final String relativeName = String.format("%s/%s.%d.avsc", eventTypeName, eventTypeName, i);
                 final InputStream is = eventTypeSchemaRes.createRelative(relativeName).getInputStream();
-                versionToSchema.put(String.valueOf(i), AvroUtils.getParsedSchema(is));
+                versionToSchema.put(String.valueOf(i), AvroUtils.getParsedSchema(is, embeddedTypes));
             } catch (final IOException e) {
                 break;
             }

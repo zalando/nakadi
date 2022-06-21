@@ -1,5 +1,6 @@
 {
-  "name": "nakadi.batch.published",
+  "name": "NakadiBatchPublished",
+  "namespace": "org.zalando.nakadi.avro.generated",
   "type": "record",
   "doc": "Stores KPI event of type nakadi.batch.published",
   "fields": [

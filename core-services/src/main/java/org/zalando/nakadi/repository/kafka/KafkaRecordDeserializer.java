@@ -7,7 +7,6 @@ import org.apache.avro.message.BinaryMessageDecoder;
 import org.apache.avro.message.RawMessageDecoder;
 import org.apache.avro.specific.SpecificData;
 import org.json.JSONObject;
-import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -29,7 +28,6 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
     private static final Map<Schema, RawMessageDecoder<GenericRecord>> RAW_DECODERS = new ConcurrentHashMap<>();
     private static final Map<Schema, BinaryMessageDecoder<GenericRecord>> BINARY_DECODERS = new ConcurrentHashMap<>();
 
-    private final AvroDeserializerWithSequenceDecoder decoder;
     private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
 
@@ -38,7 +36,6 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
                                    final LocalSchemaRegistry localSchemaRegistry) {
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.schemaService = schemaService;
-        this.decoder = new AvroDeserializerWithSequenceDecoder(schemaService, localSchemaRegistry);
     }
 
     public byte[] deserializeToJsonBytes(final byte[] eventFormat, final byte[] data) {
@@ -54,15 +51,6 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
 
             // then it should be JSON
             return data;
-        }
-
-        if (eventFormat.length == 1 &&
-                eventFormat[0] == NakadiRecordMapper.AVRO_FORMAT[0]) {
-            try {
-                return decoder.deserializeAvroToJsonBytes(EnvelopeHolder.fromBytes(data));
-            } catch (IOException e) {
-                throw new RuntimeException("failed to deserialize avro event", e);
-            }
         }
 
         throw new RuntimeException(String.format(

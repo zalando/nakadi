@@ -109,7 +109,8 @@ public class EventTypeAT extends BaseAT {
         given()
                 .header("accept", "application/json")
                 .contentType(JSON)
-                .get(ENDPOINT + "?writer=" + AuthorizationAttributeQueryParser.getQuery(auth) + "&owning_application=" + owningApp)
+                .get(ENDPOINT + "?writer=" + AuthorizationAttributeQueryParser.getQuery(auth) +
+                        "&owning_application=" + owningApp)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body("name", hasItems(eventType.getName()));

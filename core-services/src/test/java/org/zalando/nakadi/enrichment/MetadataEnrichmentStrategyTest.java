@@ -199,7 +199,6 @@ public class MetadataEnrichmentStrategyTest {
 
         final Instant now = Instant.now();
         final var nakadiAccessLog = "nakadi.access.log";
-        final var latestMeta = localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final var latestSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(nakadiAccessLog);
 
         final var nakadiAvroMetadata = new NakadiMetadata();
